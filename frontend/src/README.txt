@@ -1,0 +1,1 @@
+Pasta para código fonte do frontend (React + TypeScript).

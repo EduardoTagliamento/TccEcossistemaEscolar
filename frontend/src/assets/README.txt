@@ -1,0 +1,1 @@
+Assets estáticos (imagens, estilos, etc.).
