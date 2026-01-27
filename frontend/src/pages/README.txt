@@ -1,0 +1,1 @@
+Páginas principais da aplicação (Login, Dashboard, etc.).

@@ -1,0 +1,1 @@
+Arquivos estáticos do frontend (ícones, imagens, etc.).
