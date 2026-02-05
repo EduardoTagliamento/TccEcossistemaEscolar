@@ -8,7 +8,7 @@ const axios = require('axios');
  * @returns {Promise<object>} - Resposta da API Brevo
  */
 async function sendBrevoEmail(toEmail) {
-  const apiKey = 'CHAVE'; // Substitua pela sua chave
+  const apiKey = ''; // Substitua pela sua chave
   const url = 'https://api.brevo.com/v3/smtp/email';
 
   const data = {
