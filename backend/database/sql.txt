@@ -1,0 +1,10 @@
+CREATE TABLE `tccecossistemaescolar`.`escola` (
+  `EscolaGUID` CHAR(36) NOT NULL,
+  `EscolaNome` VARCHAR(100) NULL,
+  `EscolaCorPriEs` CHAR(6) NULL DEFAULT '000000',
+  `EscolaCorPriCl` CHAR(6) NULL DEFAULT '000000',
+  `EscolaCorSecEs` CHAR(6) NULL DEFAULT '000000',
+  `EscolaCorSecCl` CHAR(6) NULL DEFAULT '000000',
+  `EscolaIcone` BLOB NULL,
+  PRIMARY KEY (`EscolaGUID`));
+
