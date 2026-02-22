@@ -24,7 +24,7 @@ export class EnvValidator {
     optional: [
       'OPENAI_API_KEY',
       'GOOGLE_API_KEY',
-      'SENDGRID_API_KEY',
+      'RESEND_API_KEY',
       'AWS_ACCESS_KEY_ID',
       'AWS_SECRET_ACCESS_KEY',
       'STRIPE_SECRET_KEY',

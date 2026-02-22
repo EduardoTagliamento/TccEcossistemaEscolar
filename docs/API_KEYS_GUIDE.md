@@ -99,8 +99,8 @@ backend/
 │   ├── google/
 │   │   ├── GoogleClassroomService.ts
 │   │   └── types.ts
-│   ├── sendgrid/
-│   │   ├── EmailService.ts
+│   ├── resend/
+│   │   ├── ResendEmailService.ts
 │   │   └── templates.ts
 │   └── aws/
 │       ├── S3Service.ts
@@ -281,7 +281,7 @@ export function validateEnvironment() {
   const optional = [
     'OPENAI_API_KEY',
     'GOOGLE_API_KEY',
-    'SENDGRID_API_KEY'
+    'RESEND_API_KEY'
   ];
 
   const missing: string[] = [];
