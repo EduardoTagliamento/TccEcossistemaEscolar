@@ -1,6 +1,7 @@
 import Server from "./backend/Server";
 import dotenv from "dotenv";
 import path from "path";
+import { EnvValidator } from "./backend/utils/EnvValidator";
 
 /**
  * Arquivo principal de inicialização do servidor.
@@ -44,19 +45,12 @@ if (envResult.error) {
 
 // 🔹 Validar variáveis de ambiente obrigatórias
 const validateEnvironment = (): void => {
-  const requiredVars = ["DB_HOST", "DB_USER", "DB_NAME"];
-  const missingVars: string[] = [];
-
-  for (const varName of requiredVars) {
-    if (!process.env[varName]) {
-      missingVars.push(varName);
-    }
-  }
-
-  if (missingVars.length > 0) {
-    console.error("❌ Variáveis de ambiente obrigatórias não definidas:");
-    missingVars.forEach((varName) => console.error(`   - ${varName}`));
-    console.error("\n💡 Crie um arquivo .env na raiz do projeto com essas variáveis");
+  console.log("\n🔍 Validando configuração...\n");
+  
+  try {
+    EnvValidator.validate();
+  } catch (error: any) {
+    console.error("❌ Erro na validação de ambiente:", error.message);
     process.exit(1);
   }
 };
