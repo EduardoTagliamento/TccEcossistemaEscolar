@@ -4,10 +4,10 @@ Este diretório contém implementações de serviços de terceiros utilizados pe
 
 ## 📋 Serviços Implementados
 
-### 📧 SendBrevoEmailService
-**Arquivo:** `SendBrevoEmailService.ts`
+### 📧 ResendEmailService
+**Arquivo:** `ResendEmailService.ts`
 
-Serviço de envio de e-mails transacionais via [Brevo](https://www.brevo.com/) (antigo SendinBlue).
+Serviço de envio de e-mails transacionais via [Resend](https://resend.com/).
 
 **Recursos:**
 - ✅ E-mail simples (personalizado)
@@ -17,21 +17,23 @@ Serviço de envio de e-mails transacionais via [Brevo](https://www.brevo.com/) (
 
 **Configuração:**
 ```env
-BREVO_API_KEY=xkey... # Obtenha em: https://app.brevo.com/settings/keys/api
-EMAIL_FROM=noreply@ecossistemaescolar.com
-EMAIL_FROM_NAME=Ecossistema Escolar
+RESEND_API_KEY=re_... # Obtenha em: https://resend.com/api-keys
+EMAIL_FROM=onboarding@resend.dev
+TEST_EMAIL_TO=bauaecossistemaescolar@gmail.com
 FRONTEND_URL=http://localhost:3000
 ```
 
 **Uso:**
 ```typescript
-import emailService from './backend/external/SendBrevoEmailService.js';
+import ResendEmailService from './backend/external/ResendEmailService.js';
+
+const emailService = ResendEmailService.getInstance();
 
 // E-mail simples
 await emailService.sendEmail({
   to: 'aluno@escola.com',
   subject: 'Bem-vindo!',
-  htmlContent: '<h1>Olá!</h1>'
+  html: '<h1>Olá!</h1>'
 });
 
 // E-mail de boas-vindas
@@ -49,9 +51,13 @@ await emailService.sendActivityNotification(
 );
 ```
 
-**Teste:**
+**Testes:**
 ```bash
-tsx backend/external/testSendBrevoEmail.ts
+# Teste completo do serviço (usa ResendEmailService)
+npx tsx backend/external/testResendEmail.ts
+
+# Teste simples da API (usa SDK direto)
+npx tsx backend/utils/external/testResendEmail.ts
 ```
 
 ---
@@ -121,11 +127,14 @@ Consulte [../docs/API_KEYS_GUIDE.md](../../docs/API_KEYS_GUIDE.md) para guia com
 Cada serviço deve ter um script de teste correspondente:
 
 ```bash
-# Teste de e-mail
-tsx backend/external/testSendBrevoEmail.ts
+# Teste de e-mail (completo)
+npx tsx backend/external/testResendEmail.ts
+
+# Teste de e-mail (simples - API direta)
+npx tsx backend/utils/external/testResendEmail.ts
 
 # Teste de OpenAI (quando implementado)
-tsx backend/external/testOpenAI.ts
+npx tsx backend/external/testOpenAI.ts
 ```
 
 ---
