@@ -1,84 +1,182 @@
 # Ecossistema Escolar
 
-Este projeto é um sistema educacional avançado, inspirado no Google Classroom, mas com melhorias significativas para oferecer uma experiência mais rica e integrada. O Ecossistema Escolar visa facilitar a gestão de turmas, tarefas, comunicação e aprendizado personalizado através de inteligência artificial, proporcionando uma plataforma completa para alunos, professores e administradores.
+**TCC — Trabalho de Conclusão de Curso**  
+**Autor:** Eduardo Tagliamento  
+**Licença:** MIT
 
-## Funcionalidades Principais
+---
 
-- **Gestão de Usuários**: Cadastro e autenticação de alunos, professores e administradores.
-- **Turmas**: Criação e organização de classes virtuais.
-- **Tarefas**: Atribuição, acompanhamento e correção de atividades.
-- **Integração com IA**: Planejamento de estudos, recomendações personalizadas e análise de desempenho.
-- **Notificações**: Sistema de alertas para lembretes e atualizações.
-- **Chat e Comunicação**: Ferramentas de interação em tempo real.
-- **Armazenamento Seguro**: Integração com serviços de nuvem para arquivos e dados.
-- **APIs Externas**: Consumo de serviços como EvolutionAPI, Google Search API e outros para enriquecer a plataforma.
+## 📖 Sobre o Projeto
 
-## Estrutura do Projeto
+O **Ecossistema Escolar** é uma plataforma educacional avançada, inspirada no Google Classroom, desenvolvida como TCC. O objetivo é oferecer uma experiência mais rica e integrada para a gestão de turmas, tarefas, comunicação e aprendizado personalizado por meio de inteligência artificial, atendendo alunos, professores e administradores.
 
-O desenvolvimento é dividido em três funções principais, cada uma com responsabilidades específicas para garantir um sistema robusto, intuitivo e escalável.
+---
 
-### 1. Desenvolvedor Backend (REST API)
+## 🗺️ Escopo do Projeto
 
-Responsável por construir a base técnica do sistema.
+### Visão Geral
 
-**Responsabilidades:**
-- Criar toda a REST API.
-- Modelar o banco de dados.
-- Implementar autenticação JWT.
-- Definir regras de negócio.
-- Expor endpoints para usuários, turmas, tarefas, IA e notificações.
-- Garantir segurança e performance.
-- Integrar com serviços de IA e armazenamento.
+O sistema é uma REST API construída com **Node.js + TypeScript + Express + MySQL**, seguindo arquitetura **MVC em camadas** com estrita separação de responsabilidades:
 
-**Tecnologias Típicas:**
-- Node.js
-- MySQL
-- Azure DevOps Pipelines
+```
+Controllers → Services → Repositories → Database
+     ↓           ↓            ↓
+Middlewares   AI Agents    Entities
+```
 
-### 2. Designer / Frontend (UI/UX)
+### Funcionalidades Planejadas
 
-Responsável por criar a interface e a experiência do usuário.
+| Funcionalidade | Status |
+|---|---|
+| Gestão de Escolas (CRUD) | ✅ Implementado |
+| Gestão de Usuários (alunos, professores, admins) | 🔜 Planejado |
+| Autenticação JWT | 🔜 Planejado |
+| Turmas virtuais | 🔜 Planejado |
+| Tarefas (atribuição, entrega, correção) | 🔜 Planejado |
+| Chat / Comunicação em tempo real | 🔜 Planejado |
+| Notificações por e-mail | ✅ Implementado (Resend / Brevo) |
+| Integração com IA (planejamento de estudos, recomendações) | 🔜 Planejado (OpenAI / Azure AI) |
+| Interface Web (React) | 🔜 Planejado |
+| Interface Mobile (React Native) | 🔜 Planejado |
+| Interface Desktop (Tauri) | 🔜 Planejado |
+| Pipelines CI/CD (Azure DevOps) | 🔜 Planejado |
 
-**Responsabilidades:**
-- Criar a interface web, mobile e desktop
-- Desenhar fluxos de navegação.
-- Desenvolver telas como: Login, Dashboard do aluno, Área do professor, Turmas, Tarefas, Chat, Planejamento com IA.
-- Garantir design responsivo.
-- Melhorar a experiência do usuário.
-- Consumir a API do backend.
+---
 
-**Tecnologias:**
-- TypeScript (usado em tudo no frontend)
-- React (web) + React Native (mobile) + Tauri (desktop)
-- Figma/Lovable (ferramentas de auxílio para design e prototipagem)
-- Design System
+## 🏗️ Arquitetura e Tecnologias
 
-### 3. Arquiteto / IA / DevOps (Função Estratégica)
+### Backend (implementado)
+- **Runtime:** Node.js ≥ 18
+- **Linguagem:** TypeScript 5.x
+- **Framework HTTP:** Express 4.x
+- **Banco de dados:** MySQL 8 via `mysql2`
+- **Envio de e-mail:** Resend SDK / SendBrevo
+- **Geração de IDs:** UUID v4
+- **Requisições HTTP externas:** Axios
+- **Padrão arquitetural:** MVC em camadas (Controller → Service → DAO → Entity)
+- **Injeção de dependências:** via construtor
 
-Essa função é o "cérebro do sistema", coordenando arquitetura, IA e operações.
+### Frontend (estrutura inicial)
+- **Linguagem:** TypeScript
+- **Web:** React *(a implementar)*
+- **Mobile:** React Native *(a implementar)*
+- **Desktop:** Tauri *(a implementar)*
+- **Design:** Figma / Lovable
 
-**Responsabilidades:**
+### DevOps
+- **Pipelines:** Azure DevOps *(a configurar)*
+- **Ambientes:** dev, homologação, produção
 
-**📐 Arquitetura:**
-- Definir padrões (MVC, Clean Architecture).
-- Divisão de camadas.
-- Contratos de API.
-- Padrões de segurança.
+---
 
-**🤖 Inteligência Artificial:**
-- Definir como a IA funciona.
-- Criar prompts.
-- Implementar fluxos: Planejamento de estudo, Recomendações, Análise de desempenho.
-- Integrar com APIs (OpenAI, Azure AI, etc.).
+## 📦 O que está implementado
 
-**🚀 DevOps:**
-- Criar pipelines no Azure DevOps.
-- Definir sprints.
-- Automatizar: Build, Testes, Deploy.
-- Criar carga inicial (seed).
-- Gerenciar ambientes (dev, homologação, prod).
+### API REST — Escola
 
-**Pesquisa e Integração:**
-- Pesquisar e consumir APIs externas como EvolutionAPI, Google Search API e outras.
+Base URL: `http://localhost:3000/api/escola`
 
-Essa terceira pessoa coordena o projeto de forma estratégica, assegurando que todas as partes se integrem harmoniosamente.
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `POST` | `/api/escola` | Cria uma escola |
+| `GET` | `/api/escola` | Lista escolas (com filtro por nome) |
+| `GET` | `/api/escola/:EscolaGUID` | Busca escola por ID |
+| `PUT` | `/api/escola/:EscolaGUID` | Atualiza escola (parcial) |
+| `DELETE` | `/api/escola/:EscolaGUID` | Remove escola |
+
+**Modelo de dados — Escola:**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `EscolaGUID` | `CHAR(36)` | UUID v4 (chave primária, gerado automaticamente) |
+| `EscolaNome` | `VARCHAR(100)` | Nome da escola (único, 3–100 caracteres) |
+| `EscolaCorPriEs` | `CHAR(6)` | Cor **Pri**mária **Es**cura — tema escuro (hex 6 chars, ex: `1E3A8A`) |
+| `EscolaCorPriCl` | `CHAR(6)` | Cor **Pri**mária **Cl**ara — tema claro (hex 6 chars, ex: `FFFFFF`) |
+| `EscolaCorSecEs` | `CHAR(6)` | Cor **Sec**undária **Es**cura — tema escuro (hex 6 chars) |
+| `EscolaCorSecCl` | `CHAR(6)` | Cor **Sec**undária **Cl**ara — tema claro (hex 6 chars) |
+| `EscolaIcone` | `BLOB` | Logotipo da escola; armazenado como binário (BLOB), aceito e retornado pela API como string **Base64** |
+
+### Serviços Externos
+
+- **ResendEmailService** — e-mails transacionais: boas-vindas, recuperação de senha, notificação de atividade
+- **SendBrevoEmailService** — alternativa de envio de e-mails via Brevo
+
+---
+
+## 🚀 Como Executar
+
+Veja o guia completo em [EXECUTAR.md](EXECUTAR.md) ou o início rápido em [QUICKSTART.md](QUICKSTART.md).
+
+```bash
+# 1. Instalar dependências
+npm install
+
+# 2. Criar banco de dados (MySQL)
+mysql -u root -p -e "CREATE DATABASE tccecossistemaescolar;"
+mysql -u root -p tccecossistemaescolar < backend/database/sql.txt
+
+# 3. Configurar variáveis de ambiente
+cp .env.example .env
+# edite o .env com suas credenciais
+
+# 4. Iniciar servidor (modo desenvolvimento)
+npm run dev
+```
+
+Acesse: `http://localhost:3000`
+
+---
+
+## 📂 Estrutura de Diretórios
+
+```
+TccEcossistemaEscolar/
+├── app.ts                        # Entry point do servidor
+├── routes/                       # Definição de rotas Express
+│   └── escola.routes.ts
+├── backend/
+│   ├── Server.ts                 # Configuração do servidor Express
+│   ├── controllers/              # Camada HTTP (req/res)
+│   ├── services/                 # Regras de negócio
+│   ├── repositories/             # Acesso ao banco (DAOs)
+│   ├── entities/                 # Modelos de domínio com validação
+│   ├── middlewares/              # Validação de requisições
+│   ├── database/                 # Conexão MySQL e scripts SQL
+│   ├── ai/                       # Agentes de IA (a implementar)
+│   ├── auth/                     # Autenticação JWT (a implementar)
+│   ├── external/                 # Serviços de terceiros (e-mail, etc.)
+│   ├── guards/                   # Autorização de rotas
+│   └── utils/                    # Utilitários gerais
+├── frontend/
+│   ├── public/                   # Assets estáticos
+│   └── src/
+│       ├── pages/                # Telas da aplicação
+│       ├── components/           # Componentes reutilizáveis
+│       ├── hooks/                # Custom hooks
+│       ├── utils/                # Funções auxiliares
+│       └── assets/               # Imagens e recursos
+└── docs/
+    ├── routes/                   # Documentação das rotas da API
+    └── features/                 # Documentação de funcionalidades
+```
+
+---
+
+## 👥 Equipe e Papéis
+
+O desenvolvimento é dividido em três funções:
+
+| Papel | Responsabilidades |
+|---|---|
+| **Backend (REST API)** | REST API, banco de dados, autenticação JWT, regras de negócio, segurança |
+| **Frontend (UI/UX)** | Interface web/mobile/desktop, fluxos de navegação, design responsivo, consumo de API |
+| **Arquiteto / IA / DevOps** | Arquitetura, integração com IA (OpenAI/Azure), pipelines CI/CD, gestão de ambientes |
+
+---
+
+## 📚 Documentação
+
+- [`docs/routes/escola-api.md`](docs/routes/escola-api.md) — Documentação completa da API de Escola
+- [`docs/API_KEYS_GUIDE.md`](docs/API_KEYS_GUIDE.md) — Guia de gerenciamento de chaves de API
+- [`.github/copilot-instructions/architecture.md`](.github/copilot-instructions/architecture.md) — Padrões e arquitetura do sistema
+- [`.github/copilot-instructions/patterns.md`](.github/copilot-instructions/patterns.md) — Padrões de código
+- [`EXECUTAR.md`](EXECUTAR.md) — Guia detalhado de execução e resolução de problemas
