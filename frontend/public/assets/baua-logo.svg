@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Fundo Verde-Água -->
-  <rect width="512" height="512" fill="#1ABC9C" rx="50"/>
+  <!-- Fundo Verde -->
+  <rect width="512" height="512" fill="#20db8a" rx="50"/>
   
   <!-- Silhueta do Pássaro (Bauá) -->
   <g transform="translate(256, 256)">
