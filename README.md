@@ -1,6 +1,6 @@
 # Ecossistema Escolar
 
-**TCC — Trabalho de Conclusão de Curso**  
+e **TCC — Trabalho de Conclusão de Curso**  
 **Autor:** Eduardo Tagliamento  
 **Licença:** MIT
 
