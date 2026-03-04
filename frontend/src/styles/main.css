@@ -134,6 +134,7 @@ body {
   font-weight: bold;
   margin-bottom: 1rem;
   animation: fadeInUp 1s ease;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .hero-subtitle {
@@ -141,6 +142,7 @@ body {
   margin-bottom: 1.5rem;
   opacity: 0.95;
   animation: fadeInUp 1s ease 0.2s backwards;
+  text-shadow: 1px 1px 6px rgba(0, 0, 0, 0.3);
 }
 
 .hero-description {
@@ -149,6 +151,7 @@ body {
   margin-bottom: 2rem;
   opacity: 0.9;
   animation: fadeInUp 1s ease 0.4s backwards;
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 .hero-buttons {
