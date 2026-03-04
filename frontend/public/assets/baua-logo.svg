@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Fundo Verde-Água -->
+  <rect width="512" height="512" fill="#1ABC9C" rx="50"/>
+  
+  <!-- Silhueta do Pássaro (Bauá) -->
+  <g transform="translate(256, 256)">
+    <!-- Corpo do pássaro -->
+    <ellipse cx="0" cy="20" rx="80" ry="100" fill="#2C3E50"/>
+    
+    <!-- Cabeça -->
+    <circle cx="0" cy="-40" r="60" fill="#2C3E50"/>
+    
+    <!-- Bico -->
+    <path d="M 0,-40 L 40,-50 L 0,-30 Z" fill="#F39C12"/>
+    
+    <!-- Olho -->
+    <circle cx="15" cy="-45" r="8" fill="#FFFFFF"/>
+    <circle cx="18" cy="-47" r="4" fill="#2C3E50"/>
+    
+    <!-- Asa -->
+    <ellipse cx="-30" cy="30" rx="60" ry="40" fill="#2C3E50" transform="rotate(-30)"/>
+    
+    <!-- Cauda -->
+    <path d="M -60,80 Q -100,120 -80,140 Q -70,120 -60,100 Z" fill="#2C3E50"/>
+    <path d="M -50,90 Q -85,135 -65,155 Q -55,135 -50,110 Z" fill="#2C3E50"/>
+    
+    <!-- Patas -->
+    <line x1="-20" y1="100" x2="-20" y2="130" stroke="#F39C12" stroke-width="5"/>
+    <line x1="20" y1="100" x2="20" y2="130" stroke="#F39C12" stroke-width="5"/>
+    <path d="M -20,130 L -30,135 M -20,130 L -10,135" stroke="#F39C12" stroke-width="3" fill="none"/>
+    <path d="M 20,130 L 10,135 M 20,130 L 30,135" stroke="#F39C12" stroke-width="3" fill="none"/>
+    
+    <!-- Capelo de Formatura -->
+    <g transform="translate(0, -90)">
+      <!-- Base do capelo -->
+      <rect x="-50" y="0" width="100" height="15" fill="#2C3E50" rx="2"/>
+      <!-- Topo do capelo -->
+      <rect x="-60" y="-8" width="120" height="8" fill="#2C3E50"/>
+      <!-- Borla -->
+      <circle cx="40" cy="-4" r="8" fill="#F39C12"/>
+      <line x1="40" y1="4" x2="40" y2="20" stroke="#F39C12" stroke-width="2"/>
+    </g>
+  </g>
+  
+  <!-- Texto BAUÁ -->
+  <text x="256" y="460" font-family="Georgia, serif" font-size="48" font-weight="bold" fill="#FFFFFF" text-anchor="middle">BAUÁ</text>
+</svg>

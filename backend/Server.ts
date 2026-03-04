@@ -1,5 +1,7 @@
 import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
+import path from "path";
+import { exec } from "child_process";
 import MysqlDatabase from "./database/MysqlDatabase";
 import ErrorResponse from "./utils/ErrorResponse.js";
 import { escolaRouterFactory } from "../routes/escola.routes";
@@ -309,13 +311,16 @@ export default class Server {
   /**
    * Inicia o servidor na porta configurada.
    * Exibe informações úteis para desenvolvimento.
+   * Abre automaticamente o frontend no navegador padrão.
    */
   run = (): void => {
     this.#app.listen(this.#porta, () => {
+      const frontendUrl = `http://localhost:${this.#porta}`;
+      
       console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log("🚀 Ecossistema Escolar - Servidor iniciado");
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log(`   🌐 URL: http://localhost:${this.#porta}`);
+      console.log(`   🌐 URL: ${frontendUrl}`);
       console.log(`   🏥 Health: http://localhost:${this.#porta}/health`);
       console.log(`   📚 Docs: http://localhost:${this.#porta}/docs/routes/escola-api.md`);
       console.log(`   🏫 API Escola: http://localhost:${this.#porta}/api/escola`);
@@ -323,6 +328,36 @@ export default class Server {
       console.log(`   📊 Database: ${process.env.DB_NAME || "tccecossistemaescolar"}`);
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log("💡 Pressione Ctrl+C para parar o servidor\n");
+      
+      // Abrir navegador automaticamente
+      this.openBrowser(frontendUrl);
+    });
+  };
+
+  /**
+   * Abre o navegador padrão do sistema com a URL especificada.
+   * Detecta automaticamente o sistema operacional (Windows, macOS, Linux).
+   */
+  private openBrowser = (url: string): void => {
+    const platform = process.platform;
+    let command: string;
+
+    // Detectar sistema operacional e usar comando apropriado
+    if (platform === "win32") {
+      command = `start ${url}`;
+    } else if (platform === "darwin") {
+      command = `open ${url}`;
+    } else {
+      command = `xdg-open ${url}`;
+    }
+
+    console.log(`🌍 Abrindo frontend no navegador...\n`);
+    
+    exec(command, (error) => {
+      if (error) {
+        console.warn(`⚠️  Não foi possível abrir o navegador automaticamente`);
+        console.warn(`   Acesse manualmente: ${url}\n`);
+      }
     });
   };
 
