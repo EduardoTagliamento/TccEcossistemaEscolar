@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "tsx watch app.ts",
     "start": "node dist/app.js",
-    "build": "node node_modules/typescript/bin/tsc",
-    "clean": "rm -rf dist",
+    "build": "tsc",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "prebuild": "npm run clean",
+    "prestart": "npm run build",
     "prod": "npm run build && npm start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
