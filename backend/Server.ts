@@ -329,8 +329,10 @@ export default class Server {
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log("💡 Pressione Ctrl+C para parar o servidor\n");
       
-      // Abrir navegador automaticamente
-      this.openBrowser(frontendUrl);
+      // Em produção (ex.: Railway) não há navegador para abrir.
+      if (process.env.NODE_ENV !== "production") {
+        this.openBrowser(frontendUrl);
+      }
     });
   };
 

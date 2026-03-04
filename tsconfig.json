@@ -24,9 +24,9 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": [
+    "app.ts",
     "backend/**/*",
-    "routes/**/*",
-    "frontend/**/*"
+    "routes/**/*"
   ],
   "exclude": [
     "node_modules",

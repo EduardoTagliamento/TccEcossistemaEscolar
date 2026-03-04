@@ -26,10 +26,19 @@ import { EnvValidator } from "./backend/utils/EnvValidator";
  */
 
 // 🔹 Carregar variáveis de ambiente do arquivo .env
-const envPath = path.resolve(__dirname, ".env");
+const envPath = path.resolve(process.cwd(), ".env");
 const envResult = dotenv.config({ path: envPath });
+const isProduction = process.env.NODE_ENV === "production";
 
-if (envResult.error) {
+// Railway costuma expor credenciais como MYSQL*.
+// Fazemos fallback para DB_* para manter compatibilidade com o restante da aplicação.
+process.env.DB_HOST = process.env.DB_HOST || process.env.MYSQLHOST;
+process.env.DB_USER = process.env.DB_USER || process.env.MYSQLUSER;
+process.env.DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD;
+process.env.DB_NAME = process.env.DB_NAME || process.env.MYSQLDATABASE;
+process.env.DB_PORT = process.env.DB_PORT || process.env.MYSQLPORT;
+
+if (envResult.error && !isProduction) {
   console.warn("⚠️  Arquivo .env não encontrado, usando valores padrão");
   console.warn(`   Procurado em: ${envPath}`);
   console.warn("   💡 Crie um arquivo .env na raiz do projeto com:");
@@ -39,7 +48,7 @@ if (envResult.error) {
   console.warn("      DB_NAME=tccecossistemaescolar");
   console.warn("      DB_PORT=3306");
   console.warn("      NODE_ENV=development\n");
-} else {
+} else if (!envResult.error) {
   console.log("✅ Variáveis de ambiente carregadas do .env");
 }
 
