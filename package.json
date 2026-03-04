@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch app.ts",
     "start": "node dist/app.js",
-    "build": "tsc",
+    "build": "./node_modules/.bin/tsc",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
     "prod": "npm run build && npm start",
