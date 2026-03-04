@@ -23,7 +23,7 @@ async function testEmailService() {
 
   try {
     const emailService = ResendEmailService.getInstance();
-    const testEmail = "bauaecossistemaescolar@gmail.com";
+    const testEmail = "ti.eduardotagliamento@gmail.com";
 
     if (!testEmail) {
       console.error('❌ TEST_EMAIL_TO não configurada no .env');

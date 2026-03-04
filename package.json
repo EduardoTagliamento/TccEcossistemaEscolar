@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch app.ts",
     "start": "node dist/app.js",
-    "build": "tsc",
+    "build": "./node_modules/.bin/tsc",
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
     "prod": "npm run build && npm start",
@@ -28,15 +28,15 @@
     "express": "^4.19.2",
     "mysql2": "^3.11.5",
     "resend": "^6.9.2",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "typescript": "^5.7.3",
+    "dotenv": "^17.2.4"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.17.12",
     "@types/uuid": "^10.0.0",
-    "dotenv": "^17.2.4",
-    "tsx": "^4.21.0",
-    "typescript": "^5.7.3"
+    "tsx": "^4.21.0"
   }
 }
