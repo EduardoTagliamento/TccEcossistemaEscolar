@@ -76,6 +76,7 @@ export default class Server {
    */
   private setupGlobalMiddlewares = (): void => {
     console.log("⬆️  Server.setupGlobalMiddlewares()");
+    const staticDir = path.resolve(process.cwd(), "frontend", "public");
 
     // JSON parser - converte body de requisições JSON
     this.#app.use(express.json({ limit: "10mb" }));
@@ -92,8 +93,8 @@ export default class Server {
       })
     );
 
-    // Arquivos estáticos (frontend, imagens, etc.)
-    this.#app.use(express.static("frontend/public"));
+    // Arquivos estáticos (frontend, imagens, favicon, etc.)
+    this.#app.use(express.static(staticDir));
 
     console.log("✅ Middlewares globais configurados");
   };
