@@ -8,3 +8,11 @@ CREATE TABLE `tccecossistemaescolar`.`escola` (
   `EscolaIcone` BLOB NULL,
   PRIMARY KEY (`EscolaGUID`));
 
+CREATE TABLE `tccecossistemaescolar`.`usuario` (
+  `UsuarioCPF` VARCHAR(14) NOT NULL,
+  `UsuarioEmail` VARCHAR(60) NULL,
+  `UsuarioId` VARCHAR(45) NULL,
+  `UsuarioTelefone` VARCHAR(15) NULL,
+  `UsuarioNome` VARCHAR(100) NOT NULL,
+  `UsuarioSenha` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`UsuarioCPF`));

@@ -5,6 +5,7 @@ import { exec } from "child_process";
 import MysqlDatabase from "./database/MysqlDatabase";
 import ErrorResponse from "./utils/ErrorResponse.js";
 import { escolaRouterFactory } from "../routes/escola.routes";
+import { usuarioRouterFactory } from "../routes/usuario.routes";
 
 /**
  * Classe principal do servidor Express.
@@ -187,6 +188,7 @@ export default class Server {
           endpoints: {
             health: "/health",
             escola: "/api/escola",
+            usuario: "/api/usuario",
             docs: "/docs",
           },
         },
@@ -198,7 +200,12 @@ export default class Server {
     this.#app.use("/api/escola", escolaRouter);
     console.log("✅ Rotas de Escola registradas em /api/escola");
 
-    // 🔜 Futuras rotas serão adicionadas aqui
+    // � Rotas de Usuário
+    const usuarioRouter = usuarioRouterFactory();
+    this.#app.use("/api/usuario", usuarioRouter);
+    console.log("✅ Rotas de Usuário registradas em /api/usuario");
+
+    // �🔜 Futuras rotas serão adicionadas aqui
     // this.#app.use("/api/turma", turmaRouter);
     // this.#app.use("/api/professor", professorRouter);
     // this.#app.use("/api/aluno", alunoRouter);
@@ -229,6 +236,11 @@ export default class Server {
             "GET /api/escola/:EscolaGUID",
             "PUT /api/escola/:EscolaGUID",
             "DELETE /api/escola/:EscolaGUID",
+            "GET /api/usuario",
+            "POST /api/usuario",
+            "GET /api/usuario/:UsuarioCPF",
+            "PUT /api/usuario/:UsuarioCPF",
+            "DELETE /api/usuario/:UsuarioCPF",
           ],
         },
       });
