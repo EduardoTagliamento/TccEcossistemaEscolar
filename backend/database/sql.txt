@@ -6,7 +6,8 @@ CREATE TABLE `tccecossistemaescolar`.`escola` (
   `EscolaCorSecEs` CHAR(6) NULL DEFAULT '000000',
   `EscolaCorSecCl` CHAR(6) NULL DEFAULT '000000',
   `EscolaIcone` BLOB NULL,
-  PRIMARY KEY (`EscolaGUID`));
+  PRIMARY KEY (`EscolaGUID`)
+);
 
 CREATE TABLE `tccecossistemaescolar`.`usuario` (
   `UsuarioCPF` VARCHAR(14) NOT NULL,
@@ -15,4 +16,41 @@ CREATE TABLE `tccecossistemaescolar`.`usuario` (
   `UsuarioTelefone` VARCHAR(15) NULL,
   `UsuarioNome` VARCHAR(100) NOT NULL,
   `UsuarioSenha` VARCHAR(100) NOT NULL,
-  PRIMARY KEY (`UsuarioCPF`));
+  PRIMARY KEY (`UsuarioCPF`)
+);
+
+CREATE TABLE `tccecossistemaescolar`.`funcao` (
+  `FuncaoId` INT NOT NULL,
+  `FuncaoNome` VARCHAR(30) NOT NULL,
+  PRIMARY KEY (`FuncaoId`)
+);
+
+INSERT INTO `tccecossistemaescolar`.`funcao` (`FuncaoId`, `FuncaoNome`) VALUES
+  (1, 'Coordenacao'),
+  (2, 'Secretaria'),
+  (3, 'Professor'),
+  (4, 'Responsavel'),
+  (5, 'Aluno')
+ON DUPLICATE KEY UPDATE
+  `FuncaoNome` = VALUES(`FuncaoNome`);
+
+CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
+  `EscolaxUsuarioxFuncaoId` INT NOT NULL AUTO_INCREMENT,
+  `UsuarioCPF` VARCHAR(14) NOT NULL,
+  `EscolaGUID` CHAR(36) NOT NULL,
+  `FuncaoId` INT NOT NULL,
+  PRIMARY KEY (`EscolaxUsuarioxFuncaoId`),
+  UNIQUE KEY `UQ_EscolaUsuarioFuncao` (`UsuarioCPF`, `EscolaGUID`, `FuncaoId`),
+  CONSTRAINT `FK_EUF_Usuario` FOREIGN KEY (`UsuarioCPF`)
+    REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+  CONSTRAINT `FK_EUF_Escola` FOREIGN KEY (`EscolaGUID`)
+    REFERENCES `tccecossistemaescolar`.`escola` (`EscolaGUID`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+  CONSTRAINT `FK_EUF_Funcao` FOREIGN KEY (`FuncaoId`)
+    REFERENCES `tccecossistemaescolar`.`funcao` (`FuncaoId`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+);

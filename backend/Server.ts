@@ -6,6 +6,7 @@ import MysqlDatabase from "./database/MysqlDatabase";
 import ErrorResponse from "./utils/ErrorResponse.js";
 import { escolaRouterFactory } from "../routes/escola.routes";
 import { usuarioRouterFactory } from "../routes/usuario.routes";
+import { escolaxusuarioxfuncaoRouterFactory } from "../routes/escolaxusuarioxfuncao.routes";
 
 /**
  * Classe principal do servidor Express.
@@ -190,6 +191,7 @@ export default class Server {
             health: "/health",
             escola: "/api/escola",
             usuario: "/api/usuario",
+            escolaxusuarioxfuncao: "/api/escolaxusuarioxfuncao",
             docs: "/docs",
           },
         },
@@ -205,6 +207,11 @@ export default class Server {
     const usuarioRouter = usuarioRouterFactory();
     this.#app.use("/api/usuario", usuarioRouter);
     console.log("✅ Rotas de Usuário registradas em /api/usuario");
+
+    // Rotas de Relacao Escola x Usuario x Funcao
+    const escolaxusuarioxfuncaoRouter = escolaxusuarioxfuncaoRouterFactory();
+    this.#app.use("/api/escolaxusuarioxfuncao", escolaxusuarioxfuncaoRouter);
+    console.log("✅ Rotas de Relacao registradas em /api/escolaxusuarioxfuncao");
 
     // �🔜 Futuras rotas serão adicionadas aqui
     // this.#app.use("/api/turma", turmaRouter);
@@ -242,6 +249,11 @@ export default class Server {
             "GET /api/usuario/:UsuarioCPF",
             "PUT /api/usuario/:UsuarioCPF",
             "DELETE /api/usuario/:UsuarioCPF",
+            "GET /api/escolaxusuarioxfuncao",
+            "POST /api/escolaxusuarioxfuncao",
+            "GET /api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId",
+            "PUT /api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId",
+            "DELETE /api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId",
           ],
         },
       });
