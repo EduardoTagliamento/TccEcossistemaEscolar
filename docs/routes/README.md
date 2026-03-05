@@ -22,6 +22,26 @@ Documentação completa da API de gerenciamento de escolas incluindo:
 - ✅ Atualização parcial de campos
 - ✅ Busca com filtro LIKE por nome
 
+### ✅ Usuario (User)
+**Arquivo:** [usuario-api.md](usuario-api.md)
+
+Documentacao completa da API de gerenciamento de usuarios incluindo:
+- **POST** `/api/usuario` - Criar novo usuario
+- **GET** `/api/usuario` - Listar usuarios (com filtro por nome)
+- **GET** `/api/usuario/:UsuarioCPF` - Buscar usuario por CPF
+- **PUT** `/api/usuario/:UsuarioCPF` - Atualizar usuario
+- **DELETE** `/api/usuario/:UsuarioCPF` - Remover usuario
+
+### ✅ Escola x Usuario x Funcao (N:N:N)
+**Arquivo:** [escolaxusuarioxfuncao-api.md](escolaxusuarioxfuncao-api.md)
+
+Documentacao completa da API de vinculos incluindo:
+- **POST** `/api/escolaxusuarioxfuncao` - Criar vinculo
+- **GET** `/api/escolaxusuarioxfuncao` - Listar vinculos (com filtros)
+- **GET** `/api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId` - Buscar vinculo por ID
+- **PUT** `/api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId` - Atualizar vinculo
+- **DELETE** `/api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId` - Remover vinculo
+
 ---
 
 ## 🔜 APIs em Desenvolvimento
