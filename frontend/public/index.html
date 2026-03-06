@@ -13,14 +13,14 @@
 
         /* Reset e Variáveis */
         :root {
-          --primary-color: #20db8a;
-          --primary-dark: #1ab076;
-          --primary-light: #4eeaa3;
-          --accent-color: #3ef59e;
+          --primary-color: #1cc47b;
+          --primary-dark: #169162;
+          --primary-light: #47d193;
+          --accent-color: #38dd8d;
           --text-dark: #2C3E50;
-          --text-light: #7F8C8D;
-          --bg-light: #F8F9FA;
-          --bg-white: #FFFFFF;
+          --text-light: #727d7e;
+          --bg-light: #cfcfcf;
+          --bg-white: #ebebeb;
           --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
           --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
           --transition: all 0.3s ease;
@@ -178,6 +178,39 @@
           max-width: 400px;
           filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3));
           animation: float 3s ease-in-out infinite;
+        }
+
+        .floating-hero-nav {
+          position: fixed;
+          left: 50%;
+          bottom: 1.25rem;
+          transform: translateX(-50%) translateY(120%);
+          opacity: 0;
+          pointer-events: none;
+          z-index: 1100;
+          background: rgba(22, 145, 98, 0.95);
+          border: 1px solid rgba(235, 235, 235, 0.35);
+          border-radius: 999px;
+          box-shadow: 0 18px 30px rgba(0, 0, 0, 0.25);
+          padding: 0.6rem;
+          transition: opacity 0.25s ease, transform 0.25s ease;
+          backdrop-filter: blur(6px);
+        }
+
+        .floating-hero-nav.is-visible {
+          transform: translateX(-50%) translateY(0);
+          opacity: 1;
+          pointer-events: auto;
+        }
+
+        .floating-hero-nav .hero-buttons {
+          gap: 0.75rem;
+          animation: none;
+        }
+
+        .floating-hero-nav .btn {
+          padding: 0.75rem 1.5rem;
+          font-size: 1rem;
         }
 
         /* Buttons */
@@ -425,6 +458,18 @@
           opacity: 0.8;
         }
 
+        .reveal-card {
+          opacity: 0;
+          transform: translateY(18px) scale(0.98);
+          transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+          will-change: opacity, transform;
+        }
+
+        .reveal-card.is-visible {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+
         /* Animations */
         @keyframes fadeIn {
           from { opacity: 0; }
@@ -478,6 +523,22 @@
           }
 
           .footer-info {
+            text-align: center;
+          }
+
+          .floating-hero-nav {
+            width: calc(100% - 1.5rem);
+            border-radius: 20px;
+          }
+
+          .floating-hero-nav .hero-buttons {
+            justify-content: center;
+            flex-direction: row;
+            flex-wrap: wrap;
+          }
+
+          .floating-hero-nav .btn {
+            flex: 1 1 140px;
             text-align: center;
           }
         }
@@ -630,6 +691,13 @@
             </section>
         </main>
 
+          <div class="floating-hero-nav" id="floatingHeroNav" aria-hidden="true">
+            <div class="hero-buttons">
+              <button class="btn btn-primary">Começar Agora</button>
+              <button class="btn btn-secondary">Saiba Mais</button>
+            </div>
+          </div>
+
         <footer class="footer">
             <div class="container">
                 <div class="footer-content">
@@ -639,7 +707,7 @@
                     </div>
                     <div class="footer-info">
                         <p>Projeto de TCC - Ecossistema Educacional</p>
-                        <p>Desenvolvido com 💚 por Eduardo Tagliamento</p>
+                        <p>Desenvolvido por Eduardo Tagliamento, Henrique Cruz e Vithor Maximus</p>
                     </div>
                 </div>
             </div>
@@ -655,6 +723,23 @@
         console.log('🦜 Bauá - Ecossistema Educacional iniciado!');
 
         document.addEventListener('DOMContentLoaded', () => {
+          const heroSection = document.querySelector('.hero');
+          const floatingHeroNav = document.getElementById('floatingHeroNav');
+
+          if (heroSection && floatingHeroNav) {
+            const heroObserver = new IntersectionObserver((entries) => {
+              entries.forEach((entry) => {
+                const heroInView = entry.isIntersecting;
+                floatingHeroNav.classList.toggle('is-visible', !heroInView);
+                floatingHeroNav.setAttribute('aria-hidden', heroInView ? 'true' : 'false');
+              });
+            }, {
+              threshold: 0.15
+            });
+
+            heroObserver.observe(heroSection);
+          }
+
           // Smooth scroll para links de navegação
           const navLinks = document.querySelectorAll('.nav-link');
           navLinks.forEach(link => {
@@ -670,28 +755,24 @@
             });
           });
 
-          // Animação de entrada dos elementos ao scroll
-          const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -100px 0px'
-          };
-
-          const observer = new IntersectionObserver((entries) => {
+          // Animação de entrada dos cards ao scroll
+          const revealObserver = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
               if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
               }
             });
-          }, observerOptions);
+          }, {
+            threshold: 0.16,
+            rootMargin: '0px 0px -40px 0px'
+          });
 
-          // Observar seções para animação
-          const sections = document.querySelectorAll('section');
-          sections.forEach(section => {
-            section.style.opacity = '0';
-            section.style.transform = 'translateY(20px)';
-            section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(section);
+          const revealCards = document.querySelectorAll('.about-card, .feature-item, .tech-item');
+          revealCards.forEach((card, index) => {
+            card.classList.add('reveal-card');
+            card.style.transitionDelay = `${(index % 6) * 50}ms`;
+            revealObserver.observe(card);
           });
 
           // Botões de ação
