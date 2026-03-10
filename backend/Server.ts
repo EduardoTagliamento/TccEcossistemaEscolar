@@ -7,6 +7,8 @@ import ErrorResponse from "./utils/ErrorResponse.js";
 import { escolaRouterFactory } from "../routes/escola.routes";
 import { usuarioRouterFactory } from "../routes/usuario.routes";
 import { escolaxusuarioxfuncaoRouterFactory } from "../routes/escolaxusuarioxfuncao.routes";
+import verificacaoEmailRoutes from "../routes/verificacao-email.routes.js";
+import { CleanupScheduler } from "./services/cleanup.scheduler.js";
 
 /**
  * Classe principal do servidor Express.
@@ -26,12 +28,14 @@ export default class Server {
   #porta: number;
   #app: Application;
   #database: MysqlDatabase;
+  #scheduler: CleanupScheduler;
 
   constructor(porta?: number) {
     console.log("⬆️  Server.constructor()");
     this.#porta = porta ?? 3000;
     this.#app = express();
     this.#database = new MysqlDatabase();
+    this.#scheduler = new CleanupScheduler();
   }
 
   /**
@@ -62,6 +66,9 @@ export default class Server {
       this.setup404Handler();
 
       // 🔹 Middleware global de erros (deve ser o último)
+      // 🔹 Iniciar agendamentos de limpeza
+      this.startScheduledTasks();
+
       this.setupErrorMiddleware();
 
       console.log("✅ Servidor inicializado com sucesso");
@@ -192,6 +199,7 @@ export default class Server {
             escola: "/api/escola",
             usuario: "/api/usuario",
             escolaxusuarioxfuncao: "/api/escolaxusuarioxfuncao",
+            verificacaoEmail: "/api/verificacao-email",
             docs: "/docs",
           },
         },
@@ -212,7 +220,9 @@ export default class Server {
     const escolaxusuarioxfuncaoRouter = escolaxusuarioxfuncaoRouterFactory();
     this.#app.use("/api/escolaxusuarioxfuncao", escolaxusuarioxfuncaoRouter);
     console.log("✅ Rotas de Relacao registradas em /api/escolaxusuarioxfuncao");
-
+    // 📧 Rotas de Verificação de Email
+    this.#app.use("/api/verificacao-email", verificacaoEmailRoutes);
+    console.log("✅ Rotas de Verificação de Email registradas em /api/verificacao-email");
     // �🔜 Futuras rotas serão adicionadas aqui
     // this.#app.use("/api/turma", turmaRouter);
     // this.#app.use("/api/professor", professorRouter);
@@ -254,6 +264,9 @@ export default class Server {
             "GET /api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId",
             "PUT /api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId",
             "DELETE /api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId",
+            "POST /api/verificacao-email/solicitar/:UsuarioCPF",
+            "POST /api/verificacao-email/validar",
+            "POST /api/verificacao-email/reenviar/:UsuarioCPF",
           ],
         },
       });
@@ -331,6 +344,60 @@ export default class Server {
     });
 
     console.log("✅ Middleware de erros configurado");
+  };
+
+  /**
+   * Inicia tarefas agendadas (cron jobs).
+   * Atualmente executa:
+   * - Limpeza de códigos de verificação expirados (diariamente às 3h)
+   */
+  private startScheduledTasks = (): void => {
+    console.log("⬆️  Server.startScheduledTasks()");
+    
+    try {
+      this.#scheduler.start();
+      console.log(`✅ Agendamentos iniciados: ${this.#scheduler.getActiveTasksCount()} tarefas ativas`);
+      
+      // Configurar graceful shutdown para parar agendamentos
+      this.setupGracefulShutdown();
+      
+    } catch (error) {
+      console.error("❌ Erro ao iniciar agendamentos:", error);
+      throw error;
+    }
+  };
+
+  /**
+   * Configura handlers para encerramento gracioso do servidor.
+   * Para agendamentos e fecha conexões antes de encerrar o processo.
+   */
+  private setupGracefulShutdown = (): void => {
+    const shutdown = async (signal: string) => {
+      console.log(`\n🛑 [${signal}] Sinal de encerramento recebido`);
+      console.log("⏳ Encerrando servidor graciosamente...");
+      
+      try {
+        // Parar agendamentos
+        console.log("   🔹 Parando agendamentos...");
+        this.#scheduler.stop();
+        
+        // Fechar conexões com banco
+        console.log("   🔹 Fechando conexões com banco...");
+        await this.#database.endPool();
+        
+        console.log("✅ Servidor encerrado com sucesso");
+        process.exit(0);
+        
+      } catch (error) {
+        console.error("❌ Erro durante encerramento:", error);
+        process.exit(1);
+      }
+    };
+    
+    // Capturar sinais de encerramento
+    process.on("SIGINT", () => shutdown("SIGINT"));  // Ctrl+C
+    process.on("SIGTERM", () => shutdown("SIGTERM")); // Docker/Kubernetes
+    process.on("SIGHUP", () => shutdown("SIGHUP"));   // Terminal fechado
   };
 
   /**

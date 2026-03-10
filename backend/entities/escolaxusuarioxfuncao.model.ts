@@ -4,6 +4,11 @@ export default class EscolaxUsuarioxFuncao {
   #EscolaGUID!: string;
   #FuncaoId!: number;
   #FuncaoNome: string | null = null;
+  #DataInicio: Date | null = null;
+  #DataFim: Date | null = null;
+  #Status: "Ativo" | "Inativo" | "Finalizado" = "Ativo";
+  #CreatedAt: Date | null = null;
+  #UpdatedAt: Date | null = null;
 
   constructor() {
     console.log("Server: EscolaxUsuarioxFuncao.constructor()");
@@ -94,5 +99,95 @@ export default class EscolaxUsuarioxFuncao {
     }
 
     this.#FuncaoNome = nome;
+  }
+
+  // ========== Data Início ==========
+  get DataInicio(): Date | null {
+    return this.#DataInicio;
+  }
+
+  set DataInicio(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#DataInicio = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("DataInicio deve ser uma data válida.");
+    }
+
+    this.#DataInicio = value;
+  }
+
+  // ========== Data Fim ==========
+  get DataFim(): Date | null {
+    return this.#DataFim;
+  }
+
+  set DataFim(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#DataFim = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("DataFim deve ser uma data válida.");
+    }
+
+    // Validar que DataFim >= DataInicio (se ambos estiverem definidos)
+    if (this.#DataInicio && value < this.#DataInicio) {
+      throw new Error("DataFim não pode ser anterior à DataInicio.");
+    }
+
+    this.#DataFim = value;
+  }
+
+  // ========== Status ==========
+  get Status(): "Ativo" | "Inativo" | "Finalizado" {
+    return this.#Status;
+  }
+
+  set Status(value: "Ativo" | "Inativo" | "Finalizado") {
+    const statusValidos = ["Ativo", "Inativo", "Finalizado"];
+    if (!statusValidos.includes(value)) {
+      throw new Error("Status deve ser 'Ativo', 'Inativo' ou 'Finalizado'.");
+    }
+    this.#Status = value;
+  }
+
+  // ========== Created At (Read-Only) ==========
+  get CreatedAt(): Date | null {
+    return this.#CreatedAt;
+  }
+
+  set CreatedAt(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#CreatedAt = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("CreatedAt deve ser uma data válida.");
+    }
+
+    this.#CreatedAt = value;
+  }
+
+  // ========== Updated At (Read-Only) ==========
+  get UpdatedAt(): Date | null {
+    return this.#UpdatedAt;
+  }
+
+  set UpdatedAt(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#UpdatedAt = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("UpdatedAt deve ser uma data válida.");
+    }
+
+    this.#UpdatedAt = value;
   }
 }

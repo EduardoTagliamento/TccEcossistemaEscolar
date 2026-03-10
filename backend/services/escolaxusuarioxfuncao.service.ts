@@ -8,6 +8,11 @@ export interface EscolaxUsuarioxFuncaoDTO {
   EscolaGUID: string;
   FuncaoId: number;
   FuncaoNome: string | null;
+  DataInicio: string | null; // ISO date YYYY-MM-DD
+  DataFim: string | null; // ISO date YYYY-MM-DD
+  Status: string; // "Ativo" | "Inativo" | "Finalizado"
+  CreatedAt: string; // ISO timestamp
+  UpdatedAt: string; // ISO timestamp
 }
 
 interface FindFiltersDTO {
@@ -47,6 +52,9 @@ export default class EscolaxUsuarioxFuncaoService {
     relacao.UsuarioCPF = usuarioCPF;
     relacao.EscolaGUID = escolaGUID;
     relacao.FuncaoId = funcaoId;
+    relacao.DataInicio = payload.DataInicio ? new Date(payload.DataInicio as string) : null;
+    relacao.DataFim = payload.DataFim ? new Date(payload.DataFim as string) : null;
+    relacao.Status = (payload.Status as string) ?? "Ativo";
 
     const id = await this.#relacaoDAO.create(relacao);
     const created = await this.#relacaoDAO.findById(id);
@@ -125,6 +133,24 @@ export default class EscolaxUsuarioxFuncaoService {
     relacao.UsuarioCPF = usuarioCPF;
     relacao.EscolaGUID = escolaGUID;
     relacao.FuncaoId = funcaoId;
+
+    if (payload.DataInicio !== undefined) {
+      relacao.DataInicio = payload.DataInicio ? new Date(payload.DataInicio as string) : null;
+    } else {
+      relacao.DataInicio = existente.DataInicio;
+    }
+
+    if (payload.DataFim !== undefined) {
+      relacao.DataFim = payload.DataFim ? new Date(payload.DataFim as string) : null;
+    } else {
+      relacao.DataFim = existente.DataFim;
+    }
+
+    if (payload.Status !== undefined) {
+      relacao.Status = payload.Status as string;
+    } else {
+      relacao.Status = existente.Status;
+    }
 
     const updated = await this.#relacaoDAO.update(relacao);
     if (!updated) {
@@ -205,6 +231,11 @@ export default class EscolaxUsuarioxFuncaoService {
       EscolaGUID: relacao.EscolaGUID,
       FuncaoId: relacao.FuncaoId,
       FuncaoNome: relacao.FuncaoNome,
+      DataInicio: relacao.DataInicio ? relacao.DataInicio.toISOString().split('T')[0] : null,
+      DataFim: relacao.DataFim ? relacao.DataFim.toISOString().split('T')[0] : null,
+      Status: relacao.Status,
+      CreatedAt: relacao.CreatedAt.toISOString(),
+      UpdatedAt: relacao.UpdatedAt.toISOString(),
     };
   };
 }

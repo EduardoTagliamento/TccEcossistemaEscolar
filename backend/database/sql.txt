@@ -1,30 +1,88 @@
+-- =====================================================
+-- TABELA: escola
+-- Descrição: Armazena informações das escolas do sistema
+-- =====================================================
 CREATE TABLE `tccecossistemaescolar`.`escola` (
   `EscolaGUID` CHAR(36) NOT NULL,
   `EscolaNome` VARCHAR(100) NULL,
+  `EscolaCNPJ` VARCHAR(18) NULL UNIQUE,
+  `EscolaTelefone` VARCHAR(15) NULL,
+  `EscolaEmail` VARCHAR(60) NULL,
+  `EscolaEndereco` VARCHAR(200) NULL,
   `EscolaCorPriEs` CHAR(6) NULL DEFAULT '000000',
   `EscolaCorPriCl` CHAR(6) NULL DEFAULT '000000',
   `EscolaCorSecEs` CHAR(6) NULL DEFAULT '000000',
   `EscolaCorSecCl` CHAR(6) NULL DEFAULT '000000',
   `EscolaIcone` BLOB NULL,
-  PRIMARY KEY (`EscolaGUID`)
+  `EscolaStatus` ENUM('Ativa', 'Inativa') NOT NULL DEFAULT 'Ativa',
+  `EscolaCreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `EscolaUpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`EscolaGUID`),
+  INDEX `idx_escola_nome` (`EscolaNome`),
+  INDEX `idx_escola_status` (`EscolaStatus`)
 );
 
+-- =====================================================
+-- TABELA: usuario
+-- Descrição: Armazena informações dos usuários do sistema
+-- Segurança: Senha hasheada com bcrypt (salt rounds: 10)
+-- =====================================================
 CREATE TABLE `tccecossistemaescolar`.`usuario` (
   `UsuarioCPF` VARCHAR(14) NOT NULL,
-  `UsuarioEmail` VARCHAR(60) NULL,
+  `UsuarioEmail` VARCHAR(60) NULL UNIQUE,
   `UsuarioId` VARCHAR(45) NULL,
   `UsuarioTelefone` VARCHAR(15) NULL,
   `UsuarioNome` VARCHAR(100) NOT NULL,
   `UsuarioSenha` VARCHAR(100) NOT NULL,
-  PRIMARY KEY (`UsuarioCPF`)
+  `UsuarioEmailVerificado` BOOLEAN NOT NULL DEFAULT FALSE,
+  `UsuarioDataNascimento` DATE NULL,
+  `UsuarioStatus` ENUM('Ativo', 'Inativo', 'Bloqueado') NOT NULL DEFAULT 'Ativo',
+  `UsuarioUltimoAcesso` TIMESTAMP NULL,
+  `UsuarioCreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `UsuarioUpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `UsuarioDeletedAt` TIMESTAMP NULL,
+  PRIMARY KEY (`UsuarioCPF`),
+  INDEX `idx_usuario_email` (`UsuarioEmail`),
+  INDEX `idx_usuario_nome` (`UsuarioNome`),
+  INDEX `idx_usuario_status` (`UsuarioStatus`)
 );
 
+-- =====================================================
+-- TABELA: verificacao_email
+-- Descrição: Códigos de verificação para validar email do usuário
+-- Uso: Enviado por email durante cadastro/alteração de email
+-- =====================================================
+CREATE TABLE `tccecossistemaescolar`.`verificacao_email` (
+  `VerificacaoId` INT NOT NULL AUTO_INCREMENT,
+  `UsuarioCPF` VARCHAR(14) NOT NULL,
+  `VerificacaoCodigo` VARCHAR(10) NOT NULL,
+  `VerificacaoExpiresAt` TIMESTAMP NOT NULL,
+  `VerificacaoUsado` BOOLEAN NOT NULL DEFAULT FALSE,
+  `VerificacaoCreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`VerificacaoId`),
+  INDEX `idx_verificacao_cpf` (`UsuarioCPF`),
+  INDEX `idx_verificacao_codigo` (`VerificacaoCodigo`),
+  INDEX `idx_verificacao_expira` (`VerificacaoExpiresAt`),
+  CONSTRAINT `FK_Verificacao_Usuario` FOREIGN KEY (`UsuarioCPF`)
+    REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+);
+
+-- =====================================================
+-- TABELA: funcao
+-- Descrição: Tipos de funções/papéis no sistema
+-- =====================================================
 CREATE TABLE `tccecossistemaescolar`.`funcao` (
   `FuncaoId` INT NOT NULL,
   `FuncaoNome` VARCHAR(30) NOT NULL,
   PRIMARY KEY (`FuncaoId`)
 );
 
+-- =====================================================
+-- INSERÇÃO DE DADOS: funcao
+-- Funções padrão do sistema
+-- =====================================================
 INSERT INTO `tccecossistemaescolar`.`funcao` (`FuncaoId`, `FuncaoNome`) VALUES
   (1, 'Coordenacao'),
   (2, 'Secretaria'),
@@ -34,13 +92,28 @@ INSERT INTO `tccecossistemaescolar`.`funcao` (`FuncaoId`, `FuncaoNome`) VALUES
 ON DUPLICATE KEY UPDATE
   `FuncaoNome` = VALUES(`FuncaoNome`);
 
+-- =====================================================
+-- TABELA: escolaxusuarioxfuncao
+-- Descrição: Relacionamento N:N:N entre Escola, Usuario e Função
+-- Restrições: Um usuário não pode ter a mesma função 2x na mesma escola
+-- =====================================================
 CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
   `EscolaxUsuarioxFuncaoId` INT NOT NULL AUTO_INCREMENT,
   `UsuarioCPF` VARCHAR(14) NOT NULL,
   `EscolaGUID` CHAR(36) NOT NULL,
   `FuncaoId` INT NOT NULL,
+  `DataInicio` DATE NOT NULL DEFAULT (CURRENT_DATE),
+  `DataFim` DATE NULL,
+  `Status` ENUM('Ativo', 'Inativo') NOT NULL DEFAULT 'Ativo',
+  `CreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `UpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`EscolaxUsuarioxFuncaoId`),
   UNIQUE KEY `UQ_EscolaUsuarioFuncao` (`UsuarioCPF`, `EscolaGUID`, `FuncaoId`),
+  INDEX `idx_euf_usuario` (`UsuarioCPF`),
+  INDEX `idx_euf_escola` (`EscolaGUID`),
+  INDEX `idx_euf_funcao` (`FuncaoId`),
+  INDEX `idx_euf_status` (`Status`),
+  INDEX `idx_euf_data_inicio` (`DataInicio`),
   CONSTRAINT `FK_EUF_Usuario` FOREIGN KEY (`UsuarioCPF`)
     REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
     ON UPDATE CASCADE
@@ -54,3 +127,34 @@ CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
     ON UPDATE CASCADE
     ON DELETE RESTRICT
 );
+
+-- =====================================================
+-- TABELA: log_acesso (OPCIONAL - FUTURO)
+-- Descrição: Registra acessos e ações dos usuários
+-- =====================================================
+-- CREATE TABLE `tccecossistemaescolar`.`log_acesso` (
+--   `LogId` INT NOT NULL AUTO_INCREMENT,
+--   `UsuarioCPF` VARCHAR(14) NOT NULL,
+--   `LogDataHora` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+--   `LogIP` VARCHAR(45) NULL,
+--   `LogAcao` VARCHAR(100) NULL,
+--   `LogDetalhes` TEXT NULL,
+--   PRIMARY KEY (`LogId`),
+--   INDEX `idx_log_usuario` (`UsuarioCPF`),
+--   INDEX `idx_log_data` (`LogDataHora`),
+--   CONSTRAINT `FK_Log_Usuario` FOREIGN KEY (`UsuarioCPF`)
+--     REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+--     ON DELETE CASCADE
+-- );
+
+-- =====================================================
+-- NOTAS IMPORTANTES
+-- =====================================================
+-- 1. UsuarioSenha: Armazenada com hash bcrypt (salt rounds: 10)
+-- 2. UsuarioEmail: UNIQUE constraint garante unicidade no BD
+-- 3. UsuarioEmailVerificado: FALSE até validar código de verificacao_email
+-- 4. VerificacaoExpiresAt: Recomendado 15 minutos de validade
+-- 5. Soft Delete: UsuarioDeletedAt permite recuperação de dados
+-- 6. Timestamps: Todas as tabelas têm CreatedAt/UpdatedAt para auditoria
+-- 7. Índices: Criados em campos frequentemente consultados
+-- 8. Status: Permite desativar sem deletar (boas práticas)

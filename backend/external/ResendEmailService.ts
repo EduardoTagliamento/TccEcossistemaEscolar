@@ -209,6 +209,92 @@ export class ResendEmailService {
       `
     });
   }
+
+  /**
+   * Envia e-mail com código de verificação (6 dígitos numéricos)
+   */
+  public async sendVerificationEmail(
+    userEmail: string,
+    userName: string,
+    verificationCode: string
+  ): Promise<ResendEmailResponse> {
+    return this.sendEmail({
+      to: userEmail,
+      subject: '🔐 Verificação de Email - Ecossistema Escolar',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #4F46E5; margin: 0;">Ecossistema Escolar</h1>
+          </div>
+          
+          <h2 style="color: #1F2937;">Olá, ${userName}! 👋</h2>
+          
+          <p style="color: #4B5563; font-size: 16px; line-height: 1.6;">
+            Você solicitou a verificação do seu email. Use o código abaixo para confirmar:
+          </p>
+          
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                      border-radius: 12px; 
+                      padding: 30px; 
+                      text-align: center; 
+                      margin: 30px 0;">
+            <div style="background-color: white; 
+                        border-radius: 8px; 
+                        padding: 20px; 
+                        display: inline-block;">
+              <p style="margin: 0 0 10px 0; color: #6B7280; font-size: 14px; font-weight: 500;">
+                SEU CÓDIGO DE VERIFICAÇÃO
+              </p>
+              <p style="margin: 0; 
+                        font-size: 42px; 
+                        font-weight: bold; 
+                        color: #4F46E5; 
+                        letter-spacing: 8px; 
+                        font-family: 'Courier New', monospace;">
+                ${verificationCode}
+              </p>
+            </div>
+          </div>
+          
+          <div style="background-color: #FEF3C7; 
+                      border-left: 4px solid #F59E0B; 
+                      padding: 16px; 
+                      margin: 20px 0; 
+                      border-radius: 4px;">
+            <p style="margin: 0; color: #92400E; font-size: 14px;">
+              ⏱️ <strong>Este código expira em 15 minutos.</strong>
+            </p>
+          </div>
+          
+          <p style="color: #6B7280; font-size: 14px; line-height: 1.6;">
+            Não compartilhe este código com ninguém. Se você não solicitou esta verificação, 
+            ignore este email.
+          </p>
+          
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;">
+          
+          <p style="color: #9CA3AF; font-size: 12px; text-align: center;">
+            © ${new Date().getFullYear()} Ecossistema Escolar. Todos os direitos reservados.
+          </p>
+        </div>
+      `,
+      text: `
+        Olá, ${userName}!
+        
+        Você solicitou a verificação do seu email no Ecossistema Escolar.
+        
+        Seu código de verificação é: ${verificationCode}
+        
+        Este código expira em 15 minutos.
+        
+        Se você não solicitou esta verificação, ignore este email.
+        
+        ---
+        Ecossistema Escolar
+        © ${new Date().getFullYear()} Todos os direitos reservados.
+      `
+    });
+  }
 }
 
 // Exporta a classe para uso com getInstance()

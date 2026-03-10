@@ -11,6 +11,7 @@
     "prebuild": "npm run clean",
     "prestart": "npm run build",
     "prod": "npm run build && npm start",
+    "cleanup:verification": "tsx backend/scripts/cleanupVerificacaoEmail.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -30,6 +31,7 @@
     "dotenv": "^17.2.4",
     "express": "^4.19.2",
     "mysql2": "^3.11.5",
+    "node-cron": "^3.0.3",
     "resend": "^6.9.2",
     "typescript": "^5.7.3",
     "uuid": "^11.0.3"
@@ -39,6 +41,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^20.17.12",
+    "@types/node-cron": "^3.0.11",
     "@types/uuid": "^10.0.0",
     "tsx": "^4.21.0"
   }

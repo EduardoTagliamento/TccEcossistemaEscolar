@@ -59,6 +59,9 @@ export default class UsuarioMiddleware {
       "UsuarioSenha",
       "UsuarioId",
       "UsuarioTelefone",
+      "UsuarioEmailVerificado",
+      "UsuarioDataNascimento",
+      "UsuarioStatus",
     ];
 
     const camposObrigatorios = allowOptional ? [] : ["UsuarioCPF", "UsuarioNome", "UsuarioSenha"];
@@ -76,48 +79,76 @@ export default class UsuarioMiddleware {
     // Validar tipos dos campos presentes
     for (const campo of camposPossiveis) {
       if (usuario[campo] !== undefined && usuario[campo] !== null) {
-        if (typeof usuario[campo] !== "string") {
-          throw new ErrorResponse(400, "Erro na validação de dados", {
-            message: `O campo '${campo}' deve ser string.`,
-          });
+        // Campos string
+        if (["UsuarioCPF", "UsuarioNome", "UsuarioEmail", "UsuarioSenha", "UsuarioId", "UsuarioTelefone", "UsuarioDataNascimento", "UsuarioStatus"].includes(campo)) {
+          if (typeof usuario[campo] !== "string") {
+            throw new ErrorResponse(400, "Erro na validação de dados", {
+              message: `O campo '${campo}' deve ser string.`,
+            });
+          }
+
+          const valor = usuario[campo] as string;
+
+          if (campo === "UsuarioCPF" && valor.length !== 14) {
+            throw new ErrorResponse(400, "Erro na validação de dados", {
+              message: "O campo 'UsuarioCPF' deve ter 14 caracteres (XXX.XXX.XXX-XX).",
+            });
+          }
+
+          if (campo === "UsuarioNome" && (valor.length < 3 || valor.length > 100)) {
+            throw new ErrorResponse(400, "Erro na validação de dados", {
+              message: "O campo 'UsuarioNome' deve ter entre 3 e 100 caracteres.",
+            });
+          }
+
+          if (campo === "UsuarioEmail" && valor.length > 60) {
+            throw new ErrorResponse(400, "Erro na validação de dados", {
+              message: "O campo 'UsuarioEmail' deve ter no máximo 60 caracteres.",
+            });
+          }
+
+          if (campo === "UsuarioTelefone" && valor.length > 15) {
+            throw new ErrorResponse(400, "Erro na validação de dados", {
+              message: "O campo 'UsuarioTelefone' deve ter no máximo 15 caracteres (formato: (XX) XXXXX-XXXX).",
+            });
+          }
+
+          if (campo === "UsuarioSenha" && valor.length < 6) {
+            throw new ErrorResponse(400, "Erro na validação de dados", {
+              message: "O campo 'UsuarioSenha' deve ter pelo menos 6 caracteres.",
+            });
+          }
+
+          if (campo === "UsuarioId" && valor.length > 45) {
+            throw new ErrorResponse(400, "Erro na validação de dados", {
+              message: "O campo 'UsuarioId' deve ter no máximo 45 caracteres.",
+            });
+          }
+
+          if (campo === "UsuarioDataNascimento") {
+            // Validar formato YYYY-MM-DD
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(valor)) {
+              throw new ErrorResponse(400, "Erro na validação de dados", {
+                message: "O campo 'UsuarioDataNascimento' deve estar no formato YYYY-MM-DD.",
+              });
+            }
+          }
+
+          if (campo === "UsuarioStatus") {
+            const statusValidos = ["Ativo", "Inativo", "Bloqueado"];
+            if (!statusValidos.includes(valor)) {
+              throw new ErrorResponse(400, "Erro na validação de dados", {
+                message: "O campo 'UsuarioStatus' deve ser 'Ativo', 'Inativo' ou 'Bloqueado'.",
+              });
+            }
+          }
         }
 
-        // Validações específicas
-        const valor = usuario[campo] as string;
-
-        if (campo === "UsuarioCPF" && valor.length !== 14) {
+        // Campo boolean
+        if (campo === "UsuarioEmailVerificado" && typeof usuario[campo] !== "boolean") {
           throw new ErrorResponse(400, "Erro na validação de dados", {
-            message: "O campo 'UsuarioCPF' deve ter 14 caracteres (XXX.XXX.XXX-XX).",
-          });
-        }
-
-        if (campo === "UsuarioNome" && (valor.length < 3 || valor.length > 100)) {
-          throw new ErrorResponse(400, "Erro na validação de dados", {
-            message: "O campo 'UsuarioNome' deve ter entre 3 e 100 caracteres.",
-          });
-        }
-
-        if (campo === "UsuarioEmail" && valor.length > 60) {
-          throw new ErrorResponse(400, "Erro na validação de dados", {
-            message: "O campo 'UsuarioEmail' deve ter no máximo 60 caracteres.",
-          });
-        }
-
-        if (campo === "UsuarioTelefone" && valor.length > 15) {
-          throw new ErrorResponse(400, "Erro na validação de dados", {
-            message: "O campo 'UsuarioTelefone' deve ter no máximo 15 caracteres (formato: (XX) XXXXX-XXXX).",
-          });
-        }
-
-        if (campo === "UsuarioSenha" && valor.length < 6) {
-          throw new ErrorResponse(400, "Erro na validação de dados", {
-            message: "O campo 'UsuarioSenha' deve ter pelo menos 6 caracteres.",
-          });
-        }
-
-        if (campo === "UsuarioId" && valor.length > 45) {
-          throw new ErrorResponse(400, "Erro na validação de dados", {
-            message: "O campo 'UsuarioId' deve ter no máximo 45 caracteres.",
+            message: "O campo 'UsuarioEmailVerificado' deve ser boolean.",
           });
         }
       }
