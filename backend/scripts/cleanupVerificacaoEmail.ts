@@ -68,7 +68,10 @@ async function main(): Promise<void> {
     }
 }
 
-// Executar script
-main();
+// Executar script apenas se for chamado diretamente via npm script
+// Não executar quando importado como módulo
+if (require.main === module) {
+    main();
+}
 
 export { executarLimpeza };

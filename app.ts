@@ -1,6 +1,13 @@
-import Server from "./backend/Server";
+// 🔹 IMPORTANTE: Carregar dotenv ANTES de qualquer outro import
+// Isso garante que variáveis de ambiente estejam disponíveis quando módulos são carregados
 import dotenv from "dotenv";
 import path from "path";
+
+const envPath = path.resolve(process.cwd(), ".env");
+dotenv.config({ path: envPath });
+
+// Agora podemos importar os outros módulos
+import Server from "./backend/Server";
 import { EnvValidator } from "./backend/utils/EnvValidator";
 
 /**
@@ -25,9 +32,6 @@ import { EnvValidator } from "./backend/utils/EnvValidator";
  * - É necessário usar await para garantir inicialização completa antes de aceitar requisições
  */
 
-// 🔹 Carregar variáveis de ambiente do arquivo .env
-const envPath = path.resolve(process.cwd(), ".env");
-const envResult = dotenv.config({ path: envPath });
 const isProduction = process.env.NODE_ENV === "production";
 
 // Railway costuma expor credenciais como MYSQL*.
@@ -38,18 +42,11 @@ process.env.DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD;
 process.env.DB_NAME = process.env.DB_NAME || process.env.MYSQLDATABASE;
 process.env.DB_PORT = process.env.DB_PORT || process.env.MYSQLPORT;
 
-if (envResult.error && !isProduction) {
-  console.warn("⚠️  Arquivo .env não encontrado, usando valores padrão");
-  console.warn(`   Procurado em: ${envPath}`);
-  console.warn("   💡 Crie um arquivo .env na raiz do projeto com:");
-  console.warn("      DB_HOST=localhost");
-  console.warn("      DB_USER=root");
-  console.warn("      DB_PASSWORD=");
-  console.warn("      DB_NAME=tccecossistemaescolar");
-  console.warn("      DB_PORT=3306");
-  console.warn("      NODE_ENV=development\n");
-} else if (!envResult.error) {
-  console.log("✅ Variáveis de ambiente carregadas do .env");
+console.log("✅ Variáveis de ambiente carregadas");
+if (process.env.RESEND_API_KEY) {
+  console.log("✅ RESEND_API_KEY configurada");
+} else {
+  console.warn("⚠️  RESEND_API_KEY não encontrada - emails não funcionarão");
 }
 
 // 🔹 Validar variáveis de ambiente obrigatórias
