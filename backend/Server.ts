@@ -9,6 +9,7 @@ import { usuarioRouterFactory } from "../routes/usuario.routes";
 import { escolaxusuarioxfuncaoRouterFactory } from "../routes/escolaxusuarioxfuncao.routes";
 import verificacaoEmailRoutes from "../routes/verificacao-email.routes.js";
 import { CleanupScheduler } from "./services/cleanup.scheduler.js";
+import { pool } from "./database/mysql.js";
 
 /**
  * Classe principal do servidor Express.
@@ -383,7 +384,7 @@ export default class Server {
         
         // Fechar conexões com banco
         console.log("   🔹 Fechando conexões com banco...");
-        await this.#database.endPool();
+        await pool.end();
         
         console.log("✅ Servidor encerrado com sucesso");
         process.exit(0);

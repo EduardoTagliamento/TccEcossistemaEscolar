@@ -54,7 +54,7 @@ export default class EscolaxUsuarioxFuncaoService {
     relacao.FuncaoId = funcaoId;
     relacao.DataInicio = payload.DataInicio ? new Date(payload.DataInicio as string) : null;
     relacao.DataFim = payload.DataFim ? new Date(payload.DataFim as string) : null;
-    relacao.Status = (payload.Status as string) ?? "Ativo";
+    relacao.Status = (payload.Status as "Ativo" | "Inativo" | "Finalizado") ?? "Ativo";
 
     const id = await this.#relacaoDAO.create(relacao);
     const created = await this.#relacaoDAO.findById(id);
@@ -147,7 +147,7 @@ export default class EscolaxUsuarioxFuncaoService {
     }
 
     if (payload.Status !== undefined) {
-      relacao.Status = payload.Status as string;
+      relacao.Status = payload.Status as "Ativo" | "Inativo" | "Finalizado";
     } else {
       relacao.Status = existente.Status;
     }
@@ -223,6 +223,10 @@ export default class EscolaxUsuarioxFuncaoService {
     const id = relacao.EscolaxUsuarioxFuncaoId;
     if (id === null) {
       throw new Error("EscolaxUsuarioxFuncaoId nao pode ser nulo ao converter para DTO.");
+    }
+
+    if (relacao.CreatedAt === null || relacao.UpdatedAt === null) {
+      throw new Error("CreatedAt e UpdatedAt nao podem ser nulos para registros existentes.");
     }
 
     return {
