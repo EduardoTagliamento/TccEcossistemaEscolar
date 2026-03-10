@@ -7,6 +7,11 @@ interface EscolaxUsuarioxFuncaoRow {
   EscolaGUID: string;
   FuncaoId: number;
   FuncaoNome: string | null;
+  DataInicio: Date | null;
+  DataFim: Date | null;
+  Status: "Ativo" | "Inativo" | "Finalizado";
+  CreatedAt: Date;
+  UpdatedAt: Date;
 }
 
 interface FindAllFilters {
@@ -27,10 +32,18 @@ export class EscolaxUsuarioxFuncaoDAO {
     console.log("Repository: EscolaxUsuarioxFuncaoDAO.create()");
 
     const SQL = `
-      INSERT INTO escolaxusuarioxfuncao (UsuarioCPF, EscolaGUID, FuncaoId)
-      VALUES (?, ?, ?);
+      INSERT INTO escolaxusuarioxfuncao
+      (UsuarioCPF, EscolaGUID, FuncaoId, DataInicio, DataFim, Status)
+      VALUES (?, ?, ?, ?, ?, ?);
     `;
-    const params = [relacao.UsuarioCPF, relacao.EscolaGUID, relacao.FuncaoId];
+    const params = [
+      relacao.UsuarioCPF,
+      relacao.EscolaGUID,
+      relacao.FuncaoId,
+      relacao.DataInicio,
+      relacao.DataFim,
+      relacao.Status,
+    ];
 
     const pool = await this.#database.getPool();
     const [resultado] = await pool.execute(SQL, params);
@@ -43,13 +56,16 @@ export class EscolaxUsuarioxFuncaoDAO {
 
     const SQL = `
       UPDATE escolaxusuarioxfuncao
-      SET UsuarioCPF = ?, EscolaGUID = ?, FuncaoId = ?
+      SET UsuarioCPF = ?, EscolaGUID = ?, FuncaoId = ?, DataInicio = ?, DataFim = ?, Status = ?
       WHERE EscolaxUsuarioxFuncaoId = ?;
     `;
     const params = [
       relacao.UsuarioCPF,
       relacao.EscolaGUID,
       relacao.FuncaoId,
+      relacao.DataInicio,
+      relacao.DataFim,
+      relacao.Status,
       relacao.EscolaxUsuarioxFuncaoId,
     ];
 
@@ -77,7 +93,7 @@ export class EscolaxUsuarioxFuncaoDAO {
     console.log("Repository: EscolaxUsuarioxFuncaoDAO.findById()");
 
     const SQL = `
-      SELECT euf.EscolaxUsuarioxFuncaoId, euf.UsuarioCPF, euf.EscolaGUID, euf.FuncaoId, f.FuncaoNome
+      SELECT euf.*, f.FuncaoNome
       FROM escolaxusuarioxfuncao euf
       INNER JOIN funcao f ON f.FuncaoId = euf.FuncaoId
       WHERE euf.EscolaxUsuarioxFuncaoId = ?;
@@ -98,7 +114,7 @@ export class EscolaxUsuarioxFuncaoDAO {
     console.log("Repository: EscolaxUsuarioxFuncaoDAO.findAll()");
 
     let SQL = `
-      SELECT euf.EscolaxUsuarioxFuncaoId, euf.UsuarioCPF, euf.EscolaGUID, euf.FuncaoId, f.FuncaoNome
+      SELECT euf.*, f.FuncaoNome
       FROM escolaxusuarioxfuncao euf
       INNER JOIN funcao f ON f.FuncaoId = euf.FuncaoId
     `;
@@ -141,7 +157,7 @@ export class EscolaxUsuarioxFuncaoDAO {
     console.log("Repository: EscolaxUsuarioxFuncaoDAO.findByTripla()");
 
     const SQL = `
-      SELECT euf.EscolaxUsuarioxFuncaoId, euf.UsuarioCPF, euf.EscolaGUID, euf.FuncaoId, f.FuncaoNome
+      SELECT euf.*, f.FuncaoNome
       FROM escolaxusuarioxfuncao euf
       INNER JOIN funcao f ON f.FuncaoId = euf.FuncaoId
       WHERE euf.UsuarioCPF = ?
@@ -188,6 +204,11 @@ export class EscolaxUsuarioxFuncaoDAO {
     relacao.EscolaGUID = row.EscolaGUID;
     relacao.FuncaoId = row.FuncaoId;
     relacao.FuncaoNome = row.FuncaoNome;
+    relacao.DataInicio = row.DataInicio ? new Date(row.DataInicio) : null;
+    relacao.DataFim = row.DataFim ? new Date(row.DataFim) : null;
+    relacao.Status = row.Status;
+    relacao.CreatedAt = new Date(row.CreatedAt);
+    relacao.UpdatedAt = new Date(row.UpdatedAt);
     return relacao;
   };
 }

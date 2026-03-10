@@ -4,11 +4,18 @@ import Escola from "../entities/escola.model";
 interface EscolaRow {
   EscolaGUID: string;
   EscolaNome: string | null;
+  EscolaCNPJ: string | null;
+  EscolaTelefone: string | null;
+  EscolaEmail: string | null;
+  EscolaEndereco: string | null;
   EscolaCorPriEs: string | null;
   EscolaCorPriCl: string | null;
   EscolaCorSecEs: string | null;
   EscolaCorSecCl: string | null;
   EscolaIcone: Buffer | null;
+  EscolaStatus: "Ativa" | "Inativa";
+  EscolaCreatedAt: Date;
+  EscolaUpdatedAt: Date;
 }
 
 export class EscolaDAO {
@@ -24,17 +31,23 @@ export class EscolaDAO {
 
     const SQL = `
       INSERT INTO escola
-      (EscolaGUID, EscolaNome, EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone)
-      VALUES (?, ?, ?, ?, ?, ?, ?);
+      (EscolaGUID, EscolaNome, EscolaCNPJ, EscolaTelefone, EscolaEmail, EscolaEndereco,
+       EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone, EscolaStatus)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       escola.EscolaGUID,
       escola.EscolaNome,
+      escola.EscolaCNPJ,
+      escola.EscolaTelefone,
+      escola.EscolaEmail,
+      escola.EscolaEndereco,
       escola.EscolaCorPriEs,
       escola.EscolaCorPriCl,
       escola.EscolaCorSecEs,
       escola.EscolaCorSecCl,
       escola.EscolaIcone,
+      escola.EscolaStatus,
     ];
 
     const pool = await this.#database.getPool();
@@ -60,16 +73,23 @@ export class EscolaDAO {
 
     const SQL = `
       UPDATE escola
-      SET EscolaNome = ?, EscolaCorPriEs = ?, EscolaCorPriCl = ?, EscolaCorSecEs = ?, EscolaCorSecCl = ?, EscolaIcone = ?
+      SET EscolaNome = ?, EscolaCNPJ = ?, EscolaTelefone = ?, EscolaEmail = ?, EscolaEndereco = ?,
+          EscolaCorPriEs = ?, EscolaCorPriCl = ?, EscolaCorSecEs = ?, EscolaCorSecCl = ?,
+          EscolaIcone = ?, EscolaStatus = ?
       WHERE EscolaGUID = ?;
     `;
     const params = [
       escola.EscolaNome,
+      escola.EscolaCNPJ,
+      escola.EscolaTelefone,
+      escola.EscolaEmail,
+      escola.EscolaEndereco,
       escola.EscolaCorPriEs,
       escola.EscolaCorPriCl,
       escola.EscolaCorSecEs,
       escola.EscolaCorSecCl,
       escola.EscolaIcone,
+      escola.EscolaStatus,
       escola.EscolaGUID,
     ];
 
@@ -85,19 +105,12 @@ export class EscolaDAO {
     const pool = await this.#database.getPool();
 
     if (nome) {
-      const SQL = `
-        SELECT EscolaGUID, EscolaNome, EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone
-        FROM escola
-        WHERE EscolaNome LIKE ?;
-      `;
+      const SQL = `SELECT * FROM escola WHERE EscolaNome LIKE ? ORDER BY EscolaNome;`;
       const [rows] = await pool.execute(SQL, [`%${nome}%`]);
       return this.mapRows(rows as EscolaRow[]);
     }
 
-    const SQL = `
-      SELECT EscolaGUID, EscolaNome, EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone
-      FROM escola;
-    `;
+    const SQL = `SELECT * FROM escola ORDER BY EscolaNome;`;
     const [rows] = await pool.execute(SQL);
     return this.mapRows(rows as EscolaRow[]);
   };
@@ -115,6 +128,9 @@ export class EscolaDAO {
     const allowedFields = [
       "EscolaGUID",
       "EscolaNome",
+      "EscolaCNPJ",
+      "EscolaEmail",
+      "EscolaStatus",
       "EscolaCorPriEs",
       "EscolaCorPriCl",
       "EscolaCorSecEs",
@@ -124,11 +140,7 @@ export class EscolaDAO {
       throw new Error("Campo inválido para busca");
     }
 
-    const SQL = `
-      SELECT EscolaGUID, EscolaNome, EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone
-      FROM escola
-      WHERE ${field} = ?;
-    `;
+    const SQL = `SELECT * FROM escola WHERE ${field} = ?;`;
     const params = [value];
 
     const pool = await this.#database.getPool();
@@ -142,11 +154,18 @@ export class EscolaDAO {
       const escola = new Escola();
       escola.EscolaGUID = row.EscolaGUID;
       escola.EscolaNome = row.EscolaNome;
+      escola.EscolaCNPJ = row.EscolaCNPJ;
+      escola.EscolaTelefone = row.EscolaTelefone;
+      escola.EscolaEmail = row.EscolaEmail;
+      escola.EscolaEndereco = row.EscolaEndereco;
       escola.EscolaCorPriEs = row.EscolaCorPriEs;
       escola.EscolaCorPriCl = row.EscolaCorPriCl;
       escola.EscolaCorSecEs = row.EscolaCorSecEs;
       escola.EscolaCorSecCl = row.EscolaCorSecCl;
       escola.EscolaIcone = row.EscolaIcone;
+      escola.EscolaStatus = row.EscolaStatus;
+      escola.EscolaCreatedAt = new Date(row.EscolaCreatedAt);
+      escola.EscolaUpdatedAt = new Date(row.EscolaUpdatedAt);
       return escola;
     });
   }

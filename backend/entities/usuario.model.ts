@@ -13,6 +13,13 @@ export default class Usuario {
   #UsuarioTelefone: string | null = null;
   #UsuarioNome!: string;
   #UsuarioSenha!: string;
+  #UsuarioEmailVerificado: boolean = false;
+  #UsuarioDataNascimento: Date | null = null;
+  #UsuarioStatus: "Ativo" | "Inativo" | "Bloqueado" = "Ativo";
+  #UsuarioUltimoAcesso: Date | null = null;
+  #UsuarioCreatedAt: Date | null = null;
+  #UsuarioUpdatedAt: Date | null = null;
+  #UsuarioDeletedAt: Date | null = null;
 
   constructor() {
     console.log("⬆️  Usuario.constructor()");
@@ -170,5 +177,130 @@ export default class Usuario {
     // Nota: A senha já deve vir hasheada do Service
     // Aqui apenas armazenamos o hash
     this.#UsuarioSenha = senha;
+  }
+
+  // ========== Email Verificado ==========
+  get UsuarioEmailVerificado(): boolean {
+    return this.#UsuarioEmailVerificado;
+  }
+
+  set UsuarioEmailVerificado(value: boolean) {
+    if (typeof value !== "boolean") {
+      throw new Error("UsuarioEmailVerificado deve ser boolean.");
+    }
+    this.#UsuarioEmailVerificado = value;
+  }
+
+  // ========== Data de Nascimento ==========
+  get UsuarioDataNascimento(): Date | null {
+    return this.#UsuarioDataNascimento;
+  }
+
+  set UsuarioDataNascimento(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#UsuarioDataNascimento = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("UsuarioDataNascimento deve ser uma data válida.");
+    }
+
+    // Verificar se data não é futura
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const dataNasc = new Date(value);
+    dataNasc.setHours(0, 0, 0, 0);
+
+    if (dataNasc > hoje) {
+      throw new Error("UsuarioDataNascimento não pode ser uma data futura.");
+    }
+
+    this.#UsuarioDataNascimento = value;
+  }
+
+  // ========== Status ==========
+  get UsuarioStatus(): "Ativo" | "Inativo" | "Bloqueado" {
+    return this.#UsuarioStatus;
+  }
+
+  set UsuarioStatus(value: "Ativo" | "Inativo" | "Bloqueado") {
+    const statusValidos = ["Ativo", "Inativo", "Bloqueado"];
+    if (!statusValidos.includes(value)) {
+      throw new Error("UsuarioStatus deve ser 'Ativo', 'Inativo' ou 'Bloqueado'.");
+    }
+    this.#UsuarioStatus = value;
+  }
+
+  // ========== Último Acesso ==========
+  get UsuarioUltimoAcesso(): Date | null {
+    return this.#UsuarioUltimoAcesso;
+  }
+
+  set UsuarioUltimoAcesso(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#UsuarioUltimoAcesso = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("UsuarioUltimoAcesso deve ser uma data válida.");
+    }
+
+    this.#UsuarioUltimoAcesso = value;
+  }
+
+  // ========== Created At (Read-Only) ==========
+  get UsuarioCreatedAt(): Date | null {
+    return this.#UsuarioCreatedAt;
+  }
+
+  set UsuarioCreatedAt(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#UsuarioCreatedAt = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("UsuarioCreatedAt deve ser uma data válida.");
+    }
+
+    this.#UsuarioCreatedAt = value;
+  }
+
+  // ========== Updated At (Read-Only) ==========
+  get UsuarioUpdatedAt(): Date | null {
+    return this.#UsuarioUpdatedAt;
+  }
+
+  set UsuarioUpdatedAt(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#UsuarioUpdatedAt = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("UsuarioUpdatedAt deve ser uma data válida.");
+    }
+
+    this.#UsuarioUpdatedAt = value;
+  }
+
+  // ========== Deleted At (Soft Delete) ==========
+  get UsuarioDeletedAt(): Date | null {
+    return this.#UsuarioDeletedAt;
+  }
+
+  set UsuarioDeletedAt(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#UsuarioDeletedAt = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("UsuarioDeletedAt deve ser uma data válida.");
+    }
+
+    this.#UsuarioDeletedAt = value;
   }
 }

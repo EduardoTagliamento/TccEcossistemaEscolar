@@ -54,10 +54,11 @@ export default class EscolaxUsuarioxFuncaoMiddleware {
     payload: Record<string, unknown>,
     allowOptional = false
   ): void {
-    const camposPossiveis = ["UsuarioCPF", "EscolaGUID", "FuncaoId"];
+    const camposPossiveis = ["UsuarioCPF", "EscolaGUID", "FuncaoId", "DataInicio", "DataFim", "Status"];
 
     if (!allowOptional) {
-      for (const campo of camposPossiveis) {
+      const camposObrigatorios = ["UsuarioCPF", "EscolaGUID", "FuncaoId"];
+      for (const campo of camposObrigatorios) {
         const valor = payload[campo];
         if (valor === undefined || valor === null || valor === "") {
           throw new ErrorResponse(400, "Erro na validacao de dados", {
@@ -75,7 +76,7 @@ export default class EscolaxUsuarioxFuncaoMiddleware {
       if (!hasAtLeastOneField) {
         throw new ErrorResponse(400, "Erro na validacao de dados", {
           message:
-            "Envie ao menos um campo para atualizar: UsuarioCPF, EscolaGUID ou FuncaoId.",
+            "Envie ao menos um campo para atualizar: UsuarioCPF, EscolaGUID, FuncaoId, DataInicio, DataFim ou Status.",
         });
       }
     }
@@ -117,6 +118,51 @@ export default class EscolaxUsuarioxFuncaoMiddleware {
       if (!Number.isInteger(funcaoId) || funcaoId < 1) {
         throw new ErrorResponse(400, "Erro na validacao de dados", {
           message: "O campo 'FuncaoId' deve ser um inteiro positivo.",
+        });
+      }
+    }
+
+    if (payload.DataInicio !== undefined && payload.DataInicio !== null) {
+      if (typeof payload.DataInicio !== "string") {
+        throw new ErrorResponse(400, "Erro na validacao de dados", {
+          message: "O campo 'DataInicio' deve ser string no formato YYYY-MM-DD.",
+        });
+      }
+
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(payload.DataInicio)) {
+        throw new ErrorResponse(400, "Erro na validacao de dados", {
+          message: "O campo 'DataInicio' deve estar no formato YYYY-MM-DD.",
+        });
+      }
+    }
+
+    if (payload.DataFim !== undefined && payload.DataFim !== null) {
+      if (typeof payload.DataFim !== "string") {
+        throw new ErrorResponse(400, "Erro na validacao de dados", {
+          message: "O campo 'DataFim' deve ser string no formato YYYY-MM-DD.",
+        });
+      }
+
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(payload.DataFim)) {
+        throw new ErrorResponse(400, "Erro na validacao de dados", {
+          message: "O campo 'DataFim' deve estar no formato YYYY-MM-DD.",
+        });
+      }
+    }
+
+    if (payload.Status !== undefined && payload.Status !== null) {
+      if (typeof payload.Status !== "string") {
+        throw new ErrorResponse(400, "Erro na validacao de dados", {
+          message: "O campo 'Status' deve ser string.",
+        });
+      }
+
+      const statusValidos = ["Ativo", "Inativo", "Finalizado"];
+      if (!statusValidos.includes(payload.Status)) {
+        throw new ErrorResponse(400, "Erro na validacao de dados", {
+          message: "O campo 'Status' deve ser 'Ativo', 'Inativo' ou 'Finalizado'.",
         });
       }
     }

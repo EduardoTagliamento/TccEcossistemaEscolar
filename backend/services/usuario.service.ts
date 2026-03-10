@@ -9,7 +9,13 @@ export interface UsuarioDTO {
   UsuarioId: string | null;
   UsuarioTelefone: string | null;
   UsuarioNome: string;
-  // Nota: UsuarioSenha NUNCA é retornado no DTO por questões de segurança
+  UsuarioEmailVerificado: boolean;
+  UsuarioDataNascimento: string | null; // ISO string
+  UsuarioStatus: "Ativo" | "Inativo" | "Bloqueado";
+  UsuarioUltimoAcesso: string | null; // ISO string
+  UsuarioCreatedAt: string | null; // ISO string
+  UsuarioUpdatedAt: string | null; // ISO string
+  // Nota: UsuarioSenha e UsuarioDeletedAt NUNCA são retornados no DTO por questões de segurança
 }
 
 export default class UsuarioService {
@@ -50,6 +56,14 @@ export default class UsuarioService {
     usuario.UsuarioEmail = (jsonUsuario.UsuarioEmail as string | null) ?? null;
     usuario.UsuarioId = (jsonUsuario.UsuarioId as string | null) ?? null;
     usuario.UsuarioTelefone = (jsonUsuario.UsuarioTelefone as string | null) ?? null;
+
+    // Novos campos opcionais
+    usuario.UsuarioEmailVerificado = (jsonUsuario.UsuarioEmailVerificado as boolean) ?? false;
+    usuario.UsuarioStatus = (jsonUsuario.UsuarioStatus as "Ativo" | "Inativo" | "Bloqueado") ?? "Ativo";
+    
+    if (jsonUsuario.UsuarioDataNascimento) {
+      usuario.UsuarioDataNascimento = new Date(jsonUsuario.UsuarioDataNascimento as string);
+    }
 
     // Hash da senha com bcrypt
     const senhaPlana = jsonUsuario.UsuarioSenha as string;
@@ -105,6 +119,21 @@ export default class UsuarioService {
     existente.UsuarioId = (jsonUsuario.UsuarioId as string | null) ?? existente.UsuarioId;
     existente.UsuarioTelefone = (jsonUsuario.UsuarioTelefone as string | null) ?? existente.UsuarioTelefone;
 
+    // Novos campos opcionais
+    if (jsonUsuario.UsuarioEmailVerificado !== undefined) {
+      existente.UsuarioEmailVerificado = jsonUsuario.UsuarioEmailVerificado as boolean;
+    }
+
+    if (jsonUsuario.UsuarioStatus) {
+      existente.UsuarioStatus = jsonUsuario.UsuarioStatus as "Ativo" | "Inativo" | "Bloqueado";
+    }
+
+    if (jsonUsuario.UsuarioDataNascimento !== undefined) {
+      existente.UsuarioDataNascimento = jsonUsuario.UsuarioDataNascimento
+        ? new Date(jsonUsuario.UsuarioDataNascimento as string)
+        : null;
+    }
+
     // Se nova senha foi fornecida, fazer hash
     if (jsonUsuario.UsuarioSenha) {
       const novaSenhaPlana = jsonUsuario.UsuarioSenha as string;
@@ -143,7 +172,7 @@ export default class UsuarioService {
   };
 
   /**
-   * Converte entidade Usuario para DTO (sem senha!)
+   * Converte entidade Usuario para DTO (sem senha e DeletedAt!)
    */
   private toDTO = (usuario: Usuario): UsuarioDTO => {
     return {
@@ -152,7 +181,13 @@ export default class UsuarioService {
       UsuarioId: usuario.UsuarioId,
       UsuarioTelefone: usuario.UsuarioTelefone,
       UsuarioNome: usuario.UsuarioNome,
-      // UsuarioSenha é omitido intencionalmente por segurança
+      UsuarioEmailVerificado: usuario.UsuarioEmailVerificado,
+      UsuarioDataNascimento: usuario.UsuarioDataNascimento ? usuario.UsuarioDataNascimento.toISOString().split('T')[0] : null,
+      UsuarioStatus: usuario.UsuarioStatus,
+      UsuarioUltimoAcesso: usuario.UsuarioUltimoAcesso ? usuario.UsuarioUltimoAcesso.toISOString() : null,
+      UsuarioCreatedAt: usuario.UsuarioCreatedAt ? usuario.UsuarioCreatedAt.toISOString() : null,
+      UsuarioUpdatedAt: usuario.UsuarioUpdatedAt ? usuario.UsuarioUpdatedAt.toISOString() : null,
+      // UsuarioSenha e UsuarioDeletedAt são omitidos intencionalmente por segurança
     };
   };
 }
