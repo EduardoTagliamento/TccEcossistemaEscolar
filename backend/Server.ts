@@ -193,8 +193,24 @@ export default class Server {
       });
     });
 
-    // Rota raiz com informações da API
-    this.#app.get("/", (_req: Request, res: Response) => {
+    // Rota raiz: redireciona para o frontend quando configurado.
+    // Mantemos resposta JSON como fallback para uso de API/docs.
+    this.#app.get("/", (req: Request, res: Response) => {
+      const frontendUrl = process.env.FRONTEND_URL?.trim();
+
+      if (frontendUrl) {
+        try {
+          const frontendHost = new URL(frontendUrl).host;
+          const requestHost = req.get("host") || "";
+
+          if (frontendHost !== requestHost) {
+            return res.redirect(302, frontendUrl);
+          }
+        } catch {
+          console.warn("⚠️ FRONTEND_URL inválida. Usando fallback JSON na rota raiz.");
+        }
+      }
+
       res.status(200).json({
         success: true,
         message: "Ecossistema Escolar API",
