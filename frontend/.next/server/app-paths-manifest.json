@@ -3,9 +3,9 @@
   "/login/page": "app/login/page.js",
   "/cadastro/page": "app/cadastro/page.js",
   "/dashboard/[escolaGUID]/page": "app/dashboard/[escolaGUID]/page.js",
-  "/criar-escola/page": "app/criar-escola/page.js",
+  "/page": "app/page.js",
   "/selecionar-escola/page": "app/selecionar-escola/page.js",
   "/saiba-mais/page": "app/saiba-mais/page.js",
-  "/page": "app/page.js",
+  "/criar-escola/page": "app/criar-escola/page.js",
   "/verificar-email/page": "app/verificar-email/page.js"
 }

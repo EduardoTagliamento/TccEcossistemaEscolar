@@ -109,6 +109,15 @@ export default class VerificacaoEmailService {
   }
 
   /**
+   * Valida código usando email (resolve CPF internamente)
+   */
+  async validarCodigoPorEmail(email: string, codigo: string): Promise<{ message: string }> {
+    console.log("🟣 VerificacaoEmailService.validarCodigoPorEmail()");
+    const cpf = await this.obterCpfPorEmail(email);
+    return this.validarCodigo(cpf, codigo);
+  }
+
+  /**
    * Reenvia código de verificação (usa mesma lógica de solicitar)
    */
   async reenviarCodigo(cpf: string): Promise<{ message: string }> {
@@ -116,6 +125,15 @@ export default class VerificacaoEmailService {
     
     // Reaproveita lógica de solicitação (inclui anti-spam)
     return this.solicitarVerificacao(cpf);
+  }
+
+  /**
+   * Reenvia código usando email (resolve CPF internamente)
+   */
+  async reenviarCodigoPorEmail(email: string): Promise<{ message: string }> {
+    console.log("🟣 VerificacaoEmailService.reenviarCodigoPorEmail()");
+    const cpf = await this.obterCpfPorEmail(email);
+    return this.reenviarCodigo(cpf);
   }
 
   /**
@@ -147,6 +165,21 @@ export default class VerificacaoEmailService {
     }
     const mascarado = `${local[0]}${"*".repeat(local.length - 2)}${local[local.length - 1]}`;
     return `${mascarado}@${domain}`;
+  }
+
+  /**
+   * Resolve CPF a partir do email do usuário.
+   */
+  private async obterCpfPorEmail(email: string): Promise<string> {
+    const usuario = await this.#usuarioDAO.findByEmail(email);
+
+    if (!usuario) {
+      throw new ErrorResponse(404, "Usuário não encontrado", {
+        message: `Não existe usuário com email ${email}`,
+      });
+    }
+
+    return usuario.UsuarioCPF;
   }
 
   /**
