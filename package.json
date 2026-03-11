@@ -9,7 +9,6 @@
     "build": "cross-env NODE_ENV=production node node_modules/typescript/bin/tsc && cross-env NODE_ENV=production node node_modules/next/dist/bin/next build frontend",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "prebuild": "npm run clean",
-    "prestart": "npm run build",
     "prod": "npm run build && npm start",
     "cleanup:verification": "tsx backend/scripts/cleanupVerificacaoEmail.ts",
     "test": "echo \"Error: no test specified\" && exit 1"

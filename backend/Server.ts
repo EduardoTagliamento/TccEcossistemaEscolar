@@ -133,13 +133,25 @@ export default class Server {
     }
 
     const dev = process.env.NODE_ENV !== "production";
-    const nextApp = next({ dev, dir: frontendDir });
 
-    await nextApp.prepare();
-    this.#nextHandler = nextApp.getRequestHandler() as (req: Request, res: Response) => Promise<void>;
-    this.#isFrontendUnified = true;
+    try {
+      const nextApp = next({ dev, dir: frontendDir });
+      await nextApp.prepare();
+      this.#nextHandler = nextApp.getRequestHandler() as (req: Request, res: Response) => Promise<void>;
+      this.#isFrontendUnified = true;
+      console.log(`✅ Frontend Next.js inicializado em modo unificado (${dev ? "dev" : "prod"})`);
+    } catch (error: any) {
+      this.#nextHandler = null;
+      this.#isFrontendUnified = false;
 
-    console.log(`✅ Frontend Next.js inicializado em modo unificado (${dev ? "dev" : "prod"})`);
+      if (process.env.NODE_ENV === "production") {
+        console.error("❌ Falha ao preparar Next.js. Iniciando em modo API-only para evitar crash.");
+        console.error(`   Motivo: ${error?.message || error}`);
+        return;
+      }
+
+      throw error;
+    }
   };
 
   /**
@@ -173,6 +185,12 @@ export default class Server {
       } else if (error.code === "ER_ACCESS_DENIED_ERROR") {
         console.error("   💡 Dica: Usuário ou senha incorretos");
         console.error(`   💡 Verifique as variáveis de ambiente DB_USER e DB_PASSWORD`);
+      }
+
+      if (process.env.NODE_ENV === "production") {
+        console.error("⚠️ Falha de conexão com MySQL no boot. Iniciando servidor mesmo assim para evitar 502.");
+        console.error("⚠️ Endpoints dependentes de banco podem falhar até a conexão ser restabelecida.");
+        return;
       }
 
       throw new Error(`Falha na conexão com MySQL: ${error.message}`);
