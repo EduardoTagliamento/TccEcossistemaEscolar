@@ -194,19 +194,29 @@ export default class Server {
     });
 
     // Rota raiz: redireciona para o frontend quando configurado.
-    // Mantemos resposta JSON como fallback para uso de API/docs.
+    // Mantemos resposta JSON como fallback com diagnostico de redirecionamento.
     this.#app.get("/", (req: Request, res: Response) => {
-      const frontendUrl = process.env.FRONTEND_URL?.trim();
+      const frontendUrlRaw = process.env.FRONTEND_URL?.trim() || "";
+      const requestProtocol = (req.headers["x-forwarded-proto"] as string) || req.protocol;
+      const requestHost = req.get("host") || "";
+      const currentRequestUrl = `${requestProtocol}://${requestHost}${req.originalUrl}`;
+      const expectedFrontendRoute = frontendUrlRaw ? frontendUrlRaw : "(defina FRONTEND_URL)";
 
-      if (frontendUrl) {
+      let redirectStatus: "redirected" | "missing_frontend_url" | "invalid_frontend_url" | "same_target" = "missing_frontend_url";
+
+      if (frontendUrlRaw) {
         try {
-          const frontendHost = new URL(frontendUrl).host;
-          const requestHost = req.get("host") || "";
+          const target = new URL(frontendUrlRaw);
+          const current = new URL(currentRequestUrl);
+          const isSameTarget = target.href === current.href;
 
-          if (frontendHost !== requestHost) {
-            return res.redirect(302, frontendUrl);
+          if (!isSameTarget) {
+            return res.redirect(302, target.href);
           }
+
+          redirectStatus = "same_target";
         } catch {
+          redirectStatus = "invalid_frontend_url";
           console.warn("⚠️ FRONTEND_URL inválida. Usando fallback JSON na rota raiz.");
         }
       }
@@ -226,6 +236,14 @@ export default class Server {
             escolaxusuarioxfuncao: "/api/escolaxusuarioxfuncao",
             verificacaoEmail: "/api/verificacao-email",
             docs: "/docs",
+          },
+          frontendRedirect: {
+            status: redirectStatus,
+            currentRoute: currentRequestUrl,
+            configuredFrontendUrl: frontendUrlRaw || null,
+            expectedFrontendMainRoute: expectedFrontendRoute,
+            frontendMainPagePath: "/ (Next.js app/page.tsx)",
+            hint: "Use FRONTEND_URL completo com protocolo, ex: https://www.baua.com.br",
           },
         },
       });
