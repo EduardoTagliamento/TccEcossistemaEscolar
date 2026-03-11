@@ -17,6 +17,7 @@ export default class Escola {
   #EscolaCorSecEs: string | null = null;
   #EscolaCorSecCl: string | null = null;
   #EscolaIcone: Buffer | null = null;
+  #EscolaLogo: string | null = null;
   #EscolaStatus: "Ativa" | "Inativa" = "Ativa";
   #EscolaCreatedAt: Date | null = null;
   #EscolaUpdatedAt: Date | null = null;
@@ -227,6 +228,24 @@ export default class Escola {
     }
 
     this.#EscolaIcone = value;
+  }
+
+  // ========== Logo (caminho do arquivo) ==========
+  get EscolaLogo(): string | null {
+    return this.#EscolaLogo;
+  }
+
+  set EscolaLogo(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#EscolaLogo = null;
+      return;
+    }
+
+    if (typeof value !== "string") {
+      throw new Error("EscolaLogo deve ser uma string.");
+    }
+
+    this.#EscolaLogo = value.trim();
   }
 
   // ========== Status ==========

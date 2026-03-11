@@ -22,6 +22,10 @@ CREATE TABLE `tccecossistemaescolar`.`escola` (
   INDEX `idx_escola_status` (`EscolaStatus`)
 );
 
+ALTER TABLE `escola`
+ADD COLUMN `EscolaLogo` VARCHAR(255) NULL AFTER `EscolaIcone`,
+ADD INDEX `idx_escola_logo` (`EscolaLogo`);
+
 -- =====================================================
 -- TABELA: usuario
 -- Descrição: Armazena informações dos usuários do sistema

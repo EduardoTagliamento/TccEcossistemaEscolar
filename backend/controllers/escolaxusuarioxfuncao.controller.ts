@@ -103,4 +103,25 @@ export default class EscolaxUsuarioxFuncaoControl {
       next(error);
     }
   };
+
+  /**
+   * GET /api/usuario/:cpf/escolas
+   * Retorna todas as escolas vinculadas ao usuário com suas funções
+   */
+  getEscolasByUsuario = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("Controller: EscolaxUsuarioxFuncaoControl.getEscolasByUsuario()");
+    try {
+      const UsuarioCPF = request.params.cpf;
+
+      const escolas = await this.#service.findEscolasByUsuario(UsuarioCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Escolas do usuario obtidas com sucesso",
+        data: { escolas },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

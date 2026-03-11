@@ -149,6 +149,28 @@ export class UsuarioDAO {
     return this.mapRowToEntity(rows[0]);
   };
 
+  findByTelefone = async (UsuarioTelefone: string): Promise<Usuario | null> => {
+    console.log("🟢 UsuarioDAO.findByTelefone()");
+
+    const SQL = "SELECT * FROM usuario WHERE UsuarioTelefone = ? AND UsuarioDeletedAt IS NULL;";
+    const params = [UsuarioTelefone];
+
+    const pool = await this.#database.getPool();
+    const [linhas] = await pool.execute(SQL, params);
+
+    const rows = linhas as UsuarioRow[];
+    if (rows.length === 0) {
+      return null;
+    }
+
+    return this.mapRowToEntity(rows[0]);
+  };
+
+  findByCPF = async (UsuarioCPF: string): Promise<Usuario | null> => {
+    // Alias para findById (mantém consistência com findByEmail e findByTelefone)
+    return this.findById(UsuarioCPF);
+  };
+
   findByField = async (field: string, value: string): Promise<Usuario[]> => {
     console.log("🟢 UsuarioDAO.findByField()");
 

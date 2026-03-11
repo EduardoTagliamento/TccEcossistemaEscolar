@@ -13,6 +13,7 @@ interface EscolaRow {
   EscolaCorSecEs: string | null;
   EscolaCorSecCl: string | null;
   EscolaIcone: Buffer | null;
+  EscolaLogo: string | null;
   EscolaStatus: "Ativa" | "Inativa";
   EscolaCreatedAt: Date;
   EscolaUpdatedAt: Date;
@@ -32,8 +33,8 @@ export class EscolaDAO {
     const SQL = `
       INSERT INTO escola
       (EscolaGUID, EscolaNome, EscolaCNPJ, EscolaTelefone, EscolaEmail, EscolaEndereco,
-       EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone, EscolaStatus)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+       EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone, EscolaLogo, EscolaStatus)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       escola.EscolaGUID,
@@ -47,6 +48,7 @@ export class EscolaDAO {
       escola.EscolaCorSecEs,
       escola.EscolaCorSecCl,
       escola.EscolaIcone,
+      escola.EscolaLogo,
       escola.EscolaStatus,
     ];
 
@@ -75,7 +77,7 @@ export class EscolaDAO {
       UPDATE escola
       SET EscolaNome = ?, EscolaCNPJ = ?, EscolaTelefone = ?, EscolaEmail = ?, EscolaEndereco = ?,
           EscolaCorPriEs = ?, EscolaCorPriCl = ?, EscolaCorSecEs = ?, EscolaCorSecCl = ?,
-          EscolaIcone = ?, EscolaStatus = ?
+          EscolaIcone = ?, EscolaLogo = ?, EscolaStatus = ?
       WHERE EscolaGUID = ?;
     `;
     const params = [
@@ -89,6 +91,7 @@ export class EscolaDAO {
       escola.EscolaCorSecEs,
       escola.EscolaCorSecCl,
       escola.EscolaIcone,
+      escola.EscolaLogo,
       escola.EscolaStatus,
       escola.EscolaGUID,
     ];
@@ -163,6 +166,7 @@ export class EscolaDAO {
       escola.EscolaCorSecEs = row.EscolaCorSecEs;
       escola.EscolaCorSecCl = row.EscolaCorSecCl;
       escola.EscolaIcone = row.EscolaIcone;
+      escola.EscolaLogo = row.EscolaLogo;
       escola.EscolaStatus = row.EscolaStatus;
       escola.EscolaCreatedAt = new Date(row.EscolaCreatedAt);
       escola.EscolaUpdatedAt = new Date(row.EscolaUpdatedAt);

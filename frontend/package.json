@@ -3,18 +3,31 @@
   "version": "1.0.0",
   "description": "Frontend do Ecossistema Educacional Bauá",
   "scripts": {
-    "dev": "http-server public -p 3000 -o",
-    "serve": "http-server public -p 3000"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
   },
   "keywords": [
     "education",
     "typescript",
-    "frontend"
+    "frontend",
+    "nextjs",
+    "react"
   ],
   "author": "Eduardo Tagliamento",
   "license": "MIT",
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-icons": "^5.0.0"
+  },
   "devDependencies": {
-    "http-server": "^14.1.1",
+    "@types/node": "^20.17.12",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
     "typescript": "^5.7.3"
   }
 }
