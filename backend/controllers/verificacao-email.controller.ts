@@ -38,8 +38,10 @@ export default class VerificacaoEmailController {
     console.log("🔵 VerificacaoEmailController.validarCodigo()");
     
     try {
-      const { UsuarioCPF, VerificacaoCodigo } = request.body.verificacao;
-      const result = await this.#service.validarCodigo(UsuarioCPF, VerificacaoCodigo);
+      const { UsuarioCPF, UsuarioEmail, VerificacaoCodigo } = request.body.verificacao;
+      const result = UsuarioCPF
+        ? await this.#service.validarCodigo(UsuarioCPF, VerificacaoCodigo)
+        : await this.#service.validarCodigoPorEmail(UsuarioEmail, VerificacaoCodigo);
 
       response.status(200).json({
         success: true,
@@ -61,6 +63,29 @@ export default class VerificacaoEmailController {
     try {
       const { UsuarioCPF } = request.params;
       const result = await this.#service.reenviarCodigo(UsuarioCPF);
+
+      response.status(200).json({
+        success: true,
+        message: result.message,
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/verificacao-email/reenviar
+   * Reenvia código por CPF ou email no body
+   */
+  reenviarCodigoBody = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("🔵 VerificacaoEmailController.reenviarCodigoBody()");
+
+    try {
+      const { UsuarioCPF, UsuarioEmail } = request.body.verificacao;
+      const result = UsuarioCPF
+        ? await this.#service.reenviarCodigo(UsuarioCPF)
+        : await this.#service.reenviarCodigoPorEmail(UsuarioEmail);
 
       response.status(200).json({
         success: true,

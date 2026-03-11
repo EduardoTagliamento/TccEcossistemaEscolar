@@ -50,4 +50,15 @@ verificacaoEmailRoutes.post(
   verificacaoController.reenviarCodigo
 );
 
+/**
+ * @route   POST /api/verificacao-email/reenviar
+ * @desc    Reenvia código de verificação via body (UsuarioCPF ou email)
+ * @access  Public
+ */
+verificacaoEmailRoutes.post(
+  "/reenviar",
+  verificacaoMiddleware.validateReenviarBody,
+  verificacaoController.reenviarCodigoBody
+);
+
 export default verificacaoEmailRoutes;
