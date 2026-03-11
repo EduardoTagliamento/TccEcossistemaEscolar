@@ -2,6 +2,8 @@ import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import path from "path";
 import { exec } from "child_process";
+import fs from "fs";
+import next from "next";
 import MysqlDatabase from "./database/MysqlDatabase";
 import ErrorResponse from "./utils/ErrorResponse.js";
 import { escolaRouterFactory } from "../routes/escola.routes";
@@ -32,6 +34,8 @@ export default class Server {
   #app: Application;
   #database: MysqlDatabase;
   #scheduler: CleanupScheduler;
+  #nextHandler: ((req: Request, res: Response) => Promise<void>) | null;
+  #isFrontendUnified: boolean;
 
   constructor(porta?: number) {
     console.log("⬆️  Server.constructor()");
@@ -39,6 +43,8 @@ export default class Server {
     this.#app = express();
     this.#database = new MysqlDatabase();
     this.#scheduler = new CleanupScheduler();
+    this.#nextHandler = null;
+    this.#isFrontendUnified = false;
   }
 
   /**
@@ -61,6 +67,9 @@ export default class Server {
 
       // 🔹 Middlewares pré-roteamento (logging)
       this.setupPreRoutingMiddlewares();
+
+      // 🔹 Inicialização do frontend Next.js (modo unificado)
+      await this.setupUnifiedFrontend();
 
       // 🔹 Registro de rotas
       this.setupRoutes();
@@ -87,7 +96,6 @@ export default class Server {
    */
   private setupGlobalMiddlewares = (): void => {
     console.log("⬆️  Server.setupGlobalMiddlewares()");
-    const staticDir = path.resolve(process.cwd(), "frontend", "public");
     const uploadsDir = path.resolve(process.cwd(), "uploads");
 
     // JSON parser - converte body de requisições JSON
@@ -105,13 +113,33 @@ export default class Server {
       })
     );
 
-    // Arquivos estáticos (frontend, imagens, favicon, etc.)
-    this.#app.use(express.static(staticDir));
-    
     // Arquivos de upload (logos, imagens enviadas por usuários)
     this.#app.use("/uploads", express.static(uploadsDir));
 
     console.log("✅ Middlewares globais configurados");
+  };
+
+  /**
+   * Inicializa o Next.js para servir o frontend no mesmo processo/porta da API.
+   */
+  private setupUnifiedFrontend = async (): Promise<void> => {
+    const frontendDir = path.resolve(process.cwd(), "frontend");
+    const hasAppDir = fs.existsSync(path.resolve(frontendDir, "app"));
+    const hasPagesDir = fs.existsSync(path.resolve(frontendDir, "pages"));
+
+    if (!hasAppDir && !hasPagesDir) {
+      console.warn("⚠️ Frontend Next.js não encontrado. O servidor iniciará somente com API.");
+      return;
+    }
+
+    const dev = process.env.NODE_ENV !== "production";
+    const nextApp = next({ dev, dir: frontendDir });
+
+    await nextApp.prepare();
+    this.#nextHandler = nextApp.getRequestHandler() as (req: Request, res: Response) => Promise<void>;
+    this.#isFrontendUnified = true;
+
+    console.log(`✅ Frontend Next.js inicializado em modo unificado (${dev ? "dev" : "prod"})`);
   };
 
   /**
@@ -193,40 +221,15 @@ export default class Server {
       });
     });
 
-    // Rota raiz: redireciona para o frontend quando configurado.
-    // Mantemos resposta JSON como fallback com diagnostico de redirecionamento.
-    this.#app.get("/", (req: Request, res: Response) => {
-      const frontendUrlRaw = process.env.FRONTEND_URL?.trim() || "";
-      const requestProtocol = (req.headers["x-forwarded-proto"] as string) || req.protocol;
-      const requestHost = req.get("host") || "";
-      const currentRequestUrl = `${requestProtocol}://${requestHost}${req.originalUrl}`;
-      const expectedFrontendRoute = frontendUrlRaw ? frontendUrlRaw : "(defina FRONTEND_URL)";
-
-      let redirectStatus: "redirected" | "missing_frontend_url" | "invalid_frontend_url" | "same_target" = "missing_frontend_url";
-
-      if (frontendUrlRaw) {
-        try {
-          const target = new URL(frontendUrlRaw);
-          const current = new URL(currentRequestUrl);
-          const isSameTarget = target.href === current.href;
-
-          if (!isSameTarget) {
-            return res.redirect(302, target.href);
-          }
-
-          redirectStatus = "same_target";
-        } catch {
-          redirectStatus = "invalid_frontend_url";
-          console.warn("⚠️ FRONTEND_URL inválida. Usando fallback JSON na rota raiz.");
-        }
-      }
-
+    // Endpoint informativo da API em modo unificado.
+    this.#app.get("/api", (_req: Request, res: Response) => {
       res.status(200).json({
         success: true,
         message: "Ecossistema Escolar API",
         data: {
           version: "1.0.0",
           description: "Plataforma educacional inspirada no Google Classroom",
+          mode: this.#isFrontendUnified ? "unified (api + frontend)" : "api-only",
           endpoints: {
             health: "/health",
             auth: "/api/auth",
@@ -235,16 +238,26 @@ export default class Server {
             usuario: "/api/usuario",
             escolaxusuarioxfuncao: "/api/escolaxusuarioxfuncao",
             verificacaoEmail: "/api/verificacao-email",
-            docs: "/docs",
           },
-          frontendRedirect: {
-            status: redirectStatus,
-            currentRoute: currentRequestUrl,
-            configuredFrontendUrl: frontendUrlRaw || null,
-            expectedFrontendMainRoute: expectedFrontendRoute,
-            frontendMainPagePath: "/ (Next.js app/page.tsx)",
-            hint: "Use FRONTEND_URL completo com protocolo, ex: https://www.baua.com.br",
-          },
+          frontendMainPagePath: "/ (Next.js app/page.tsx)",
+        },
+      });
+    });
+
+    // Rota raiz agora e a home do frontend (quando Next.js estiver ativo).
+    this.#app.get("/", (req: Request, res: Response, nextMiddleware: NextFunction) => {
+      if (this.#nextHandler) {
+        return this.#nextHandler(req, res);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Ecossistema Escolar API",
+        data: {
+          version: "1.0.0",
+          description: "Plataforma educacional inspirada no Google Classroom",
+          mode: "api-only",
+          note: "Frontend Next.js não foi inicializado neste ambiente.",
         },
       });
     });
@@ -274,6 +287,23 @@ export default class Server {
     // 📤 Rotas de Upload
     this.#app.use("/api/upload", uploadRoutes);
     console.log("✅ Rotas de Upload registradas em /api/upload");
+
+    // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
+    this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {
+      if (!this.#nextHandler) {
+        return nextMiddleware();
+      }
+
+      if (
+        req.path.startsWith("/api") ||
+        req.path === "/health" ||
+        req.path.startsWith("/uploads")
+      ) {
+        return nextMiddleware();
+      }
+
+      return this.#nextHandler(req, res);
+    });
     
     // �🔜 Futuras rotas serão adicionadas aqui
     // this.#app.use("/api/turma", turmaRouter);
