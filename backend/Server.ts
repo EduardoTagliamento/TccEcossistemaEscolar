@@ -8,6 +8,8 @@ import { escolaRouterFactory } from "../routes/escola.routes";
 import { usuarioRouterFactory } from "../routes/usuario.routes";
 import { escolaxusuarioxfuncaoRouterFactory } from "../routes/escolaxusuarioxfuncao.routes";
 import verificacaoEmailRoutes from "../routes/verificacao-email.routes.js";
+import authRoutes from "../routes/auth.routes.js";
+import uploadRoutes from "../routes/upload.routes.js";
 import { CleanupScheduler } from "./services/cleanup.scheduler.js";
 import { pool } from "./database/mysql.js";
 
@@ -86,6 +88,7 @@ export default class Server {
   private setupGlobalMiddlewares = (): void => {
     console.log("⬆️  Server.setupGlobalMiddlewares()");
     const staticDir = path.resolve(process.cwd(), "frontend", "public");
+    const uploadsDir = path.resolve(process.cwd(), "uploads");
 
     // JSON parser - converte body de requisições JSON
     this.#app.use(express.json({ limit: "10mb" }));
@@ -104,6 +107,9 @@ export default class Server {
 
     // Arquivos estáticos (frontend, imagens, favicon, etc.)
     this.#app.use(express.static(staticDir));
+    
+    // Arquivos de upload (logos, imagens enviadas por usuários)
+    this.#app.use("/uploads", express.static(uploadsDir));
 
     console.log("✅ Middlewares globais configurados");
   };
@@ -197,6 +203,8 @@ export default class Server {
           description: "Plataforma educacional inspirada no Google Classroom",
           endpoints: {
             health: "/health",
+            auth: "/api/auth",
+            upload: "/api/upload",
             escola: "/api/escola",
             usuario: "/api/usuario",
             escolaxusuarioxfuncao: "/api/escolaxusuarioxfuncao",
@@ -224,6 +232,15 @@ export default class Server {
     // 📧 Rotas de Verificação de Email
     this.#app.use("/api/verificacao-email", verificacaoEmailRoutes);
     console.log("✅ Rotas de Verificação de Email registradas em /api/verificacao-email");
+    
+    // 🔐 Rotas de Autenticação
+    this.#app.use("/api/auth", authRoutes);
+    console.log("✅ Rotas de Autenticação registradas em /api/auth");
+    
+    // 📤 Rotas de Upload
+    this.#app.use("/api/upload", uploadRoutes);
+    console.log("✅ Rotas de Upload registradas em /api/upload");
+    
     // �🔜 Futuras rotas serão adicionadas aqui
     // this.#app.use("/api/turma", turmaRouter);
     // this.#app.use("/api/professor", professorRouter);
@@ -250,6 +267,12 @@ export default class Server {
           availableEndpoints: [
             "GET /",
             "GET /health",
+            "POST /api/auth/login",
+            "GET /api/auth/me",
+            "POST /api/auth/logout",
+            "POST /api/auth/refresh",
+            "POST /api/upload/logo/:EscolaGUID",
+            "DELETE /api/upload/logo/:EscolaGUID",
             "GET /api/escola",
             "POST /api/escola",
             "GET /api/escola/:EscolaGUID",
@@ -257,6 +280,7 @@ export default class Server {
             "DELETE /api/escola/:EscolaGUID",
             "GET /api/usuario",
             "POST /api/usuario",
+            "GET /api/usuario/:cpf/escolas",
             "GET /api/usuario/:UsuarioCPF",
             "PUT /api/usuario/:UsuarioCPF",
             "DELETE /api/usuario/:UsuarioCPF",

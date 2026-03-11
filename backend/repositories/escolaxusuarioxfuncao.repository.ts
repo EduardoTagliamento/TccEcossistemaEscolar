@@ -197,6 +197,130 @@ export class EscolaxUsuarioxFuncaoDAO {
     return (linhas as Array<Record<string, unknown>>).length > 0;
   };
 
+  /**
+   * Busca todas as escolas vinculadas a um usuário com suas funções
+   * Retorna array com dados completos da escola e funções associadas
+   */
+  findEscolasByUsuarioCPF = async (UsuarioCPF: string): Promise<Array<{
+    escola: {
+      EscolaGUID: string;
+      EscolaNome: string;
+      EscolaEmail: string | null;
+      EscolaCor1: string | null;
+      EscolaCor2: string | null;
+      EscolaCor3: string | null;
+      EscolaCor4: string | null;
+      EscolaLogo: string | null;
+    };
+    funcoes: Array<{
+      EscolaxUsuarioxFuncaoId: number;
+      FuncaoId: number;
+      FuncaoNome: string;
+      DataInicio: Date | null;
+      DataFim: Date | null;
+      Status: "Ativo" | "Inativo" | "Finalizado";
+    }>;
+  }>> => {
+    console.log("Repository: EscolaxUsuarioxFuncaoDAO.findEscolasByUsuarioCPF()");
+
+    const SQL = `
+      SELECT 
+        e.EscolaGUID,
+        e.EscolaNome,
+        e.EscolaEmail,
+        e.EscolaCor1,
+        e.EscolaCor2,
+        e.EscolaCor3,
+        e.EscolaCor4,
+        e.EscolaLogo,
+        euf.EscolaxUsuarioxFuncaoId,
+        euf.FuncaoId,
+        f.FuncaoNome,
+        euf.DataInicio,
+        euf.DataFim,
+        euf.Status
+      FROM escolaxusuarioxfuncao euf
+      INNER JOIN escola e ON e.EscolaGUID = euf.EscolaGUID
+      INNER JOIN funcao f ON f.FuncaoId = euf.FuncaoId
+      WHERE euf.UsuarioCPF = ?
+        AND e.EscolaDeletedAt IS NULL
+      ORDER BY e.EscolaNome ASC, f.FuncaoNome ASC;
+    `;
+
+    const pool = await this.#database.getPool();
+    const [linhas] = await pool.execute(SQL, [UsuarioCPF]);
+
+    const rows = linhas as Array<{
+      EscolaGUID: string;
+      EscolaNome: string;
+      EscolaEmail: string | null;
+      EscolaCor1: string | null;
+      EscolaCor2: string | null;
+      EscolaCor3: string | null;
+      EscolaCor4: string | null;
+      EscolaLogo: string | null;
+      EscolaxUsuarioxFuncaoId: number;
+      FuncaoId: number;
+      FuncaoNome: string;
+      DataInicio: Date | null;
+      DataFim: Date | null;
+      Status: "Ativo" | "Inativo" | "Finalizado";
+    }>;
+
+    // Agrupar por escola
+    const escolasMap = new Map<string, {
+      escola: {
+        EscolaGUID: string;
+        EscolaNome: string;
+        EscolaEmail: string | null;
+        EscolaCor1: string | null;
+        EscolaCor2: string | null;
+        EscolaCor3: string | null;
+        EscolaCor4: string | null;
+        EscolaLogo: string | null;
+      };
+      funcoes: Array<{
+        EscolaxUsuarioxFuncaoId: number;
+        FuncaoId: number;
+        FuncaoNome: string;
+        DataInicio: Date | null;
+        DataFim: Date | null;
+        Status: "Ativo" | "Inativo" | "Finalizado";
+      }>;
+    }>();
+
+    for (const row of rows) {
+      const escolaGUID = row.EscolaGUID;
+
+      if (!escolasMap.has(escolaGUID)) {
+        escolasMap.set(escolaGUID, {
+          escola: {
+            EscolaGUID: row.EscolaGUID,
+            EscolaNome: row.EscolaNome,
+            EscolaEmail: row.EscolaEmail,
+            EscolaCor1: row.EscolaCor1,
+            EscolaCor2: row.EscolaCor2,
+            EscolaCor3: row.EscolaCor3,
+            EscolaCor4: row.EscolaCor4,
+            EscolaLogo: row.EscolaLogo,
+          },
+          funcoes: [],
+        });
+      }
+
+      escolasMap.get(escolaGUID)!.funcoes.push({
+        EscolaxUsuarioxFuncaoId: row.EscolaxUsuarioxFuncaoId,
+        FuncaoId: row.FuncaoId,
+        FuncaoNome: row.FuncaoNome,
+        DataInicio: row.DataInicio ? new Date(row.DataInicio) : null,
+        DataFim: row.DataFim ? new Date(row.DataFim) : null,
+        Status: row.Status,
+      });
+    }
+
+    return Array.from(escolasMap.values());
+  };
+
   private mapRowToEntity = (row: EscolaxUsuarioxFuncaoRow): EscolaxUsuarioxFuncao => {
     const relacao = new EscolaxUsuarioxFuncao();
     relacao.EscolaxUsuarioxFuncaoId = row.EscolaxUsuarioxFuncaoId;

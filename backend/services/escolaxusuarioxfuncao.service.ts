@@ -219,6 +219,49 @@ export default class EscolaxUsuarioxFuncaoService {
     }
   };
 
+  /**
+   * Busca todas as escolas vinculadas a um usuário
+   * Retorna estrutura completa com dados da escola e funções associadas
+   */
+  findEscolasByUsuario = async (UsuarioCPF: string): Promise<Array<{
+    escola: {
+      EscolaGUID: string;
+      EscolaNome: string;
+      EscolaEmail: string | null;
+      EscolaCor1: string | null;
+      EscolaCor2: string | null;
+      EscolaCor3: string | null;
+      EscolaCor4: string | null;
+      EscolaLogo: string | null;
+    };
+    funcoes: Array<{
+      EscolaxUsuarioxFuncaoId: number;
+      FuncaoId: number;
+      FuncaoNome: string;
+      DataInicio: string | null;
+      DataFim: string | null;
+      Status: "Ativo" | "Inativo" | "Finalizado";
+    }>;
+  }>> => {
+    console.log("Service: EscolaxUsuarioxFuncaoService.findEscolasByUsuario()");
+
+    // Buscar dados no repositório
+    const escolas = await this.#relacaoDAO.findEscolasByUsuarioCPF(UsuarioCPF);
+
+    // Converter datas para strings ISO
+    return escolas.map(item => ({
+      escola: item.escola,
+      funcoes: item.funcoes.map(funcao => ({
+        EscolaxUsuarioxFuncaoId: funcao.EscolaxUsuarioxFuncaoId,
+        FuncaoId: funcao.FuncaoId,
+        FuncaoNome: funcao.FuncaoNome,
+        DataInicio: funcao.DataInicio ? funcao.DataInicio.toISOString().split('T')[0] : null,
+        DataFim: funcao.DataFim ? funcao.DataFim.toISOString().split('T')[0] : null,
+        Status: funcao.Status,
+      })),
+    }));
+  };
+
   private toDTO = (relacao: EscolaxUsuarioxFuncao): EscolaxUsuarioxFuncaoDTO => {
     const id = relacao.EscolaxUsuarioxFuncaoId;
     if (id === null) {
