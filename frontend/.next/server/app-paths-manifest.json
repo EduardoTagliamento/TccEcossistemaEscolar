@@ -1,11 +1,11 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/criar-escola/page": "app/criar-escola/page.js",
-  "/cadastro/page": "app/cadastro/page.js",
   "/login/page": "app/login/page.js",
+  "/cadastro/page": "app/cadastro/page.js",
+  "/criar-escola/page": "app/criar-escola/page.js",
+  "/page": "app/page.js",
   "/dashboard/[escolaGUID]/page": "app/dashboard/[escolaGUID]/page.js",
-  "/saiba-mais/page": "app/saiba-mais/page.js",
-  "/selecionar-escola/page": "app/selecionar-escola/page.js",
   "/verificar-email/page": "app/verificar-email/page.js",
-  "/page": "app/page.js"
+  "/saiba-mais/page": "app/saiba-mais/page.js",
+  "/selecionar-escola/page": "app/selecionar-escola/page.js"
 }
