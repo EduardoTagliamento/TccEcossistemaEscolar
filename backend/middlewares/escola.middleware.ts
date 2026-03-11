@@ -4,29 +4,23 @@ import ErrorResponse from "../utils/ErrorResponse.js";
 export default class EscolaMiddleware {
   validateCreateBody = (request: Request, _response: Response, next: NextFunction) => {
     console.log("🔷 EscolaMiddleware.validateCreateBody()");
-    const body = request.body;
+    const escola = this.extractEscolaPayload(request.body);
+    this.normalizeEscolaCampos(escola);
+    this.validateCampos(escola);
 
-    if (!body.escola) {
-      throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'escola' é obrigatório!",
-      });
-    }
-
-    this.validateCampos(body.escola);
+    // Mantem compatibilidade com controller/service atuais.
+    request.body.escola = escola;
     next();
   };
 
   validateUpdateBody = (request: Request, _response: Response, next: NextFunction) => {
     console.log("🔷 EscolaMiddleware.validateUpdateBody()");
-    const body = request.body;
+    const escola = this.extractEscolaPayload(request.body);
+    this.normalizeEscolaCampos(escola);
+    this.validateCampos(escola, true);
 
-    if (!body.escola) {
-      throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'escola' é obrigatório!",
-      });
-    }
-
-    this.validateCampos(body.escola, true);
+    // Mantem compatibilidade com controller/service atuais.
+    request.body.escola = escola;
     next();
   };
 
@@ -120,6 +114,38 @@ export default class EscolaMiddleware {
             });
           }
         }
+      }
+    }
+  }
+
+  private extractEscolaPayload(body: unknown): Record<string, unknown> {
+    if (!body || typeof body !== "object") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "Corpo da requisição inválido.",
+      });
+    }
+
+    const bodyObj = body as Record<string, unknown>;
+
+    if (bodyObj.escola && typeof bodyObj.escola === "object" && !Array.isArray(bodyObj.escola)) {
+      return bodyObj.escola as Record<string, unknown>;
+    }
+
+    return bodyObj;
+  }
+
+  private normalizeEscolaCampos(escola: Record<string, unknown>): void {
+    if (typeof escola.EscolaCNPJ === "string") {
+      const digits = escola.EscolaCNPJ.replace(/\D/g, "");
+      if (digits.length === 14) {
+        escola.EscolaCNPJ = `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
+      }
+    }
+
+    if (typeof escola.EscolaTelefone === "string") {
+      const digits = escola.EscolaTelefone.replace(/\D/g, "");
+      if (digits.length === 11) {
+        escola.EscolaTelefone = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
       }
     }
   }
