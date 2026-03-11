@@ -21,7 +21,8 @@ interface Escola {
 export default function DashboardPage() {
   const router = useRouter();
   const params = useParams();
-  const escolaGUID = params.escolaGUID as string;
+  const escolaGUIDParam = params?.escolaGUID;
+  const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
   const { usuario, token, isLoading: authLoading, logout } = useAuth();
 
   const [escola, setEscola] = useState<Escola | null>(null);

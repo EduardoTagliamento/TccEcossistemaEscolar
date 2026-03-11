@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch app.ts",
     "start": "node dist/app.js",
-    "build": "node node_modules/typescript/bin/tsc",
+    "build": "node node_modules/typescript/bin/tsc && node node_modules/next/dist/bin/next build frontend",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "prebuild": "npm run clean",
     "prestart": "npm run build",
@@ -33,7 +33,11 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.5",
+    "next": "^14.2.0",
     "node-cron": "^3.0.3",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-icons": "^5.0.0",
     "resend": "^6.9.2",
     "typescript": "^5.7.3",
     "uuid": "^11.0.3"
@@ -41,11 +45,12 @@
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.17",
-    "@types/jsonwebtoken": "^9.0.5",
     "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
     "@types/multer": "^1.4.12",
     "@types/node": "^20.17.12",
     "@types/node-cron": "^3.0.11",
+    "@types/react": "19.2.14",
     "@types/uuid": "^10.0.0",
     "tsx": "^4.21.0"
   }
