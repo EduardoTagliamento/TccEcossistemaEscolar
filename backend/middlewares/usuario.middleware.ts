@@ -4,29 +4,23 @@ import ErrorResponse from "../utils/ErrorResponse.js";
 export default class UsuarioMiddleware {
   validateCreateBody = (request: Request, _response: Response, next: NextFunction) => {
     console.log("🔷 UsuarioMiddleware.validateCreateBody()");
-    const body = request.body;
+    const usuario = this.extractUsuarioPayload(request.body);
+    this.normalizeUsuarioCampos(usuario);
+    this.validateCampos(usuario);
 
-    if (!body.usuario) {
-      throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'usuario' é obrigatório!",
-      });
-    }
-
-    this.validateCampos(body.usuario);
+    // Mantem compatibilidade com controller/service atuais.
+    request.body.usuario = usuario;
     next();
   };
 
   validateUpdateBody = (request: Request, _response: Response, next: NextFunction) => {
     console.log("🔷 UsuarioMiddleware.validateUpdateBody()");
-    const body = request.body;
+    const usuario = this.extractUsuarioPayload(request.body);
+    this.normalizeUsuarioCampos(usuario);
+    this.validateCampos(usuario, true);
 
-    if (!body.usuario) {
-      throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'usuario' é obrigatório!",
-      });
-    }
-
-    this.validateCampos(body.usuario, true);
+    // Mantem compatibilidade com controller/service atuais.
+    request.body.usuario = usuario;
     next();
   };
 
@@ -107,10 +101,19 @@ export default class UsuarioMiddleware {
             });
           }
 
-          if (campo === "UsuarioTelefone" && valor.length > 15) {
+          if (campo === "UsuarioTelefone" && valor.length !== 15) {
             throw new ErrorResponse(400, "Erro na validação de dados", {
-              message: "O campo 'UsuarioTelefone' deve ter no máximo 15 caracteres (formato: (XX) XXXXX-XXXX).",
+              message: "O campo 'UsuarioTelefone' deve ter 15 caracteres (formato: (XX) XXXXX-XXXX).",
             });
+          }
+
+          if (campo === "UsuarioTelefone") {
+            const telefoneRegex = /^\(\d{2}\) \d{5}-\d{4}$/;
+            if (!telefoneRegex.test(valor)) {
+              throw new ErrorResponse(400, "Erro na validação de dados", {
+                message: "O campo 'UsuarioTelefone' deve estar no formato (XX) XXXXX-XXXX.",
+              });
+            }
           }
 
           if (campo === "UsuarioSenha" && valor.length < 6) {
@@ -151,6 +154,38 @@ export default class UsuarioMiddleware {
             message: "O campo 'UsuarioEmailVerificado' deve ser boolean.",
           });
         }
+      }
+    }
+  }
+
+  private extractUsuarioPayload(body: unknown): Record<string, unknown> {
+    if (!body || typeof body !== "object") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "Corpo da requisição inválido.",
+      });
+    }
+
+    const bodyObj = body as Record<string, unknown>;
+
+    if (bodyObj.usuario && typeof bodyObj.usuario === "object" && !Array.isArray(bodyObj.usuario)) {
+      return bodyObj.usuario as Record<string, unknown>;
+    }
+
+    return bodyObj;
+  }
+
+  private normalizeUsuarioCampos(usuario: Record<string, unknown>): void {
+    if (typeof usuario.UsuarioCPF === "string") {
+      const digits = usuario.UsuarioCPF.replace(/\D/g, "");
+      if (digits.length === 11) {
+        usuario.UsuarioCPF = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+      }
+    }
+
+    if (typeof usuario.UsuarioTelefone === "string") {
+      const digits = usuario.UsuarioTelefone.replace(/\D/g, "");
+      if (digits.length === 11) {
+        usuario.UsuarioTelefone = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
       }
     }
   }

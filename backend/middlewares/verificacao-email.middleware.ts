@@ -12,52 +12,108 @@ export default class VerificacaoEmailMiddleware {
   validateCodigoBody = (request: Request, _response: Response, next: NextFunction) => {
     console.log("🔷 VerificacaoEmailMiddleware.validateCodigoBody()");
 
-    const body = request.body.verificacao;
+    const body = this.extractBody(request.body, "verificacao");
+    const cpfInput = (body.UsuarioCPF as string | undefined)?.trim();
+    const emailInput = ((body.UsuarioEmail as string | undefined) || (body.email as string | undefined))?.trim();
+    const codigoInput = ((body.VerificacaoCodigo as string | undefined) || (body.codigo as string | undefined))?.trim();
 
-    if (!body || typeof body !== "object") {
+    if (!cpfInput && !emailInput) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'verificacao' é obrigatório no body.",
+        message: "Informe 'UsuarioCPF' ou 'email' para validar o código.",
       });
     }
 
-    // Validar UsuarioCPF
-    if (!body.UsuarioCPF || typeof body.UsuarioCPF !== "string") {
-      throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'UsuarioCPF' é obrigatório e deve ser string.",
-      });
+    let cpfNormalizado: string | undefined;
+    if (cpfInput) {
+      const digits = cpfInput.replace(/\D/g, "");
+      if (digits.length !== 11) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O CPF deve ter 11 dígitos.",
+        });
+      }
+
+      cpfNormalizado = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
     }
 
-    const cpf = body.UsuarioCPF.trim();
-    const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
-    
-    if (!cpfRegex.test(cpf)) {
-      throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O CPF deve estar no formato XXX.XXX.XXX-XX.",
-      });
+    if (emailInput) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailInput)) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O campo 'email' deve ser um email válido.",
+        });
+      }
     }
 
     // Validar VerificacaoCodigo
-    if (!body.VerificacaoCodigo || typeof body.VerificacaoCodigo !== "string") {
+    if (!codigoInput) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'VerificacaoCodigo' é obrigatório e deve ser string.",
+        message: "O campo 'VerificacaoCodigo' (ou 'codigo') é obrigatório.",
       });
     }
 
-    const codigo = body.VerificacaoCodigo.trim();
-    
-    // Validar formato: exatamente 6 dígitos numéricos
-    if (codigo.length !== 6) {
+    if (codigoInput.length !== 6) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
         message: "O código deve ter exatamente 6 dígitos.",
       });
     }
 
     const codigoRegex = /^\d{6}$/;
-    if (!codigoRegex.test(codigo)) {
+    if (!codigoRegex.test(codigoInput)) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
         message: "O código deve conter apenas dígitos numéricos (0-9).",
       });
     }
+
+    request.body.verificacao = {
+      UsuarioCPF: cpfNormalizado,
+      UsuarioEmail: emailInput,
+      VerificacaoCodigo: codigoInput,
+    };
+
+    next();
+  };
+
+  /**
+   * Valida body para reenvio (POST /reenviar)
+   */
+  validateReenviarBody = (request: Request, _response: Response, next: NextFunction) => {
+    console.log("🔷 VerificacaoEmailMiddleware.validateReenviarBody()");
+
+    const body = this.extractBody(request.body);
+    const cpfInput = (body.UsuarioCPF as string | undefined)?.trim();
+    const emailInput = ((body.UsuarioEmail as string | undefined) || (body.email as string | undefined))?.trim();
+
+    if (!cpfInput && !emailInput) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "Informe 'UsuarioCPF' ou 'email' para reenviar o código.",
+      });
+    }
+
+    let cpfNormalizado: string | undefined;
+    if (cpfInput) {
+      const digits = cpfInput.replace(/\D/g, "");
+      if (digits.length !== 11) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O CPF deve ter 11 dígitos.",
+        });
+      }
+
+      cpfNormalizado = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+    }
+
+    if (emailInput) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailInput)) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O campo 'email' deve ser um email válido.",
+        });
+      }
+    }
+
+    request.body.verificacao = {
+      UsuarioCPF: cpfNormalizado,
+      UsuarioEmail: emailInput,
+    };
 
     next();
   };
@@ -75,13 +131,35 @@ export default class VerificacaoEmailMiddleware {
       });
     }
 
-    const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
-    if (!cpfRegex.test(UsuarioCPF)) {
+    const digits = UsuarioCPF.replace(/\D/g, "");
+    if (digits.length !== 11) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O CPF deve estar no formato XXX.XXX.XXX-XX.",
+        message: "O CPF deve ter 11 dígitos.",
       });
     }
 
+    request.params.UsuarioCPF = `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+
     next();
   };
+
+  private extractBody(body: unknown, nestedKey?: string): Record<string, unknown> {
+    if (!body || typeof body !== "object") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "Corpo da requisição inválido.",
+      });
+    }
+
+    const bodyObj = body as Record<string, unknown>;
+    if (
+      nestedKey &&
+      bodyObj[nestedKey] &&
+      typeof bodyObj[nestedKey] === "object" &&
+      !Array.isArray(bodyObj[nestedKey])
+    ) {
+      return bodyObj[nestedKey] as Record<string, unknown>;
+    }
+
+    return bodyObj;
+  }
 }
