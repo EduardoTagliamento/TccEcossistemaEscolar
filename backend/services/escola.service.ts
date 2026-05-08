@@ -197,6 +197,7 @@ export default class EscolaService {
 
   deleteEscola = async (EscolaGUID: string): Promise<boolean> => {
     console.log("🟣 EscolaService.deleteEscola()");
+    await this.#escolaxusuarioxfuncaoDAO.deleteByEscolaGUID(EscolaGUID);
     return this.#escolaDAO.delete(EscolaGUID);
   };
 

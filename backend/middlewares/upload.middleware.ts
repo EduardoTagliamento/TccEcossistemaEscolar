@@ -6,12 +6,18 @@
  */
 
 import multer, { FileFilterCallback } from 'multer';
+import fs from 'fs';
 import path from 'path';
 import { Request } from 'express';
 import ErrorResponse from '../utils/ErrorResponse.js';
 
 // Diretório onde as imagens serão salvas
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'logos');
+
+// Garante que o diretório exista em qualquer ambiente (local, docker, produção).
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
 
 // Tipos MIME permitidos
 const ALLOWED_MIME_TYPES = [
