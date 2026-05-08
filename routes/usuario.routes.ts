@@ -52,9 +52,9 @@ export default class UsuarioRoteador {
     // GET /api/usuario - Listar usuários (com filtro opcional por nome)
     this.#router.get("/", this.#usuarioControle.index);
 
-    // GET /api/usuario/:cpf/escolas - Buscar escolas do usuário
+    // GET /api/usuario/:UsuarioCPF/escolas - Buscar escolas do usuário
     this.#router.get(
-      "/:cpf/escolas",
+      "/:UsuarioCPF/escolas",
       this.#usuarioMiddleware.validateCpfParam,
       this.#escolaxUsuarioxFuncaoControle.getEscolasByUsuario
     );
