@@ -111,7 +111,7 @@ export default class EscolaxUsuarioxFuncaoControl {
   getEscolasByUsuario = async (request: Request, response: Response, next: NextFunction) => {
     console.log("Controller: EscolaxUsuarioxFuncaoControl.getEscolasByUsuario()");
     try {
-      const UsuarioCPF = request.params.cpf;
+      const UsuarioCPF = request.params.UsuarioCPF;
 
       // Busca as escolas normalmente
       const escolas = await this.#service.findEscolasByUsuario(UsuarioCPF);
