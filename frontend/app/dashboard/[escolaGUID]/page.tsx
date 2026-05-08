@@ -11,10 +11,14 @@ interface Escola {
   EscolaGUID: string;
   EscolaNome: string;
   EscolaEmail: string;
-  EscolaCor1: string | null;
-  EscolaCor2: string | null;
-  EscolaCor3: string | null;
-  EscolaCor4: string | null;
+  EscolaCor1?: string | null;
+  EscolaCor2?: string | null;
+  EscolaCor3?: string | null;
+  EscolaCor4?: string | null;
+  EscolaCorPriEs?: string | null;
+  EscolaCorPriCl?: string | null;
+  EscolaCorSecEs?: string | null;
+  EscolaCorSecCl?: string | null;
   EscolaLogo: string | null;
 }
 
@@ -27,6 +31,7 @@ export default function DashboardPage() {
 
   const [escola, setEscola] = useState<Escola | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !usuario) {
@@ -40,6 +45,9 @@ export default function DashboardPage() {
   }, [usuario, authLoading, escolaGUID]);
 
   const buscarEscola = async () => {
+    setLoadError(null);
+    setIsLoading(true);
+
     try {
       const response = await fetch(`/api/escola/${escolaGUID}`, {
         headers: {
@@ -50,27 +58,51 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao buscar escola');
+        const mensagem = data?.message || 'Erro ao buscar escola';
+
+        if (response.status === 401 || response.status === 403) {
+          // Token expirado/inválido: volta ao login em vez de loop entre páginas.
+          logout();
+          router.push('/login');
+          return;
+        }
+
+        if (response.status === 404) {
+          setLoadError('Escola não encontrada ou sem permissão de acesso.');
+          return;
+        }
+
+        throw new Error(mensagem);
       }
 
-      setEscola(data.data.escola);
-      
-      // Aplicar tema da escola
-      if (data.data.escola.EscolaCor1) {
-        document.documentElement.style.setProperty('--color-primary', data.data.escola.EscolaCor1);
+      const escolaPayload: Escola | undefined = data?.data?.escola ?? data?.data;
+      if (!escolaPayload) {
+        throw new Error('Resposta da API de escola está em formato inválido');
       }
-      if (data.data.escola.EscolaCor2) {
-        document.documentElement.style.setProperty('--color-secondary', data.data.escola.EscolaCor2);
+
+      setEscola(escolaPayload);
+
+      // Compatível com payload legado (EscolaCor1..4) e novo schema (EscolaCorPri/Sec*).
+      const corPrimary = escolaPayload.EscolaCor1 ?? escolaPayload.EscolaCorPriEs;
+      const corSecondary = escolaPayload.EscolaCor2 ?? escolaPayload.EscolaCorPriCl;
+      const corTertiary = escolaPayload.EscolaCor3 ?? escolaPayload.EscolaCorSecEs;
+      const corAccent = escolaPayload.EscolaCor4 ?? escolaPayload.EscolaCorSecCl;
+
+      if (corPrimary) {
+        document.documentElement.style.setProperty('--color-primary', corPrimary.startsWith('#') ? corPrimary : `#${corPrimary}`);
       }
-      if (data.data.escola.EscolaCor3) {
-        document.documentElement.style.setProperty('--color-tertiary', data.data.escola.EscolaCor3);
+      if (corSecondary) {
+        document.documentElement.style.setProperty('--color-secondary', corSecondary.startsWith('#') ? corSecondary : `#${corSecondary}`);
       }
-      if (data.data.escola.EscolaCor4) {
-        document.documentElement.style.setProperty('--color-accent', data.data.escola.EscolaCor4);
+      if (corTertiary) {
+        document.documentElement.style.setProperty('--color-tertiary', corTertiary.startsWith('#') ? corTertiary : `#${corTertiary}`);
+      }
+      if (corAccent) {
+        document.documentElement.style.setProperty('--color-accent', corAccent.startsWith('#') ? corAccent : `#${corAccent}`);
       }
     } catch (err: any) {
       console.error('Erro ao buscar escola:', err);
-      router.push('/selecionar-escola');
+      setLoadError(err?.message || 'Falha ao carregar o dashboard. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +120,31 @@ export default function DashboardPage() {
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}></div>
         <p>Carregando dashboard...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className={styles.errorContainer}>
+        <div className={styles.errorCard}>
+          <h2 className={styles.errorTitle}>Não foi possível carregar o dashboard</h2>
+          <p className={styles.errorText}>{loadError}</p>
+          <div className={styles.errorActions}>
+            <button
+              type="button"
+              className={styles.retryButton}
+              onClick={() => {
+                void buscarEscola();
+              }}
+            >
+              Tentar Novamente
+            </button>
+            <Link href="/selecionar-escola" className={styles.changeSchoolButton}>
+              Voltar para Seleção
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
