@@ -47,10 +47,16 @@ export default class AuthController {
       // Executar login
       const result = await this.#authService.login({ identifier, senha });
 
+      // Renomear 'user' para 'usuario' na resposta
+      const { token, user, ...rest } = result;
       res.status(200).json({
         success: true,
         message: 'Login realizado com sucesso',
-        data: result,
+        data: {
+          token,
+          usuario: user,
+          ...rest,
+        },
       });
     } catch (error) {
       next(error);
@@ -87,7 +93,7 @@ export default class AuthController {
       res.status(200).json({
         success: true,
         message: 'Usuário autenticado',
-        data: { user },
+        data: { usuario: user },
       });
     } catch (error) {
       next(error);
