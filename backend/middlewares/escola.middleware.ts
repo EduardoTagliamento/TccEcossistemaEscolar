@@ -135,6 +135,26 @@ export default class EscolaMiddleware {
   }
 
   private normalizeEscolaCampos(escola: Record<string, unknown>): void {
+    // Compatibilidade: mapeia payload antigo (EscolaCor1..4) para o schema atual.
+    if (escola.EscolaCorPriEs === undefined && typeof escola.EscolaCor1 === "string") {
+      escola.EscolaCorPriEs = escola.EscolaCor1;
+    }
+    if (escola.EscolaCorPriCl === undefined && typeof escola.EscolaCor2 === "string") {
+      escola.EscolaCorPriCl = escola.EscolaCor2;
+    }
+    if (escola.EscolaCorSecEs === undefined && typeof escola.EscolaCor3 === "string") {
+      escola.EscolaCorSecEs = escola.EscolaCor3;
+    }
+    if (escola.EscolaCorSecCl === undefined && typeof escola.EscolaCor4 === "string") {
+      escola.EscolaCorSecCl = escola.EscolaCor4;
+    }
+
+    // Remove aliases antigos para evitar uso acidental adiante.
+    delete escola.EscolaCor1;
+    delete escola.EscolaCor2;
+    delete escola.EscolaCor3;
+    delete escola.EscolaCor4;
+
     if (typeof escola.EscolaCNPJ === "string") {
       const digits = escola.EscolaCNPJ.replace(/\D/g, "");
       if (digits.length === 14) {
@@ -146,6 +166,14 @@ export default class EscolaMiddleware {
       const digits = escola.EscolaTelefone.replace(/\D/g, "");
       if (digits.length === 11) {
         escola.EscolaTelefone = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+      }
+    }
+
+    // Cor pode vir como #RRGGBB do frontend; persistimos como RRGGBB.
+    const colorFields = ["EscolaCorPriEs", "EscolaCorPriCl", "EscolaCorSecEs", "EscolaCorSecCl"];
+    for (const field of colorFields) {
+      if (typeof escola[field] === "string") {
+        escola[field] = (escola[field] as string).trim().replace(/^#/, "");
       }
     }
   }

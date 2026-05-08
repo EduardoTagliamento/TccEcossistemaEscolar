@@ -15,7 +15,7 @@ export default function CriarEscolaPage() {
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  const [cor1, setCor1] = useState('#00CED1'); // Verde-água Bauá
+  const [cor1, setCor1] = useState('#1cc47b'); // Verde-água Bauá
   const [cor2, setCor2] = useState('#FFFFFF'); // Branco
   const [cor3, setCor3] = useState('#000000'); // Preto
   const [cor4, setCor4] = useState('#FFD700'); // Dourado
@@ -94,10 +94,10 @@ export default function CriarEscolaPage() {
         body: JSON.stringify({
           EscolaNome: nome.trim(),
           EscolaEmail: email.trim().toLowerCase(),
-          EscolaCor1: cor1,
-          EscolaCor2: cor2,
-          EscolaCor3: cor3,
-          EscolaCor4: cor4,
+          EscolaCorPriEs: cor1,
+          EscolaCorPriCl: cor2,
+          EscolaCorSecEs: cor3,
+          EscolaCorSecCl: cor4,
         }),
       });
 
@@ -123,7 +123,8 @@ export default function CriarEscolaPage() {
         });
 
         if (!uploadResponse.ok) {
-          console.error('Erro ao fazer upload do logo, mas a escola foi criada');
+          const uploadData = await uploadResponse.json().catch(() => ({}));
+          throw new Error(uploadData.message || 'Escola criada, mas falhou ao salvar o logo');
         }
       }
 

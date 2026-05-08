@@ -13,7 +13,8 @@ export default class EscolaControl {
     console.log("🔵 EscolaControl.store()");
     try {
       const jsonEscola = request.body.escola;
-      const escolaCriada = await this.#escolaService.createEscola(jsonEscola);
+      const usuarioCPF = request.user?.UsuarioCPF;
+      const escolaCriada = await this.#escolaService.createEscola(jsonEscola, usuarioCPF);
 
       response.status(201).json({
         success: true,
