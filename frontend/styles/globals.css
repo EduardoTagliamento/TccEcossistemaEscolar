@@ -1,13 +1,13 @@
 :root {
   /* 🎨 Cores do tema Bauá (default) */
-  --color-primary: #00CED1; /* Verde-água / Turquesa */
+  --color-primary: #1cc47b; /* Verde-água */ 
   --color-secondary: #FFFFFF; /* Branco */
   --color-tertiary: #000000; /* Preto */
   --color-accent: #FFD700; /* Dourado (para destaques) */
   
   /* 🎨 Variações de cores primárias */
-  --color-primary-light: #5FDFDF;
-  --color-primary-dark: #00A5A8;
+  --color-primary-light: #48E5A1;
+  --color-primary-dark: #148F5A;
   
   /* 🎨 Cores de fundo */
   --bg-primary: #FFFFFF;
