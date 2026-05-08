@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -7,7 +7,14 @@ import styles from './page.module.css';
 
 export default function HomePage() {
   useEffect(() => {
-    // Smooth scroll para links de navegação
+    // Redireciona automaticamente se ja estiver autenticado (token no localStorage)
+    const token = localStorage.getItem('@baua:token');
+    if (token) {
+      window.location.href = '/selecionar-escola';
+      return;
+    }
+
+    // Smooth scroll para links de navegacao
     const handleNavClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (target.classList.contains(styles.navLink)) {
@@ -25,7 +32,7 @@ export default function HomePage() {
     // Observer para floating nav
     const hero = document.querySelector(`.${styles.hero}`);
     const floatingNav = document.querySelector(`.${styles.floatingHeroNav}`);
-    
+
     if (hero && floatingNav) {
       const observer = new IntersectionObserver(
         (entries) => {
@@ -42,7 +49,7 @@ export default function HomePage() {
       observer.observe(hero);
     }
 
-    // Observer para animações de cards
+    // Observer para animacoes de cards
     const cards = document.querySelectorAll(`.${styles.revealCard}`);
     const cardObserver = new IntersectionObserver(
       (entries) => {
@@ -70,10 +77,10 @@ export default function HomePage() {
         <nav className={styles.navbar}>
           <div className={styles.navLeftGroup}>
             <div className={styles.logoContainer}>
-              <Image 
-                src="/assets/baua_fundo.png" 
-                alt="Bauá Logo" 
-                width={50} 
+              <Image
+                src="/assets/baua_fundo.png"
+                alt="Bauá Logo"
+                width={50}
                 height={50}
                 className={styles.logoImg}
               />
@@ -97,8 +104,8 @@ export default function HomePage() {
               <h2 className={styles.heroTitle}>Bem-vindo ao Bauá</h2>
               <p className={styles.heroSubtitle}>Ecossistema Educacional Inteligente</p>
               <p className={styles.heroDescription}>
-                Uma plataforma educacional inspirada no Google Classroom, 
-                potencializada com recursos de Inteligência Artificial para 
+                Uma plataforma educacional inspirada no Google Classroom,
+                potencializada com recursos de Inteligência Artificial para
                 revolucionar a experiência de ensino e aprendizagem.
               </p>
               <div className={styles.heroButtons}>
@@ -111,10 +118,10 @@ export default function HomePage() {
               </div>
             </div>
             <div className={styles.heroImage}>
-              <Image 
-                src="/assets/baua_fundo.png" 
-                alt="Bauá - Pássaro da Sabedoria" 
-                width={400} 
+              <Image
+                src="/assets/baua_fundo.png"
+                alt="Bauá - Pássaro da Sabedoria"
+                width={400}
                 height={400}
                 className={styles.heroBird}
                 priority
@@ -132,7 +139,7 @@ export default function HomePage() {
                 <div className={styles.cardIcon}>📚</div>
                 <h3>Gestão Escolar Completa</h3>
                 <p>
-                  Gerencie escolas, turmas, professores, alunos e disciplinas 
+                  Gerencie escolas, turmas, professores, alunos e disciplinas
                   em uma única plataforma integrada e intuitiva.
                 </p>
               </div>
@@ -140,7 +147,7 @@ export default function HomePage() {
                 <div className={styles.cardIcon}>🤖</div>
                 <h3>Inteligência Artificial</h3>
                 <p>
-                  Recursos avançados de IA para personalizar o aprendizado, 
+                  Recursos avançados de IA para personalizar o aprendizado,
                   gerar planos de estudo e analisar desempenho dos alunos.
                 </p>
               </div>
@@ -148,7 +155,7 @@ export default function HomePage() {
                 <div className={styles.cardIcon}>🎓</div>
                 <h3>Experiência Educacional</h3>
                 <p>
-                  Interface moderna e acessível, inspirada nas melhores práticas 
+                  Interface moderna e acessível, inspirada nas melhores práticas
                   de plataformas educacionais do mundo.
                 </p>
               </div>
@@ -254,10 +261,10 @@ export default function HomePage() {
         <div className={styles.sectionContainer}>
           <div className={styles.footerContent}>
             <div className={styles.footerLogo}>
-              <Image 
-                src="/assets/baua_fundo.png" 
-                alt="Bauá" 
-                width={40} 
+              <Image
+                src="/assets/baua_fundo.png"
+                alt="Bauá"
+                width={40}
                 height={40}
                 className={styles.footerLogoImg}
               />
