@@ -228,10 +228,10 @@ export class EscolaxUsuarioxFuncaoDAO {
         e.EscolaGUID,
         e.EscolaNome,
         e.EscolaEmail,
-        e.EscolaCor1,
-        e.EscolaCor2,
-        e.EscolaCor3,
-        e.EscolaCor4,
+        e.EscolaCorPriEs AS EscolaCor1,
+        e.EscolaCorPriCl AS EscolaCor2,
+        e.EscolaCorSecEs AS EscolaCor3,
+        e.EscolaCorSecCl AS EscolaCor4,
         e.EscolaLogo,
         euf.EscolaxUsuarioxFuncaoId,
         euf.FuncaoId,
@@ -243,7 +243,6 @@ export class EscolaxUsuarioxFuncaoDAO {
       INNER JOIN escola e ON e.EscolaGUID = euf.EscolaGUID
       INNER JOIN funcao f ON f.FuncaoId = euf.FuncaoId
       WHERE euf.UsuarioCPF = ?
-        AND e.EscolaDeletedAt IS NULL
       ORDER BY e.EscolaNome ASC, f.FuncaoNome ASC;
     `;
 
