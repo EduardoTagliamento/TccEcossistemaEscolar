@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/auth/AuthContext';
-import '../styles/globals.css';
 
 export const metadata: Metadata = {
   title: 'Bauá - Ecossistema Educacional',
