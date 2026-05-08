@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   keywords: ['educação', 'gestão escolar', 'ensino', 'escola'],
   authors: [{ name: 'Eduardo Tagliamento' }],
   viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#00CED1',
+  themeColor: '#1cc47b',
   icons: {
     icon: '/favicon.ico',
   },

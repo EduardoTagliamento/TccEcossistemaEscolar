@@ -113,14 +113,19 @@ export default class EscolaxUsuarioxFuncaoControl {
     try {
       const UsuarioCPF = request.params.cpf;
 
+      // Busca as escolas normalmente
       const escolas = await this.#service.findEscolasByUsuario(UsuarioCPF);
 
+      // Sempre retorna 200, mesmo se lista vazia
       response.status(200).json({
         success: true,
-        message: "Escolas do usuario obtidas com sucesso",
+        message: escolas.length === 0
+          ? "Nenhuma escola vinculada ao usuário."
+          : "Escolas do usuario obtidas com sucesso",
         data: { escolas },
       });
     } catch (error) {
+      // Só lança erro se for erro de parâmetro ou exceção real
       next(error);
     }
   };
