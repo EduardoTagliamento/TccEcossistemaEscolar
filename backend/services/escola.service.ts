@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from "uuid";
 import ErrorResponse from "../utils/ErrorResponse.js";
 import Escola from "../entities/escola.model.js";
 import { EscolaDAO } from "../repositories/escola.repository";
+import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model.js";
+import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 
 export interface EscolaDTO {
   EscolaGUID: string;
@@ -22,14 +24,28 @@ export interface EscolaDTO {
 
 export default class EscolaService {
   #escolaDAO: EscolaDAO;
+  #escolaxusuarioxfuncaoDAO: EscolaxUsuarioxFuncaoDAO;
 
-  constructor(escolaDAODependency: EscolaDAO) {
+  constructor(
+    escolaDAODependency: EscolaDAO,
+    escolaxusuarioxfuncaoDAODependency: EscolaxUsuarioxFuncaoDAO
+  ) {
     console.log("⬆️  EscolaService.constructor()");
     this.#escolaDAO = escolaDAODependency;
+    this.#escolaxusuarioxfuncaoDAO = escolaxusuarioxfuncaoDAODependency;
   }
 
-  createEscola = async (jsonEscola: Record<string, unknown>): Promise<EscolaDTO> => {
+  createEscola = async (
+    jsonEscola: Record<string, unknown>,
+    usuarioCPF?: string
+  ): Promise<EscolaDTO> => {
     console.log("🟣 EscolaService.createEscola()");
+
+    if (!usuarioCPF) {
+      throw new ErrorResponse(401, "Usuário não autenticado", {
+        message: "É necessário estar autenticado para criar escola.",
+      });
+    }
 
     const escola = new Escola();
     escola.EscolaGUID = (jsonEscola.EscolaGUID as string) || uuidv4();
@@ -49,6 +65,10 @@ export default class EscolaService {
       escola.EscolaIcone = base64Icone ? Buffer.from(base64Icone, "base64") : null;
     }
 
+    if (jsonEscola.EscolaLogo !== undefined) {
+      escola.EscolaLogo = (jsonEscola.EscolaLogo as string | null) ?? null;
+    }
+
     // Validar CNPJ único (se fornecido)
     if (escola.EscolaCNPJ) {
       const existente = await this.#escolaDAO.findByField("EscolaCNPJ", escola.EscolaCNPJ);
@@ -60,6 +80,34 @@ export default class EscolaService {
     }
 
     await this.#escolaDAO.create(escola);
+
+    try {
+      // Vincula automaticamente o usuário criador como Coordenação (FuncaoId = 1).
+      const vinculoExistente = await this.#escolaxusuarioxfuncaoDAO.findByTripla(
+        usuarioCPF,
+        escola.EscolaGUID,
+        1
+      );
+
+      if (!vinculoExistente) {
+        const relacao = new EscolaxUsuarioxFuncao();
+        relacao.UsuarioCPF = this.normalizeCPF(usuarioCPF);
+        relacao.EscolaGUID = escola.EscolaGUID;
+        relacao.FuncaoId = 1;
+        relacao.Status = "Ativo";
+        relacao.DataInicio = new Date();
+        relacao.DataFim = null;
+
+        await this.#escolaxusuarioxfuncaoDAO.create(relacao);
+      }
+    } catch (error: any) {
+      // Mantém consistência dos dados caso o vínculo obrigatório falhe.
+      await this.#escolaDAO.delete(escola.EscolaGUID);
+      throw new ErrorResponse(500, "Erro ao vincular usuário à escola", {
+        message: error?.message || "A escola não pôde ser criada com vínculo de Coordenação.",
+      });
+    }
+
     return this.toDTO(escola);
   };
 
@@ -169,5 +217,19 @@ export default class EscolaService {
       EscolaCreatedAt: escola.EscolaCreatedAt ? escola.EscolaCreatedAt.toISOString() : null,
       EscolaUpdatedAt: escola.EscolaUpdatedAt ? escola.EscolaUpdatedAt.toISOString() : null,
     };
+  }
+
+  private normalizeCPF(cpf: string): string {
+    const normalized = cpf.trim();
+    if (/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(normalized)) {
+      return normalized;
+    }
+
+    const digits = normalized.replace(/\D/g, "");
+    if (digits.length === 11) {
+      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+    }
+
+    return normalized;
   }
 }

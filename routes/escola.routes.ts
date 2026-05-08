@@ -4,6 +4,8 @@ import EscolaControl from "../backend/controllers/escola.controller";
 import EscolaMiddleware from "../backend/middlewares/escola.middleware";
 import EscolaService from "../backend/services/escola.service";
 import { EscolaDAO } from "../backend/repositories/escola.repository";
+import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class EscolaRoteador {
   #router: Router;
@@ -22,6 +24,7 @@ export default class EscolaRoteador {
 
     this.#router.post(
       "/",
+      AuthMiddleware.authenticate,
       this.#escolaMiddleware.validateCreateBody,
       this.#escolaControle.store
     );
@@ -54,7 +57,8 @@ export default class EscolaRoteador {
 export const escolaRouterFactory = () => {
   const database = new MysqlDatabase();
   const escolaDAO = new EscolaDAO(database);
-  const escolaService = new EscolaService(escolaDAO);
+  const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
+  const escolaService = new EscolaService(escolaDAO, escolaxUsuarioxFuncaoDAO);
   const escolaControle = new EscolaControl(escolaService);
   const escolaMiddleware = new EscolaMiddleware();
   const roteador = new EscolaRoteador(escolaMiddleware, escolaControle);
