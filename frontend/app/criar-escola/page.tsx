@@ -82,6 +82,7 @@ export default function CriarEscolaPage() {
     }
 
     setIsLoading(true);
+    let escolaGUIDCriada: string | null = null;
 
     try {
       // 1. Criar escola
@@ -108,6 +109,7 @@ export default function CriarEscolaPage() {
       }
 
       const escolaGUID = escolaData.data.escola.EscolaGUID;
+      escolaGUIDCriada = escolaGUID;
 
       // 2. Upload de logo (se houver)
       if (logo) {
@@ -131,6 +133,20 @@ export default function CriarEscolaPage() {
       // 3. Redirecionar para seleção de escola
       router.push('/selecionar-escola');
     } catch (err: any) {
+      // Se houve falha após criar a escola (ex: upload de logo), faz rollback.
+      if (escolaGUIDCriada) {
+        try {
+          await fetch(`/api/escola/${escolaGUIDCriada}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+        } catch (_rollbackError) {
+          // Não sobrescreve erro original do fluxo.
+        }
+      }
+
       setError(err.message || 'Erro ao criar escola. Tente novamente.');
     } finally {
       setIsLoading(false);

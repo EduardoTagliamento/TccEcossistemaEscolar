@@ -87,6 +87,18 @@ export class EscolaxUsuarioxFuncaoDAO {
     return (resultado as { affectedRows: number }).affectedRows > 0;
   };
 
+  deleteByEscolaGUID = async (EscolaGUID: string): Promise<number> => {
+    console.log("Repository: EscolaxUsuarioxFuncaoDAO.deleteByEscolaGUID()");
+
+    const SQL = "DELETE FROM escolaxusuarioxfuncao WHERE EscolaGUID = ?;";
+    const params = [EscolaGUID];
+
+    const pool = await this.#database.getPool();
+    const [resultado] = await pool.execute(SQL, params);
+
+    return (resultado as { affectedRows: number }).affectedRows;
+  };
+
   findById = async (
     EscolaxUsuarioxFuncaoId: number
   ): Promise<EscolaxUsuarioxFuncao | null> => {
