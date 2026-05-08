@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  background-color: var(--bg-secondary);
+  background: linear-gradient(135deg, #1cc47b 0%, #169162 100%);
 }
 
 .loadingContainer {
