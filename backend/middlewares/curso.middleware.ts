@@ -23,8 +23,8 @@ export class CursoMiddleware {
 
       if (!curso || typeof curso !== "object") {
         throw new ErrorResponse(
-          'Campo "curso" é obrigatório e deve ser um objeto',
-          400
+          400,
+          'Campo "curso" é obrigatório e deve ser um objeto'
         );
       }
 
@@ -47,8 +47,8 @@ export class CursoMiddleware {
       const nomeTrimmed = curso.CursoNome.trim();
       if (nomeTrimmed.length < 3 || nomeTrimmed.length > 100) {
         throw new ErrorResponse(
-          "CursoNome deve ter entre 3 e 100 caracteres",
-          400
+          400,
+          "CursoNome deve ter entre 3 e 100 caracteres"
         );
       }
 
@@ -59,8 +59,8 @@ export class CursoMiddleware {
         curso.CursoStatus !== "Inativo"
       ) {
         throw new ErrorResponse(
-          'CursoStatus deve ser "Ativo" ou "Inativo"',
-          400
+          400,
+          'CursoStatus deve ser "Ativo" ou "Inativo"'
         );
       }
 
@@ -93,16 +93,16 @@ export class CursoMiddleware {
 
       if (!curso || typeof curso !== "object") {
         throw new ErrorResponse(
-          'Campo "curso" é obrigatório e deve ser um objeto',
-          400
+          400,
+          'Campo "curso" é obrigatório e deve ser um objeto'
         );
       }
 
       // Pelo menos um campo deve ser fornecido
       if (!curso.CursoNome && !curso.CursoStatus) {
         throw new ErrorResponse(
-          "É necessário fornecer ao menos um campo para atualização",
-          400
+          400,
+          "É necessário fornecer ao menos um campo para atualização"
         );
       }
 
@@ -115,8 +115,8 @@ export class CursoMiddleware {
         const nomeTrimmed = curso.CursoNome.trim();
         if (nomeTrimmed.length < 3 || nomeTrimmed.length > 100) {
           throw new ErrorResponse(
-            "CursoNome deve ter entre 3 e 100 caracteres",
-            400
+            400,
+            "CursoNome deve ter entre 3 e 100 caracteres"
           );
         }
       }
@@ -128,8 +128,8 @@ export class CursoMiddleware {
         curso.CursoStatus !== "Inativo"
       ) {
         throw new ErrorResponse(
-          'CursoStatus deve ser "Ativo" ou "Inativo"',
-          400
+          400,
+          'CursoStatus deve ser "Ativo" ou "Inativo"'
         );
       }
 

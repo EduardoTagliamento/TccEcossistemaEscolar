@@ -11,11 +11,10 @@
  * Execução: npx tsx backend/database/migrations/add-modulos-academicos.ts
  */
 
-import { getPool } from "../mysql";
+import { pool } from "../mysql";
 import { RowDataPacket } from "mysql2";
 
 async function runMigration() {
-  const pool = getPool();
   console.log("🔄 Iniciando migration: Add Academic Modules Tables...\n");
 
   try {

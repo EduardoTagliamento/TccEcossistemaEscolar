@@ -24,7 +24,7 @@ export function matriculaRouterFactory(): Router {
   const router = Router();
 
   // Inicializar dependências
-  const database = MysqlDatabase.getInstance();
+  const database = new MysqlDatabase();
   const matriculaDAO = new MatriculaDAO(database);
   const turmaDAO = new TurmaDAO(database);
   const usuarioDAO = new UsuarioDAO(database);
