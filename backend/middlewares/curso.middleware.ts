@@ -30,18 +30,18 @@ export class CursoMiddleware {
 
       // EscolaGUID: obrigatório, UUID
       if (!curso.EscolaGUID || typeof curso.EscolaGUID !== "string") {
-        throw new ErrorResponse("EscolaGUID é obrigatório", 400);
+        throw new ErrorResponse(400, "EscolaGUID é obrigatório");
       }
 
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(curso.EscolaGUID)) {
-        throw new ErrorResponse("EscolaGUID deve ser um UUID válido", 400);
+        throw new ErrorResponse(400, "EscolaGUID deve ser um UUID válido");
       }
 
       // CursoNome: obrigatório, 3-100 caracteres
       if (!curso.CursoNome || typeof curso.CursoNome !== "string") {
-        throw new ErrorResponse("CursoNome é obrigatório", 400);
+        throw new ErrorResponse(400, "CursoNome é obrigatório");
       }
 
       const nomeTrimmed = curso.CursoNome.trim();
@@ -109,7 +109,7 @@ export class CursoMiddleware {
       // CursoNome: opcional, 3-100 caracteres
       if (curso.CursoNome !== undefined) {
         if (typeof curso.CursoNome !== "string") {
-          throw new ErrorResponse("CursoNome deve ser uma string", 400);
+          throw new ErrorResponse(400, "CursoNome deve ser uma string");
         }
 
         const nomeTrimmed = curso.CursoNome.trim();
@@ -161,13 +161,13 @@ export class CursoMiddleware {
       const { guid } = req.params;
 
       if (!guid || typeof guid !== "string") {
-        throw new ErrorResponse("GUID do curso é obrigatório", 400);
+        throw new ErrorResponse(400, "GUID do curso é obrigatório");
       }
 
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(guid)) {
-        throw new ErrorResponse("GUID do curso deve ser um UUID válido", 400);
+        throw new ErrorResponse(400, "GUID do curso deve ser um UUID válido");
       }
 
       next();
