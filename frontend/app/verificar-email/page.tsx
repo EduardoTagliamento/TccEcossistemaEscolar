@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './page.module.css';
@@ -8,12 +8,37 @@ import styles from './page.module.css';
 export default function VerificarEmailPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const initialSendTriggeredRef = useRef(false);
 
   const [codigo, setCodigo] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+
+  const enviarCodigo = async (emailDestino: string, mensagemSucesso?: string) => {
+    if (!emailDestino) {
+      throw new Error('Email não informado para envio do código');
+    }
+
+    const response = await fetch('/api/verificacao-email/reenviar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: emailDestino }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro ao enviar código');
+    }
+
+    if (mensagemSucesso) {
+      setSuccess(mensagemSucesso);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -23,6 +48,29 @@ export default function VerificarEmailPage() {
     const params = new URLSearchParams(window.location.search);
     setEmail(params.get('email') || '');
   }, []);
+
+  useEffect(() => {
+    const envioInicial = async () => {
+      if (!email || initialSendTriggeredRef.current) {
+        return;
+      }
+
+      initialSendTriggeredRef.current = true;
+      setError('');
+      setSuccess('');
+
+      try {
+        setIsResending(true);
+        await enviarCodigo(email, 'Código enviado! Verifique seu email.');
+      } catch (err: any) {
+        setError(err.message || 'Erro ao enviar código de verificação');
+      } finally {
+        setIsResending(false);
+      }
+    };
+
+    void envioInicial();
+  }, [email]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -73,21 +121,7 @@ export default function VerificarEmailPage() {
     setIsResending(true);
 
     try {
-      const response = await fetch('/api/verificacao-email/reenviar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Erro ao reenviar código');
-      }
-
-      setSuccess('Código reenviado! Verifique seu email.');
+      await enviarCodigo(email, 'Código reenviado! Verifique seu email.');
     } catch (err: any) {
       setError(err.message || 'Erro ao reenviar código');
     } finally {
