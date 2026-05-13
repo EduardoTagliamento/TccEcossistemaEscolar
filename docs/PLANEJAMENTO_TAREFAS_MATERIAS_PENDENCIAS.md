@@ -4,6 +4,17 @@
 **Status:** Estrutura definida e documentada  
 **Escopo:** Sistema de avisos, tarefas acadêmicas e lembretes administrativos
 
+**Base técnica adotada:** Este documento deve seguir a logica definida em [docs/plano-tecnico-tarefas-calendario-notificacoes.md](docs/plano-tecnico-tarefas-calendario-notificacoes.md), especialmente para calendario, job diario de lembretes e trilha de notificacoes.
+
+### Logica de implementacao adotada (documento base)
+
+1. Toda tarefa criada com prazo valido deve aparecer no calendario.
+2. Um job diario verifica tarefas que vencem no dia seguinte.
+3. Alunos vinculados a turma/disciplina recebem lembrete por e-mail e WhatsApp.
+4. Cada envio deve ser registrado em log por aluno e por canal, com status de sucesso/falha.
+5. O sistema deve evitar duplicidade de notificacao para o mesmo par tarefa + aluno + canal.
+6. Canais sao independentes: falha em WhatsApp nao bloqueia envio por e-mail.
+
 ---
 
 ## 1. Decisão Arquitetural: 3 Tabelas Separadas
