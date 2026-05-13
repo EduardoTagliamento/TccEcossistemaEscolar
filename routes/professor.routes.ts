@@ -29,7 +29,7 @@ export function professorRouterFactory(): Router {
   const router = Router();
 
   // Inicializar dependências
-  const database = MysqlDatabase.getInstance();
+  const database = new MysqlDatabase();
   const alocacaoDAO = new MaterialProfessorTurmaDAO(database);
   const materiaDAO = new MateriaDAO(database);
   const turmaDAO = new TurmaDAO(database);

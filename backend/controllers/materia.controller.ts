@@ -11,18 +11,23 @@ export class MateriaController {
   }
 
   // POST /api/materia
-  store = async (req: Request, res: Response, next: NextFunction) => {
+  store = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     console.log("🔵 MateriaController.store()");
 
     try {
-      const usuarioCPF = (req as any).usuario?.UsuarioCPF;
+      const usuarioCPF = req.user?.UsuarioCPF;
 
       if (!usuarioCPF) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           message: "Usuário não autenticado",
           data: null,
         });
+        return;
       }
 
       const materia = await this.#materiaService.criarMateria(
@@ -30,18 +35,23 @@ export class MateriaController {
         usuarioCPF
       );
 
-      return res.status(201).json({
+      res.status(201).json({
         success: true,
         message: "Matéria criada com sucesso",
         data: { materia },
       });
     } catch (error) {
       next(error);
+      return;
     }
   };
 
   // GET /api/materia?EscolaGUID=&MateriaStatus=&MateriaIsTecnico=
-  index = async (req: Request, res: Response, next: NextFunction) => {
+  index = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     console.log("🔵 MateriaController.index()");
 
     try {
@@ -58,7 +68,7 @@ export class MateriaController {
 
       const materias = await this.#materiaService.listarMaterias(filters);
 
-      return res.json({
+      res.json({
         success: true,
         message: "Matérias listadas com sucesso",
         data: {
@@ -68,39 +78,50 @@ export class MateriaController {
       });
     } catch (error) {
       next(error);
+      return;
     }
   };
 
   // GET /api/materia/:guid
-  show = async (req: Request, res: Response, next: NextFunction) => {
+  show = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     console.log("🔵 MateriaController.show()");
 
     try {
       const materia = await this.#materiaService.buscarMateria(req.params.guid);
 
-      return res.json({
+      res.json({
         success: true,
         message: "Matéria encontrada",
         data: { materia },
       });
     } catch (error) {
       next(error);
+      return;
     }
   };
 
   // PUT /api/materia/:guid
-  update = async (req: Request, res: Response, next: NextFunction) => {
+  update = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     console.log("🔵 MateriaController.update()");
 
     try {
-      const usuarioCPF = (req as any).usuario?.UsuarioCPF;
+      const usuarioCPF = req.user?.UsuarioCPF;
 
       if (!usuarioCPF) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           message: "Usuário não autenticado",
           data: null,
         });
+        return;
       }
 
       const materia = await this.#materiaService.atualizarMateria(
@@ -109,40 +130,47 @@ export class MateriaController {
         usuarioCPF
       );
 
-      return res.json({
+      res.json({
         success: true,
         message: "Matéria atualizada com sucesso",
         data: { materia },
       });
     } catch (error) {
       next(error);
+      return;
     }
   };
 
   // DELETE /api/materia/:guid
-  destroy = async (req: Request, res: Response, next: NextFunction) => {
+  destroy = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
     console.log("🔵 MateriaController.destroy()");
 
     try {
-      const usuarioCPF = (req as any).usuario?.UsuarioCPF;
+      const usuarioCPF = req.user?.UsuarioCPF;
 
       if (!usuarioCPF) {
-        return res.status(401).json({
+        res.status(401).json({
           success: false,
           message: "Usuário não autenticado",
           data: null,
         });
+        return;
       }
 
       await this.#materiaService.excluirMateria(req.params.guid, usuarioCPF);
 
-      return res.json({
+      res.json({
         success: true,
         message: "Matéria excluída com sucesso",
         data: null,
       });
     } catch (error) {
       next(error);
+      return;
     }
   };
 }

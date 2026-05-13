@@ -34,12 +34,12 @@ export interface AlocacaoUpdateDTO {
 export interface ProfessorDTO {
   UsuarioCPF: string;
   UsuarioNome: string;
-  UsuarioEmail: string;
-  UsuarioDataNascimento: Date;
-  UsuarioTelefone: string;
-  UsuarioStatus: 'Ativo' | 'Inativo';
-  UsuarioCreatedAt: Date;
-  UsuarioUpdatedAt: Date;
+  UsuarioEmail: string | null;
+  UsuarioDataNascimento: Date | null;
+  UsuarioTelefone: string | null;
+  UsuarioStatus: 'Ativo' | 'Inativo' | 'Bloqueado';
+  UsuarioCreatedAt: Date | null;
+  UsuarioUpdatedAt: Date | null;
 }
 
 /**
