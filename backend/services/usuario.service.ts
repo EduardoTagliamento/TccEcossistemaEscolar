@@ -52,7 +52,7 @@ export default class UsuarioService {
 
     const usuario = new Usuario();
     usuario.UsuarioCPF = jsonUsuario.UsuarioCPF as string;
-    usuario.UsuarioNome = jsonUsuario.UsuarioNome as string;
+    usuario.UsuarioNome = this.normalizeNomeCompleto(jsonUsuario);
     usuario.UsuarioEmail = (jsonUsuario.UsuarioEmail as string | null) ?? null;
     usuario.UsuarioId = (jsonUsuario.UsuarioId as string | null) ?? null;
     usuario.UsuarioTelefone = (jsonUsuario.UsuarioTelefone as string | null) ?? null;
@@ -114,7 +114,10 @@ export default class UsuarioService {
     }
 
     // Atualizar campos (manter valores existentes se não fornecidos)
-    existente.UsuarioNome = (jsonUsuario.UsuarioNome as string) ?? existente.UsuarioNome;
+    if (jsonUsuario.UsuarioNome !== undefined || jsonUsuario.UsuarioSobrenome !== undefined) {
+      const nomeNormalizado = this.normalizeNomeCompleto(jsonUsuario, existente.UsuarioNome);
+      existente.UsuarioNome = nomeNormalizado;
+    }
     existente.UsuarioEmail = (jsonUsuario.UsuarioEmail as string | null) ?? existente.UsuarioEmail;
     existente.UsuarioId = (jsonUsuario.UsuarioId as string | null) ?? existente.UsuarioId;
     existente.UsuarioTelefone = (jsonUsuario.UsuarioTelefone as string | null) ?? existente.UsuarioTelefone;
@@ -190,4 +193,40 @@ export default class UsuarioService {
       // UsuarioSenha e UsuarioDeletedAt são omitidos intencionalmente por segurança
     };
   };
+
+  private normalizeNomeCompleto(
+    jsonUsuario: Record<string, unknown>,
+    nomeAtual?: string
+  ): string {
+    const nome =
+      typeof jsonUsuario.UsuarioNome === "string"
+        ? jsonUsuario.UsuarioNome
+        : nomeAtual || "";
+
+    const sobrenome =
+      typeof jsonUsuario.UsuarioSobrenome === "string"
+        ? jsonUsuario.UsuarioSobrenome
+        : "";
+
+    const nomeBase = this.capitalizeWords(nome);
+    const sobrenomeBase = this.capitalizeWords(sobrenome);
+    const nomeCompleto = [nomeBase, sobrenomeBase].filter(Boolean).join(" ").trim();
+
+    if (!nomeCompleto) {
+      throw new ErrorResponse(400, "Nome inválido", {
+        message: "Informe pelo menos o nome do usuário.",
+      });
+    }
+
+    return nomeCompleto;
+  }
+
+  private capitalizeWords(value: string): string {
+    return value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  }
 }
