@@ -84,18 +84,18 @@ export default class EscolaService {
     await this.#escolaDAO.create(escola);
 
     try {
-      // Vincula automaticamente o usuário criador como Coordenação (FuncaoId = 1).
+      // Vincula automaticamente o usuário criador como Direção (FuncaoId = 6).
       const vinculoExistente = await this.#escolaxusuarioxfuncaoDAO.findByTripla(
         usuarioCPF,
         escola.EscolaGUID,
-        1
+        6
       );
 
       if (!vinculoExistente) {
         const relacao = new EscolaxUsuarioxFuncao();
         relacao.UsuarioCPF = this.normalizeCPF(usuarioCPF);
         relacao.EscolaGUID = escola.EscolaGUID;
-        relacao.FuncaoId = 1;
+        relacao.FuncaoId = 6;
         relacao.Status = "Ativo";
         relacao.DataInicio = new Date();
         relacao.DataFim = null;
@@ -106,7 +106,7 @@ export default class EscolaService {
       // Mantém consistência dos dados caso o vínculo obrigatório falhe.
       await this.#escolaDAO.delete(escola.EscolaGUID);
       throw new ErrorResponse(500, "Erro ao vincular usuário à escola", {
-        message: error?.message || "A escola não pôde ser criada com vínculo de Coordenação.",
+        message: error?.message || "A escola não pôde ser criada com vínculo de Direção.",
       });
     }
 
