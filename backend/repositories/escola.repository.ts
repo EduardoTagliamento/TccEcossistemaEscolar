@@ -15,7 +15,7 @@ interface EscolaRow {
   EscolaIcone: Buffer | null;
   EscolaLogo: string | null;
   EscolaStatus: "Ativa" | "Inativa";
-  EscolaIsTecnica: boolean;
+  EscolaIsTecnica: boolean | number | string | Buffer | null;
   EscolaCreatedAt: Date;
   EscolaUpdatedAt: Date;
 }
@@ -171,10 +171,44 @@ export class EscolaDAO {
       escola.EscolaIcone = row.EscolaIcone;
       escola.EscolaLogo = row.EscolaLogo;
       escola.EscolaStatus = row.EscolaStatus;
-      escola.EscolaIsTecnica = row.EscolaIsTecnica;
+      escola.EscolaIsTecnica = this.parseBooleanField(row.EscolaIsTecnica, "EscolaIsTecnica");
       escola.EscolaCreatedAt = new Date(row.EscolaCreatedAt);
       escola.EscolaUpdatedAt = new Date(row.EscolaUpdatedAt);
       return escola;
     });
+  }
+
+  private parseBooleanField(
+    value: boolean | number | string | Buffer | null,
+    fieldName: string
+  ): boolean {
+    if (typeof value === "boolean") {
+      return value;
+    }
+
+    if (typeof value === "number") {
+      return value === 1;
+    }
+
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === "1" || normalized === "true") {
+        return true;
+      }
+
+      if (normalized === "0" || normalized === "false" || normalized === "") {
+        return false;
+      }
+    }
+
+    if (Buffer.isBuffer(value) && value.length > 0) {
+      return value[0] === 1;
+    }
+
+    if (value === null) {
+      return false;
+    }
+
+    throw new Error(`${fieldName} inválido no banco de dados`);
   }
 }
