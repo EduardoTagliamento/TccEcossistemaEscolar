@@ -15,6 +15,7 @@ interface EscolaRow {
   EscolaIcone: Buffer | null;
   EscolaLogo: string | null;
   EscolaStatus: "Ativa" | "Inativa";
+  EscolaIsTecnica: boolean;
   EscolaCreatedAt: Date;
   EscolaUpdatedAt: Date;
 }
@@ -33,8 +34,8 @@ export class EscolaDAO {
     const SQL = `
       INSERT INTO escola
       (EscolaGUID, EscolaNome, EscolaCNPJ, EscolaTelefone, EscolaEmail, EscolaEndereco,
-       EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone, EscolaLogo, EscolaStatus)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+       EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone, EscolaLogo, EscolaStatus, EscolaIsTecnica)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       escola.EscolaGUID,
@@ -50,6 +51,7 @@ export class EscolaDAO {
       escola.EscolaIcone,
       escola.EscolaLogo,
       escola.EscolaStatus,
+      escola.EscolaIsTecnica,
     ];
 
     const pool = await this.#database.getPool();
@@ -77,7 +79,7 @@ export class EscolaDAO {
       UPDATE escola
       SET EscolaNome = ?, EscolaCNPJ = ?, EscolaTelefone = ?, EscolaEmail = ?, EscolaEndereco = ?,
           EscolaCorPriEs = ?, EscolaCorPriCl = ?, EscolaCorSecEs = ?, EscolaCorSecCl = ?,
-          EscolaIcone = ?, EscolaLogo = ?, EscolaStatus = ?
+          EscolaIcone = ?, EscolaLogo = ?, EscolaStatus = ?, EscolaIsTecnica = ?
       WHERE EscolaGUID = ?;
     `;
     const params = [
@@ -93,6 +95,7 @@ export class EscolaDAO {
       escola.EscolaIcone,
       escola.EscolaLogo,
       escola.EscolaStatus,
+      escola.EscolaIsTecnica,
       escola.EscolaGUID,
     ];
 
@@ -168,6 +171,7 @@ export class EscolaDAO {
       escola.EscolaIcone = row.EscolaIcone;
       escola.EscolaLogo = row.EscolaLogo;
       escola.EscolaStatus = row.EscolaStatus;
+      escola.EscolaIsTecnica = row.EscolaIsTecnica;
       escola.EscolaCreatedAt = new Date(row.EscolaCreatedAt);
       escola.EscolaUpdatedAt = new Date(row.EscolaUpdatedAt);
       return escola;

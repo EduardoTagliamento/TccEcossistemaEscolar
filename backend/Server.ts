@@ -9,6 +9,11 @@ import ErrorResponse from "./utils/ErrorResponse.js";
 import { escolaRouterFactory } from "../routes/escola.routes";
 import { usuarioRouterFactory } from "../routes/usuario.routes";
 import { escolaxusuarioxfuncaoRouterFactory } from "../routes/escolaxusuarioxfuncao.routes";
+import { materiaRouterFactory } from "../routes/materia.routes";
+import { cursoRouterFactory } from "../routes/curso.routes";
+import { turmaRouterFactory } from "../routes/turma.routes";
+import { matriculaRouterFactory } from "../routes/matricula.routes";
+import { professorRouterFactory } from "../routes/professor.routes";
 import verificacaoEmailRoutes from "../routes/verificacao-email.routes.js";
 import authRoutes from "../routes/auth.routes.js";
 import uploadRoutes from "../routes/upload.routes.js";
@@ -255,6 +260,11 @@ export default class Server {
             escola: "/api/escola",
             usuario: "/api/usuario",
             escolaxusuarioxfuncao: "/api/escolaxusuarioxfuncao",
+            materia: "/api/materia",
+            curso: "/api/curso",
+            turma: "/api/turma",
+            matricula: "/api/matricula",
+            professor: "/api/professor",
             verificacaoEmail: "/api/verificacao-email",
           },
           frontendMainPagePath: "/ (Next.js app/page.tsx)",
@@ -294,7 +304,33 @@ export default class Server {
     const escolaxusuarioxfuncaoRouter = escolaxusuarioxfuncaoRouterFactory();
     this.#app.use("/api/escolaxusuarioxfuncao", escolaxusuarioxfuncaoRouter);
     console.log("✅ Rotas de Relacao registradas em /api/escolaxusuarioxfuncao");
-    // 📧 Rotas de Verificação de Email
+
+    // 📚 Rotas de Matéria
+    const materiaRouter = materiaRouterFactory();
+    this.#app.use("/api/materia", materiaRouter);
+    console.log("✅ Rotas de Matéria registradas em /api/materia");
+
+    // 🎓 Rotas de Curso
+    const cursoRouter = cursoRouterFactory();
+    this.#app.use("/api/curso", cursoRouter);
+    console.log("✅ Rotas de Curso registradas em /api/curso");
+
+    // 🏫 Rotas de Turma
+    const turmaRouter = turmaRouterFactory();
+    this.#app.use("/api/turma", turmaRouter);
+    console.log("✅ Rotas de Turma registradas em /api/turma");
+
+    // 🎓 Rotas de Matrícula
+    const matriculaRouter = matriculaRouterFactory();
+    this.#app.use("/api/matricula", matriculaRouter);
+    console.log("✅ Rotas de Matrícula registradas em /api/matricula");
+
+    // �‍🏫 Rotas de Professor (Alocações)
+    const professorRouter = professorRouterFactory();
+    this.#app.use("/api/professor", professorRouter);
+    console.log("✅ Rotas de Professor registradas em /api/professor");
+
+    // �📧 Rotas de Verificação de Email
     this.#app.use("/api/verificacao-email", verificacaoEmailRoutes);
     console.log("✅ Rotas de Verificação de Email registradas em /api/verificacao-email");
     

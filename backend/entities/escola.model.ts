@@ -19,6 +19,7 @@ export default class Escola {
   #EscolaIcone: Buffer | null = null;
   #EscolaLogo: string | null = null;
   #EscolaStatus: "Ativa" | "Inativa" = "Ativa";
+  #EscolaIsTecnica: boolean = false;
   #EscolaCreatedAt: Date | null = null;
   #EscolaUpdatedAt: Date | null = null;
 
@@ -259,6 +260,18 @@ export default class Escola {
       throw new Error("EscolaStatus deve ser 'Ativa' ou 'Inativa'.");
     }
     this.#EscolaStatus = value;
+  }
+
+  // ========== IsTecnica ==========
+  get EscolaIsTecnica(): boolean {
+    return this.#EscolaIsTecnica;
+  }
+
+  set EscolaIsTecnica(value: boolean) {
+    if (typeof value !== "boolean") {
+      throw new Error("EscolaIsTecnica deve ser um booleano.");
+    }
+    this.#EscolaIsTecnica = value;
   }
 
   // ========== Created At (Read-Only) ==========
