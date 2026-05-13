@@ -26,6 +26,10 @@ ALTER TABLE `escola`
 ADD COLUMN `EscolaLogo` VARCHAR(255) NULL AFTER `EscolaIcone`,
 ADD INDEX `idx_escola_logo` (`EscolaLogo`);
 
+ALTER TABLE `escola`
+ADD COLUMN `EscolaIsTecnica` BOOLEAN NOT NULL DEFAULT FALSE AFTER `EscolaStatus`,
+ADD INDEX `idx_escola_is_tecnica` (`EscolaIsTecnica`);
+
 -- =====================================================
 -- TABELA: usuario
 -- Descrição: Armazena informações dos usuários do sistema
@@ -152,6 +156,144 @@ CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
 -- );
 
 -- =====================================================
+-- TABELA: materia
+-- Descrição: Disciplinas/Matérias do sistema educacional
+-- Restrições: Nome único por escola
+-- =====================================================
+CREATE TABLE `tccecossistemaescolar`.`materia` (
+  `MateriaGUID` CHAR(36) NOT NULL,
+  `EscolaGUID` CHAR(36) NOT NULL,
+  `MateriaNome` VARCHAR(100) NOT NULL,
+  `MateriaIsTecnica` BOOLEAN NOT NULL DEFAULT FALSE,
+  `MateriaStatus` ENUM('Ativa', 'Inativa') NOT NULL DEFAULT 'Ativa',
+  `MateriaCreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `MateriaUpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`MateriaGUID`),
+  UNIQUE KEY `UQ_Escola_MateriaNome` (`EscolaGUID`, `MateriaNome`),
+  INDEX `idx_materia_escola` (`EscolaGUID`),
+  INDEX `idx_materia_nome` (`MateriaNome`),
+  INDEX `idx_materia_tecnica` (`MateriaIsTecnica`),
+  INDEX `idx_materia_status` (`MateriaStatus`),
+  CONSTRAINT `FK_Materia_Escola` FOREIGN KEY (`EscolaGUID`)
+    REFERENCES `tccecossistemaescolar`.`escola` (`EscolaGUID`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+);
+
+-- =====================================================
+-- TABELA: curso
+-- Descrição: Cursos técnicos do sistema
+-- Restrições: Apenas em escolas técnicas, nome único por escola
+-- =====================================================
+CREATE TABLE `tccecossistemaescolar`.`curso` (
+  `CursoGUID` CHAR(36) NOT NULL,
+  `EscolaGUID` CHAR(36) NOT NULL,
+  `CursoNome` VARCHAR(100) NOT NULL,
+  `CursoStatus` ENUM('Ativo', 'Inativo') NOT NULL DEFAULT 'Ativo',
+  `CursoCreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `CursoUpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`CursoGUID`),
+  UNIQUE KEY `UQ_Escola_CursoNome` (`EscolaGUID`, `CursoNome`),
+  INDEX `idx_curso_escola` (`EscolaGUID`),
+  INDEX `idx_curso_nome` (`CursoNome`),
+  INDEX `idx_curso_status` (`CursoStatus`),
+  CONSTRAINT `FK_Curso_Escola` FOREIGN KEY (`EscolaGUID`)
+    REFERENCES `tccecossistemaescolar`.`escola` (`EscolaGUID`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+);
+
+-- =====================================================
+-- TABELA: turma
+-- Descrição: Turmas/Classes do sistema
+-- Restrições: Identificador único (EscolaGUID + TurmaSerie + TurmaNome)
+-- =====================================================
+CREATE TABLE `tccecossistemaescolar`.`turma` (
+  `TurmaGUID` CHAR(36) NOT NULL,
+  `EscolaGUID` CHAR(36) NOT NULL,
+  `TurmaSerie` VARCHAR(20) NOT NULL,
+  `TurmaNome` VARCHAR(50) NOT NULL,
+  `TurmaIsTecnico` BOOLEAN NOT NULL DEFAULT FALSE,
+  `CursoGUID` CHAR(36) NULL,
+  `TurmaStatus` ENUM('Ativa', 'Inativa', 'Encerrada') NOT NULL DEFAULT 'Ativa',
+  `TurmaCreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `TurmaUpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`TurmaGUID`),
+  UNIQUE KEY `UQ_Escola_Serie_Nome` (`EscolaGUID`, `TurmaSerie`, `TurmaNome`),
+  INDEX `idx_turma_escola` (`EscolaGUID`),
+  INDEX `idx_turma_curso` (`CursoGUID`),
+  INDEX `idx_turma_tecnico` (`TurmaIsTecnico`),
+  INDEX `idx_turma_status` (`TurmaStatus`),
+  CONSTRAINT `FK_Turma_Escola` FOREIGN KEY (`EscolaGUID`)
+    REFERENCES `tccecossistemaescolar`.`escola` (`EscolaGUID`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+  CONSTRAINT `FK_Turma_Curso` FOREIGN KEY (`CursoGUID`)
+    REFERENCES `tccecossistemaescolar`.`curso` (`CursoGUID`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+);
+
+-- =====================================================
+-- TABELA: matricula
+-- Descrição: Matrículas de alunos em turmas
+-- Restrições: Um aluno pode ter apenas 1 matrícula ativa por vez
+-- =====================================================
+CREATE TABLE `tccecossistemaescolar`.`matricula` (
+  `MatriculaGUID` VARCHAR(36) NOT NULL,
+  `UsuarioCPF` VARCHAR(14) NOT NULL,
+  `TurmaGUID` CHAR(36) NOT NULL,
+  `MatriculaStatus` ENUM('Ativa', 'Transferida', 'Concluida', 'Cancelada') NOT NULL DEFAULT 'Ativa',
+  `MatriculaCreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `MatriculaUpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`MatriculaGUID`),
+  INDEX `idx_matricula_usuario` (`UsuarioCPF`),
+  INDEX `idx_matricula_turma` (`TurmaGUID`),
+  INDEX `idx_matricula_status` (`MatriculaStatus`),
+  CONSTRAINT `FK_Matricula_Usuario` FOREIGN KEY (`UsuarioCPF`)
+    REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+  CONSTRAINT `FK_Matricula_Turma` FOREIGN KEY (`TurmaGUID`)
+    REFERENCES `tccecossistemaescolar`.`turma` (`TurmaGUID`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+);
+
+-- =====================================================
+-- TABELA: materiaxprofessorxturma
+-- Descrição: Alocações de professores em matérias e turmas (N:N:N)
+-- Restrições: Combinação única (MateriaGUID + TurmaGUID + UsuarioCPF)
+-- =====================================================
+CREATE TABLE `tccecossistemaescolar`.`materiaxprofessorxturma` (
+  `MatProfTurGUID` CHAR(36) NOT NULL,
+  `MateriaGUID` CHAR(36) NOT NULL,
+  `TurmaGUID` CHAR(36) NOT NULL,
+  `UsuarioCPF` VARCHAR(14) NOT NULL,
+  `AlocacaoStatus` ENUM('Ativa', 'Inativa') NOT NULL DEFAULT 'Ativa',
+  `MatProfTurCreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `MatProfTurUpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`MatProfTurGUID`),
+  UNIQUE KEY `UQ_Materia_Turma_Professor` (`MateriaGUID`, `TurmaGUID`, `UsuarioCPF`),
+  INDEX `idx_mpt_materia` (`MateriaGUID`),
+  INDEX `idx_mpt_turma` (`TurmaGUID`),
+  INDEX `idx_mpt_professor` (`UsuarioCPF`),
+  INDEX `idx_mpt_status` (`AlocacaoStatus`),
+  CONSTRAINT `FK_MPT_Materia` FOREIGN KEY (`MateriaGUID`)
+    REFERENCES `tccecossistemaescolar`.`materia` (`MateriaGUID`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+  CONSTRAINT `FK_MPT_Turma` FOREIGN KEY (`TurmaGUID`)
+    REFERENCES `tccecossistemaescolar`.`turma` (`TurmaGUID`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+  CONSTRAINT `FK_MPT_Professor` FOREIGN KEY (`UsuarioCPF`)
+    REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+);
+
+-- =====================================================
 -- NOTAS IMPORTANTES
 -- =====================================================
 -- 1. UsuarioSenha: Armazenada com hash bcrypt (salt rounds: 10)
@@ -162,3 +304,15 @@ CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
 -- 6. Timestamps: Todas as tabelas têm CreatedAt/UpdatedAt para auditoria
 -- 7. Índices: Criados em campos frequentemente consultados
 -- 8. Status: Permite desativar sem deletar (boas práticas)
+
+-- =====================================================
+-- NOTAS SOBRE MÓDULOS ACADÊMICOS
+-- =====================================================
+-- 9. Matéria: MateriaIsTecnica=true requer EscolaIsTecnica=true
+-- 10. Curso: Todos os cursos são técnicos, apenas em escolas técnicas
+-- 11. Turma: TurmaIsTecnico=true requer CursoGUID (obrigatório)
+-- 12. Matrícula: MatriculaGUID aceita RA customizado (1-36 chars) ou UUID
+-- 13. Matrícula: Um aluno só pode ter 1 matrícula com status 'Ativa' por vez
+-- 14. Professor: Não é entidade separada, é Usuario com FuncaoId=3
+-- 15. Alocação: Junction table (Professor + Matéria + Turma) com UNIQUE constraint
+-- 16. Soft Delete: Status 'Inativa'/'Cancelada' preserva histórico acadêmico

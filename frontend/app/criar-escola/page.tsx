@@ -19,6 +19,7 @@ export default function CriarEscolaPage() {
   const [cor2, setCor2] = useState('#FFFFFF'); // Branco
   const [cor3, setCor3] = useState('#000000'); // Preto
   const [cor4, setCor4] = useState('#FFD700'); // Dourado
+  const [isTecnica, setIsTecnica] = useState(false); // Escola técnica
 
   const [logo, setLogo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -99,6 +100,7 @@ export default function CriarEscolaPage() {
           EscolaCorPriCl: cor2,
           EscolaCorSecEs: cor3,
           EscolaCorSecCl: cor4,
+          EscolaIsTecnica: isTecnica,
         }),
       });
 
@@ -282,6 +284,22 @@ export default function CriarEscolaPage() {
                 </button>
               </div>
             )}
+          </div>
+
+          <div className={styles.checkboxSection}>
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={isTecnica}
+                onChange={(e) => setIsTecnica(e.target.checked)}
+                disabled={isLoading}
+                className={styles.checkbox}
+              />
+              <span>Escola Técnica</span>
+            </label>
+            <p className={styles.checkboxHint}>
+              Marque esta opção se sua instituição oferece cursos técnicos profissionalizantes.
+            </p>
           </div>
 
           <button

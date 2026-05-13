@@ -1,0 +1,143 @@
+/**
+ * Representa a entidade Matéria do sistema.
+ *
+ * Objetivo:
+ * - Encapsular os dados de uma matéria/disciplina escolar.
+ * - Garantir integridade dos atributos via getters e setters.
+ */
+export default class Materia {
+  #MateriaGUID!: string;
+  #EscolaGUID!: string;
+  #MateriaNome: string | null = null;
+  #MateriaIsTecnico: boolean = false;
+  #MateriaStatus: "Ativa" | "Inativa" = "Ativa";
+  #MateriaCreatedAt: Date | null = null;
+  #MateriaUpdatedAt: Date | null = null;
+
+  constructor() {
+    console.log("⬆️  Materia.constructor()");
+  }
+
+  // ========== MateriaGUID ==========
+  get MateriaGUID(): string {
+    return this.#MateriaGUID;
+  }
+
+  set MateriaGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("MateriaGUID deve ser uma string não vazia.");
+    }
+
+    const guid = value.trim();
+    if (guid.length !== 36) {
+      throw new Error("MateriaGUID deve ter 36 caracteres.");
+    }
+
+    this.#MateriaGUID = guid;
+  }
+
+  // ========== EscolaGUID ==========
+  get EscolaGUID(): string {
+    return this.#EscolaGUID;
+  }
+
+  set EscolaGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("EscolaGUID deve ser uma string não vazia.");
+    }
+
+    const guid = value.trim();
+    if (guid.length !== 36) {
+      throw new Error("EscolaGUID deve ter 36 caracteres.");
+    }
+
+    this.#EscolaGUID = guid;
+  }
+
+  // ========== MateriaNome ==========
+  get MateriaNome(): string | null {
+    return this.#MateriaNome;
+  }
+
+  set MateriaNome(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#MateriaNome = null;
+      return;
+    }
+
+    if (typeof value !== "string") {
+      throw new Error("MateriaNome deve ser uma string.");
+    }
+
+    const nome = value.trim();
+    if (nome.length < 3) {
+      throw new Error("MateriaNome deve ter pelo menos 3 caracteres.");
+    }
+    if (nome.length > 100) {
+      throw new Error("MateriaNome deve ter no máximo 100 caracteres.");
+    }
+
+    this.#MateriaNome = nome;
+  }
+
+  // ========== MateriaIsTecnico ==========
+  get MateriaIsTecnico(): boolean {
+    return this.#MateriaIsTecnico;
+  }
+
+  set MateriaIsTecnico(value: boolean) {
+    if (typeof value !== "boolean") {
+      throw new Error("MateriaIsTecnico deve ser um booleano.");
+    }
+    this.#MateriaIsTecnico = value;
+  }
+
+  // ========== MateriaStatus ==========
+  get MateriaStatus(): "Ativa" | "Inativa" {
+    return this.#MateriaStatus;
+  }
+
+  set MateriaStatus(value: "Ativa" | "Inativa") {
+    const statusValidos = ["Ativa", "Inativa"];
+    if (!statusValidos.includes(value)) {
+      throw new Error("MateriaStatus deve ser 'Ativa' ou 'Inativa'.");
+    }
+    this.#MateriaStatus = value;
+  }
+
+  // ========== MateriaCreatedAt ==========
+  get MateriaCreatedAt(): Date | null {
+    return this.#MateriaCreatedAt;
+  }
+
+  set MateriaCreatedAt(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#MateriaCreatedAt = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("MateriaCreatedAt deve ser uma data válida.");
+    }
+
+    this.#MateriaCreatedAt = value;
+  }
+
+  // ========== MateriaUpdatedAt ==========
+  get MateriaUpdatedAt(): Date | null {
+    return this.#MateriaUpdatedAt;
+  }
+
+  set MateriaUpdatedAt(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#MateriaUpdatedAt = null;
+      return;
+    }
+
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new Error("MateriaUpdatedAt deve ser uma data válida.");
+    }
+
+    this.#MateriaUpdatedAt = value;
+  }
+}

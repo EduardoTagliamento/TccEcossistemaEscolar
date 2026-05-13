@@ -42,14 +42,102 @@ Documentacao completa da API de vinculos incluindo:
 - **PUT** `/api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId` - Atualizar vinculo
 - **DELETE** `/api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId` - Remover vinculo
 
+### ✅ Matéria (Subject/Discipline)
+**Arquivo:** [materia-api.md](materia-api.md)
+
+Documentação completa da API de gerenciamento de matérias incluindo:
+- **POST** `/api/materia` - Criar nova matéria
+- **GET** `/api/materia` - Listar matérias (com filtros)
+- **GET** `/api/materia/:guid` - Buscar matéria por ID
+- **PUT** `/api/materia/:guid` - Atualizar matéria
+- **DELETE** `/api/materia/:guid` - Remover matéria (soft delete)
+
+**Regras de Negócio Implementadas:**
+- ✅ Nome único por escola
+- ✅ Matérias técnicas requerem escola técnica
+- ✅ Permissões de escrita (Coordenação/Direção)
+- ✅ Soft delete com status
+- ✅ Filtros por escola e tipo (técnica/comum)
+
+### ✅ Curso (Technical Course)
+**Arquivo:** [curso-api.md](curso-api.md)
+
+Documentação completa da API de gerenciamento de cursos técnicos incluindo:
+- **POST** `/api/curso` - Criar novo curso
+- **GET** `/api/curso` - Listar cursos (com filtros)
+- **GET** `/api/curso/:guid` - Buscar curso por ID
+- **PUT** `/api/curso/:guid` - Atualizar curso
+- **DELETE** `/api/curso/:guid` - Remover curso (soft delete)
+
+**Regras de Negócio Implementadas:**
+- ✅ Cursos apenas em escolas técnicas (crítico)
+- ✅ Nome único por escola
+- ✅ Todos os cursos são técnicos (sem flag CursoIsTecnico)
+- ✅ Permissões de escrita (Coordenação/Direção)
+- ✅ Vinculado a turmas técnicas
+
+### ✅ Turma (Class/Group)
+**Arquivo:** [turma-api.md](turma-api.md)
+
+Documentação completa da API de gerenciamento de turmas incluindo:
+- **POST** `/api/turma` - Criar nova turma
+- **GET** `/api/turma` - Listar turmas (com filtros)
+- **GET** `/api/turma/:guid` - Buscar turma por ID
+- **PUT** `/api/turma/:guid` - Atualizar turma
+- **DELETE** `/api/turma/:guid` - Remover turma (soft delete)
+
+**Regras de Negócio Implementadas:**
+- ✅ Identificador único composto (EscolaGUID + TurmaSerie + TurmaNome)
+- ✅ Turmas técnicas requerem escola técnica
+- ✅ Turmas técnicas requerem curso
+- ✅ Curso deve pertencer à mesma escola
+- ✅ Status: Ativa/Inativa/Encerrada
+- ✅ Permissões de escrita (Coordenação/Direção)
+
+### ✅ Matrícula (Student Enrollment)
+**Arquivo:** [matricula-api.md](matricula-api.md)
+
+Documentação completa da API de gerenciamento de matrículas incluindo:
+- **POST** `/api/matricula` - Criar nova matrícula
+- **POST** `/api/matricula/transferir` - Transferir aluno (transacional)
+- **GET** `/api/matricula` - Listar matrículas (com filtros)
+- **GET** `/api/matricula/:guid` - Buscar matrícula por RA
+- **PUT** `/api/matricula/:guid` - Atualizar matrícula
+- **DELETE** `/api/matricula/:guid` - Remover matrícula (soft delete)
+
+**Regras de Negócio Implementadas:**
+- ✅ RA customizável (1-36 caracteres) ou gerado automaticamente
+- ✅ Um aluno = uma matrícula ativa (crítico)
+- ✅ Transferência transacional (BEGIN/COMMIT/ROLLBACK)
+- ✅ Usuário deve ser aluno (FuncaoId=5)
+- ✅ Status: Ativa/Transferida/Concluida/Cancelada
+- ✅ Permissões de escrita (Coordenação/Direção/Secretaria)
+
+### ✅ Professor (Teacher & Allocations)
+**Arquivo:** [professor-api.md](professor-api.md)
+
+Documentação completa da API de gerenciamento de professores e alocações incluindo:
+- **GET** `/api/professor` - Listar professores de uma escola
+- **GET** `/api/professor/:cpf/escolas/:escolaGUID/alocacoes` - Buscar alocações do professor
+- **POST** `/api/professor/alocacao` - Criar alocação (Professor + Matéria + Turma)
+- **GET** `/api/professor/alocacao` - Listar alocações (com filtros)
+- **GET** `/api/professor/alocacao/:guid` - Buscar alocação por ID
+- **PUT** `/api/professor/alocacao/:guid` - Atualizar alocação
+- **DELETE** `/api/professor/alocacao/:guid` - Remover alocação (soft delete)
+
+**Regras de Negócio Implementadas:**
+- ✅ Professor = Usuario com FuncaoId=3 (não é entidade separada)
+- ✅ Alocação única (UNIQUE: MateriaGUID + TurmaGUID + UsuarioCPF)
+- ✅ Matéria e Turma mesma escola
+- ✅ Professor deve ser ativo na escola
+- ✅ Junction table N:N:N (Professor + Matéria + Turma)
+- ✅ Permissões de escrita (Coordenação/Direção)
+
 ---
 
 ## 🔜 APIs em Desenvolvimento
 
-- **Turma** - Gerenciamento de turmas/classes
-- **Professor** - Gerenciamento de professores
 - **Aluno** - Gerenciamento de alunos
-- **Disciplina** - Gerenciamento de disciplinas
 - **Atividade** - Gerenciamento de atividades/tarefas
 - **Auth** - Autenticação JWT
 

@@ -242,6 +242,42 @@
   background-color: #d32f2f;
 }
 
+/* Checkbox Section */
+.checkboxSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  user-select: none;
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.checkboxHint {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: 0;
+  padding-left: 34px;
+}
+
 .submitButton {
   width: 100%;
   padding: var(--spacing-md);

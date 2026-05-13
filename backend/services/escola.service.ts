@@ -18,6 +18,7 @@ export interface EscolaDTO {
   EscolaCorSecCl: string | null;
   EscolaIcone: string | null; // base64
   EscolaStatus: "Ativa" | "Inativa";
+  EscolaIsTecnica: boolean;
   EscolaCreatedAt: string | null; // ISO string
   EscolaUpdatedAt: string | null; // ISO string
 }
@@ -59,6 +60,7 @@ export default class EscolaService {
     escola.EscolaCorSecEs = (jsonEscola.EscolaCorSecEs as string | null) ?? null;
     escola.EscolaCorSecCl = (jsonEscola.EscolaCorSecCl as string | null) ?? null;
     escola.EscolaStatus = (jsonEscola.EscolaStatus as "Ativa" | "Inativa") ?? "Ativa";
+    escola.EscolaIsTecnica = (jsonEscola.EscolaIsTecnica as boolean) ?? false;
 
     if (jsonEscola.EscolaIcone !== undefined && jsonEscola.EscolaIcone !== null) {
       const base64Icone = jsonEscola.EscolaIcone as string;
@@ -182,6 +184,10 @@ export default class EscolaService {
       jsonEscola.EscolaStatus !== undefined
         ? (jsonEscola.EscolaStatus as "Ativa" | "Inativa")
         : existente.EscolaStatus;
+    escola.EscolaIsTecnica =
+      jsonEscola.EscolaIsTecnica !== undefined
+        ? (jsonEscola.EscolaIsTecnica as boolean)
+        : existente.EscolaIsTecnica;
 
     if (jsonEscola.EscolaIcone === undefined) {
       escola.EscolaIcone = existente.EscolaIcone;
@@ -215,6 +221,7 @@ export default class EscolaService {
       EscolaCorSecCl: escola.EscolaCorSecCl,
       EscolaIcone: escola.EscolaIcone ? escola.EscolaIcone.toString("base64") : null,
       EscolaStatus: escola.EscolaStatus,
+      EscolaIsTecnica: escola.EscolaIsTecnica,
       EscolaCreatedAt: escola.EscolaCreatedAt ? escola.EscolaCreatedAt.toISOString() : null,
       EscolaUpdatedAt: escola.EscolaUpdatedAt ? escola.EscolaUpdatedAt.toISOString() : null,
     };
