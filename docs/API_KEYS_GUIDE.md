@@ -149,6 +149,7 @@ export default class OpenAIService {
           temperature: 0.7
         })
       });
+      //testee
 
       if (!response.ok) {
         const error = await response.json();
