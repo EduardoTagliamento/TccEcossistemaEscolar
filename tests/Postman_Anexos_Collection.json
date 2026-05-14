@@ -1,0 +1,338 @@
+{
+  "info": {
+    "name": "Sistema de Anexos - API Tests",
+    "description": "Coleção de testes para o sistema de anexos do TCC Ecossistema Escolar",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "SEU_TOKEN_AQUI",
+      "type": "string"
+    },
+    {
+      "key": "escolaGUID",
+      "value": "GUID_DA_ESCOLA",
+      "type": "string"
+    },
+    {
+      "key": "anexoGUID",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Upload Anexo (PDF)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.collectionVariables.set('anexoGUID', jsonData.data.anexo.AnexoGUID);",
+              "    pm.test('Upload bem-sucedido', function () {",
+              "        pm.expect(jsonData.success).to.be.true;",
+              "        pm.expect(jsonData.data.anexo.AnexoGUID).to.not.be.empty;",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "EscolaGUID",
+              "value": "{{escolaGUID}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/anexo",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "anexo"]
+        },
+        "description": "Upload de arquivo PDF. Selecione um arquivo PDF no campo 'file'."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Upload Anexo (Imagem)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "EscolaGUID",
+              "value": "{{escolaGUID}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/anexo",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "anexo"]
+        },
+        "description": "Upload de imagem (JPG, PNG, GIF, WEBP). Selecione uma imagem no campo 'file'."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Buscar Anexo por GUID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Anexo encontrado', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.success).to.be.true;",
+              "    pm.expect(jsonData.data.anexo).to.not.be.null;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/anexo/{{anexoGUID}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "anexo", "{{anexoGUID}}"]
+        },
+        "description": "Buscar metadados de um anexo pelo GUID. O GUID é preenchido automaticamente após upload."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Download Anexo",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/anexo/{{anexoGUID}}/download",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "anexo", "{{anexoGUID}}", "download"]
+        },
+        "description": "Download do arquivo físico. Retorna o arquivo binário com nome original."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Deletar Anexo",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Anexo excluído', function () {",
+              "    pm.response.to.have.status(200);",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.success).to.be.true;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/anexo/{{anexoGUID}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "anexo", "{{anexoGUID}}"]
+        },
+        "description": "Deletar anexo (banco + arquivo físico). Apenas o dono ou admin pode deletar."
+      },
+      "response": []
+    },
+    {
+      "name": "6. Upload Arquivo Inválido (deve falhar)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Deve rejeitar tipo inválido', function () {",
+              "    pm.response.to.have.status(400);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": [],
+              "description": "Enviar arquivo .exe ou outro tipo não permitido"
+            },
+            {
+              "key": "EscolaGUID",
+              "value": "{{escolaGUID}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/anexo",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "anexo"]
+        },
+        "description": "Teste de validação: enviar arquivo .exe ou tipo não permitido. Deve retornar erro 400."
+      },
+      "response": []
+    },
+    {
+      "name": "7. Upload Sem Arquivo (deve falhar)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Deve rejeitar requisição sem arquivo', function () {",
+              "    pm.response.to.have.status(400);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "EscolaGUID",
+              "value": "{{escolaGUID}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/anexo",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "anexo"]
+        },
+        "description": "Teste de validação: enviar requisição sem arquivo. Deve retornar erro 400."
+      },
+      "response": []
+    },
+    {
+      "name": "8. Buscar Anexo Inexistente (deve falhar)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Deve retornar 404', function () {",
+              "    pm.response.to.have.status(404);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/anexo/00000000-0000-0000-0000-000000000000",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "anexo", "00000000-0000-0000-0000-000000000000"]
+        },
+        "description": "Teste de validação: buscar anexo com GUID inexistente. Deve retornar 404."
+      },
+      "response": []
+    }
+  ]
+}
