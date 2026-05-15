@@ -1,0 +1,240 @@
+import { NextFunction, Request, Response } from "express";
+import TarefaAcademicaService, {
+  TarefaAcademicaCreateDTO,
+  TarefaAcademicaUpdateDTO,
+} from "../services/tarefaacademica.service";
+import { TarefaAcademicaFilters } from "../repositories/tarefaacademica.repository";
+import ErrorResponse from "../utils/ErrorResponse";
+
+/**
+ * Controller para endpoints de TarefaAcademica
+ *
+ * Endpoints:
+ * - POST   /api/tarefa                         (criar tarefa)
+ * - GET    /api/tarefa                         (listar com filtros)
+ * - GET    /api/tarefa/:TarefaGUID             (buscar por GUID)
+ * - PUT    /api/tarefa/:TarefaGUID             (atualizar)
+ * - DELETE /api/tarefa/:TarefaGUID             (excluir)
+ * - POST   /api/tarefa/:TarefaGUID/anexo-entrega  (vincular anexo de entrega)
+ * - DELETE /api/tarefa/:TarefaGUID/anexo-entrega/:AnexoGUID (desvincular anexo)
+ */
+export default class TarefaAcademicaControl {
+  #tarefaService: TarefaAcademicaService;
+
+  constructor(tarefaServiceDependency: TarefaAcademicaService) {
+    console.log("⬆️  TarefaAcademicaControl.constructor()");
+    this.#tarefaService = tarefaServiceDependency;
+  }
+
+  /**
+   * POST /api/tarefa
+   * Criar nova tarefa acadêmica
+   *
+   * Body: { tarefa: { MatriculaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo?,
+   *                   TarefaPrazoData, TarefaTipoEntrega, anexosDescricao? } }
+   */
+  store = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.store()");
+    try {
+      const { tarefa } = request.body;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      const createData: TarefaAcademicaCreateDTO = {
+        MatriculaGUID: tarefa.MatriculaGUID,
+        matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
+        TarefaTitulo: tarefa.TarefaTitulo,
+        TarefaConteudo: tarefa.TarefaConteudo,
+        TarefaPrazoData: new Date(tarefa.TarefaPrazoData),
+        TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+        anexosDescricao: tarefa.anexosDescricao,
+      };
+
+      const tarefaCriada = await this.#tarefaService.criarTarefa(createData, usuarioCPF);
+
+      response.status(201).json({
+        success: true,
+        message: "Tarefa criada com sucesso",
+        data: { tarefa: tarefaCriada },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/tarefa
+   * Listar tarefas com filtros opcionais
+   * Query: ?MatriculaGUID=X&matXprofXturxescGUID=Y&TarefaFeito=true&DataInicio=Z&DataFim=W
+   */
+  index = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.index()");
+    try {
+      const filters: TarefaAcademicaFilters = {
+        MatriculaGUID: request.query.MatriculaGUID as string | undefined,
+        matXprofXturxescGUID: request.query.matXprofXturxescGUID as string | undefined,
+        TarefaFeito:
+          request.query.TarefaFeito !== undefined
+            ? request.query.TarefaFeito === "true"
+            : undefined,
+        DataInicio: request.query.DataInicio
+          ? new Date(request.query.DataInicio as string)
+          : undefined,
+        DataFim: request.query.DataFim ? new Date(request.query.DataFim as string) : undefined,
+      };
+
+      const tarefas = await this.#tarefaService.listarTarefas(filters);
+
+      response.status(200).json({
+        success: true,
+        message: "Executado com sucesso",
+        data: { tarefas, total: tarefas.length },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/tarefa/:TarefaGUID
+   * Buscar tarefa por GUID
+   */
+  show = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.show()");
+    try {
+      const { TarefaGUID } = request.params;
+      const tarefa = await this.#tarefaService.buscarTarefa(TarefaGUID);
+
+      response.status(200).json({
+        success: true,
+        message: "Tarefa encontrada",
+        data: { tarefa },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PUT /api/tarefa/:TarefaGUID
+   * Atualizar tarefa
+   *
+   * Body: { tarefa: { TarefaTitulo?, TarefaConteudo?, TarefaPrazoData?,
+   *                   TarefaTipoEntrega?, TarefaFeito? } }
+   */
+  update = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.update()");
+    try {
+      const { TarefaGUID } = request.params;
+      const { tarefa } = request.body;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      const updateData: TarefaAcademicaUpdateDTO = {
+        TarefaTitulo: tarefa.TarefaTitulo,
+        TarefaConteudo: tarefa.TarefaConteudo,
+        TarefaPrazoData: tarefa.TarefaPrazoData ? new Date(tarefa.TarefaPrazoData) : undefined,
+        TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+        TarefaFeito: tarefa.TarefaFeito,
+      };
+
+      const tarefaAtualizada = await this.#tarefaService.atualizarTarefa(
+        TarefaGUID,
+        updateData,
+        usuarioCPF
+      );
+
+      response.status(200).json({
+        success: true,
+        message: "Tarefa atualizada com sucesso",
+        data: { tarefa: tarefaAtualizada },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /api/tarefa/:TarefaGUID
+   * Excluir tarefa
+   */
+  destroy = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.destroy()");
+    try {
+      const { TarefaGUID } = request.params;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      const excluida = await this.#tarefaService.excluirTarefa(TarefaGUID, usuarioCPF);
+
+      if (!excluida) {
+        response.status(404).json({
+          success: false,
+          message: "Tarefa não encontrada",
+          error: { message: `Não existe tarefa com id ${TarefaGUID}` },
+        });
+        return;
+      }
+
+      response.status(200).json({
+        success: true,
+        message: "Tarefa excluída com sucesso",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/tarefa/:TarefaGUID/anexo-entrega
+   * Vincular anexo de entrega a uma tarefa (aluno envia sua entrega)
+   *
+   * Body: { AnexoGUID: string }
+   */
+  enviarAnexoEntrega = async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.enviarAnexoEntrega()");
+    try {
+      const { TarefaGUID } = request.params;
+      const { AnexoGUID } = request.body;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      await this.#tarefaService.enviarAnexoEntrega(TarefaGUID, AnexoGUID, usuarioCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Anexo de entrega vinculado com sucesso",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /api/tarefa/:TarefaGUID/anexo-entrega/:AnexoGUID
+   * Remover vínculo de um anexo da tarefa
+   */
+  removerAnexo = async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.removerAnexo()");
+    try {
+      const { TarefaGUID, AnexoGUID } = request.params;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      await this.#tarefaService.removerAnexo(TarefaGUID, AnexoGUID, usuarioCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Anexo removido da tarefa com sucesso",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+}
