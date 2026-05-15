@@ -1,4 +1,4 @@
-// File: C:\Users\ContaSelf\Desktop\tcc\TccEcossistemaEscolar\frontend\app\criar-escola\page.tsx
+// File: /home/runner/work/TccEcossistemaEscolar/TccEcossistemaEscolar/frontend/app/criar-escola/page.tsx
 import * as entry from '../../../../app/criar-escola/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
