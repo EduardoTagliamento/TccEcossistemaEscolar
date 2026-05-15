@@ -1,4 +1,4 @@
-// File: /home/runner/work/TccEcossistemaEscolar/TccEcossistemaEscolar/frontend/app/verificar-email/page.tsx
+// File: C:\Users\ContaSelf\Desktop\tcc\TccEcossistemaEscolar\frontend\app\verificar-email\page.tsx
 import * as entry from '../../../../app/verificar-email/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
