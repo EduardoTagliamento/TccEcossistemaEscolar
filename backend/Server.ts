@@ -20,6 +20,7 @@ import uploadRoutes from "../routes/upload.routes.js";
 import { anexoRoutes } from "../routes/anexo.routes";
 import { tarefaAcademicaRoutes } from "../routes/tarefaacademica.routes";
 import { provaAgendadaRoutes } from "../routes/provaagendada.routes";
+import { calendarioRoutes } from "../routes/calendario.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler.js";
 import { pool } from "./database/mysql.js";
 
@@ -358,6 +359,10 @@ export default class Server {
     // 📝 Rotas de Prova Agendada
     this.#app.use("/api/prova", provaAgendadaRoutes);
     console.log("✅ Rotas de Prova Agendada registradas em /api/prova");
+
+    // 📅 Rotas de Calendário
+    this.#app.use("/api/calendario", calendarioRoutes);
+    console.log("✅ Rotas de Calendário registradas em /api/calendario");
 
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {
