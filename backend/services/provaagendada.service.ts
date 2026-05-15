@@ -157,6 +157,9 @@ export default class ProvaAgendadaService {
       });
     }
 
+    const updates: Partial<Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus">> =
+      {};
+
     if (data.ProvaData !== undefined) {
       const dataProva = new Date(data.ProvaData);
       const agoraComTolerancia = new Date(Date.now() - DATA_VALIDACAO_TOLERANCIA_MS);
@@ -165,13 +168,8 @@ export default class ProvaAgendadaService {
           message: "A nova data da prova não pode ser no passado.",
         });
       }
-      data.ProvaData = dataProva;
+      updates.ProvaData = dataProva;
     }
-
-    const updates: Partial<Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus">> =
-      {};
-
-    if (data.ProvaData !== undefined) updates.ProvaData = data.ProvaData;
     if (data.ProvaDescricao !== undefined) updates.ProvaDescricao = data.ProvaDescricao?.trim() ?? null;
     if (data.ProvaStatus !== undefined) updates.ProvaStatus = data.ProvaStatus;
 
