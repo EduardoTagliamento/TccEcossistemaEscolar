@@ -85,7 +85,8 @@ export default class ProvaAgendadaService {
     }
 
     const dataProva = new Date(data.ProvaData);
-    if (isNaN(dataProva.getTime()) || dataProva < new Date()) {
+    const agoraComTolerancia = new Date(Date.now() - 60 * 1000);
+    if (isNaN(dataProva.getTime()) || dataProva < agoraComTolerancia) {
       throw new ErrorResponse(400, "Data da prova inválida", {
         message: "A data da prova não pode ser no passado.",
       });
@@ -156,7 +157,8 @@ export default class ProvaAgendadaService {
 
     if (data.ProvaData !== undefined) {
       const dataProva = new Date(data.ProvaData);
-      if (isNaN(dataProva.getTime()) || dataProva < new Date()) {
+      const agoraComTolerancia = new Date(Date.now() - 60 * 1000);
+      if (isNaN(dataProva.getTime()) || dataProva < agoraComTolerancia) {
         throw new ErrorResponse(400, "Data da prova inválida", {
           message: "A nova data da prova não pode ser no passado.",
         });
@@ -167,7 +169,7 @@ export default class ProvaAgendadaService {
     const updates: Partial<Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus">> =
       {};
 
-    if (data.ProvaData !== undefined) updates.ProvaData = new Date(data.ProvaData);
+    if (data.ProvaData !== undefined) updates.ProvaData = data.ProvaData;
     if (data.ProvaDescricao !== undefined) updates.ProvaDescricao = data.ProvaDescricao?.trim() ?? null;
     if (data.ProvaStatus !== undefined) updates.ProvaStatus = data.ProvaStatus;
 
