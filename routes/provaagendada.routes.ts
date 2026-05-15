@@ -25,7 +25,7 @@ export default class ProvaAgendadaRoteador {
   createRoutes = (): Router => {
     console.log("⬆️ ProvaAgendadaRoteador.createRoutes()");
 
-    this.#router.use(AuthMiddleware.authenticate, provaRateLimitMiddleware);
+    this.#router.use(provaRateLimitMiddleware, AuthMiddleware.authenticate);
 
     this.#router.post(
       "/",

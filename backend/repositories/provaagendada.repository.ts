@@ -64,7 +64,7 @@ export class ProvaAgendadaDAO {
     console.log("🟢 ProvaAgendadaDAO.findAll()");
 
     let SQL = "SELECT * FROM provaagendada WHERE 1=1";
-    const params: any[] = [];
+    const params: (string | Date)[] = [];
 
     if (filters?.TurmaGUID) {
       SQL += " AND TurmaGUID = ?";
@@ -122,7 +122,7 @@ export class ProvaAgendadaDAO {
     console.log("🟢 ProvaAgendadaDAO.update()");
 
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: (string | Date | null)[] = [];
 
     if (updates.ProvaData !== undefined) {
       fields.push("ProvaData = ?");
