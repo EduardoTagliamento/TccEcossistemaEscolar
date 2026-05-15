@@ -18,6 +18,7 @@ import verificacaoEmailRoutes from "../routes/verificacao-email.routes.js";
 import authRoutes from "../routes/auth.routes.js";
 import uploadRoutes from "../routes/upload.routes.js";
 import { anexoRoutes } from "../routes/anexo.routes";
+import { tarefaAcademicaRoutes } from "../routes/tarefaacademica.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler.js";
 import { pool } from "./database/mysql.js";
 
@@ -259,6 +260,7 @@ export default class Server {
             auth: "/api/auth",
             upload: "/api/upload",
             anexo: "/api/anexo",
+            tarefa: "/api/tarefa",
             escola: "/api/escola",
             usuario: "/api/usuario",
             escolaxusuarioxfuncao: "/api/escolaxusuarioxfuncao",
@@ -347,6 +349,10 @@ export default class Server {
     // 📎 Rotas de Anexo
     this.#app.use("/api/anexo", anexoRoutes);
     console.log("✅ Rotas de Anexo registradas em /api/anexo");
+
+    // 📋 Rotas de Tarefa Acadêmica
+    this.#app.use("/api/tarefa", tarefaAcademicaRoutes);
+    console.log("✅ Rotas de Tarefa Acadêmica registradas em /api/tarefa");
 
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {
