@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { FiHome, FiSettings, FiUsers, FiFileText, FiLogOut } from 'react-icons/fi';
+import { FiHome, FiSettings, FiUsers, FiFileText, FiLogOut, FiBookOpen, FiEdit3, FiCalendar } from 'react-icons/fi';
 import styles from './page.module.css';
 
 interface Escola {
@@ -22,6 +22,16 @@ interface Escola {
   EscolaLogo: string | null;
 }
 
+interface EscolaComFuncoes {
+  escola: {
+    EscolaGUID: string;
+  };
+  funcoes: Array<{
+    FuncaoId: number;
+    Status: 'Ativo' | 'Inativo' | 'Finalizado';
+  }>;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const params = useParams();
@@ -30,6 +40,7 @@ export default function DashboardPage() {
   const { usuario, token, isLoading: authLoading, logout } = useAuth();
 
   const [escola, setEscola] = useState<Escola | null>(null);
+  const [funcoesEscola, setFuncoesEscola] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -41,6 +52,7 @@ export default function DashboardPage() {
 
     if (usuario && escolaGUID) {
       buscarEscola();
+      buscarFuncoesDaEscola();
     }
   }, [usuario, authLoading, escolaGUID]);
 
@@ -108,6 +120,32 @@ export default function DashboardPage() {
     }
   };
 
+  const buscarFuncoesDaEscola = async () => {
+    if (!usuario) return;
+
+    try {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) return;
+
+      const escolas: EscolaComFuncoes[] = data?.data?.escolas || [];
+      const escolaSelecionada = escolas.find((item) => item.escola.EscolaGUID === escolaGUID);
+      const funcoesAtivas = (escolaSelecionada?.funcoes || [])
+        .filter((funcao) => funcao.Status === 'Ativo')
+        .map((funcao) => funcao.FuncaoId);
+
+      setFuncoesEscola(funcoesAtivas);
+    } catch (error) {
+      console.error('Erro ao buscar funções da escola:', error);
+      setFuncoesEscola([]);
+    }
+  };
+
   const handleLogout = () => {
     if (confirm('Tem certeza que deseja sair?')) {
       logout();
@@ -148,6 +186,9 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const isProfessor = funcoesEscola.includes(3);
+  const isAluno = funcoesEscola.includes(5);
 
   return (
     <div className={styles.container}>
@@ -204,6 +245,25 @@ export default function DashboardPage() {
           <div className={styles.welcomeSection}>
             <h2>Bem-vindo ao Dashboard</h2>
             <p>Aqui você pode gerenciar todas as atividades da sua escola</p>
+            {(isProfessor || isAluno) && (
+              <div className={styles.quickActions}>
+                {isProfessor && (
+                  <>
+                    <Link href={`/dashboard/${escolaGUID}/crud-tarefa`} className={styles.quickActionButton}>
+                      <FiBookOpen /> CRUD de Tarefa
+                    </Link>
+                    <Link href={`/dashboard/${escolaGUID}/crud-provaagendada`} className={styles.quickActionButton}>
+                      <FiEdit3 /> CRUD de Prova Agendada
+                    </Link>
+                  </>
+                )}
+                {isAluno && (
+                  <Link href={`/dashboard/${escolaGUID}/calendario`} className={styles.quickActionButton}>
+                    <FiCalendar /> Calendário de Avisos
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
 
           <div className={styles.statsGrid}>
