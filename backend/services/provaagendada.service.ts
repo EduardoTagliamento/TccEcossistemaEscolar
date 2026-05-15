@@ -6,6 +6,8 @@ import { TurmaDAO } from "../repositories/turma.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 
+const DATA_VALIDACAO_TOLERANCIA_MS = 60 * 1000;
+
 export interface ProvaAgendadaDTO {
   ProvaAgendadaGUID: string;
   TurmaGUID: string;
@@ -85,7 +87,7 @@ export default class ProvaAgendadaService {
     }
 
     const dataProva = new Date(data.ProvaData);
-    const agoraComTolerancia = new Date(Date.now() - 60 * 1000);
+    const agoraComTolerancia = new Date(Date.now() - DATA_VALIDACAO_TOLERANCIA_MS);
     if (isNaN(dataProva.getTime()) || dataProva < agoraComTolerancia) {
       throw new ErrorResponse(400, "Data da prova inválida", {
         message: "A data da prova não pode ser no passado.",
@@ -157,7 +159,7 @@ export default class ProvaAgendadaService {
 
     if (data.ProvaData !== undefined) {
       const dataProva = new Date(data.ProvaData);
-      const agoraComTolerancia = new Date(Date.now() - 60 * 1000);
+      const agoraComTolerancia = new Date(Date.now() - DATA_VALIDACAO_TOLERANCIA_MS);
       if (isNaN(dataProva.getTime()) || dataProva < agoraComTolerancia) {
         throw new ErrorResponse(400, "Data da prova inválida", {
           message: "A nova data da prova não pode ser no passado.",

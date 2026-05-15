@@ -8,6 +8,7 @@ import { AnexoDAO } from "../backend/repositories/anexo.repository";
 import { TurmaDAO } from "../backend/repositories/turma.repository";
 import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import { provaRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
 export default class ProvaAgendadaRoteador {
   #router: Router;
@@ -24,30 +25,28 @@ export default class ProvaAgendadaRoteador {
   createRoutes = (): Router => {
     console.log("⬆️ ProvaAgendadaRoteador.createRoutes()");
 
+    this.#router.use(AuthMiddleware.authenticate, provaRateLimitMiddleware);
+
     this.#router.post(
       "/",
-      AuthMiddleware.authenticate,
       this.#middleware.validateCreateBody,
       this.#controle.store
     );
 
     this.#router.get(
       "/",
-      AuthMiddleware.authenticate,
       this.#middleware.validateFilters,
       this.#controle.index
     );
 
     this.#router.get(
       "/:ProvaAgendadaGUID",
-      AuthMiddleware.authenticate,
       this.#middleware.validateIdParam,
       this.#controle.show
     );
 
     this.#router.put(
       "/:ProvaAgendadaGUID",
-      AuthMiddleware.authenticate,
       this.#middleware.validateIdParam,
       this.#middleware.validateUpdateBody,
       this.#controle.update
@@ -55,7 +54,6 @@ export default class ProvaAgendadaRoteador {
 
     this.#router.delete(
       "/:ProvaAgendadaGUID",
-      AuthMiddleware.authenticate,
       this.#middleware.validateIdParam,
       this.#controle.destroy
     );
