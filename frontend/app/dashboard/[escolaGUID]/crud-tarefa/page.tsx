@@ -150,7 +150,7 @@ export default function CrudTarefaPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>CRUD de Tarefa</h1>
+        <h1>Cadastro de Tarefa</h1>
         <Link href={`/dashboard/${escolaGUID}`} className={styles.backLink}>Voltar ao Dashboard</Link>
       </header>
 
