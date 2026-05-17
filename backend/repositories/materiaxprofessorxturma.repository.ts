@@ -22,8 +22,8 @@ interface AlocacaoRow extends RowDataPacket {
   TurmaGUID: string;
   UsuarioCPF: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
-  AlocacaoCreatedAt: Date;
-  AlocacaoUpdatedAt: Date;
+  MatProfTurCreatedAt: Date;
+  MatProfTurUpdatedAt: Date;
 }
 
 /**
@@ -66,8 +66,8 @@ export class MaterialProfessorTurmaDAO {
         TurmaGUID,
         UsuarioCPF,
         AlocacaoStatus,
-        AlocacaoCreatedAt,
-        AlocacaoUpdatedAt
+        MatProfTurCreatedAt,
+        MatProfTurUpdatedAt
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
@@ -77,8 +77,8 @@ export class MaterialProfessorTurmaDAO {
       alocacao.TurmaGUID,
       alocacao.UsuarioCPF,
       alocacao.AlocacaoStatus,
-      alocacao.AlocacaoCreatedAt,
-      alocacao.AlocacaoUpdatedAt,
+      alocacao.MatProfTurCreatedAt,
+      alocacao.MatProfTurUpdatedAt,
     ];
 
     const pool = await this.#database.getPool();
@@ -113,7 +113,7 @@ export class MaterialProfessorTurmaDAO {
       params.push(filters.AlocacaoStatus);
     }
 
-    query += ` ORDER BY AlocacaoCreatedAt DESC`;
+    query += ` ORDER BY MatProfTurCreatedAt DESC`;
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(query, params);
@@ -142,7 +142,7 @@ export class MaterialProfessorTurmaDAO {
     const query = `
       SELECT * FROM materiaxprofessorxturma 
       WHERE UsuarioCPF = ?
-      ORDER BY AlocacaoCreatedAt DESC
+      ORDER BY MatProfTurCreatedAt DESC
     `;
 
     const pool = await this.#database.getPool();
@@ -158,7 +158,7 @@ export class MaterialProfessorTurmaDAO {
     const query = `
       SELECT * FROM materiaxprofessorxturma 
       WHERE TurmaGUID = ?
-      ORDER BY AlocacaoCreatedAt DESC
+      ORDER BY MatProfTurCreatedAt DESC
     `;
 
     const pool = await this.#database.getPool();
@@ -240,7 +240,7 @@ export class MaterialProfessorTurmaDAO {
     }
 
     // Sempre atualiza UpdatedAt
-    fields.push('AlocacaoUpdatedAt = ?');
+    fields.push('MatProfTurUpdatedAt = ?');
     params.push(new Date());
 
     if (fields.length === 1) {
@@ -268,7 +268,7 @@ export class MaterialProfessorTurmaDAO {
     const query = `
       UPDATE materiaxprofessorxturma 
       SET AlocacaoStatus = 'Inativa', 
-          AlocacaoUpdatedAt = ? 
+          MatProfTurUpdatedAt = ? 
       WHERE MatProfTurGUID = ?
     `;
 
@@ -321,8 +321,8 @@ export class MaterialProfessorTurmaDAO {
       alocacao.TurmaGUID = row.TurmaGUID;
       alocacao.UsuarioCPF = row.UsuarioCPF;
       alocacao.AlocacaoStatus = row.AlocacaoStatus;
-      alocacao.AlocacaoCreatedAt = row.AlocacaoCreatedAt;
-      alocacao.AlocacaoUpdatedAt = row.AlocacaoUpdatedAt;
+      alocacao.MatProfTurCreatedAt = row.MatProfTurCreatedAt;
+      alocacao.MatProfTurUpdatedAt = row.MatProfTurUpdatedAt;
       return alocacao;
     });
   }
