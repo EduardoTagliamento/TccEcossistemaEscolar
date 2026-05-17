@@ -334,6 +334,19 @@
   gap: 1.5rem;
 }
 
+.semAvisos {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-secondary, #666);
+  background-color: var(--bg-secondary, #f8f9fa);
+  border-radius: 8px;
+}
+
+.semAvisos p {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
 .avisoDetalhes {
   padding: 1.5rem;
   background-color: var(--bg-secondary, #f8f9fa);

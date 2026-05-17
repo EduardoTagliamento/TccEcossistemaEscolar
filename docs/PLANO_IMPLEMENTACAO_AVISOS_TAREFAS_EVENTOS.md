@@ -2187,19 +2187,221 @@ Endpoints especiais:
 - Anexo: 4 endpoints
 - TarefaAcademica: 6 endpoints
 - ProvaAgendada: 5 endpoints
-- Pendencia: 6 endpoints
+- Pendencia: 8 endpoints
 - Evento: 5 endpoints
 - RelacaoAnexos: 6 endpoints (integrados nos controllers)
 
 ---
 
+## 📋 ROTAS REST API IMPLEMENTADAS
+
+### 🔹 Fase 4 - Pendências (`/api/pendencia`)
+
+**Base URL:** `/api/pendencia`  
+**Autenticação:** Obrigatória (Bearer Token)
+
+| Método | Rota | Descrição | Permissão |
+|--------|------|-----------|-----------|
+| `POST` | `/` | Criar pendência | Coord/Sec/Dir |
+| `GET` | `/` | Listar pendências | Usuário vinculado à escola |
+| `GET` | `/:PendenciaGUID` | Buscar pendência específica | Usuário vinculado à escola |
+| `PUT` | `/:PendenciaGUID` | Atualizar pendência | Coord/Sec/Dir |
+| `DELETE` | `/:PendenciaGUID` | Excluir pendência | Coord/Sec/Dir |
+| `PATCH` | `/:PendenciaGUID/marcar-feito` | Marcar como concluída | Destinatário |
+| `GET` | `/contador/pendentes` | Contar pendências pendentes | Usuário vinculado |
+| `GET` | `/contador/atrasadas` | Contar pendências atrasadas | Usuário vinculado |
+
+**Query Params (`GET /`):**
+- `UsuarioCPF` (string): Filtrar por destinatário
+- `EscolaGUID` (string): Filtrar por escola
+- `PendenciaFeito` (boolean): Filtrar por status conclusão
+- `atrasadas` (boolean): Filtrar apenas atrasadas
+- `limit` (number): Limitar resultados
+- `offset` (number): Paginação
+
+**Body Example (`POST /`):**
+```json
+{
+  "pendencia": {
+    "UsuarioCPFDestino": "12345678901",
+    "EscolaGUID": "uuid-escola",
+    "PendenciaTitulo": "Enviar relatório de notas",
+    "PendenciaConteudo": "Relatório do 1º bimestre",
+    "PendenciaPrazoData": "2026-05-25T23:59:59Z"
+  }
+}
+```
+
+---
+
+### 🔹 Fase 5 - Eventos (`/api/evento`)
+
+**Base URL:** `/api/evento`  
+**Autenticação:** Obrigatória (Bearer Token)
+
+| Método | Rota | Descrição | Permissão |
+|--------|------|-----------|-----------|
+| `POST` | `/` | Criar evento | Coord/Sec/Dir |
+| `GET` | `/` | Listar eventos | Todos os usuários da escola |
+| `GET` | `/:EventoGUID` | Buscar evento específico | Usuário vinculado à escola |
+| `PUT` | `/:EventoGUID` | Atualizar evento | Coord/Sec/Dir |
+| `DELETE` | `/:EventoGUID` | Cancelar evento (soft delete) | Coord/Sec/Dir |
+
+**Query Params (`GET /`):**
+- `EscolaGUID` (string): Filtrar por escola
+- `EventoStatus` (enum): `"Agendado"` \| `"Realizado"` \| `"Cancelado"`
+- `dataInicio` (ISO date): Data início do range
+- `dataFim` (ISO date): Data fim do range
+
+**Body Example (`POST /`):**
+```json
+{
+  "evento": {
+    "EscolaGUID": "uuid-escola",
+    "EventoTitulo": "Festa Junina 2026",
+    "EventoDescricao": "Festa tradicional com quadrilha, comidas típicas e jogos",
+    "EventoData": "2026-06-24T18:00:00Z"
+  }
+}
+```
+
+---
+
+### 🔹 Fase 6 - RelacaoAnexos (Endpoints integrados)
+
+**Vinculação de Anexos a Recursos Acadêmicos**
+
+#### Tarefas (`/api/tarefaacademica/:TarefaGUID/anexos`)
+
+| Método | Rota | Descrição | Permissão |
+|--------|------|-----------|-----------|
+| `GET` | `/:TarefaGUID/anexos` | Listar anexos da tarefa | Aluno/Professor vinculado |
+| `POST` | `/:TarefaGUID/anexos` | Vincular anexo existente | Professor |
+
+**Body Example (`POST`):**
+```json
+{
+  "AnexoGUID": "uuid-anexo-existente"
+}
+```
+
+---
+
+#### Pendências (`/api/pendencia/:PendenciaGUID/anexos`)
+
+| Método | Rota | Descrição | Permissão |
+|--------|------|-----------|-----------|
+| `GET` | `/:PendenciaGUID/anexos` | Listar anexos da pendência | Destinatário/Criador |
+| `POST` | `/:PendenciaGUID/anexos` | Vincular anexo | Coord/Sec/Dir |
+
+---
+
+#### Eventos (`/api/evento/:EventoGUID/anexos`)
+
+| Método | Rota | Descrição | Permissão |
+|--------|------|-----------|-----------|
+| `GET` | `/:EventoGUID/anexos` | Listar anexos do evento | Todos da escola |
+| `POST` | `/:EventoGUID/anexos` | Vincular anexo (cartaz, convite) | Coord/Sec/Dir |
+
+---
+
+### 🔹 Notas sobre RelacaoAnexos
+
+**Fluxo Completo:**
+1. Upload de anexo via `/api/anexo` (retorna `AnexoGUID`)
+2. Vinculação do anexo a um recurso via `POST /:RecursoGUID/anexos`
+3. Listagem de anexos vinculados via `GET /:RecursoGUID/anexos`
+
+**Validações:**
+- Anexo e recurso devem pertencer à mesma escola
+- Não permite vincular o mesmo anexo duas vezes ao mesmo recurso
+- Retorna anexos com metadados completos (nome, tamanho, tipo, data)
+
+---
+
+## 🔧 ENDPOINTS DE SUPORTE
+
+### Calendário Unificado (`/api/calendario`)
+
+**Rota:** `GET /api/calendario`  
+**Descrição:** Retorna todos os avisos (tarefas, provas, pendências, eventos) em formato unificado para exibição em calendário.
+
+**Query Params:**
+- `EscolaGUID` (string, obrigatório)
+- `DataInicio` (ISO date, obrigatório)
+- `DataFim` (ISO date, obrigatório)
+
+**Response Example:**
+```json
+{
+  "success": true,
+  "data": {
+    "avisos": [
+      {
+        "TipoAviso": "tarefa",
+        "AvisoId": "uuid-tarefa",
+        "DataPrazo": "2026-05-20T23:59:59Z",
+        "Titulo": "Trabalho de Matemática",
+        "Descricao": "Resolver exercícios do capítulo 5",
+        "StatusTexto": "Pendente",
+        "TipoEntrega": "digital"
+      },
+      {
+        "TipoAviso": "prova",
+        "AvisoId": "uuid-prova",
+        "DataPrazo": "2026-05-22T14:00:00Z",
+        "Titulo": "Prova de História",
+        "Descricao": "Conteúdo: Revolução Industrial",
+        "StatusTexto": "Agendada",
+        "TipoEntrega": null
+      },
+      {
+        "TipoAviso": "pendencia",
+        "AvisoId": "uuid-pendencia",
+        "DataPrazo": "2026-05-25T17:00:00Z",
+        "Titulo": "Entregar relatório",
+        "Descricao": "Relatório de frequência",
+        "StatusTexto": "Não concluída",
+        "TipoEntrega": null
+      },
+      {
+        "TipoAviso": "evento",
+        "AvisoId": "uuid-evento",
+        "DataPrazo": "2026-06-24T18:00:00Z",
+        "Titulo": "Festa Junina",
+        "Descricao": "Festa tradicional da escola",
+        "StatusTexto": "Agendado",
+        "TipoEntrega": null
+      }
+    ]
+  }
+}
+```
+
+---
+
 ## 🎯 PRÓXIMOS PASSOS APÓS IMPLEMENTAÇÃO
 
+### ✅ Concluído
+- ✅ **Integração com Calendário** - Endpoint `/api/calendario` com query UNION implementado
+- ✅ **Frontend: Tela de Calendário Unificado** - Interface de calendário grid com modal implementada
+  - Grid 7x6 (semanas x dias)
+  - Fitas coloridas por tipo de aviso (tarefa, prova, evento)
+  - Modal com detalhes ao clicar em qualquer dia
+  - Navegação entre meses e dias com eventos
+  - Suporte para dias sem avisos (mensagem informativa)
+
+### 🔄 Em Planejamento
 1. **Job Diário de Lembretes** (conforme plano-tecnico-tarefas-calendario-notificacoes.md)
-2. **Integração com Calendário** (query UNION)
-3. **Notificações Email/WhatsApp**
-4. **Frontend: Tela de Calendário Unificado**
-5. **Dashboard Administrativo**
+   - Verificar tarefas/provas próximas do prazo
+   - Notificar alunos e professores via email/WhatsApp
+2. **Notificações Email/WhatsApp**
+   - Integração com serviços de envio (Brevo/Resend para email, Twilio para WhatsApp)
+   - Templates de notificação personalizados
+3. **Dashboard Administrativo**
+   - Estatísticas de tarefas concluídas/atrasadas
+   - Relatórios de eventos e pendências
+   - Visão geral de anexos por escola
 
 ---
 
