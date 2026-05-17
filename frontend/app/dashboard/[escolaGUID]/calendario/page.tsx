@@ -159,12 +159,14 @@ export default function CalendarioAlunoPage() {
   };
 
   const abrirModal = (dia: DiaCalendario) => {
+    setDiaSelecionado(dia);
     if (dia.avisos.length > 0) {
-      setDiaSelecionado(dia);
       const indice = diasComAvisos.findIndex(d => d.data.getTime() === dia.data.getTime());
       setIndiceDiaModal(indice);
-      setModalAberto(true);
+    } else {
+      setIndiceDiaModal(-1);
     }
+    setModalAberto(true);
   };
 
   const navegarDiaModal = (direcao: number) => {
@@ -303,8 +305,13 @@ export default function CalendarioAlunoPage() {
             </div>
             <button onClick={fecharModal} className={styles.modalClose}>✕</button>
             <div className={styles.modalBody}>
-              {diaSelecionado.avisos.map((aviso) => (
-                <div key={aviso.AvisoId} className={styles.avisoDetalhes}>
+              {diaSelecionado.avisos.length === 0 ? (
+                <div className={styles.semAvisos}>
+                  <p>📅 Nenhum aviso agendado para este dia.</p>
+                </div>
+              ) : (
+                diaSelecionado.avisos.map((aviso) => (
+                  <div key={aviso.AvisoId} className={styles.avisoDetalhes}>
                   <div className={styles.avisoHeader}>
                     <span
                       className={styles.avisoBadge}
@@ -332,7 +339,8 @@ export default function CalendarioAlunoPage() {
                     )}
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
