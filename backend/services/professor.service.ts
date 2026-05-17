@@ -420,9 +420,12 @@ export default class ProfessorService {
     TurmaNome: string;
     TurmaSerie: string;
   }>> {
+    // Normalizar CPF (remover formatação)
+    const cpfNormalizado = usuarioCPF.replace(/\D/g, '');
+
     // Buscar alocações do professor na escola
     const alocacoes = await this.#alocacaoDAO.findAll({
-      UsuarioCPF: usuarioCPF,
+      UsuarioCPF: cpfNormalizado,
       AlocacaoStatus: 'Ativa'
     });
 
@@ -476,6 +479,9 @@ export default class ProfessorService {
       }>;
     }>;
   }> {
+    // Normalizar CPF (remover formatação)
+    const cpfNormalizado = usuarioCPF.replace(/\D/g, '');
+
     // 1. Buscar alocação base
     const alocacaoBase = await this.#alocacaoDAO.findById(matProfTurGUID);
     if (!alocacaoBase) {
@@ -483,7 +489,7 @@ export default class ProfessorService {
     }
 
     // 2. Validar que o professor é dono da alocação
-    if (alocacaoBase.UsuarioCPF !== usuarioCPF) {
+    if (alocacaoBase.UsuarioCPF !== cpfNormalizado) {
       throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
     }
 
@@ -497,7 +503,7 @@ export default class ProfessorService {
 
     // 4. Buscar TODAS as alocações do professor na mesma matéria e escola
     const todasAlocacoes = await this.#alocacaoDAO.findAll({
-      UsuarioCPF: usuarioCPF,
+      UsuarioCPF: cpfNormalizado,
       MateriaGUID: alocacaoBase.MateriaGUID,
       AlocacaoStatus: 'Ativa'
     });
