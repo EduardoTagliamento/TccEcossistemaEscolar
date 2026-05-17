@@ -5,6 +5,8 @@ import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofe
 import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { TurmaDAO } from "../backend/repositories/turma.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { MatriculaDAO } from "../backend/repositories/matricula.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import MysqlDatabase from "../backend/database/MysqlDatabase";
 import { ProfessorMiddleware } from "../backend/middlewares/professor.middleware";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
@@ -34,12 +36,16 @@ export function professorRouterFactory(): Router {
   const materiaDAO = new MateriaDAO(database);
   const turmaDAO = new TurmaDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
+  const matriculaDAO = new MatriculaDAO(database);
+  const usuarioDAO = new UsuarioDAO(database);
 
   const professorService = new ProfessorService(
     alocacaoDAO,
     materiaDAO,
     turmaDAO,
-    escolaxUsuarioxFuncaoDAO
+    escolaxUsuarioxFuncaoDAO,
+    matriculaDAO,
+    usuarioDAO
   );
 
   const professorController = new ProfessorController(professorService);
@@ -122,6 +128,26 @@ export function professorRouterFactory(): Router {
     AuthMiddleware.authenticate,
     ProfessorMiddleware.validarGUID,
     professorController.excluirAlocacao
+  );
+
+  /**
+   * GET /api/professor/materias?EscolaGUID=X
+   * Buscar matérias que o professor logado leciona
+   */
+  router.get(
+    "/materias",
+    AuthMiddleware.authenticate,
+    professorController.buscarMateriasProfessor
+  );
+
+  /**
+   * GET /api/professor/turmas-alunos?MatProfTurGUID=X
+   * Buscar estrutura hierárquica de turmas e alunos
+   */
+  router.get(
+    "/turmas-alunos",
+    AuthMiddleware.authenticate,
+    professorController.buscarTurmasAlunos
   );
 
   return router;
