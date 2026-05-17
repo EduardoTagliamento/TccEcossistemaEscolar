@@ -22,8 +22,8 @@ export default class MaterialProfessorTurma {
   #TurmaGUID!: string;
   #UsuarioCPF!: string;
   #AlocacaoStatus!: 'Ativa' | 'Inativa';
-  #AlocacaoCreatedAt!: Date;
-  #AlocacaoUpdatedAt!: Date;
+  #MatProfTurCreatedAt!: Date;
+  #MatProfTurUpdatedAt!: Date;
 
   // ==================== GETTERS ====================
 
@@ -47,12 +47,12 @@ export default class MaterialProfessorTurma {
     return this.#AlocacaoStatus;
   }
 
-  get AlocacaoCreatedAt(): Date {
-    return this.#AlocacaoCreatedAt;
+  get MatProfTurCreatedAt(): Date {
+    return this.#MatProfTurCreatedAt;
   }
 
-  get AlocacaoUpdatedAt(): Date {
-    return this.#AlocacaoUpdatedAt;
+  get MatProfTurUpdatedAt(): Date {
+    return this.#MatProfTurUpdatedAt;
   }
 
   // ==================== SETTERS ====================
@@ -97,18 +97,18 @@ export default class MaterialProfessorTurma {
     this.#AlocacaoStatus = value;
   }
 
-  set AlocacaoCreatedAt(value: Date) {
+  set MatProfTurCreatedAt(value: Date) {
     if (!(value instanceof Date) || isNaN(value.getTime())) {
-      throw new Error('AlocacaoCreatedAt deve ser uma data válida');
+      throw new Error('MatProfTurCreatedAt deve ser uma data válida');
     }
-    this.#AlocacaoCreatedAt = value;
+    this.#MatProfTurCreatedAt = value;
   }
 
-  set AlocacaoUpdatedAt(value: Date) {
+  set MatProfTurUpdatedAt(value: Date) {
     if (!(value instanceof Date) || isNaN(value.getTime())) {
-      throw new Error('AlocacaoUpdatedAt deve ser uma data válida');
+      throw new Error('MatProfTurUpdatedAt deve ser uma data válida');
     }
-    this.#AlocacaoUpdatedAt = value;
+    this.#MatProfTurUpdatedAt = value;
   }
 
   // ==================== MÉTODOS ====================
@@ -122,8 +122,8 @@ export default class MaterialProfessorTurma {
     if (!this.#TurmaGUID) throw new Error('TurmaGUID é obrigatório');
     if (!this.#UsuarioCPF) throw new Error('UsuarioCPF é obrigatório');
     if (!this.#AlocacaoStatus) throw new Error('AlocacaoStatus é obrigatório');
-    if (!this.#AlocacaoCreatedAt) throw new Error('AlocacaoCreatedAt é obrigatório');
-    if (!this.#AlocacaoUpdatedAt) throw new Error('AlocacaoUpdatedAt é obrigatório');
+    if (!this.#MatProfTurCreatedAt) throw new Error('MatProfTurCreatedAt é obrigatório');
+    if (!this.#MatProfTurUpdatedAt) throw new Error('MatProfTurUpdatedAt é obrigatório');
   }
 
   /**
@@ -136,8 +136,8 @@ export default class MaterialProfessorTurma {
       TurmaGUID: this.#TurmaGUID,
       UsuarioCPF: this.#UsuarioCPF,
       AlocacaoStatus: this.#AlocacaoStatus,
-      AlocacaoCreatedAt: this.#AlocacaoCreatedAt,
-      AlocacaoUpdatedAt: this.#AlocacaoUpdatedAt,
+      MatProfTurCreatedAt: this.#MatProfTurCreatedAt,
+      MatProfTurUpdatedAt: this.#MatProfTurUpdatedAt,
     };
   }
 
@@ -151,8 +151,8 @@ export default class MaterialProfessorTurma {
     alocacao.TurmaGUID = data.TurmaGUID;
     alocacao.UsuarioCPF = data.UsuarioCPF;
     alocacao.AlocacaoStatus = data.AlocacaoStatus;
-    alocacao.AlocacaoCreatedAt = data.AlocacaoCreatedAt;
-    alocacao.AlocacaoUpdatedAt = data.AlocacaoUpdatedAt;
+    alocacao.MatProfTurCreatedAt = data.MatProfTurCreatedAt;
+    alocacao.MatProfTurUpdatedAt = data.MatProfTurUpdatedAt;
     return alocacao;
   }
 }

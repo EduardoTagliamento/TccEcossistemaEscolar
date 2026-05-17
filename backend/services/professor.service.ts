@@ -18,8 +18,8 @@ export interface AlocacaoDTO {
   TurmaGUID: string;
   UsuarioCPF: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
-  AlocacaoCreatedAt: Date;
-  AlocacaoUpdatedAt: Date;
+  MatProfTurCreatedAt: Date;
+  MatProfTurUpdatedAt: Date;
 }
 
 export interface AlocacaoCreateDTO {
@@ -231,8 +231,8 @@ export default class ProfessorService {
     alocacao.TurmaGUID = data.TurmaGUID;
     alocacao.UsuarioCPF = data.UsuarioCPF;
     alocacao.AlocacaoStatus = data.AlocacaoStatus || 'Ativa';
-    alocacao.AlocacaoCreatedAt = new Date();
-    alocacao.AlocacaoUpdatedAt = new Date();
+    alocacao.MatProfTurCreatedAt = new Date();
+    alocacao.MatProfTurUpdatedAt = new Date();
 
     alocacao.validar();
 
@@ -389,8 +389,8 @@ export default class ProfessorService {
       TurmaGUID: alocacao.TurmaGUID,
       UsuarioCPF: alocacao.UsuarioCPF,
       AlocacaoStatus: alocacao.AlocacaoStatus,
-      AlocacaoCreatedAt: alocacao.AlocacaoCreatedAt,
-      AlocacaoUpdatedAt: alocacao.AlocacaoUpdatedAt,
+      MatProfTurCreatedAt: alocacao.MatProfTurCreatedAt,
+      MatProfTurUpdatedAt: alocacao.MatProfTurUpdatedAt,
     };
   }
 
