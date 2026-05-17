@@ -150,6 +150,10 @@ export default function CalendarioAlunoPage() {
     return diasDoCalendario.filter(dia => dia.ehMesAtual && dia.avisos.length > 0);
   }, [diasDoCalendario]);
 
+  const diasDoMesAtual = useMemo(() => {
+    return diasDoCalendario.filter(dia => dia.ehMesAtual);
+  }, [diasDoCalendario]);
+
   const mudarMes = (direcao: number) => {
     setDataAtual(prev => {
       const nova = new Date(prev);
@@ -160,20 +164,16 @@ export default function CalendarioAlunoPage() {
 
   const abrirModal = (dia: DiaCalendario) => {
     setDiaSelecionado(dia);
-    if (dia.avisos.length > 0) {
-      const indice = diasComAvisos.findIndex(d => d.data.getTime() === dia.data.getTime());
-      setIndiceDiaModal(indice);
-    } else {
-      setIndiceDiaModal(-1);
-    }
+    const indice = diasDoMesAtual.findIndex(d => d.data.getTime() === dia.data.getTime());
+    setIndiceDiaModal(indice);
     setModalAberto(true);
   };
 
   const navegarDiaModal = (direcao: number) => {
     const novoIndice = indiceDiaModal + direcao;
-    if (novoIndice >= 0 && novoIndice < diasComAvisos.length) {
+    if (novoIndice >= 0 && novoIndice < diasDoMesAtual.length) {
       setIndiceDiaModal(novoIndice);
-      setDiaSelecionado(diasComAvisos[novoIndice]);
+      setDiaSelecionado(diasDoMesAtual[novoIndice]);
     }
   };
 
@@ -297,7 +297,7 @@ export default function CalendarioAlunoPage() {
               </h2>
               <button
                 onClick={() => navegarDiaModal(1)}
-                disabled={indiceDiaModal === diasComAvisos.length - 1}
+                disabled={indiceDiaModal === diasDoMesAtual.length - 1}
                 className={styles.modalNavButton}
               >
                 →

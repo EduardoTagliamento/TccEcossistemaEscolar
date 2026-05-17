@@ -4,6 +4,8 @@ import { MaterialProfessorTurmaDAO, AlocacaoFilters } from "../repositories/mate
 import { MateriaDAO } from "../repositories/materia.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import { MatriculaDAO } from "../repositories/matricula.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
 
@@ -60,17 +62,23 @@ export default class ProfessorService {
   #materiaDAO: MateriaDAO;
   #turmaDAO: TurmaDAO;
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #matriculaDAO: MatriculaDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     alocacaoDAO: MaterialProfessorTurmaDAO,
     materiaDAO: MateriaDAO,
     turmaDAO: TurmaDAO,
-    escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO
+    escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO,
+    matriculaDAO: MatriculaDAO,
+    usuarioDAO: UsuarioDAO
   ) {
     this.#alocacaoDAO = alocacaoDAO;
     this.#materiaDAO = materiaDAO;
     this.#turmaDAO = turmaDAO;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAO;
+    this.#matriculaDAO = matriculaDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
 
   /**
@@ -400,5 +408,149 @@ export default class ProfessorService {
       UsuarioCreatedAt: usuario.UsuarioCreatedAt,
       UsuarioUpdatedAt: usuario.UsuarioUpdatedAt,
     };
+  }
+
+  /**
+   * Buscar matérias que o professor leciona em uma escola
+   * Retorna lista com: MatProfTurGUID, MateriaNome, TurmaNome, TurmaSerie
+   */
+  async buscarMateriasProfessor(usuarioCPF: string, escolaGUID: string): Promise<Array<{
+    MatProfTurGUID: string;
+    MateriaNome: string;
+    TurmaNome: string;
+    TurmaSerie: string;
+  }>> {
+    // Buscar alocações do professor na escola
+    const alocacoes = await this.#alocacaoDAO.findAll({
+      UsuarioCPF: usuarioCPF,
+      AlocacaoStatus: 'Ativa'
+    });
+
+    if (alocacoes.length === 0) {
+      return [];
+    }
+
+    // Buscar informações de matéria e turma para cada alocação
+    const materias = await Promise.all(
+      alocacoes.map(async (alocacao) => {
+        const materia = await this.#materiaDAO.findById(alocacao.MateriaGUID);
+        const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
+
+        // Filtrar apenas da escola solicitada
+        if (!materia || !turma || turma.EscolaGUID !== escolaGUID) {
+          return null;
+        }
+
+        return {
+          MatProfTurGUID: alocacao.MatProfTurGUID,
+          MateriaNome: materia.MateriaNome,
+          TurmaNome: turma.TurmaNome,
+          TurmaSerie: turma.TurmaSerie
+        };
+      })
+    );
+
+    // Filtrar nulos e retornar
+    return materias.filter(m => m !== null) as Array<{
+      MatProfTurGUID: string;
+      MateriaNome: string;
+      TurmaNome: string;
+      TurmaSerie: string;
+    }>;
+  }
+
+  /**
+   * Buscar estrutura hierárquica de turmas e alunos para uma alocação específica
+   * Retorna: { series: [{ TurmaSerie, turmas: [{ TurmaGUID, TurmaNome, alunos: [...] }] }] }
+   */
+  async buscarTurmasAlunos(matProfTurGUID: string, usuarioCPF: string): Promise<{
+    series: Array<{
+      TurmaSerie: string;
+      turmas: Array<{
+        TurmaGUID: string;
+        TurmaNome: string;
+        alunos: Array<{
+          MatriculaGUID: string;
+          UsuarioNome: string;
+        }>;
+      }>;
+    }>;
+  }> {
+    // 1. Buscar alocação base
+    const alocacaoBase = await this.#alocacaoDAO.findById(matProfTurGUID);
+    if (!alocacaoBase) {
+      throw new ErrorResponse(404, 'Alocação não encontrada');
+    }
+
+    // 2. Validar que o professor é dono da alocação
+    if (alocacaoBase.UsuarioCPF !== usuarioCPF) {
+      throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
+    }
+
+    // 3. Buscar matéria e turma da alocação base
+    const materiaBase = await this.#materiaDAO.findById(alocacaoBase.MateriaGUID);
+    const turmaBase = await this.#turmaDAO.findById(alocacaoBase.TurmaGUID);
+
+    if (!materiaBase || !turmaBase) {
+      throw new ErrorResponse(404, 'Matéria ou turma não encontrada');
+    }
+
+    // 4. Buscar TODAS as alocações do professor na mesma matéria e escola
+    const todasAlocacoes = await this.#alocacaoDAO.findAll({
+      UsuarioCPF: usuarioCPF,
+      MateriaGUID: alocacaoBase.MateriaGUID,
+      AlocacaoStatus: 'Ativa'
+    });
+
+    // 5. Buscar turmas relacionadas às alocações
+    const turmasPromises = todasAlocacoes.map(async (alocacao) => {
+      const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
+      if (!turma || turma.EscolaGUID !== turmaBase.EscolaGUID) {
+        return null;
+      }
+      return turma;
+    });
+
+    const turmas = (await Promise.all(turmasPromises)).filter(t => t !== null);
+
+    // 6. Agrupar turmas por série
+    const seriesMap = new Map<string, any[]>();
+
+    for (const turma of turmas) {
+      if (!turma) continue;
+
+      if (!seriesMap.has(turma.TurmaSerie)) {
+        seriesMap.set(turma.TurmaSerie, []);
+      }
+
+      // Buscar alunos da turma (matrículas ativas)
+      const matriculas = await this.#matriculaDAO.findByTurma(turma.TurmaGUID);
+      const alunosPromises = matriculas
+        .filter(m => m.MatriculaStatus === 'Ativa')
+        .map(async (matricula) => {
+          const usuario = await this.#usuarioDAO.findByCPF(matricula.UsuarioCPF);
+          if (!usuario) return null;
+          return {
+            MatriculaGUID: matricula.MatriculaGUID,
+            UsuarioNome: usuario.UsuarioNome
+          };
+        });
+
+      const alunos = (await Promise.all(alunosPromises)).filter(a => a !== null);
+
+      seriesMap.get(turma.TurmaSerie)!.push({
+        TurmaGUID: turma.TurmaGUID,
+        TurmaNome: turma.TurmaNome,
+        alunos
+      });
+    }
+
+    // 7. Converter Map para array de séries
+    const series = Array.from(seriesMap.entries()).map(([serie, turmas]) => ({
+      TurmaSerie: serie,
+      turmas
+    }));
+
+    return { series };
   }
 }

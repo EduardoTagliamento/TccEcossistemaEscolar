@@ -300,4 +300,85 @@ export default class ProfessorController {
       }
     }
   };
+
+  /**
+   * GET /api/professor/materias
+   * Buscar matérias que o professor logado leciona
+   * Retorna: { MatProfTurGUID, MateriaNome, TurmaNome, TurmaSerie }
+   */
+  buscarMateriasProfessor = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const usuarioCPF = (req as any).usuario.cpf;
+      const { EscolaGUID } = req.query;
+
+      if (!EscolaGUID || typeof EscolaGUID !== 'string') {
+        throw new ErrorResponse('EscolaGUID é obrigatório', 400);
+      }
+
+      const materias = await this.#professorService.buscarMateriasProfessor(
+        usuarioCPF,
+        EscolaGUID
+      );
+
+      res.status(200).json({
+        success: true,
+        data: materias,
+        total: materias.length
+      });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error("Erro ao buscar matérias do professor:", error);
+        res.status(500).json({
+          success: false,
+          message: "Erro interno ao buscar matérias",
+        });
+      }
+    }
+  };
+
+  /**
+   * GET /api/professor/turmas-alunos?MatProfTurGUID=X
+   * Buscar estrutura hierárquica de turmas e alunos para uma alocação
+   * Retorna: { series: [{ TurmaSerie, turmas: [{ TurmaGUID, TurmaNome, alunos: [{ MatriculaGUID, UsuarioNome }] }] }] }
+   */
+  buscarTurmasAlunos = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { MatProfTurGUID } = req.query;
+      const usuarioCPF = (req as any).usuario.cpf;
+
+      if (!MatProfTurGUID || typeof MatProfTurGUID !== 'string') {
+        throw new ErrorResponse('MatProfTurGUID é obrigatório', 400);
+      }
+
+      const estrutura = await this.#professorService.buscarTurmasAlunos(
+        MatProfTurGUID,
+        usuarioCPF
+      );
+
+      res.status(200).json({
+        success: true,
+        data: estrutura
+      });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error("Erro ao buscar turmas e alunos:", error);
+        res.status(500).json({
+          success: false,
+          message: "Erro interno ao buscar turmas e alunos",
+        });
+      }
+    }
+  };
 }
