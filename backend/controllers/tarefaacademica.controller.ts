@@ -5,6 +5,7 @@ import TarefaAcademicaService, {
 } from "../services/tarefaacademica.service";
 import { TarefaAcademicaFilters } from "../repositories/tarefaacademica.repository";
 import ErrorResponse from "../utils/ErrorResponse";
+import RelacaoAnexosService from "../services/relacaoanexos.service";
 
 /**
  * Controller para endpoints de TarefaAcademica
@@ -20,10 +21,12 @@ import ErrorResponse from "../utils/ErrorResponse";
  */
 export default class TarefaAcademicaControl {
   #tarefaService: TarefaAcademicaService;
+  #relacaoAnexosService?: RelacaoAnexosService;
 
-  constructor(tarefaServiceDependency: TarefaAcademicaService) {
+  constructor(tarefaServiceDependency: TarefaAcademicaService, relacaoAnexosService?: RelacaoAnexosService) {
     console.log("⬆️  TarefaAcademicaControl.constructor()");
     this.#tarefaService = tarefaServiceDependency;
+    this.#relacaoAnexosService = relacaoAnexosService;
   }
 
   /**
@@ -232,6 +235,87 @@ export default class TarefaAcademicaControl {
         success: true,
         message: "Anexo removido da tarefa com sucesso",
         data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/tarefa/:TarefaGUID/anexos
+   * Listar anexos vinculados à tarefa (materiais de apoio)
+   */
+  listarAnexos = async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.listarAnexos()");
+    try {
+      if (!this.#relacaoAnexosService) {
+        return next(new ErrorResponse(500, "Serviço de anexos não configurado"));
+      }
+
+      const { TarefaGUID } = request.params;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      if (!usuarioCPF) {
+        return next(new ErrorResponse(401, "Não autenticado"));
+      }
+
+      const anexos = await this.#relacaoAnexosService.listarAnexosTarefa(TarefaGUID, usuarioCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Anexos listados com sucesso",
+        data: {
+          anexos,
+          total: anexos.length
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/tarefa/:TarefaGUID/anexos
+   * Vincular anexo à tarefa (material de apoio)
+   */
+  vincularAnexo = async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.vincularAnexo()");
+    try {
+      if (!this.#relacaoAnexosService) {
+        return next(new ErrorResponse(500, "Serviço de anexos não configurado"));
+      }
+
+      const { TarefaGUID } = request.params;
+      const { AnexoGUID } = request.body;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      if (!usuarioCPF) {
+        return next(new ErrorResponse(401, "Não autenticado"));
+      }
+
+      if (!AnexoGUID) {
+        return next(new ErrorResponse(400, "AnexoGUID é obrigatório"));
+      }
+
+      const relacao = await this.#relacaoAnexosService.vincularAnexo(
+        AnexoGUID,
+        "tarefa",
+        TarefaGUID,
+        usuarioCPF
+      );
+
+      response.status(201).json({
+        success: true,
+        message: "Anexo vinculado à tarefa com sucesso",
+        data: { relacao },
       });
     } catch (error) {
       next(error);

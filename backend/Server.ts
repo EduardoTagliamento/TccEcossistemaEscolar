@@ -21,6 +21,8 @@ import { anexoRoutes } from "../routes/anexo.routes";
 import { tarefaAcademicaRoutes } from "../routes/tarefaacademica.routes";
 import { provaAgendadaRoutes } from "../routes/provaagendada.routes";
 import { calendarioRoutes } from "../routes/calendario.routes";
+import { pendenciaRoutes } from "../routes/pendencia.routes";
+import { eventoRoutes } from "../routes/evento.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { pool } from "./database/mysql";
 
@@ -364,6 +366,14 @@ export default class Server {
     this.#app.use("/api/calendario", calendarioRoutes);
     console.log("✅ Rotas de Calendário registradas em /api/calendario");
 
+    // 📌 Rotas de Pendência
+    this.#app.use("/api/pendencia", pendenciaRoutes());
+    console.log("✅ Rotas de Pendência registradas em /api/pendencia");
+
+    // 🎉 Rotas de Evento
+    this.#app.use("/api/evento", eventoRoutes());
+    console.log("✅ Rotas de Evento registradas em /api/evento");
+
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {
       if (!this.#nextHandler) {
@@ -432,6 +442,19 @@ export default class Server {
             "POST /api/verificacao-email/solicitar/:UsuarioCPF",
             "POST /api/verificacao-email/validar",
             "POST /api/verificacao-email/reenviar/:UsuarioCPF",
+            "POST /api/pendencia",
+            "GET /api/pendencia",
+            "GET /api/pendencia/contador/pendentes",
+            "GET /api/pendencia/contador/atrasadas",
+            "GET /api/pendencia/:PendenciaGUID",
+            "PUT /api/pendencia/:PendenciaGUID",
+            "DELETE /api/pendencia/:PendenciaGUID",
+            "PATCH /api/pendencia/:PendenciaGUID/feito",
+            "POST /api/evento",
+            "GET /api/evento",
+            "GET /api/evento/:EventoGUID",
+            "PUT /api/evento/:EventoGUID",
+            "DELETE /api/evento/:EventoGUID",
           ],
         },
       });
