@@ -6,8 +6,8 @@
 
 import fs from 'fs';
 import path from 'path';
-import { EscolaDAO } from '../repositories/escola.repository.js';
-import ErrorResponse from '../utils/ErrorResponse.js';
+import { EscolaDAO } from '../repositories/escola.repository';
+import ErrorResponse from '../utils/ErrorResponse';
 
 export default class UploadService {
   #escolaDAO: EscolaDAO;

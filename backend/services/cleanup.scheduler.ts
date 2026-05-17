@@ -6,7 +6,7 @@
  */
 
 import cron from "node-cron";
-import { executarLimpeza } from "../scripts/cleanupVerificacaoEmail.js";
+import { executarLimpeza } from "../scripts/cleanupVerificacaoEmail";
 
 export class CleanupScheduler {
     #tasks: cron.ScheduledTask[] = [];

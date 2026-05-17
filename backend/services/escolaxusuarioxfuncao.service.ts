@@ -1,5 +1,5 @@
-import ErrorResponse from "../utils/ErrorResponse.js";
-import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model.js";
+import ErrorResponse from "../utils/ErrorResponse";
+import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 
 export interface EscolaxUsuarioxFuncaoDTO {

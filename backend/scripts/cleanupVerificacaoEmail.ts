@@ -10,9 +10,9 @@
  * - Manualmente: npx tsx backend/scripts/cleanupVerificacaoEmail.ts
  */
 
-import MysqlDatabase from "../database/MysqlDatabase.js";
-import { VerificacaoEmailDAO } from "../repositories/verificacao-email.repository.js";
-import { pool } from "../database/mysql.js";
+import MysqlDatabase from "../database/MysqlDatabase";
+import { VerificacaoEmailDAO } from "../repositories/verificacao-email.repository";
+import { pool } from "../database/mysql";
 
 /**
  * Executa a limpeza e retorna contagem de registros deletados

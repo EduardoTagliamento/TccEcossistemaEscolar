@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path from "path";
-import ErrorResponse from "../utils/ErrorResponse.js";
-import Anexo from "../entities/anexo.model.js";
+import ErrorResponse from "../utils/ErrorResponse";
+import Anexo from "../entities/anexo.model";
 import { AnexoDAO, AnexoFilters } from "../repositories/anexo.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 

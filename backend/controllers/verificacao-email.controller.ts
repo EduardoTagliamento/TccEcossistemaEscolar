@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import VerificacaoEmailService from "../services/verificacao-email.service.js";
+import VerificacaoEmailService from "../services/verificacao-email.service";
 
 export default class VerificacaoEmailController {
   #service: VerificacaoEmailService;

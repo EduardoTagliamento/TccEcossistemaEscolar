@@ -1,5 +1,5 @@
-import MysqlDatabase from "../database/MysqlDatabase.js";
-import VerificacaoEmail from "../entities/verificacao-email.model.js";
+import MysqlDatabase from "../database/MysqlDatabase";
+import VerificacaoEmail from "../entities/verificacao-email.model";
 
 interface VerificacaoEmailRow {
   VerificacaoId: number;

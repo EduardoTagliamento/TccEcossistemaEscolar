@@ -11,7 +11,7 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { Request } from 'express';
-import ErrorResponse from '../utils/ErrorResponse.js';
+import ErrorResponse from '../utils/ErrorResponse';
 
 // Diretório de upload para anexos
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'anexos');

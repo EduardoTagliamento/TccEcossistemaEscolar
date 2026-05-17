@@ -133,6 +133,96 @@ Documentação completa da API de gerenciamento de professores e alocações inc
 - ✅ Junction table N:N:N (Professor + Matéria + Turma)
 - ✅ Permissões de escrita (Coordenação/Direção)
 
+### ✅ Anexo (Attachment)
+**Arquivo:** [anexo-api.md](anexo-api.md)
+
+Documentação completa da API de gerenciamento de anexos (arquivos) incluindo:
+- **POST** `/api/anexo` - Upload de anexo (multipart/form-data)
+- **GET** `/api/anexo` - Listar anexos (com filtros)
+- **GET** `/api/anexo/:AnexoGUID` - Buscar metadados do anexo
+- **GET** `/api/anexo/:AnexoGUID/download` - Download do arquivo
+- **DELETE** `/api/anexo/:AnexoGUID` - Excluir anexo (físico + DB)
+
+**Regras de Negócio Implementadas:**
+- ✅ Tamanho máximo: 5MB por arquivo
+- ✅ Tipos permitidos: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, JPG, PNG, ZIP
+- ✅ Nomenclatura automática: UUID + extensão original
+- ✅ Armazenamento em `/uploads/anexos/`
+- ✅ Tipo determinado pela função do usuário (professor/aluno/admin)
+- ✅ Autenticação JWT obrigatória
+- ✅ Exclusão remove arquivo físico + registro DB
+
+### ✅ Prova Agendada (Scheduled Test)
+**Arquivo:** [provaagendada-api.md](provaagendada-api.md)
+
+Documentação completa da API de gerenciamento de provas agendadas incluindo:
+- **POST** `/api/prova` - Criar prova agendada
+- **GET** `/api/prova` - Listar provas (com filtros)
+- **GET** `/api/prova/:ProvaAgendadaGUID` - Buscar prova por ID
+- **PUT** `/api/prova/:ProvaAgendadaGUID` - Atualizar prova
+- **DELETE** `/api/prova/:ProvaAgendadaGUID` - Excluir prova
+
+**Regras de Negócio Implementadas:**
+- ✅ Data da prova não pode ser no passado
+- ✅ Status: Agendada, Realizada, Cancelada
+- ✅ Vinculada a turma e matéria específicas
+- ✅ Permissões de escrita (Professor/Coordenação/Secretaria)
+- ✅ Rate limiting (30 req/min)
+- ✅ Anexos opcionais com descrição
+- ✅ Autenticação JWT obrigatória
+
+### ✅ Tarefa Acadêmica (Academic Task)
+**Arquivo:** [tarefaacademica-api.md](tarefaacademica-api.md)
+
+Documentação completa da API de gerenciamento de tarefas acadêmicas incluindo:
+- **POST** `/api/tarefa` - Criar tarefa acadêmica
+- **GET** `/api/tarefa` - Listar tarefas (com filtros)
+- **GET** `/api/tarefa/:TarefaGUID` - Buscar tarefa por ID
+- **PUT** `/api/tarefa/:TarefaGUID` - Atualizar tarefa
+- **DELETE** `/api/tarefa/:TarefaGUID` - Excluir tarefa
+- **POST** `/api/tarefa/:TarefaGUID/anexo-entrega` - Vincular anexo de entrega
+- **DELETE** `/api/tarefa/:TarefaGUID/anexo-entrega/:AnexoGUID` - Remover anexo
+
+**Regras de Negócio Implementadas:**
+- ✅ Prazo não pode ser no passado
+- ✅ Tipo de entrega: digital ou física
+- ✅ Status de conclusão (TarefaFeito: true/false)
+- ✅ Data de realização automática ao marcar como feito
+- ✅ Vinculação com matrícula (aluno) e matéria-professor-turma
+- ✅ Anexos de entrega gerenciados (vincular/desvincular)
+- ✅ Permissões diferenciadas (Professor: full / Aluno: marcar feito)
+- ✅ Autenticação JWT obrigatória
+
+### ✅ Upload (File Upload)
+**Arquivo:** [upload-api.md](upload-api.md)
+
+Documentação completa da API de gerenciamento de upload de arquivos incluindo:
+- **POST** `/api/upload/logo/:EscolaGUID` - Upload de logo da escola
+- **DELETE** `/api/upload/logo/:EscolaGUID` - Remover logo da escola
+
+**Regras de Negócio Implementadas:**
+- ✅ Tamanho máximo: 1MB por arquivo
+- ✅ Tipos permitidos: PNG, JPG, JPEG
+- ✅ Nomenclatura automática com timestamp e hash
+- ✅ Armazenamento em `/uploads/logos/`
+- ✅ Substituição automática (remove logo antigo ao fazer novo upload)
+- ✅ Remoção física do arquivo ao deletar
+- ✅ Atualização automática do campo `EscolaLogo` no banco
+- ✅ Permissões (Coordenação/Secretaria/Direção)
+- ✅ Autenticação JWT obrigatória
+
+### ℹ️ Escolas do Usuário
+**Arquivo:** [usuario-escolas-api.md](usuario-escolas-api.md)
+
+Documentação do endpoint para listar escolas vinculadas a um usuário:
+- **GET** `/api/usuario/:cpf/escolas` - Listar escolas do usuário
+
+**Regras de Negócio Implementadas:**
+- ✅ Busca por CPF (formato: 000.000.000-00)
+- ✅ Retorna todas as escolas vinculadas ao usuário
+- ✅ Inclui informações de função (Aluno, Professor, Coordenação, etc.)
+- ✅ Autenticação JWT obrigatória
+
 ---
 
 ## 🔜 APIs em Desenvolvimento

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import UsuarioService from "../services/usuario.service.js";
+import UsuarioService from "../services/usuario.service";
 
 export default class UsuarioControl {
   #usuarioService: UsuarioService;

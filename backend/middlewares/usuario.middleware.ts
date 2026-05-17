@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import ErrorResponse from "../utils/ErrorResponse.js";
+import ErrorResponse from "../utils/ErrorResponse";
 
 export default class UsuarioMiddleware {
   validateCreateBody = (request: Request, _response: Response, next: NextFunction) => {

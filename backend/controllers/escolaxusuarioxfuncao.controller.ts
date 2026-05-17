@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import EscolaxUsuarioxFuncaoService from "../services/escolaxusuarioxfuncao.service.js";
+import EscolaxUsuarioxFuncaoService from "../services/escolaxusuarioxfuncao.service";
 
 export default class EscolaxUsuarioxFuncaoControl {
   #service: EscolaxUsuarioxFuncaoService;

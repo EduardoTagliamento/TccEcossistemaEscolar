@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
-import ErrorResponse from "../utils/ErrorResponse.js";
-import Usuario from "../entities/usuario.model.js";
+import ErrorResponse from "../utils/ErrorResponse";
+import Usuario from "../entities/usuario.model";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 
 export interface UsuarioDTO {

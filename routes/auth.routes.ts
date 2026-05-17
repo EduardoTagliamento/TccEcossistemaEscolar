@@ -5,11 +5,11 @@
  */
 
 import { Router } from 'express';
-import MysqlDatabase from '../backend/database/MysqlDatabase.js';
-import { UsuarioDAO } from '../backend/repositories/usuario.repository.js';
-import AuthService from '../backend/services/auth.service.js';
-import AuthController from '../backend/controllers/auth.controller.js';
-import { AuthMiddleware } from '../backend/middlewares/auth.middleware.js';
+import MysqlDatabase from '../backend/database/MysqlDatabase';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
+import AuthService from '../backend/services/auth.service';
+import AuthController from '../backend/controllers/auth.controller';
+import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
 
 // Instanciar dependências
 const database = new MysqlDatabase();
