@@ -308,8 +308,16 @@ export default class ProfessorController {
    */
   buscarMateriasProfessor = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF;
       const { EscolaGUID } = req.query;
+
+      if (!usuarioCPF) {
+        res.status(401).json({
+          success: false,
+          message: "Não autenticado"
+        });
+        return;
+      }
 
       if (!EscolaGUID || typeof EscolaGUID !== 'string') {
         throw new ErrorResponse(400, 'EscolaGUID é obrigatório');
@@ -350,7 +358,15 @@ export default class ProfessorController {
   buscarTurmasAlunos = async (req: Request, res: Response): Promise<void> => {
     try {
       const { MatProfTurGUID } = req.query;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF;
+
+      if (!usuarioCPF) {
+        res.status(401).json({
+          success: false,
+          message: "Não autenticado"
+        });
+        return;
+      }
 
       if (!MatProfTurGUID || typeof MatProfTurGUID !== 'string') {
         throw new ErrorResponse(400, 'MatProfTurGUID é obrigatório');
