@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
-import ErrorResponse from "../utils/ErrorResponse.js";
-import Escola from "../entities/escola.model.js";
+import ErrorResponse from "../utils/ErrorResponse";
+import Escola from "../entities/escola.model";
 import { EscolaDAO } from "../repositories/escola.repository";
-import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model.js";
+import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 
 export interface EscolaDTO {

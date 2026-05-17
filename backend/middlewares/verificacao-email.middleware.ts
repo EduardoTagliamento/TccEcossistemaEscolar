@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import ErrorResponse from "../utils/ErrorResponse.js";
+import ErrorResponse from "../utils/ErrorResponse";
 
 export default class VerificacaoEmailMiddleware {
   constructor() {

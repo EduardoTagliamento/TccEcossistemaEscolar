@@ -10,7 +10,7 @@
 
 import { config } from 'dotenv';
 import { resolve } from 'path';
-import { ResendEmailService } from './ResendEmailService.js';
+import { ResendEmailService } from './ResendEmailService';
 
 // Carrega variáveis do .env na raiz do projeto
 config({ path: resolve(process.cwd(), '.env') });

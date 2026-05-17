@@ -6,8 +6,8 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { JwtService } from '../utils/JwtService.js';
-import ErrorResponse from '../utils/ErrorResponse.js';
+import { JwtService } from '../utils/JwtService';
+import ErrorResponse from '../utils/ErrorResponse';
 
 // Extender o tipo Request do Express para incluir user
 declare global {

@@ -1,8 +1,8 @@
-import { VerificacaoEmailDAO } from "../repositories/verificacao-email.repository.js";
-import { UsuarioDAO } from "../repositories/usuario.repository.js";
-import VerificacaoEmail from "../entities/verificacao-email.model.js";
-import ErrorResponse from "../utils/ErrorResponse.js";
-import { ResendEmailService } from "../external/ResendEmailService.js";
+import { VerificacaoEmailDAO } from "../repositories/verificacao-email.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
+import VerificacaoEmail from "../entities/verificacao-email.model";
+import ErrorResponse from "../utils/ErrorResponse";
+import { ResendEmailService } from "../external/ResendEmailService";
 
 export default class VerificacaoEmailService {
   #verificacaoDAO: VerificacaoEmailDAO;

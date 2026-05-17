@@ -5,7 +5,7 @@ import { exec } from "child_process";
 import fs from "fs";
 import next from "next";
 import MysqlDatabase from "./database/MysqlDatabase";
-import ErrorResponse from "./utils/ErrorResponse.js";
+import ErrorResponse from "./utils/ErrorResponse";
 import { escolaRouterFactory } from "../routes/escola.routes";
 import { usuarioRouterFactory } from "../routes/usuario.routes";
 import { escolaxusuarioxfuncaoRouterFactory } from "../routes/escolaxusuarioxfuncao.routes";
@@ -14,14 +14,14 @@ import { cursoRouterFactory } from "../routes/curso.routes";
 import { turmaRouterFactory } from "../routes/turma.routes";
 import { matriculaRouterFactory } from "../routes/matricula.routes";
 import { professorRouterFactory } from "../routes/professor.routes";
-import verificacaoEmailRoutes from "../routes/verificacao-email.routes.js";
-import authRoutes from "../routes/auth.routes.js";
-import uploadRoutes from "../routes/upload.routes.js";
+import verificacaoEmailRoutes from "../routes/verificacao-email.routes";
+import authRoutes from "../routes/auth.routes";
+import uploadRoutes from "../routes/upload.routes";
 import { anexoRoutes } from "../routes/anexo.routes";
 import { tarefaAcademicaRoutes } from "../routes/tarefaacademica.routes";
 import { provaAgendadaRoutes } from "../routes/provaagendada.routes";
-import { CleanupScheduler } from "./services/cleanup.scheduler.js";
-import { pool } from "./database/mysql.js";
+import { CleanupScheduler } from "./services/cleanup.scheduler";
+import { pool } from "./database/mysql";
 
 /**
  * Classe principal do servidor Express.

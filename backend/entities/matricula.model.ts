@@ -39,7 +39,7 @@ export default class Matricula {
     return this.#TurmaGUID;
   }
 
-  get MatriculaDataEntrada(): Date {
+  get MatriculaDataEntrada(): Date | null{
     return this.#MatriculaDataEntrada;
   }
 

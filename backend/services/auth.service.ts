@@ -5,9 +5,9 @@
  */
 
 import bcrypt from 'bcrypt';
-import { UsuarioDAO } from '../repositories/usuario.repository.js';
-import { JwtService } from '../utils/JwtService.js';
-import ErrorResponse from '../utils/ErrorResponse.js';
+import { UsuarioDAO } from '../repositories/usuario.repository';
+import { JwtService } from '../utils/JwtService';
+import ErrorResponse from '../utils/ErrorResponse';
 
 interface LoginCredentials {
   identifier: string; // CPF, email ou telefone

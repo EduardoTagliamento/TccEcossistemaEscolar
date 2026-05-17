@@ -5,16 +5,16 @@
  */
 
 import { Router } from 'express';
-import MysqlDatabase from '../backend/database/MysqlDatabase.js';
-import { EscolaDAO } from '../backend/repositories/escola.repository.js';
-import UploadService from '../backend/services/upload.service.js';
-import UploadController from '../backend/controllers/upload.controller.js';
+import MysqlDatabase from '../backend/database/MysqlDatabase';
+import { EscolaDAO } from '../backend/repositories/escola.repository';
+import UploadService from '../backend/services/upload.service';
+import UploadController from '../backend/controllers/upload.controller';
 import { 
   uploadMiddleware, 
   validateFilePresence, 
   handleMulterError 
-} from '../backend/middlewares/upload.middleware.js';
-import { AuthMiddleware } from '../backend/middlewares/auth.middleware.js';
+} from '../backend/middlewares/upload.middleware';
+import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
 
 // Instanciar dependências
 const database = new MysqlDatabase();

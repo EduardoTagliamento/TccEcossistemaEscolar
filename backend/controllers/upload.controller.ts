@@ -5,8 +5,8 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import UploadService from '../services/upload.service.js';
-import ErrorResponse from '../utils/ErrorResponse.js';
+import UploadService from '../services/upload.service';
+import ErrorResponse from '../utils/ErrorResponse';
 
 export default class UploadController {
   #uploadService: UploadService;

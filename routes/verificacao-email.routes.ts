@@ -1,10 +1,10 @@
 import { Router } from "express";
-import MysqlDatabase from "../backend/database/MysqlDatabase.js";
-import { VerificacaoEmailDAO } from "../backend/repositories/verificacao-email.repository.js";
-import { UsuarioDAO } from "../backend/repositories/usuario.repository.js";
-import VerificacaoEmailService from "../backend/services/verificacao-email.service.js";
-import VerificacaoEmailController from "../backend/controllers/verificacao-email.controller.js";
-import VerificacaoEmailMiddleware from "../backend/middlewares/verificacao-email.middleware.js";
+import MysqlDatabase from "../backend/database/MysqlDatabase";
+import { VerificacaoEmailDAO } from "../backend/repositories/verificacao-email.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
+import VerificacaoEmailService from "../backend/services/verificacao-email.service";
+import VerificacaoEmailController from "../backend/controllers/verificacao-email.controller";
+import VerificacaoEmailMiddleware from "../backend/middlewares/verificacao-email.middleware";
 
 // Dependency Injection
 const database = new MysqlDatabase();

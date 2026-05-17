@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import ErrorResponse from "../utils/ErrorResponse.js";
+import ErrorResponse from "../utils/ErrorResponse";
 
 /**
  * Middleware de validação para anexos.

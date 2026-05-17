@@ -5,8 +5,8 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import AuthService from '../services/auth.service.js';
-import ErrorResponse from '../utils/ErrorResponse.js';
+import AuthService from '../services/auth.service';
+import ErrorResponse from '../utils/ErrorResponse';
 
 interface LoginRequest {
   identifier: string; // CPF, email ou telefone

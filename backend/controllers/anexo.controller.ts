@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import AnexoService from "../services/anexo.service.js";
+import AnexoService from "../services/anexo.service";
 import { AnexoFilters } from "../repositories/anexo.repository";
 
 export default class AnexoControl {

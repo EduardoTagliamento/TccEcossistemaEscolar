@@ -9,7 +9,7 @@ import multer, { FileFilterCallback } from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { Request } from 'express';
-import ErrorResponse from '../utils/ErrorResponse.js';
+import ErrorResponse from '../utils/ErrorResponse';
 
 // Diretório onde as imagens serão salvas
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'logos');
