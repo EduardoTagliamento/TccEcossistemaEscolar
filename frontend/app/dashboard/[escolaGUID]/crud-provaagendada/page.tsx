@@ -145,7 +145,7 @@ export default function CrudProvaAgendadaPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>CRUD de Prova Agendada</h1>
+        <h1>Cadastro de Prova Agendada</h1>
         <Link href={`/dashboard/${escolaGUID}`} className={styles.backLink}>Voltar ao Dashboard</Link>
       </header>
 

@@ -250,10 +250,10 @@ export default function DashboardPage() {
                 {isProfessor && (
                   <>
                     <Link href={`/dashboard/${escolaGUID}/crud-tarefa`} className={styles.quickActionButton}>
-                      <FiBookOpen /> CRUD de Tarefa
+                      <FiBookOpen /> Cadastro de Tarefa
                     </Link>
                     <Link href={`/dashboard/${escolaGUID}/crud-provaagendada`} className={styles.quickActionButton}>
-                      <FiEdit3 /> CRUD de Prova Agendada
+                      <FiEdit3 /> Cadastro de Prova Agendada
                     </Link>
                   </>
                 )}
