@@ -312,7 +312,7 @@ export default class ProfessorController {
       const { EscolaGUID } = req.query;
 
       if (!EscolaGUID || typeof EscolaGUID !== 'string') {
-        throw new ErrorResponse('EscolaGUID é obrigatório', 400);
+        throw new ErrorResponse(400, 'EscolaGUID é obrigatório');
       }
 
       const materias = await this.#professorService.buscarMateriasProfessor(
@@ -353,7 +353,7 @@ export default class ProfessorController {
       const usuarioCPF = (req as any).usuario.cpf;
 
       if (!MatProfTurGUID || typeof MatProfTurGUID !== 'string') {
-        throw new ErrorResponse('MatProfTurGUID é obrigatório', 400);
+        throw new ErrorResponse(400, 'MatProfTurGUID é obrigatório');
       }
 
       const estrutura = await this.#professorService.buscarTurmasAlunos(
