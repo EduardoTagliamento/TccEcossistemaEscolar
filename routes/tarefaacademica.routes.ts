@@ -6,6 +6,9 @@ import TarefaAcademicaService from "../backend/services/tarefaacademica.service"
 import { TarefaAcademicaDAO } from "../backend/repositories/tarefaacademica.repository";
 import { AnexoDAO } from "../backend/repositories/anexo.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
+import { EventoDAO } from "../backend/repositories/evento.repository";
+import { RelacaoAnexosDAO } from "../backend/repositories/relacaoanexos.repository";
+import RelacaoAnexosService from "../backend/services/relacaoanexos.service";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class TarefaAcademicaRoteador {
@@ -81,6 +84,22 @@ export default class TarefaAcademicaRoteador {
       this.#controle.removerAnexo
     );
 
+    // GET /api/tarefa/:TarefaGUID/anexos - Listar anexos (materiais de apoio)
+    this.#router.get(
+      "/:TarefaGUID/anexos",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#controle.listarAnexos
+    );
+
+    // POST /api/tarefa/:TarefaGUID/anexos - Vincular anexo (material de apoio)
+    this.#router.post(
+      "/:TarefaGUID/anexos",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#controle.vincularAnexo
+    );
+
     return this.#router;
   };
 }
@@ -90,8 +109,12 @@ const db = MysqlDatabase.getInstance();
 const tarefaDAO = new TarefaAcademicaDAO(db);
 const anexoDAO = new AnexoDAO(db);
 const matriculaDAO = new MatriculaDAO(db);
+const eventoDAO = new EventoDAO(db);
+const relacaoAnexosDAO = new RelacaoAnexosDAO(db);
+
 const tarefaService = new TarefaAcademicaService(tarefaDAO, anexoDAO, matriculaDAO);
-const tarefaControle = new TarefaAcademicaControl(tarefaService);
+const relacaoAnexosService = new RelacaoAnexosService(relacaoAnexosDAO, anexoDAO, tarefaDAO, eventoDAO);
+const tarefaControle = new TarefaAcademicaControl(tarefaService, relacaoAnexosService);
 const tarefaMiddleware = new TarefaAcademicaMiddleware();
 
 const tarefaRoteador = new TarefaAcademicaRoteador(tarefaMiddleware, tarefaControle);
