@@ -167,7 +167,7 @@ export default class TarefaAcademicaService {
       for (const anexoGUID of data.anexosDescricao) {
         const anexo = await this.#anexoDAO.findById(anexoGUID);
         if (anexo) {
-          await this.#tarefaDAO.vincularAnexo(tarefaCriada.TarefaGUID, anexoGUID, "descricao");
+          await this.#tarefaDAO.vincularAnexo(tarefaCriada.TarefaGUID, anexoGUID, "tarefa");
         }
       }
     }
@@ -388,7 +388,7 @@ export default class TarefaAcademicaService {
       });
     }
 
-    await this.#tarefaDAO.vincularAnexo(TarefaGUID, AnexoGUID, "entrega");
+    await this.#tarefaDAO.vincularAnexo(TarefaGUID, AnexoGUID, "resposta");
   };
 
   removerAnexo = async (

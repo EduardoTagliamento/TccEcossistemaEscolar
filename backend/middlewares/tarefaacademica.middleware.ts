@@ -194,44 +194,6 @@ export default class TarefaAcademicaMiddleware {
 
     next();
   };
-    if (isNaN(prazo.getTime())) {
-      throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'TarefaPrazoData' deve ser uma data válida (ISO 8601).",
-      });
-    }
-
-    // TarefaTipoEntrega: obrigatório, enum
-    if (!tarefa.TarefaTipoEntrega) {
-      throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'TarefaTipoEntrega' é obrigatório.",
-      });
-    }
-
-    if (!TIPO_ENTREGA_VALID.includes(tarefa.TarefaTipoEntrega)) {
-      throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'TarefaTipoEntrega' deve ser 'digital' ou 'fisica'.",
-      });
-    }
-
-    // anexosDescricao: opcional, array de UUIDs
-    if (tarefa.anexosDescricao !== undefined) {
-      if (!Array.isArray(tarefa.anexosDescricao)) {
-        throw new ErrorResponse(400, "Erro na validação de dados", {
-          message: "O campo 'anexosDescricao' deve ser um array de UUIDs.",
-        });
-      }
-
-      for (const guid of tarefa.anexosDescricao) {
-        if (typeof guid !== "string" || !GUID_REGEX.test(guid)) {
-          throw new ErrorResponse(400, "Erro na validação de dados", {
-            message: `O valor '${guid}' em 'anexosDescricao' não é um UUID válido.`,
-          });
-        }
-      }
-    }
-
-    next();
-  };
 
   /**
    * Valida body para criação de múltiplas tarefas (POST /batch)

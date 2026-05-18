@@ -44,9 +44,9 @@ temp/
 *.tmp
 
 # Database
-*.sql
 *.sqlite
 *.db
+# Migrations SQL devem ser versionadas!
 
 # Uploads / User content
 uploads/

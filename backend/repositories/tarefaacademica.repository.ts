@@ -67,9 +67,7 @@ export class TarefaAcademicaDAO {
   };
 
   /**
-   * Criar múltiplas tarefas em uma única query (batch insert)
-   * Melhora significativamente a performance ao criar tarefas para múltiplos alunos
-   */MÉTODO OBSOLETO - use service layer com TarefaAcademicaMatriculaDAO
+   * MÉTODO OBSOLETO - use service layer com TarefaAcademicaMatriculaDAO
    * 
    * Criar múltiplas tarefas em batch não faz mais sentido no modelo normalizado.
    * O correto é:
@@ -77,26 +75,18 @@ export class TarefaAcademicaDAO {
    * 2. Atribuir para N alunos com TarefaAcademicaMatriculaDAO.createBatch()
    */
   createBatch = async (tarefas: TarefaAcademica[]): Promise<TarefaAcademica[]> => {
-    throw new Error("createBatch() obsoleto. Use create() + TarefaAcademicaMatriculaDAO.createBatch()")
+    throw new Error("createBatch() obsoleto. Use create() + TarefaAcademicaMatriculaDAO.createBatch()");
+  };
+
   findAll = async (filters?: TarefaAcademicaFilters): Promise<TarefaAcademica[]> => {
     console.log("🟢 TarefaAcademicaDAO.findAll()");
 
     let SQL = "SELECT * FROM tarefaacademica WHERE 1=1";
     const params: any[] = [];
 
-    if (filters?.MatriculaGUID) {
-      SQL += " AND MatriculaGUID = ?";
-      params.push(filters.MatriculaGUID);
-    }
-
     if (filters?.matXprofXturxescGUID) {
       SQL += " AND matXprofXturxescGUID = ?";
       params.push(filters.matXprofXturxescGUID);
-    }
-
-    if (filters?.TarefaFeito !== undefined) {
-      SQL += " AND TarefaFeito = ?";
-      params.push(filters.TarefaFeito);
     }
 
     if (filters?.DataInicio) {
@@ -115,9 +105,17 @@ export class TarefaAcademicaDAO {
     const [rows] = await pool.execute<TarefaAcademicaRow[]>(SQL, params);
 
     return rows.map((row) => this.mapRowToTarefa(row));
-  };matXprofXturxescGUID) {
-      SQL += " AND matXprofXturxescGUID = ?";
-      params.push(filters.matXprofXturxescGUID
+  };
+
+  findById = async (TarefaGUID: string): Promise<TarefaAcademica | null> => {
+    console.log("🟢 TarefaAcademicaDAO.findById()");
+
+    const SQL = "SELECT * FROM tarefaacademica WHERE TarefaGUID = ? LIMIT 1;";
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<TarefaAcademicaRow[]>(SQL, [TarefaGUID]);
+
+    if (rows.length === 0) {
+      return null;
     }
 
     return this.mapRowToTarefa(rows[0]);
@@ -127,7 +125,7 @@ export class TarefaAcademicaDAO {
     TarefaGUID: string,
     updates: Partial<Pick<
       TarefaAcademica,
-      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega" | "TarefaFeito"
+      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega"
     >>
   ): Promise<TarefaAcademica | null> => {
     console.log("🟢 TarefaAcademicaDAO.update()");
@@ -151,15 +149,6 @@ export class TarefaAcademicaDAO {
       fields.push("TarefaTipoEntrega = ?");
       values.push(updates.TarefaTipoEntrega);
     }
-    if (updates.TarefaFeito !== undefined) {
-      fields.push("TarefaFeito = ?");
-      values.push(updates.TarefaFeito);
-      if (updates.TarefaFeito) {
-        fields.push("TarefaRealizacaoData = CURRENT_TIMESTAMP");
-      } else {
-        fields.push("TarefaRealizacaoData = NULL");
-      }
-    }
 
     if (fields.length === 0) {
       return this.findById(TarefaGUID);
@@ -169,28 +158,31 @@ export class TarefaAcademicaDAO {
 
     const SQL = `
       UPDATE tarefaacademica
-    >>
-  ): Promise<TarefaAcademica | null> => {
-    console.log("🟢 TarefaAcademicaDAO.update()");
+      SET ${fields.join(", ")}
+      WHERE TarefaGUID = ?;
+    `;
 
-    const fields: string[] = [];
-    const values: any[] = [];
+    const pool = await this.#database.getPool();
+    await pool.execute(SQL, values);
 
-    if (updates.TarefaTitulo !== undefined) {
-      fields.push("TarefaTitulo = ?");
-      values.push(updates.TarefaTitulo);
-    }
-    if (updates.TarefaConteudo !== undefined) {
-      fields.push("TarefaConteudo = ?");
-      values.push(updates.TarefaConteudo);
-    }
-    if (updates.TarefaPrazoData !== undefined) {
-      fields.push("TarefaPrazoData = ?");
-      values.push(updates.TarefaPrazoData);
-    }
-    if (updates.TarefaTipoEntrega !== undefined) {
-      fields.push("TarefaTipoEntrega = ?");
-      values.push(updates.TarefaTipoEntrega);NSERT INTO relacaoanexostarefa (RelacaoAnexoTarefaGUID, AnexoGUID, TarefaGUID, AnexoTipo)
+    return this.findById(TarefaGUID);
+  };
+
+  delete = async (TarefaGUID: string): Promise<boolean> => {
+    console.log("🟢 TarefaAcademicaDAO.delete()");
+
+    const SQL = "DELETE FROM tarefaacademica WHERE TarefaGUID = ?;";
+    const pool = await this.#database.getPool();
+    const [result] = await pool.execute<ResultSetHeader>(SQL, [TarefaGUID]);
+
+    return result.affectedRows > 0;
+  };
+
+  vincularAnexo = async (TarefaGUID: string, AnexoGUID: string, tipo: "tarefa" | "resposta"): Promise<void> => {
+    console.log("🟢 TarefaAcademicaDAO.vincularAnexo()");
+
+    const SQL = `
+      INSERT INTO relacaoanexostarefa (RelacaoAnexoTarefaGUID, AnexoGUID, TarefaGUID, AnexoTipo)
       VALUES (UUID(), ?, ?, ?);
     `;
     const pool = await this.#database.getPool();
@@ -211,23 +203,14 @@ export class TarefaAcademicaDAO {
   private mapRowToTarefa(row: TarefaAcademicaRow): TarefaAcademica {
     const tarefa = new TarefaAcademica();
     tarefa.TarefaGUID = row.TarefaGUID;
-    tarefa.MatriculaGUID = row.MatriculaGUID;
     tarefa.matXprofXturxescGUID = row.matXprofXturxescGUID;
     tarefa.TarefaTitulo = row.TarefaTitulo;
     tarefa.TarefaConteudo = row.TarefaConteudo;
     tarefa.TarefaPostagemData = row.TarefaPostagemData;
     tarefa.TarefaPrazoData = row.TarefaPrazoData;
     tarefa.TarefaTipoEntrega = row.TarefaTipoEntrega;
-    tarefa.TarefaFeito = Boolean(row.TarefaFeito);
-    tarefa.TarefaRealizacaoData = row.TarefaRealizacaoData;
     tarefa.CreatedAt = row.CreatedAt;
     tarefa.UpdatedAt = row.UpdatedAt;
     return tarefa;
   }
 }
-matXprofXturxescGUID = row.matXprofXturxescGUID;
-    tarefa.TarefaTitulo = row.TarefaTitulo;
-    tarefa.TarefaConteudo = row.TarefaConteudo;
-    tarefa.TarefaPostagemData = row.TarefaPostagemData;
-    tarefa.TarefaPrazoData = row.TarefaPrazoData;
-    tarefa.TarefaTipoEntrega = row.TarefaTipoEntreg
