@@ -152,12 +152,7 @@ export default class TarefaAcademicaControl {
 
   /**
    * PUT /api/tarefa/:TarefaGUID
-   * Atualizar tarefa
-   *
-   * Body: { tarefa: { TarefaTitulo?, TarefaConteudo?, TarefaPrazoData?,
-   *                   TarefaTipoEntrega?, TarefaFeito? } }
-   */
-  update = async (req (afeta todos os alunos)
+   * Atualizar tarefa (afeta todos os alunos)
    *
    * Body: { tarefa: { TarefaTitulo?, TarefaConteudo?, TarefaPrazoData?, TarefaTipoEntrega? } }
    */
@@ -214,7 +209,12 @@ export default class TarefaAcademicaControl {
       response.status(200).json({
         success: true,
         message: `Tarefa marcada como ${TarefaFeito ? "feita" : "não feita"}`,
-        data: { atribuicao: atribuicao
+        data: { atribuicao: atribuicaoAtualizada }
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   /**
    * DELETE /api/tarefa/:TarefaGUID
