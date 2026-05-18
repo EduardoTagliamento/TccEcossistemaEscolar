@@ -160,6 +160,8 @@ export class MatriculaDAO {
    * Busca matrículas de uma turma (listar alunos)
    */
   async findByTurma(turmaGUID: string): Promise<Matricula[]> {
+    console.log(`🟢 MatriculaDAO.findByTurma() - TurmaGUID: ${turmaGUID}`);
+    
     const query = `
       SELECT * FROM matricula 
       WHERE TurmaGUID = ?
@@ -169,7 +171,14 @@ export class MatriculaDAO {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(query, [turmaGUID]);
 
-    return this.mapRows(rows as MatriculaRow[]);
+    const matriculas = this.mapRows(rows as MatriculaRow[]);
+    
+    console.log(`📋 [DEBUG] Matrículas encontradas: ${matriculas.length}`);
+    matriculas.forEach(m => {
+      console.log(`📋 [DEBUG] - MatriculaGUID: ${m.MatriculaGUID}, UsuarioCPF: "${m.UsuarioCPF}", Status: ${m.MatriculaStatus}`);
+    });
+    
+    return matriculas;
   }
 
   /**

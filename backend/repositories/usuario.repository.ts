@@ -117,6 +117,7 @@ export class UsuarioDAO {
 
   findById = async (UsuarioCPF: string): Promise<Usuario | null> => {
     console.log("🟢 UsuarioDAO.findById()");
+    console.log(`📋 [DEBUG] Buscando usuário pelo CPF: "${UsuarioCPF}"`);
 
     const SQL = "SELECT * FROM usuario WHERE UsuarioCPF = ? AND UsuarioDeletedAt IS NULL;";
     const params = [UsuarioCPF];
@@ -125,6 +126,7 @@ export class UsuarioDAO {
     const [linhas] = await pool.execute(SQL, params);
 
     const rows = linhas as UsuarioRow[];
+    console.log(`📋 [DEBUG] Resultado da busca: ${rows.length} usuário(s) encontrado(s)`);
     if (rows.length === 0) {
       return null;
     }

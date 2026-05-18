@@ -548,8 +548,12 @@ export default class ProfessorService {
       const alunosPromises = matriculas
         .filter(m => m.MatriculaStatus === 'Ativa')
         .map(async (matricula) => {
+          console.log(`📋 [DEBUG] Buscando usuário com CPF: "${matricula.UsuarioCPF}" (tipo: ${typeof matricula.UsuarioCPF})`);
           const usuario = await this.#usuarioDAO.findByCPF(matricula.UsuarioCPF);
           console.log(`📋 [DEBUG] Usuário para matrícula ${matricula.MatriculaGUID}:`, usuario?.UsuarioNome || 'NÃO ENCONTRADO');
+          if (!usuario) {
+            console.log(`❌ [DEBUG] CPF "${matricula.UsuarioCPF}" não encontrado na tabela usuario`);
+          }
           if (!usuario) return null;
           return {
             MatriculaGUID: matricula.MatriculaGUID,
