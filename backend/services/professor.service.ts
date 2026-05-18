@@ -434,11 +434,21 @@ export default class ProfessorService {
     if (todasAlocacoesSemFiltro.length > 0) {
       const cpfsUnicos = [...new Set(todasAlocacoesSemFiltro.map(a => a.UsuarioCPF))];
       console.log("   🔍 DEBUG - CPFs únicos no banco:", cpfsUnicos);
+      console.log("   ⚠️  ATENÇÃO: CPFs no banco estão formatados! Usando CPF original para busca.");
     }
+
+    // WORKAROUND: Usar CPF original (com formatação) pois o banco está armazenando assim
+    // TODO: Corrigir o banco de dados para remover formatação dos CPFs
+    const cpfParaBusca = todasAlocacoesSemFiltro.length > 0 && 
+                         todasAlocacoesSemFiltro[0].UsuarioCPF.includes('.') 
+                         ? usuarioCPF  // Usar CPF com formatação
+                         : cpfNormalizado; // Usar CPF sem formatação
+
+    console.log("   🔍 CPF usado na busca:", cpfParaBusca);
 
     // Buscar alocações do professor na escola
     const alocacoes = await this.#alocacaoDAO.findAll({
-      UsuarioCPF: cpfNormalizado,
+      UsuarioCPF: cpfParaBusca,
       AlocacaoStatus: 'Ativa'
     });
 
@@ -530,10 +540,14 @@ export default class ProfessorService {
 
     console.log("   🔍 Alocação.UsuarioCPF:", alocacaoBase.UsuarioCPF);
     console.log("   🔍 CPF normalizado:", cpfNormalizado);
-    console.log("   🔍 CPFs coincidem:", alocacaoBase.UsuarioCPF === cpfNormalizado ? 'SIM' : 'NÃO');
+    
+    // Normalizar ambos os CPFs para comparação (remover formatação)
+    const cpfAlocacaoNormalizado = alocacaoBase.UsuarioCPF.replace(/\D/g, '');
+    console.log("   🔍 Alocação.UsuarioCPF normalizado:", cpfAlocacaoNormalizado);
+    console.log("   🔍 CPFs coincidem:", cpfAlocacaoNormalizado === cpfNormalizado ? 'SIM' : 'NÃO');
 
-    // 2. Validar que o professor é dono da alocação
-    if (alocacaoBase.UsuarioCPF !== cpfNormalizado) {
+    // 2. Validar que o professor é dono da alocação (comparar CPFs normalizados)
+    if (cpfAlocacaoNormalizado !== cpfNormalizado) {
       console.log("   ❌ Sem permissão para acessar esta alocação");
       throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
     }
@@ -547,11 +561,17 @@ export default class ProfessorService {
     }
 
     // 4. Buscar TODAS as alocações do professor na mesma matéria e escola
+    // WORKAROUND: Usar o mesmo CPF da alocação base (pode estar formatado)
+    const cpfParaBusca = alocacaoBase.UsuarioCPF;
+    console.log("   🔍 CPF para buscar outras alocações:", cpfParaBusca);
+    
     const todasAlocacoes = await this.#alocacaoDAO.findAll({
-      UsuarioCPF: cpfNormalizado,
+      UsuarioCPF: cpfParaBusca,
       MateriaGUID: alocacaoBase.MateriaGUID,
       AlocacaoStatus: 'Ativa'
     });
+
+    console.log("   📊 Total de alocações na mesma matéria:", todasAlocacoes.length);
 
     // 5. Buscar turmas relacionadas às alocações
     const turmasPromises = todasAlocacoes.map(async (alocacao) => {
