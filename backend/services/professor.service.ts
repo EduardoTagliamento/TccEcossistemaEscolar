@@ -479,16 +479,23 @@ export default class ProfessorService {
     }>;
   }> {
     console.log("🟣 ProfessorService.buscarTurmasAlunos()");
+    console.log("📋 [DEBUG] matProfTurGUID:", matProfTurGUID);
+    console.log("📋 [DEBUG] usuarioCPF:", usuarioCPF);
 
     // CPFs são armazenados COM formatação no banco (XXX.XXX.XXX-XX)
     // 1. Buscar alocação base
     const alocacaoBase = await this.#alocacaoDAO.findById(matProfTurGUID);
     
+    console.log("📋 [DEBUG] Alocação base encontrada:", alocacaoBase ? 'SIM' : 'NÃO');
+
     if (!alocacaoBase) {
       throw new ErrorResponse(404, 'Alocação não encontrada');
     }
 
     // 2. Validar que o professor é dono da alocação
+    console.log("📋 [DEBUG] CPF da alocação:", alocacaoBase.UsuarioCPF);
+    console.log("📋 [DEBUG] CPF do usuário:", usuarioCPF);
+
     if (alocacaoBase.UsuarioCPF !== usuarioCPF) {
       throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
     }
@@ -522,8 +529,12 @@ export default class ProfessorService {
     // 6. Agrupar turmas por série
     const seriesMap = new Map<string, any[]>();
 
+    console.log("📋 [DEBUG] Total de turmas encontradas:", turmas.length);
+
     for (const turma of turmas) {
       if (!turma) continue;
+
+      console.log(`📋 [DEBUG] Processando turma: ${turma.TurmaNome} (Série ${turma.TurmaSerie})`);
 
       if (!seriesMap.has(turma.TurmaSerie)) {
         seriesMap.set(turma.TurmaSerie, []);
@@ -531,10 +542,14 @@ export default class ProfessorService {
 
       // Buscar alunos da turma (matrículas ativas)
       const matriculas = await this.#matriculaDAO.findByTurma(turma.TurmaGUID);
+      console.log(`📋 [DEBUG] Matrículas encontradas na turma ${turma.TurmaNome}:`, matriculas.length);
+      console.log(`📋 [DEBUG] Matrículas ativas:`, matriculas.filter(m => m.MatriculaStatus === 'Ativa').length);
+
       const alunosPromises = matriculas
         .filter(m => m.MatriculaStatus === 'Ativa')
         .map(async (matricula) => {
           const usuario = await this.#usuarioDAO.findByCPF(matricula.UsuarioCPF);
+          console.log(`📋 [DEBUG] Usuário para matrícula ${matricula.MatriculaGUID}:`, usuario?.UsuarioNome || 'NÃO ENCONTRADO');
           if (!usuario) return null;
           return {
             MatriculaGUID: matricula.MatriculaGUID,
@@ -543,6 +558,7 @@ export default class ProfessorService {
         });
 
       const alunos = (await Promise.all(alunosPromises)).filter(a => a !== null);
+      console.log(`📋 [DEBUG] Total de alunos na turma ${turma.TurmaNome}:`, alunos.length);
 
       seriesMap.get(turma.TurmaSerie)!.push({
         TurmaGUID: turma.TurmaGUID,
@@ -556,6 +572,9 @@ export default class ProfessorService {
       TurmaSerie: serie,
       turmas
     }));
+
+    console.log("📋 [DEBUG] Total de séries retornadas:", series.length);
+    console.log("📋 [DEBUG] Estrutura final:", JSON.stringify({ series }, null, 2));
 
     return { series };
   }

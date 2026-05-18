@@ -127,11 +127,20 @@ export default function CrudTarefaPage() {
     setErro(null);
 
     try {
-      const response = await fetch(
-        `/api/professor/turmas-alunos?MatProfTurGUID=${form.matXprofXturxescGUID}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const url = `/api/professor/turmas-alunos?MatProfTurGUID=${form.matXprofXturxescGUID}`;
+      console.log('🔍 [DEBUG] Requisitando:', url);
+      console.log('🔍 [DEBUG] Token:', token ? 'presente' : 'ausente');
+      console.log('🔍 [DEBUG] MatProfTurGUID:', form.matXprofXturxescGUID);
+
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      console.log('🔍 [DEBUG] Status da resposta:', response.status);
+      
       const data = await response.json();
+      console.log('🔍 [DEBUG] Dados recebidos:', data);
+
       if (!response.ok) throw new Error(data?.message || 'Erro ao carregar alunos');
 
       // Transformar dados para estrutura com checkboxes
