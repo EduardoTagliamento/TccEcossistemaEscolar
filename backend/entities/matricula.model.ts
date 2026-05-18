@@ -73,15 +73,7 @@ export default class Matricula {
   }
 
   set UsuarioCPF(value: string) {
-    if (typeof value !== 'string') {
-      throw new Error('UsuarioCPF deve ser uma string');
-    }
-    // Validação básica de CPF (11 dígitos)
-    const cpfLimpo = value.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPF deve ter 11 dígitos');
-    }
-    this.#UsuarioCPF = cpfLimpo;
+    this.#UsuarioCPF = normalizeCPF(value);
   }
 
   set TurmaGUID(value: string) {
