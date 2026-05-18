@@ -1,3 +1,5 @@
+import { normalizeCPF } from "../utils/helpers/cpf.helper";
+
 export default class EscolaxUsuarioxFuncao {
   #EscolaxUsuarioxFuncaoId: number | null = null;
   #UsuarioCPF!: string;
@@ -36,18 +38,7 @@ export default class EscolaxUsuarioxFuncao {
   }
 
   set UsuarioCPF(value: string) {
-    if (typeof value !== "string" || value.trim() === "") {
-      throw new Error("UsuarioCPF deve ser uma string nao vazia.");
-    }
-
-    const cpf = value.trim();
-    const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
-
-    if (!cpfRegex.test(cpf)) {
-      throw new Error("UsuarioCPF deve estar no formato XXX.XXX.XXX-XX.");
-    }
-
-    this.#UsuarioCPF = cpf;
+    this.#UsuarioCPF = normalizeCPF(value);
   }
 
   get EscolaGUID(): string {
