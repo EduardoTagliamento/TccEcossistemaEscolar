@@ -14,6 +14,8 @@
  * - N:1 com Usuario (aluno)
  * - N:1 com Turma
  */
+import { normalizeCPF } from "../utils/helpers/cpf.helper";
+
 export default class Matricula {
   // Campos privados (encapsulamento)
   #MatriculaGUID!: string;

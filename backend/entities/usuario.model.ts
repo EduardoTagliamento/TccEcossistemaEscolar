@@ -6,6 +6,8 @@
  * - Garantir integridade dos atributos via getters e setters.
  * - Validar CPF, Email, Telefone e outros campos.
  */
+import { normalizeCPF } from "../utils/helpers/cpf.helper";
+
 export default class Usuario {
   #UsuarioCPF!: string;
   #UsuarioEmail: string | null = null;
