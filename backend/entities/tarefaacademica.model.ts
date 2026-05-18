@@ -1,26 +1,29 @@
 /**
- * Representa a entidade TarefaAcademica do sistema.
+ * Representa a entidade TarefaAcademica do sistema (MODELO NORMALIZADO).
  *
  * Objetivo:
- * - Encapsular os dados de uma tarefa acadêmica atribuída a um aluno.
+ * - Encapsular os dados ÚNICOS de uma tarefa acadêmica.
  * - Garantir integridade dos atributos via getters e setters.
+ * - Uma tarefa pode ser atribuída a múltiplos alunos (N:N via tarefaacademica_matricula).
  *
  * Relacionamentos:
- * - N:1 com Matricula (aluno)
  * - N:1 com MateriaxProfessorxTurma (matéria/professor/turma)
+ * - 1:N com TarefaAcademicaMatricula (alunos que receberam a tarefa)
  * - 1:N com Anexo (via relacaoanexostarefa)
+ * 
+ * IMPORTANTE: 
+ * - MatriculaGUID agora está em tarefaacademica_matricula
+ * - TarefaFeito e TarefaRealizacaoData também estão em tarefaacademica_matricula
+ * - Esta tabela contém apenas dados ÚNICOS da tarefa
  */
 export default class TarefaAcademica {
   #TarefaGUID!: string;
-  #MatriculaGUID!: string;
   #matXprofXturxescGUID!: string;
   #TarefaTitulo!: string;
   #TarefaConteudo: string | null = null;
   #TarefaPostagemData!: Date;
   #TarefaPrazoData!: Date;
   #TarefaTipoEntrega!: "digital" | "fisica";
-  #TarefaFeito: boolean = false;
-  #TarefaRealizacaoData: Date | null = null;
   #CreatedAt: Date | null = null;
   #UpdatedAt: Date | null = null;
 
@@ -42,22 +45,6 @@ export default class TarefaAcademica {
       throw new Error("TarefaGUID deve ter 36 caracteres.");
     }
     this.#TarefaGUID = guid;
-  }
-
-  // ========== MatriculaGUID ==========
-  get MatriculaGUID(): string {
-    return this.#MatriculaGUID;
-  }
-
-  set MatriculaGUID(value: string) {
-    if (typeof value !== "string" || value.trim() === "") {
-      throw new Error("MatriculaGUID deve ser uma string não vazia.");
-    }
-    const guid = value.trim();
-    if (guid.length < 1 || guid.length > 36) {
-      throw new Error("MatriculaGUID deve ter entre 1 e 36 caracteres.");
-    }
-    this.#MatriculaGUID = guid;
   }
 
   // ========== matXprofXturxescGUID ==========
@@ -146,34 +133,6 @@ export default class TarefaAcademica {
       throw new Error('TarefaTipoEntrega deve ser "digital" ou "fisica".');
     }
     this.#TarefaTipoEntrega = value;
-  }
-
-  // ========== TarefaFeito ==========
-  get TarefaFeito(): boolean {
-    return this.#TarefaFeito;
-  }
-
-  set TarefaFeito(value: boolean) {
-    if (typeof value !== "boolean") {
-      throw new Error("TarefaFeito deve ser um booleano.");
-    }
-    this.#TarefaFeito = value;
-  }
-
-  // ========== TarefaRealizacaoData ==========
-  get TarefaRealizacaoData(): Date | null {
-    return this.#TarefaRealizacaoData;
-  }
-
-  set TarefaRealizacaoData(value: Date | null) {
-    if (value === null || value === undefined) {
-      this.#TarefaRealizacaoData = null;
-      return;
-    }
-    if (!(value instanceof Date) || isNaN(value.getTime())) {
-      throw new Error("TarefaRealizacaoData deve ser uma data válida.");
-    }
-    this.#TarefaRealizacaoData = value;
   }
 
   // ========== CreatedAt ==========

@@ -314,6 +314,38 @@ export default function CrudTarefaPage() {
     setErro(null);
 
     try {
+      // MODO EDIÇÃO: Atualizar tarefa existente
+      if (editingGUID) {
+        const payload = {
+          tarefa: {
+            TarefaTitulo: form.TarefaTitulo,
+            TarefaConteudo: form.TarefaConteudo || undefined,
+            TarefaPrazoData: new Date(form.TarefaPrazoData).toISOString(),
+            TarefaTipoEntrega: form.TarefaTipoEntrega,
+          },
+        };
+
+        const response = await fetch(`/api/tarefa/${editingGUID}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.message || 'Erro ao atualizar tarefa');
+        }
+
+        alert('Tarefa atualizada com sucesso!');
+        limparFormulario();
+        await carregarTarefas();
+        return;
+      }
+
+      // MODO CRIAÇÃO: Criar tarefas em lote
       const matriculasSelecionadas = obterMatriculasSelecionadas();
 
       if (matriculasSelecionadas.length === 0) {
@@ -366,6 +398,8 @@ export default function CrudTarefaPage() {
       TarefaPrazoData: tarefa.TarefaPrazoData.slice(0, 16),
       TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
     });
+    // Scroll para o topo para visualizar o formulário
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const excluirTarefa = async (tarefaGUID: string) => {
@@ -389,7 +423,7 @@ export default function CrudTarefaPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Cadastro de Tarefa</h1>
+        <h1>{editingGUID ? '✏️ Editando Tarefa' : 'Cadastro de Tarefa'}</h1>
         <Link href={`/dashboard/${escolaGUID}`} className={styles.backLink}>Voltar ao Dashboard</Link>
       </header>
 
@@ -424,23 +458,25 @@ export default function CrudTarefaPage() {
           )}
         </div>
 
-        {/* Campo de Alunos (Modal) */}
-        <div className={styles.formGroup}>
-          <label>Alunos *</label>
-          <button
-            type="button"
-            onClick={abrirModalAlunos}
-            className={styles.selectButton}
-            disabled={!form.matXprofXturxescGUID}
-          >
-            {totalAlunosSelecionados === 0
-              ? 'Selecionar Alunos'
-              : `${totalAlunosSelecionados} aluno(s) selecionado(s)`}
-          </button>
-          {!form.matXprofXturxescGUID && (
-            <p className={styles.hint}>Selecione uma matéria primeiro</p>
-          )}
-        </div>
+        {/* Campo de Alunos (Modal) - Oculto no modo de edição */}
+        {!editingGUID && (
+          <div className={styles.formGroup}>
+            <label>Alunos *</label>
+            <button
+              type="button"
+              onClick={abrirModalAlunos}
+              className={styles.selectButton}
+              disabled={!form.matXprofXturxescGUID}
+            >
+              {totalAlunosSelecionados === 0
+                ? 'Selecionar Alunos'
+                : `${totalAlunosSelecionados} aluno(s) selecionado(s)`}
+            </button>
+            {!form.matXprofXturxescGUID && (
+              <p className={styles.hint}>Selecione uma matéria primeiro</p>
+            )}
+          </div>
+        )}
 
         <input
           placeholder="Título *"
@@ -468,8 +504,8 @@ export default function CrudTarefaPage() {
         </select>
 
         <div className={styles.actions}>
-          <button type="submit" disabled={submitting || totalAlunosSelecionados === 0}>
-            {submitting ? 'Salvando...' : `Criar ${totalAlunosSelecionados > 0 ? `(${totalAlunosSelecionados})` : ''}`}
+          <button type="submit" disabled={submitting || (!editingGUID && totalAlunosSelecionados === 0)}>
+            {submitting ? 'Salvando...' : editingGUID ? 'Atualizar Tarefa' : `Criar ${totalAlunosSelecionados > 0 ? `(${totalAlunosSelecionados})` : ''}`}
           </button>
           <button
             type="button"
@@ -613,6 +649,7 @@ export default function CrudTarefaPage() {
                   <p>Entrega: {tarefa.TarefaTipoEntrega}</p>
                 </div>
                 <div className={styles.cardActions}>
+                  <button type="button" onClick={() => editarTarefa(tarefa)}>Editar</button>
                   <button type="button" onClick={() => excluirTarefa(tarefa.TarefaGUID)}>Excluir</button>
                 </div>
               </li>
