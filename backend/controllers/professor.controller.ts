@@ -308,10 +308,17 @@ export default class ProfessorController {
    */
   buscarMateriasProfessor = async (req: Request, res: Response): Promise<void> => {
     try {
+      console.log("🔵 ProfessorController.buscarMateriasProfessor()");
+      
       const usuarioCPF = req.user?.UsuarioCPF;
       const { EscolaGUID } = req.query;
 
+      console.log("   📋 req.user:", req.user);
+      console.log("   📋 usuarioCPF:", usuarioCPF);
+      console.log("   🏫 EscolaGUID:", EscolaGUID);
+
       if (!usuarioCPF) {
+        console.log("   ❌ Não autenticado");
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -320,14 +327,17 @@ export default class ProfessorController {
       }
 
       if (!EscolaGUID || typeof EscolaGUID !== 'string') {
+        console.log("   ❌ EscolaGUID inválido");
         throw new ErrorResponse(400, 'EscolaGUID é obrigatório');
       }
 
+      console.log("   ✅ Chamando ProfessorService.buscarMateriasProfessor()");
       const materias = await this.#professorService.buscarMateriasProfessor(
         usuarioCPF,
         EscolaGUID
       );
 
+      console.log("   ✅ Retornando resposta com", materias.length, "matérias");
       res.status(200).json({
         success: true,
         data: materias,
@@ -335,13 +345,14 @@ export default class ProfessorController {
       });
     } catch (error) {
       if (error instanceof ErrorResponse) {
+        console.error("   ❌ ErrorResponse:", error.message);
         res.status(error.statusCode).json({
           success: false,
           message: error.message,
           details: error.details,
         });
       } else {
-        console.error("Erro ao buscar matérias do professor:", error);
+        console.error("   ❌ Erro ao buscar matérias do professor:", error);
         res.status(500).json({
           success: false,
           message: "Erro interno ao buscar matérias",
@@ -357,10 +368,17 @@ export default class ProfessorController {
    */
   buscarTurmasAlunos = async (req: Request, res: Response): Promise<void> => {
     try {
+      console.log("🔵 ProfessorController.buscarTurmasAlunos()");
+      
       const { MatProfTurGUID } = req.query;
       const usuarioCPF = req.user?.UsuarioCPF;
 
+      console.log("   📋 req.user:", req.user);
+      console.log("   📋 usuarioCPF:", usuarioCPF);
+      console.log("   📋 MatProfTurGUID:", MatProfTurGUID);
+
       if (!usuarioCPF) {
+        console.log("   ❌ Não autenticado");
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -369,20 +387,24 @@ export default class ProfessorController {
       }
 
       if (!MatProfTurGUID || typeof MatProfTurGUID !== 'string') {
+        console.log("   ❌ MatProfTurGUID inválido");
         throw new ErrorResponse(400, 'MatProfTurGUID é obrigatório');
       }
 
+      console.log("   ✅ Chamando ProfessorService.buscarTurmasAlunos()");
       const estrutura = await this.#professorService.buscarTurmasAlunos(
         MatProfTurGUID,
         usuarioCPF
       );
 
+      console.log("   ✅ Retornando resposta com", estrutura.series.length, "séries");
       res.status(200).json({
         success: true,
         data: estrutura
       });
     } catch (error) {
       if (error instanceof ErrorResponse) {
+        console.error("   ❌ ErrorResponse:", error.message);
         res.status(error.statusCode).json({
           success: false,
           message: error.message,

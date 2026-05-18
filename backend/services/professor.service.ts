@@ -420,8 +420,13 @@ export default class ProfessorService {
     TurmaNome: string;
     TurmaSerie: string;
   }>> {
+    console.log("🟣 ProfessorService.buscarMateriasProfessor()");
+    console.log("   📋 CPF recebido:", usuarioCPF);
+    console.log("   🏫 EscolaGUID:", escolaGUID);
+
     // Normalizar CPF (remover formatação)
     const cpfNormalizado = usuarioCPF.replace(/\D/g, '');
+    console.log("   🔄 CPF normalizado:", cpfNormalizado);
 
     // Buscar alocações do professor na escola
     const alocacoes = await this.#alocacaoDAO.findAll({
@@ -429,21 +434,38 @@ export default class ProfessorService {
       AlocacaoStatus: 'Ativa'
     });
 
+    console.log("   📊 Alocações encontradas:", alocacoes.length);
+
     if (alocacoes.length === 0) {
+      console.log("   ⚠️ Nenhuma alocação ativa encontrada");
       return [];
     }
 
     // Buscar informações de matéria e turma para cada alocação
     const materias = await Promise.all(
-      alocacoes.map(async (alocacao) => {
+      alocacoes.map(async (alocacao, index) => {
+        console.log(`   🔍 Processando alocação ${index + 1}/${alocacoes.length}`);
+        console.log(`      MatProfTurGUID: ${alocacao.MatProfTurGUID}`);
+        console.log(`      MateriaGUID: ${alocacao.MateriaGUID}`);
+        console.log(`      TurmaGUID: ${alocacao.TurmaGUID}`);
+
         const materia = await this.#materiaDAO.findById(alocacao.MateriaGUID);
         const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
 
+        console.log(`      Matéria encontrada: ${materia ? 'SIM' : 'NÃO'}`);
+        console.log(`      Turma encontrada: ${turma ? 'SIM' : 'NÃO'}`);
+        if (turma) {
+          console.log(`      Turma.EscolaGUID: ${turma.EscolaGUID}`);
+          console.log(`      Match escola: ${turma.EscolaGUID === escolaGUID ? 'SIM' : 'NÃO'}`);
+        }
+
         // Filtrar apenas da escola solicitada
         if (!materia || !turma || turma.EscolaGUID !== escolaGUID) {
+          console.log(`      ❌ Alocação rejeitada`);
           return null;
         }
 
+        console.log(`      ✅ Alocação aceita`);
         return {
           MatProfTurGUID: alocacao.MatProfTurGUID,
           MateriaNome: materia.MateriaNome,
@@ -454,12 +476,15 @@ export default class ProfessorService {
     );
 
     // Filtrar nulos e retornar
-    return materias.filter(m => m !== null) as Array<{
+    const resultado = materias.filter(m => m !== null) as Array<{
       MatProfTurGUID: string;
       MateriaNome: string;
       TurmaNome: string;
       TurmaSerie: string;
     }>;
+
+    console.log("   ✅ Total de matérias retornadas:", resultado.length);
+    return resultado;
   }
 
   /**
@@ -479,17 +504,29 @@ export default class ProfessorService {
       }>;
     }>;
   }> {
+    console.log("🟣 ProfessorService.buscarTurmasAlunos()");
+    console.log("   📋 MatProfTurGUID:", matProfTurGUID);
+    console.log("   📋 CPF recebido:", usuarioCPF);
+
     // Normalizar CPF (remover formatação)
     const cpfNormalizado = usuarioCPF.replace(/\D/g, '');
+    console.log("   🔄 CPF normalizado:", cpfNormalizado);
 
     // 1. Buscar alocação base
     const alocacaoBase = await this.#alocacaoDAO.findById(matProfTurGUID);
+    console.log("   📊 Alocação base encontrada:", alocacaoBase ? 'SIM' : 'NÃO');
+    
     if (!alocacaoBase) {
       throw new ErrorResponse(404, 'Alocação não encontrada');
     }
 
+    console.log("   🔍 Alocação.UsuarioCPF:", alocacaoBase.UsuarioCPF);
+    console.log("   🔍 CPF normalizado:", cpfNormalizado);
+    console.log("   🔍 CPFs coincidem:", alocacaoBase.UsuarioCPF === cpfNormalizado ? 'SIM' : 'NÃO');
+
     // 2. Validar que o professor é dono da alocação
     if (alocacaoBase.UsuarioCPF !== cpfNormalizado) {
+      console.log("   ❌ Sem permissão para acessar esta alocação");
       throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
     }
 
