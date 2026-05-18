@@ -428,6 +428,14 @@ export default class ProfessorService {
     const cpfNormalizado = usuarioCPF.replace(/\D/g, '');
     console.log("   🔄 CPF normalizado:", cpfNormalizado);
 
+    // DEBUG: Buscar TODAS as alocações para ver se existem dados
+    const todasAlocacoesSemFiltro = await this.#alocacaoDAO.findAll();
+    console.log("   🔍 DEBUG - Total de alocações no banco (sem filtro):", todasAlocacoesSemFiltro.length);
+    if (todasAlocacoesSemFiltro.length > 0) {
+      const cpfsUnicos = [...new Set(todasAlocacoesSemFiltro.map(a => a.UsuarioCPF))];
+      console.log("   🔍 DEBUG - CPFs únicos no banco:", cpfsUnicos);
+    }
+
     // Buscar alocações do professor na escola
     const alocacoes = await this.#alocacaoDAO.findAll({
       UsuarioCPF: cpfNormalizado,
