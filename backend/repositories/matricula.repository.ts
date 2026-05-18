@@ -171,14 +171,7 @@ export class MatriculaDAO {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(query, [turmaGUID]);
 
-    const matriculas = this.mapRows(rows as MatriculaRow[]);
-    
-    console.log(`📋 [DEBUG] Matrículas encontradas: ${matriculas.length}`);
-    matriculas.forEach(m => {
-      console.log(`📋 [DEBUG] - MatriculaGUID: ${m.MatriculaGUID}, UsuarioCPF: "${m.UsuarioCPF}", Status: ${m.MatriculaStatus}`);
-    });
-    
-    return matriculas;
+    return this.mapRows(rows as MatriculaRow[]);
   }
 
   /**
