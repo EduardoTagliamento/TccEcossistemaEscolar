@@ -82,12 +82,25 @@ export default class MaterialProfessorTurma {
     if (typeof value !== 'string') {
       throw new Error('UsuarioCPF deve ser uma string');
     }
-    // Validação básica de CPF (11 dígitos)
-    const cpfLimpo = value.replace(/\D/g, '');
+    
+    const valorTrimmed = value.trim();
+    
+    // Aceitar CPF com ou sem formatação
+    const cpfLimpo = valorTrimmed.replace(/\D/g, '');
     if (cpfLimpo.length !== 11) {
       throw new Error('UsuarioCPF deve ter 11 dígitos');
     }
-    this.#UsuarioCPF = cpfLimpo;
+    
+    // Se já tem formatação (XXX.XXX.XXX-XX), manter
+    // Se não tem, também aceitar (para compatibilidade)
+    if (valorTrimmed.length === 14 && valorTrimmed.match(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)) {
+      this.#UsuarioCPF = valorTrimmed; // Manter formatação
+    } else if (valorTrimmed.length === 11 && valorTrimmed.match(/^\d{11}$/)) {
+      // Formatar se vier sem formatação
+      this.#UsuarioCPF = `${cpfLimpo.substring(0, 3)}.${cpfLimpo.substring(3, 6)}.${cpfLimpo.substring(6, 9)}-${cpfLimpo.substring(9, 11)}`;
+    } else {
+      throw new Error('UsuarioCPF deve estar no formato XXX.XXX.XXX-XX ou XXXXXXXXXXX');
+    }
   }
 
   set AlocacaoStatus(value: 'Ativa' | 'Inativa') {
