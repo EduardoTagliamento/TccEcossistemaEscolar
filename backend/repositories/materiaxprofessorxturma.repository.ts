@@ -90,9 +90,6 @@ export class MaterialProfessorTurmaDAO {
    * Listar alocações com filtros opcionais
    */
   async findAll(filters?: AlocacaoFilters): Promise<MaterialProfessorTurma[]> {
-    console.log("🟢 MaterialProfessorTurmaDAO.findAll()");
-    console.log("   📋 Filtros recebidos:", JSON.stringify(filters, null, 2));
-    
     let query = `SELECT * FROM materiaxprofessorxturma WHERE 1=1`;
     const params: any[] = [];
 
@@ -118,16 +115,8 @@ export class MaterialProfessorTurmaDAO {
 
     query += ` ORDER BY MatProfTurCreatedAt DESC`;
 
-    console.log("   📝 SQL Query:", query);
-    console.log("   📝 SQL Params:", params);
-
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(query, params);
-    
-    console.log("   📊 Total de rows retornadas:", (rows as any[]).length);
-    if ((rows as any[]).length > 0) {
-      console.log("   📊 Primeira row:", JSON.stringify((rows as any[])[0], null, 2));
-    }
     
     return this.mapRows(rows as AlocacaoRow[]);
   }
