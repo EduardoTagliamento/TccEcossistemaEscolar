@@ -360,14 +360,11 @@ export default class ProfessorController {
   buscarTurmasAlunos = async (req: Request, res: Response): Promise<void> => {
     try {
       console.log("🔵 ProfessorController.buscarTurmasAlunos()");
-      console.log("📋 [DEBUG] Query params:", req.query);
-      console.log("📋 [DEBUG] Usuario autenticado:", req.user?.UsuarioNome);
       
       const { MatProfTurGUID } = req.query;
       const usuarioCPF = req.user?.UsuarioCPF;
 
       if (!usuarioCPF) {
-        console.log("❌ [DEBUG] Não autenticado");
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -376,18 +373,13 @@ export default class ProfessorController {
       }
 
       if (!MatProfTurGUID || typeof MatProfTurGUID !== 'string') {
-        console.log("❌ [DEBUG] MatProfTurGUID inválido:", MatProfTurGUID);
         throw new ErrorResponse(400, 'MatProfTurGUID é obrigatório');
       }
-
-      console.log("✅ [DEBUG] Buscando estrutura para MatProfTurGUID:", MatProfTurGUID);
 
       const estrutura = await this.#professorService.buscarTurmasAlunos(
         MatProfTurGUID,
         usuarioCPF
       );
-
-      console.log("✅ [DEBUG] Estrutura retornada:", JSON.stringify(estrutura, null, 2));
 
       res.status(200).json({
         success: true,

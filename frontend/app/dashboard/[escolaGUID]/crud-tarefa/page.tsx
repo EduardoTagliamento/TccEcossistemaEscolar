@@ -69,6 +69,20 @@ export default function CrudTarefaPage() {
     TarefaTipoEntrega: 'digital' as 'digital' | 'fisica',
   });
 
+  /**
+   * Inicializar campo de data com hoje às 23:59
+   */
+  useEffect(() => {
+    const hoje = new Date();
+    hoje.setHours(23, 59, 0, 0);
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    const dataPadrao = `${ano}-${mes}-${dia}T23:59`;
+    
+    setForm(prev => ({ ...prev, TarefaPrazoData: dataPadrao }));
+  }, []);
+
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
@@ -128,18 +142,12 @@ export default function CrudTarefaPage() {
 
     try {
       const url = `/api/professor/turmas-alunos?MatProfTurGUID=${form.matXprofXturxescGUID}`;
-      console.log('🔍 [DEBUG] Requisitando:', url);
-      console.log('🔍 [DEBUG] Token:', token ? 'presente' : 'ausente');
-      console.log('🔍 [DEBUG] MatProfTurGUID:', form.matXprofXturxescGUID);
 
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
-
-      console.log('🔍 [DEBUG] Status da resposta:', response.status);
       
       const data = await response.json();
-      console.log('🔍 [DEBUG] Dados recebidos:', data);
 
       if (!response.ok) throw new Error(data?.message || 'Erro ao carregar alunos');
 
@@ -276,13 +284,25 @@ export default function CrudTarefaPage() {
     return matriculas;
   };
 
+  /**
+   * Obtém a data de hoje às 23:59 no formato datetime-local
+   */
+  const obterDataPadraoFimDoDia = (): string => {
+    const hoje = new Date();
+    hoje.setHours(23, 59, 0, 0);
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoje.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}T23:59`;
+  };
+
   const limparFormulario = () => {
     setEditingGUID(null);
     setForm({
       matXprofXturxescGUID: materias.length === 1 ? materias[0].MatProfTurGUID : '',
       TarefaTitulo: '',
       TarefaConteudo: '',
-      TarefaPrazoData: '',
+      TarefaPrazoData: obterDataPadraoFimDoDia(),
       TarefaTipoEntrega: 'digital',
     });
     setSeries([]);
