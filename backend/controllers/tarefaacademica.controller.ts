@@ -9,15 +9,17 @@ import ErrorResponse from "../utils/ErrorResponse";
 import RelacaoAnexosService from "../services/relacaoanexos.service";
 
 /**
- * Controller para endpoints de TarefaAcademica
+ * Controller para endpoints de TarefaAcademica (MODELO NORMALIZADO)
  *
  * Endpoints:
- * - POST   /api/tarefa                         (criar tarefa)
- * - GET    /api/tarefa                         (listar com filtros)
- * - GET    /api/tarefa/:TarefaGUID             (buscar por GUID)
- * - PUT    /api/tarefa/:TarefaGUID             (atualizar)
- * - DELETE /api/tarefa/:TarefaGUID             (excluir)
- * - POST   /api/tarefa/:TarefaGUID/anexo-entrega  (vincular anexo de entrega)
+ * - POST   /api/tarefa                                (criar tarefa para N alunos)
+ * - POST   /api/tarefa/batch                          (alias para criar)
+ * - GET    /api/tarefa                                (listar com filtros)
+ * - GET    /api/tarefa/:TarefaGUID                    (buscar por GUID)
+ * - PUT    /api/tarefa/:TarefaGUID                    (atualizar dados da tarefa)
+ * - PATCH  /api/tarefa/:TarefaGUID/marcar-feito       (aluno marca como feito)
+ * - DELETE /api/tarefa/:TarefaGUID                    (excluir)
+ * - POST   /api/tarefa/:TarefaGUID/anexo-entrega      (vincular anexo de entrega)
  * - DELETE /api/tarefa/:TarefaGUID/anexo-entrega/:AnexoGUID (desvincular anexo)
  */
 export default class TarefaAcademicaControl {
@@ -32,9 +34,9 @@ export default class TarefaAcademicaControl {
 
   /**
    * POST /api/tarefa
-   * Criar nova tarefa acadêmica
+   * Criar nova tarefa acadêmica para múltiplos alunos
    *
-   * Body: { tarefa: { MatriculaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo?,
+   * Body: { tarefa: { MatriculasGUID[], matXprofXturxescGUID, TarefaTitulo, TarefaConteudo?,
    *                   TarefaPrazoData, TarefaTipoEntrega, anexosDescricao? } }
    */
   store = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
@@ -44,7 +46,7 @@ export default class TarefaAcademicaControl {
       const usuarioCPF = request.user?.UsuarioCPF;
 
       const createData: TarefaAcademicaCreateDTO = {
-        MatriculaGUID: tarefa.MatriculaGUID,
+        MatriculasGUID: tarefa.MatriculasGUID,
         matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
         TarefaTitulo: tarefa.TarefaTitulo,
         TarefaConteudo: tarefa.TarefaConteudo,
@@ -67,7 +69,7 @@ export default class TarefaAcademicaControl {
 
   /**
    * POST /api/tarefa/batch
-   * Criar múltiplas tarefas de uma vez (para vários alunos)
+   * Criar tarefa para vários alunos (alias para store)
    *
    * Body: { tarefa: { MatriculasGUID[], matXprofXturxescGUID, TarefaTitulo, TarefaConteudo?,
    *                   TarefaPrazoData, TarefaTipoEntrega, anexosDescricao? } }
@@ -88,12 +90,12 @@ export default class TarefaAcademicaControl {
         anexosDescricao: tarefa.anexosDescricao,
       };
 
-      const tarefasCriadas = await this.#tarefaService.criarTarefasBatch(batchCreateData, usuarioCPF);
+      const resultado = await this.#tarefaService.criarTarefasBatch(batchCreateData, usuarioCPF);
 
       response.status(201).json({
         success: true,
-        message: `${tarefasCriadas.length} tarefa(s) criada(s) com sucesso`,
-        data: { tarefas: tarefasCriadas, count: tarefasCriadas.length },
+        message: `${resultado.count} tarefa(s) criada(s) com sucesso`,
+        data: resultado,
       });
     } catch (error) {
       next(error);
@@ -103,18 +105,13 @@ export default class TarefaAcademicaControl {
   /**
    * GET /api/tarefa
    * Listar tarefas com filtros opcionais
-   * Query: ?MatriculaGUID=X&matXprofXturxescGUID=Y&TarefaFeito=true&DataInicio=Z&DataFim=W
+   * Query: ?matXprofXturxescGUID=Y&DataInicio=Z&DataFim=W
    */
   index = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 TarefaAcademicaControl.index()");
     try {
       const filters: TarefaAcademicaFilters = {
-        MatriculaGUID: request.query.MatriculaGUID as string | undefined,
         matXprofXturxescGUID: request.query.matXprofXturxescGUID as string | undefined,
-        TarefaFeito:
-          request.query.TarefaFeito !== undefined
-            ? request.query.TarefaFeito === "true"
-            : undefined,
         DataInicio: request.query.DataInicio
           ? new Date(request.query.DataInicio as string)
           : undefined,
@@ -160,6 +157,10 @@ export default class TarefaAcademicaControl {
    * Body: { tarefa: { TarefaTitulo?, TarefaConteudo?, TarefaPrazoData?,
    *                   TarefaTipoEntrega?, TarefaFeito? } }
    */
+  update = async (req (afeta todos os alunos)
+   *
+   * Body: { tarefa: { TarefaTitulo?, TarefaConteudo?, TarefaPrazoData?, TarefaTipoEntrega? } }
+   */
   update = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 TarefaAcademicaControl.update()");
     try {
@@ -172,7 +173,6 @@ export default class TarefaAcademicaControl {
         TarefaConteudo: tarefa.TarefaConteudo,
         TarefaPrazoData: tarefa.TarefaPrazoData ? new Date(tarefa.TarefaPrazoData) : undefined,
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
-        TarefaFeito: tarefa.TarefaFeito,
       };
 
       const tarefaAtualizada = await this.#tarefaService.atualizarTarefa(
@@ -190,6 +190,31 @@ export default class TarefaAcademicaControl {
       next(error);
     }
   };
+
+  /**
+   * PATCH /api/tarefa/:TarefaGUID/marcar-feito
+   * Aluno marca tarefa como feita (ou desmarca)
+   * 
+   * Body: { MatriculaGUID: string, TarefaFeito: boolean }
+   */
+  marcarComoFeito = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.marcarComoFeito()");
+    try {
+      const { TarefaGUID } = request.params;
+      const { MatriculaGUID, TarefaFeito } = request.body;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      const atribuicaoAtualizada = await this.#tarefaService.marcarComoFeito(
+        TarefaGUID,
+        MatriculaGUID,
+        TarefaFeito,
+        usuarioCPF
+      );
+
+      response.status(200).json({
+        success: true,
+        message: `Tarefa marcada como ${TarefaFeito ? "feita" : "não feita"}`,
+        data: { atribuicao: atribuicao
 
   /**
    * DELETE /api/tarefa/:TarefaGUID

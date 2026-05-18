@@ -4,34 +4,34 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 interface TarefaAcademicaRow extends RowDataPacket {
   TarefaGUID: string;
-  MatriculaGUID: string;
   matXprofXturxescGUID: string;
   TarefaTitulo: string;
   TarefaConteudo: string | null;
   TarefaPostagemData: Date;
   TarefaPrazoData: Date;
   TarefaTipoEntrega: "digital" | "fisica";
-  TarefaFeito: boolean | number;
-  TarefaRealizacaoData: Date | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }
 
 export interface TarefaAcademicaFilters {
-  MatriculaGUID?: string;
   matXprofXturxescGUID?: string;
-  TarefaFeito?: boolean;
   DataInicio?: Date;
   DataFim?: Date;
 }
 
 /**
- * Repository (DAO) para a entidade TarefaAcademica
+ * Repository (DAO) para a entidade TarefaAcademica (MODELO NORMALIZADO)
  *
  * Responsabilidades:
- * - CRUD completo na tabela `tarefaacademica`
+ * - CRUD completo na tabela `tarefaacademica` (dados únicos da tarefa)
  * - Operações na tabela pivô `relacaoanexostarefa`
  * - Conversão entre rows do MySQL e objetos TarefaAcademica
+ * 
+ * IMPORTANTE:
+ * - Não gerencia mais MatriculaGUID (ver TarefaAcademicaMatriculaDAO)
+ * - Uma tarefa agora é única e compartilhada por N alunos
+ * - Para atribuir tarefa a alunos, use TarefaAcademicaMatriculaDAO.createBatch()
  */
 export class TarefaAcademicaDAO {
   #database: MysqlDatabase;
@@ -46,20 +46,18 @@ export class TarefaAcademicaDAO {
 
     const SQL = `
       INSERT INTO tarefaacademica
-      (TarefaGUID, MatriculaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo,
-       TarefaPostagemData, TarefaPrazoData, TarefaTipoEntrega, TarefaFeito)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+      (TarefaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo,
+       TarefaPostagemData, TarefaPrazoData, TarefaTipoEntrega)
+      VALUES (?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       tarefa.TarefaGUID,
-      tarefa.MatriculaGUID,
       tarefa.matXprofXturxescGUID,
       tarefa.TarefaTitulo,
       tarefa.TarefaConteudo,
       tarefa.TarefaPostagemData,
       tarefa.TarefaPrazoData,
       tarefa.TarefaTipoEntrega,
-      tarefa.TarefaFeito,
     ];
 
     const pool = await this.#database.getPool();
@@ -71,46 +69,15 @@ export class TarefaAcademicaDAO {
   /**
    * Criar múltiplas tarefas em uma única query (batch insert)
    * Melhora significativamente a performance ao criar tarefas para múltiplos alunos
+   */MÉTODO OBSOLETO - use service layer com TarefaAcademicaMatriculaDAO
+   * 
+   * Criar múltiplas tarefas em batch não faz mais sentido no modelo normalizado.
+   * O correto é:
+   * 1. Criar UMA tarefa com TarefaAcademicaDAO.create()
+   * 2. Atribuir para N alunos com TarefaAcademicaMatriculaDAO.createBatch()
    */
   createBatch = async (tarefas: TarefaAcademica[]): Promise<TarefaAcademica[]> => {
-    console.log(`🟢 TarefaAcademicaDAO.createBatch() - ${tarefas.length} tarefas`);
-
-    if (tarefas.length === 0) {
-      return [];
-    }
-
-    // Construir VALUES com placeholders para cada tarefa
-    const valuesPlaceholder = tarefas.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
-    
-    const SQL = `
-      INSERT INTO tarefaacademica
-      (TarefaGUID, MatriculaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo,
-       TarefaPostagemData, TarefaPrazoData, TarefaTipoEntrega, TarefaFeito)
-      VALUES ${valuesPlaceholder};
-    `;
-
-    // Flatten todos os parâmetros em um único array
-    const params: any[] = [];
-    tarefas.forEach((tarefa) => {
-      params.push(
-        tarefa.TarefaGUID,
-        tarefa.MatriculaGUID,
-        tarefa.matXprofXturxescGUID,
-        tarefa.TarefaTitulo,
-        tarefa.TarefaConteudo,
-        tarefa.TarefaPostagemData,
-        tarefa.TarefaPrazoData,
-        tarefa.TarefaTipoEntrega,
-        tarefa.TarefaFeito
-      );
-    });
-
-    const pool = await this.#database.getPool();
-    await pool.execute(SQL, params);
-
-    return tarefas;
-  };
-
+    throw new Error("createBatch() obsoleto. Use create() + TarefaAcademicaMatriculaDAO.createBatch()")
   findAll = async (filters?: TarefaAcademicaFilters): Promise<TarefaAcademica[]> => {
     console.log("🟢 TarefaAcademicaDAO.findAll()");
 
@@ -148,19 +115,9 @@ export class TarefaAcademicaDAO {
     const [rows] = await pool.execute<TarefaAcademicaRow[]>(SQL, params);
 
     return rows.map((row) => this.mapRowToTarefa(row));
-  };
-
-  findById = async (TarefaGUID: string): Promise<TarefaAcademica | null> => {
-    console.log("🟢 TarefaAcademicaDAO.findById()");
-
-    const SQL = "SELECT * FROM tarefaacademica WHERE TarefaGUID = ?;";
-    const params = [TarefaGUID];
-
-    const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<TarefaAcademicaRow[]>(SQL, params);
-
-    if (rows.length === 0) {
-      return null;
+  };matXprofXturxescGUID) {
+      SQL += " AND matXprofXturxescGUID = ?";
+      params.push(filters.matXprofXturxescGUID
     }
 
     return this.mapRowToTarefa(rows[0]);
@@ -212,37 +169,28 @@ export class TarefaAcademicaDAO {
 
     const SQL = `
       UPDATE tarefaacademica
-      SET ${fields.join(", ")}, UpdatedAt = CURRENT_TIMESTAMP
-      WHERE TarefaGUID = ?;
-    `;
+    >>
+  ): Promise<TarefaAcademica | null> => {
+    console.log("🟢 TarefaAcademicaDAO.update()");
 
-    const pool = await this.#database.getPool();
-    await pool.execute(SQL, values);
+    const fields: string[] = [];
+    const values: any[] = [];
 
-    return this.findById(TarefaGUID);
-  };
-
-  delete = async (TarefaGUID: string): Promise<boolean> => {
-    console.log("🟢 TarefaAcademicaDAO.delete()");
-
-    const SQL = "DELETE FROM tarefaacademica WHERE TarefaGUID = ?;";
-    const params = [TarefaGUID];
-
-    const pool = await this.#database.getPool();
-    const [resultado] = await pool.execute(SQL, params);
-
-    return (resultado as ResultSetHeader).affectedRows > 0;
-  };
-
-  vincularAnexo = async (
-    TarefaGUID: string,
-    AnexoGUID: string,
-    tipo: "descricao" | "entrega"
-  ): Promise<void> => {
-    console.log("🟢 TarefaAcademicaDAO.vincularAnexo()");
-
-    const SQL = `
-      INSERT INTO relacaoanexostarefa (RelacaoAnexoTarefaGUID, AnexoGUID, TarefaGUID, AnexoTipo)
+    if (updates.TarefaTitulo !== undefined) {
+      fields.push("TarefaTitulo = ?");
+      values.push(updates.TarefaTitulo);
+    }
+    if (updates.TarefaConteudo !== undefined) {
+      fields.push("TarefaConteudo = ?");
+      values.push(updates.TarefaConteudo);
+    }
+    if (updates.TarefaPrazoData !== undefined) {
+      fields.push("TarefaPrazoData = ?");
+      values.push(updates.TarefaPrazoData);
+    }
+    if (updates.TarefaTipoEntrega !== undefined) {
+      fields.push("TarefaTipoEntrega = ?");
+      values.push(updates.TarefaTipoEntrega);NSERT INTO relacaoanexostarefa (RelacaoAnexoTarefaGUID, AnexoGUID, TarefaGUID, AnexoTipo)
       VALUES (UUID(), ?, ?, ?);
     `;
     const pool = await this.#database.getPool();
@@ -277,3 +225,9 @@ export class TarefaAcademicaDAO {
     return tarefa;
   }
 }
+matXprofXturxescGUID = row.matXprofXturxescGUID;
+    tarefa.TarefaTitulo = row.TarefaTitulo;
+    tarefa.TarefaConteudo = row.TarefaConteudo;
+    tarefa.TarefaPostagemData = row.TarefaPostagemData;
+    tarefa.TarefaPrazoData = row.TarefaPrazoData;
+    tarefa.TarefaTipoEntrega = row.TarefaTipoEntreg

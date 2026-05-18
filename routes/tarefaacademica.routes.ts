@@ -4,6 +4,7 @@ import TarefaAcademicaControl from "../backend/controllers/tarefaacademica.contr
 import TarefaAcademicaMiddleware from "../backend/middlewares/tarefaacademica.middleware";
 import TarefaAcademicaService from "../backend/services/tarefaacademica.service";
 import { TarefaAcademicaDAO } from "../backend/repositories/tarefaacademica.repository";
+import { TarefaAcademicaMatriculaDAO } from "../backend/repositories/tarefaacademica-matricula.repository";
 import { AnexoDAO } from "../backend/repositories/anexo.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { EventoDAO } from "../backend/repositories/evento.repository";
@@ -67,6 +68,15 @@ export default class TarefaAcademicaRoteador {
       this.#controle.update
     );
 
+    // PATCH /api/tarefa/:TarefaGUID/marcar-feito - Aluno marca tarefa como feita
+    this.#router.patch(
+      "/:TarefaGUID/marcar-feito",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#middleware.validateMarcarFeitoBody,
+      this.#controle.marcarComoFeito
+    );
+
     // DELETE /api/tarefa/:TarefaGUID - Excluir tarefa
     this.#router.delete(
       "/:TarefaGUID",
@@ -115,12 +125,13 @@ export default class TarefaAcademicaRoteador {
 // ========== Instanciação e Injeção de Dependências ==========
 const db = MysqlDatabase.getInstance();
 const tarefaDAO = new TarefaAcademicaDAO(db);
+const tarefaMatriculaDAO = new TarefaAcademicaMatriculaDAO(db);
 const anexoDAO = new AnexoDAO(db);
 const matriculaDAO = new MatriculaDAO(db);
 const eventoDAO = new EventoDAO(db);
 const relacaoAnexosDAO = new RelacaoAnexosDAO(db);
 
-const tarefaService = new TarefaAcademicaService(tarefaDAO, anexoDAO, matriculaDAO);
+const tarefaService = new TarefaAcademicaService(tarefaDAO, tarefaMatriculaDAO, anexoDAO, matriculaDAO);
 const relacaoAnexosService = new RelacaoAnexosService(relacaoAnexosDAO, anexoDAO, tarefaDAO, eventoDAO);
 const tarefaControle = new TarefaAcademicaControl(tarefaService, relacaoAnexosService);
 const tarefaMiddleware = new TarefaAcademicaMiddleware();

@@ -71,8 +71,9 @@ export default class TarefaAcademicaMiddleware {
 
   /**
    * Valida body para criação de tarefa (POST)
+   * MODELO NORMALIZADO: sempre espera array de MatriculasGUID
    *
-   * Body: { tarefa: { MatriculaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo?,
+   * Body: { tarefa: { MatriculasGUID[], matXprofXturxescGUID, TarefaTitulo, TarefaConteudo?,
    *                   TarefaPrazoData, TarefaTipoEntrega, anexosDescricao? } }
    */
   validateCreateBody = (request: Request, _response: Response, next: NextFunction): void => {
@@ -85,18 +86,25 @@ export default class TarefaAcademicaMiddleware {
       });
     }
 
-    // MatriculaGUID: obrigatório, string não vazia
-    if (!tarefa.MatriculaGUID || typeof tarefa.MatriculaGUID !== "string") {
+    // MatriculasGUID: obrigatório, array de strings não vazias
+    if (!tarefa.MatriculasGUID || !Array.isArray(tarefa.MatriculasGUID)) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'MatriculaGUID' é obrigatório.",
+        message: "O campo 'MatriculasGUID' é obrigatório e deve ser um array.",
       });
     }
 
-    const matriculaGUID = tarefa.MatriculaGUID.trim();
-    if (matriculaGUID.length < 1 || matriculaGUID.length > 36) {
+    if (tarefa.MatriculasGUID.length === 0) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'MatriculaGUID' deve ter entre 1 e 36 caracteres.",
+        message: "O campo 'MatriculasGUID' deve conter ao menos uma matrícula.",
       });
+    }
+
+    for (const matriculaGUID of tarefa.MatriculasGUID) {
+      if (typeof matriculaGUID !== "string" || matriculaGUID.trim().length < 1 || matriculaGUID.trim().length > 36) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "Cada 'MatriculaGUID' deve ser uma string entre 1 e 36 caracteres.",
+        });
+      }
     }
 
     // matXprofXturxescGUID: obrigatório, UUID
@@ -148,6 +156,44 @@ export default class TarefaAcademicaMiddleware {
     }
 
     const prazo = new Date(tarefa.TarefaPrazoData);
+    if (isNaN(prazo.getTime())) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaPrazoData' deve ser uma data válida (ISO 8601).",
+      });
+    }
+
+    // TarefaTipoEntrega: obrigatório, enum
+    if (!tarefa.TarefaTipoEntrega) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaTipoEntrega' é obrigatório.",
+      });
+    }
+
+    if (!TIPO_ENTREGA_VALID.includes(tarefa.TarefaTipoEntrega)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaTipoEntrega' deve ser 'digital' ou 'fisica'.",
+      });
+    }
+
+    // anexosDescricao: opcional, array de UUIDs
+    if (tarefa.anexosDescricao !== undefined) {
+      if (!Array.isArray(tarefa.anexosDescricao)) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O campo 'anexosDescricao' deve ser um array de UUIDs.",
+        });
+      }
+
+      for (const guid of tarefa.anexosDescricao) {
+        if (typeof guid !== "string" || !GUID_REGEX.test(guid)) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `O valor '${guid}' em 'anexosDescricao' não é um UUID válido.`,
+          });
+        }
+      }
+    }
+
+    next();
+  };
     if (isNaN(prazo.getTime())) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
         message: "O campo 'TarefaPrazoData' deve ser uma data válida (ISO 8601).",
@@ -314,9 +360,9 @@ export default class TarefaAcademicaMiddleware {
 
   /**
    * Valida body para atualização de tarefa (PUT)
+   * MODELO NORMALIZADO: TarefaFeito não está mais aqui (ver marcar-feito)
    *
-   * Body: { tarefa: { TarefaTitulo?, TarefaConteudo?, TarefaPrazoData?,
-   *                   TarefaTipoEntrega?, TarefaFeito? } }
+   * Body: { tarefa: { TarefaTitulo?, TarefaConteudo?, TarefaPrazoData?, TarefaTipoEntrega? } }
    */
   validateUpdateBody = (request: Request, _response: Response, next: NextFunction): void => {
     console.log("🔷 TarefaAcademicaMiddleware.validateUpdateBody()");
@@ -334,7 +380,6 @@ export default class TarefaAcademicaMiddleware {
       "TarefaConteudo",
       "TarefaPrazoData",
       "TarefaTipoEntrega",
-      "TarefaFeito",
     ];
     const camposFornecidos = camposValidos.filter((c) => tarefa[c] !== undefined);
 
@@ -394,10 +439,36 @@ export default class TarefaAcademicaMiddleware {
       });
     }
 
-    // TarefaFeito: opcional, booleano
-    if (tarefa.TarefaFeito !== undefined && typeof tarefa.TarefaFeito !== "boolean") {
+    next();
+  };
+
+  /**
+   * Valida body para marcar tarefa como feita (PATCH)
+   *
+   * Body: { MatriculaGUID: string, TarefaFeito: boolean }
+   */
+  validateMarcarFeitoBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateMarcarFeitoBody()");
+    const { MatriculaGUID, TarefaFeito } = request.body;
+
+    // MatriculaGUID: obrigatório
+    if (!MatriculaGUID || typeof MatriculaGUID !== "string") {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'TarefaFeito' deve ser um booleano.",
+        message: "O campo 'MatriculaGUID' é obrigatório.",
+      });
+    }
+
+    const matriculaGUID = MatriculaGUID.trim();
+    if (matriculaGUID.length < 1 || matriculaGUID.length > 36) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'MatriculaGUID' deve ter entre 1 e 36 caracteres.",
+      });
+    }
+
+    // TarefaFeito: obrigatório, booleano
+    if (TarefaFeito === undefined || typeof TarefaFeito !== "boolean") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaFeito' é obrigatório e deve ser um booleano.",
       });
     }
 
