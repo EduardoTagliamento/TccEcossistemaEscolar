@@ -188,6 +188,131 @@ export default class TarefaAcademicaMiddleware {
   };
 
   /**
+   * Valida body para criação de múltiplas tarefas (POST /batch)
+   *
+   * Body: { tarefa: { MatriculasGUID[], matXprofXturxescGUID, TarefaTitulo, TarefaConteudo?,
+   *                   TarefaPrazoData, TarefaTipoEntrega, anexosDescricao? } }
+   */
+  validateBatchCreateBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateBatchCreateBody()");
+    const { tarefa } = request.body;
+
+    if (!tarefa || typeof tarefa !== "object") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'tarefa' é obrigatório e deve ser um objeto.",
+      });
+    }
+
+    // MatriculasGUID: obrigatório, array de strings não vazias
+    if (!tarefa.MatriculasGUID || !Array.isArray(tarefa.MatriculasGUID)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'MatriculasGUID' é obrigatório e deve ser um array.",
+      });
+    }
+
+    if (tarefa.MatriculasGUID.length === 0) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'MatriculasGUID' deve conter ao menos uma matrícula.",
+      });
+    }
+
+    for (const matriculaGUID of tarefa.MatriculasGUID) {
+      if (typeof matriculaGUID !== "string" || matriculaGUID.trim().length < 1 || matriculaGUID.trim().length > 36) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "Cada 'MatriculaGUID' deve ser uma string entre 1 e 36 caracteres.",
+        });
+      }
+    }
+
+    // matXprofXturxescGUID: obrigatório, UUID
+    if (!tarefa.matXprofXturxescGUID || typeof tarefa.matXprofXturxescGUID !== "string") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'matXprofXturxescGUID' é obrigatório.",
+      });
+    }
+
+    if (!GUID_REGEX.test(tarefa.matXprofXturxescGUID)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'matXprofXturxescGUID' deve ser um UUID válido.",
+      });
+    }
+
+    // TarefaTitulo: obrigatório, 1-128 chars
+    if (!tarefa.TarefaTitulo || typeof tarefa.TarefaTitulo !== "string") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaTitulo' é obrigatório.",
+      });
+    }
+
+    const titulo = tarefa.TarefaTitulo.trim();
+    if (titulo.length < 1 || titulo.length > 128) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaTitulo' deve ter entre 1 e 128 caracteres.",
+      });
+    }
+
+    // TarefaConteudo: opcional, máximo 1024 chars
+    if (tarefa.TarefaConteudo !== undefined && tarefa.TarefaConteudo !== null) {
+      if (typeof tarefa.TarefaConteudo !== "string") {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O campo 'TarefaConteudo' deve ser uma string.",
+        });
+      }
+      if (tarefa.TarefaConteudo.trim().length > 1024) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O campo 'TarefaConteudo' deve ter no máximo 1024 caracteres.",
+        });
+      }
+    }
+
+    // TarefaPrazoData: obrigatório, data válida
+    if (!tarefa.TarefaPrazoData) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaPrazoData' é obrigatório.",
+      });
+    }
+
+    const prazo = new Date(tarefa.TarefaPrazoData);
+    if (isNaN(prazo.getTime())) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaPrazoData' deve ser uma data válida (ISO 8601).",
+      });
+    }
+
+    // TarefaTipoEntrega: obrigatório, enum
+    if (!tarefa.TarefaTipoEntrega) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaTipoEntrega' é obrigatório.",
+      });
+    }
+
+    if (!TIPO_ENTREGA_VALID.includes(tarefa.TarefaTipoEntrega)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'TarefaTipoEntrega' deve ser 'digital' ou 'fisica'.",
+      });
+    }
+
+    // anexosDescricao: opcional, array de UUIDs
+    if (tarefa.anexosDescricao !== undefined) {
+      if (!Array.isArray(tarefa.anexosDescricao)) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O campo 'anexosDescricao' deve ser um array de UUIDs.",
+        });
+      }
+
+      for (const guid of tarefa.anexosDescricao) {
+        if (typeof guid !== "string" || !GUID_REGEX.test(guid)) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `O valor '${guid}' em 'anexosDescricao' não é um UUID válido.`,
+          });
+        }
+      }
+    }
+
+    next();
+  };
+
+  /**
    * Valida body para atualização de tarefa (PUT)
    *
    * Body: { tarefa: { TarefaTitulo?, TarefaConteudo?, TarefaPrazoData?,

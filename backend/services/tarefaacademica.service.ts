@@ -30,6 +30,16 @@ export interface TarefaAcademicaCreateDTO {
   anexosDescricao?: string[]; // GUIDs de anexos já enviados para descrição
 }
 
+export interface TarefaAcademicaBatchCreateDTO {
+  MatriculasGUID: string[]; // Array de GUIDs de matrículas
+  matXprofXturxescGUID: string;
+  TarefaTitulo: string;
+  TarefaConteudo?: string;
+  TarefaPrazoData: Date;
+  TarefaTipoEntrega: "digital" | "fisica";
+  anexosDescricao?: string[];
+}
+
 export interface TarefaAcademicaUpdateDTO {
   TarefaTitulo?: string;
   TarefaConteudo?: string;
@@ -117,6 +127,85 @@ export default class TarefaAcademicaService {
     }
 
     return this.toDTO(tarefaCriada);
+  };
+
+  /**
+   * Criar múltiplas tarefas de uma vez (batch)
+   * Otimização de performance para criação de tarefas para vários alunos
+   */
+  criarTarefasBatch = async (
+    data: TarefaAcademicaBatchCreateDTO,
+    usuarioCPF?: string
+  ): Promise<TarefaAcademicaDTO[]> => {
+    console.log(`🟣 TarefaAcademicaService.criarTarefasBatch() - ${data.MatriculasGUID.length} tarefas`);
+
+    if (!usuarioCPF) {
+      throw new ErrorResponse(401, "Usuário não autenticado", {
+        message: "É necessário estar autenticado para criar tarefas.",
+      });
+    }
+
+    if (!data.MatriculasGUID || data.MatriculasGUID.length === 0) {
+      throw new ErrorResponse(400, "Nenhuma matrícula fornecida", {
+        message: "É necessário fornecer ao menos uma matrícula.",
+      });
+    }
+
+    // Validar prazo (não pode ser no passado)
+    const prazo = new Date(data.TarefaPrazoData);
+    if (isNaN(prazo.getTime()) || prazo < new Date()) {
+      throw new ErrorResponse(400, "Prazo inválido", {
+        message: "O prazo da tarefa não pode ser no passado.",
+      });
+    }
+
+    // Validar que todas as matrículas existem
+    const matriculasExistentes = await Promise.all(
+      data.MatriculasGUID.map((guid) => this.#matriculaDAO.findById(guid))
+    );
+
+    const matriculasInvalidas = data.MatriculasGUID.filter(
+      (guid, index) => !matriculasExistentes[index]
+    );
+
+    if (matriculasInvalidas.length > 0) {
+      throw new ErrorResponse(404, "Matrículas não encontradas", {
+        message: `As seguintes matrículas não existem: ${matriculasInvalidas.join(", ")}`,
+      });
+    }
+
+    // Criar objetos TarefaAcademica para cada matrícula
+    const dataPostagemAtual = new Date();
+    const tarefas: TarefaAcademica[] = data.MatriculasGUID.map((matriculaGUID) => {
+      const tarefa = new TarefaAcademica();
+      tarefa.TarefaGUID = uuidv4();
+      tarefa.MatriculaGUID = matriculaGUID;
+      tarefa.matXprofXturxescGUID = data.matXprofXturxescGUID;
+      tarefa.TarefaTitulo = data.TarefaTitulo.trim();
+      tarefa.TarefaConteudo = data.TarefaConteudo ? data.TarefaConteudo.trim() : null;
+      tarefa.TarefaPostagemData = dataPostagemAtual;
+      tarefa.TarefaPrazoData = prazo;
+      tarefa.TarefaTipoEntrega = data.TarefaTipoEntrega;
+      tarefa.TarefaFeito = false;
+      return tarefa;
+    });
+
+    // Criar todas as tarefas em uma única query
+    const tarefasCriadas = await this.#tarefaDAO.createBatch(tarefas);
+
+    // Vincular anexos de descrição (se houver)
+    if (data.anexosDescricao && data.anexosDescricao.length > 0) {
+      for (const tarefaCriada of tarefasCriadas) {
+        for (const anexoGUID of data.anexosDescricao) {
+          const anexo = await this.#anexoDAO.findById(anexoGUID);
+          if (anexo) {
+            await this.#tarefaDAO.vincularAnexo(tarefaCriada.TarefaGUID, anexoGUID, "descricao");
+          }
+        }
+      }
+    }
+
+    return tarefasCriadas.map((tarefa) => this.toDTO(tarefa));
   };
 
   listarTarefas = async (filters?: TarefaAcademicaFilters): Promise<TarefaAcademicaDTO[]> => {
