@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import TarefaAcademicaService, {
   TarefaAcademicaCreateDTO,
+  TarefaAcademicaBatchCreateDTO,
   TarefaAcademicaUpdateDTO,
 } from "../services/tarefaacademica.service";
 import { TarefaAcademicaFilters } from "../repositories/tarefaacademica.repository";
@@ -58,6 +59,41 @@ export default class TarefaAcademicaControl {
         success: true,
         message: "Tarefa criada com sucesso",
         data: { tarefa: tarefaCriada },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/tarefa/batch
+   * Criar múltiplas tarefas de uma vez (para vários alunos)
+   *
+   * Body: { tarefa: { MatriculasGUID[], matXprofXturxescGUID, TarefaTitulo, TarefaConteudo?,
+   *                   TarefaPrazoData, TarefaTipoEntrega, anexosDescricao? } }
+   */
+  storeBatch = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.storeBatch()");
+    try {
+      const { tarefa } = request.body;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      const batchCreateData: TarefaAcademicaBatchCreateDTO = {
+        MatriculasGUID: tarefa.MatriculasGUID,
+        matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
+        TarefaTitulo: tarefa.TarefaTitulo,
+        TarefaConteudo: tarefa.TarefaConteudo,
+        TarefaPrazoData: new Date(tarefa.TarefaPrazoData),
+        TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+        anexosDescricao: tarefa.anexosDescricao,
+      };
+
+      const tarefasCriadas = await this.#tarefaService.criarTarefasBatch(batchCreateData, usuarioCPF);
+
+      response.status(201).json({
+        success: true,
+        message: `${tarefasCriadas.length} tarefa(s) criada(s) com sucesso`,
+        data: { tarefas: tarefasCriadas, count: tarefasCriadas.length },
       });
     } catch (error) {
       next(error);

@@ -300,39 +300,33 @@ export default function CrudTarefaPage() {
         throw new Error('Selecione pelo menos um aluno');
       }
 
-      // Criar uma tarefa para cada matrícula selecionada
-      const promessas = matriculasSelecionadas.map(async (matriculaGUID) => {
-        const payload = {
-          tarefa: {
-            MatriculaGUID: matriculaGUID,
-            matXprofXturxescGUID: form.matXprofXturxescGUID,
-            TarefaTitulo: form.TarefaTitulo,
-            TarefaConteudo: form.TarefaConteudo || undefined,
-            TarefaPrazoData: new Date(form.TarefaPrazoData).toISOString(),
-            TarefaTipoEntrega: form.TarefaTipoEntrega,
-          },
-        };
+      // Criar todas as tarefas em uma única requisição batch
+      const payload = {
+        tarefa: {
+          MatriculasGUID: matriculasSelecionadas, // Array de GUIDs
+          matXprofXturxescGUID: form.matXprofXturxescGUID,
+          TarefaTitulo: form.TarefaTitulo,
+          TarefaConteudo: form.TarefaConteudo || undefined,
+          TarefaPrazoData: new Date(form.TarefaPrazoData).toISOString(),
+          TarefaTipoEntrega: form.TarefaTipoEntrega,
+        },
+      };
 
-        const response = await fetch('/api/tarefa', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data?.message || 'Erro ao salvar tarefa');
-        }
-
-        return data;
+      const response = await fetch('/api/tarefa/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       });
 
-      await Promise.all(promessas);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || 'Erro ao salvar tarefas');
+      }
 
-      alert(`${matriculasSelecionadas.length} tarefa(s) criada(s) com sucesso!`);
+      alert(`${data.data.count} tarefa(s) criada(s) com sucesso!`);
       limparFormulario();
       await carregarTarefas();
       setModalAberto(false);

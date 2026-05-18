@@ -68,6 +68,49 @@ export class TarefaAcademicaDAO {
     return tarefa;
   };
 
+  /**
+   * Criar múltiplas tarefas em uma única query (batch insert)
+   * Melhora significativamente a performance ao criar tarefas para múltiplos alunos
+   */
+  createBatch = async (tarefas: TarefaAcademica[]): Promise<TarefaAcademica[]> => {
+    console.log(`🟢 TarefaAcademicaDAO.createBatch() - ${tarefas.length} tarefas`);
+
+    if (tarefas.length === 0) {
+      return [];
+    }
+
+    // Construir VALUES com placeholders para cada tarefa
+    const valuesPlaceholder = tarefas.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
+    
+    const SQL = `
+      INSERT INTO tarefaacademica
+      (TarefaGUID, MatriculaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo,
+       TarefaPostagemData, TarefaPrazoData, TarefaTipoEntrega, TarefaFeito)
+      VALUES ${valuesPlaceholder};
+    `;
+
+    // Flatten todos os parâmetros em um único array
+    const params: any[] = [];
+    tarefas.forEach((tarefa) => {
+      params.push(
+        tarefa.TarefaGUID,
+        tarefa.MatriculaGUID,
+        tarefa.matXprofXturxescGUID,
+        tarefa.TarefaTitulo,
+        tarefa.TarefaConteudo,
+        tarefa.TarefaPostagemData,
+        tarefa.TarefaPrazoData,
+        tarefa.TarefaTipoEntrega,
+        tarefa.TarefaFeito
+      );
+    });
+
+    const pool = await this.#database.getPool();
+    await pool.execute(SQL, params);
+
+    return tarefas;
+  };
+
   findAll = async (filters?: TarefaAcademicaFilters): Promise<TarefaAcademica[]> => {
     console.log("🟢 TarefaAcademicaDAO.findAll()");
 

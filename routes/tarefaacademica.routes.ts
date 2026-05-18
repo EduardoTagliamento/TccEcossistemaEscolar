@@ -26,6 +26,14 @@ export default class TarefaAcademicaRoteador {
   createRoutes = (): Router => {
     console.log("⬆️ TarefaAcademicaRoteador.createRoutes()");
 
+    // POST /api/tarefa/batch - Criar múltiplas tarefas (DEVE vir ANTES de "/" para evitar conflito)
+    this.#router.post(
+      "/batch",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateBatchCreateBody,
+      this.#controle.storeBatch
+    );
+
     // POST /api/tarefa - Criar tarefa
     this.#router.post(
       "/",
