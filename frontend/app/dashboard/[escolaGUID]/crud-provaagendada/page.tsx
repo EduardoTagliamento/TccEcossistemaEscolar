@@ -488,7 +488,7 @@ export default function CrudProvaAgendadaPage() {
                           {serie.expanded ? '▼' : '▶'} {serie.TurmaSerie}ª Série
                         </button>
                         <span className={styles.count}>
-                          ({serie.turmas.length} turmas)
+                          ({serie.turmas.length} turma{serie.turmas.length !== 1 ? 's' : ''})
                         </span>
                       </div>
 
