@@ -5,7 +5,7 @@ const GUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const STATUS_VALID = ["Agendada", "Realizada", "Cancelada"];
 
 /**
- * Middleware de validação para rotas de ProvaAgendada
+ * Middleware de validação para rotas de ProvaAgendada (REFATORADO - N:N NORMALIZADO)
  */
 export default class ProvaAgendadaMiddleware {
   /**
@@ -33,7 +33,7 @@ export default class ProvaAgendadaMiddleware {
   /**
    * Valida body para criação de prova (POST)
    *
-   * Body: { prova: { TurmaGUID, MateriaGUID, ProvaData, ProvaDescricao?, anexosDescricao? } }
+   * Body: { prova: { TurmasGUID[], MateriaGUID, ProvaData, ProvaDescricao?, anexosDescricao? } }
    */
   validateCreateBody = (request: Request, _response: Response, next: NextFunction): void => {
     console.log("🔷 ProvaAgendadaMiddleware.validateCreateBody()");
@@ -45,16 +45,25 @@ export default class ProvaAgendadaMiddleware {
       });
     }
 
-    if (!prova.TurmaGUID || typeof prova.TurmaGUID !== "string") {
+    // Validação do array de turmas
+    if (!prova.TurmasGUID || !Array.isArray(prova.TurmasGUID)) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'TurmaGUID' é obrigatório.",
+        message: "O campo 'TurmasGUID' é obrigatório e deve ser um array.",
       });
     }
 
-    if (!GUID_REGEX.test(prova.TurmaGUID)) {
+    if (prova.TurmasGUID.length === 0) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'TurmaGUID' deve ser um UUID válido.",
+        message: "É necessário selecionar pelo menos uma turma.",
       });
+    }
+
+    for (const turmaGUID of prova.TurmasGUID) {
+      if (typeof turmaGUID !== "string" || !GUID_REGEX.test(turmaGUID)) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: `O valor '${turmaGUID}' em 'TurmasGUID' não é um UUID válido.`,
+        });
+      }
     }
 
     if (!prova.MateriaGUID || typeof prova.MateriaGUID !== "string") {
@@ -170,19 +179,11 @@ export default class ProvaAgendadaMiddleware {
   };
 
   /**
-   * Valida query params para busca/listagem
+   * Valida query params para busca/listagem (sem TurmaGUID - agora via join)
    */
   validateFilters = (request: Request, _response: Response, next: NextFunction): void => {
     console.log("🔷 ProvaAgendadaMiddleware.validateFilters()");
-    const { TurmaGUID, MateriaGUID, ProvaStatus, DataInicio, DataFim } = request.query;
-
-    if (TurmaGUID !== undefined) {
-      if (typeof TurmaGUID !== "string" || !GUID_REGEX.test(TurmaGUID)) {
-        throw new ErrorResponse(400, "Erro na validação de dados", {
-          message: "O filtro 'TurmaGUID' deve ser um UUID válido.",
-        });
-      }
-    }
+    const { MateriaGUID, ProvaStatus, DataInicio, DataFim } = request.query;
 
     if (MateriaGUID !== undefined) {
       if (typeof MateriaGUID !== "string" || !GUID_REGEX.test(MateriaGUID)) {

@@ -6,13 +6,13 @@ import ProvaAgendadaService, {
 import { ProvaAgendadaFilters } from "../repositories/provaagendada.repository";
 
 /**
- * Controller para endpoints de ProvaAgendada
+ * Controller para endpoints de ProvaAgendada (REFATORADO - N:N NORMALIZADO)
  *
  * Endpoints:
- * - POST   /api/prova                              (criar prova)
+ * - POST   /api/prova                              (criar prova para N turmas)
  * - GET    /api/prova                              (listar com filtros)
  * - GET    /api/prova/:ProvaAgendadaGUID           (buscar por GUID)
- * - PUT    /api/prova/:ProvaAgendadaGUID           (atualizar)
+ * - PUT    /api/prova/:ProvaAgendadaGUID           (atualizar dados compartilhados)
  * - DELETE /api/prova/:ProvaAgendadaGUID           (excluir)
  */
 export default class ProvaAgendadaControl {
@@ -25,7 +25,7 @@ export default class ProvaAgendadaControl {
 
   /**
    * POST /api/prova
-   * Criar nova prova agendada
+   * Criar nova prova agendada para N turmas
    */
   store = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 ProvaAgendadaControl.store()");
@@ -34,7 +34,7 @@ export default class ProvaAgendadaControl {
       const usuarioCPF = request.user?.UsuarioCPF;
 
       const createData: ProvaAgendadaCreateDTO = {
-        TurmaGUID: prova.TurmaGUID,
+        TurmasGUID: prova.TurmasGUID, // Array de turmas
         MateriaGUID: prova.MateriaGUID,
         ProvaData: new Date(prova.ProvaData),
         ProvaDescricao: prova.ProvaDescricao,
@@ -55,13 +55,12 @@ export default class ProvaAgendadaControl {
 
   /**
    * GET /api/prova
-   * Listar provas com filtros opcionais
+   * Listar provas com filtros opcionais (sem TurmaGUID - agora via join)
    */
   index = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 ProvaAgendadaControl.index()");
     try {
       const filters: ProvaAgendadaFilters = {
-        TurmaGUID: request.query.TurmaGUID as string | undefined,
         MateriaGUID: request.query.MateriaGUID as string | undefined,
         ProvaStatus: request.query.ProvaStatus as
           | "Agendada"

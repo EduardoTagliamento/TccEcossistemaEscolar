@@ -4,7 +4,6 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 interface ProvaAgendadaRow extends RowDataPacket {
   ProvaAgendadaGUID: string;
-  TurmaGUID: string;
   MateriaGUID: string;
   ProvaData: Date;
   ProvaDescricao: string | null;
@@ -14,7 +13,6 @@ interface ProvaAgendadaRow extends RowDataPacket {
 }
 
 export interface ProvaAgendadaFilters {
-  TurmaGUID?: string;
   MateriaGUID?: string;
   ProvaStatus?: "Agendada" | "Realizada" | "Cancelada";
   DataInicio?: Date;
@@ -22,12 +20,14 @@ export interface ProvaAgendadaFilters {
 }
 
 /**
- * Repository (DAO) para a entidade ProvaAgendada
+ * Repository (DAO) para a entidade ProvaAgendada (NORMALIZADA)
  *
  * Responsabilidades:
- * - CRUD completo na tabela `provaagendada`
+ * - CRUD completo na tabela `provaagendada` (dados únicos da prova)
  * - Operações na tabela pivô `relacaoanexosprova`
  * - Conversão entre rows do MySQL e objetos ProvaAgendada
+ * 
+ * ⚠️ TurmaGUID foi REMOVIDO - Agora está em ProvaAgendadaTurmaDAO
  */
 export class ProvaAgendadaDAO {
   #database: MysqlDatabase;
@@ -42,12 +42,11 @@ export class ProvaAgendadaDAO {
 
     const SQL = `
       INSERT INTO provaagendada
-      (ProvaAgendadaGUID, TurmaGUID, MateriaGUID, ProvaData, ProvaDescricao, ProvaStatus)
-      VALUES (?, ?, ?, ?, ?, ?);
+      (ProvaAgendadaGUID, MateriaGUID, ProvaData, ProvaDescricao, ProvaStatus)
+      VALUES (?, ?, ?, ?, ?);
     `;
     const params = [
       prova.ProvaAgendadaGUID,
-      prova.TurmaGUID,
       prova.MateriaGUID,
       prova.ProvaData,
       prova.ProvaDescricao,
@@ -65,11 +64,6 @@ export class ProvaAgendadaDAO {
 
     let SQL = "SELECT * FROM provaagendada WHERE 1=1";
     const params: (string | Date)[] = [];
-
-    if (filters?.TurmaGUID) {
-      SQL += " AND TurmaGUID = ?";
-      params.push(filters.TurmaGUID);
-    }
 
     if (filters?.MateriaGUID) {
       SQL += " AND MateriaGUID = ?";
@@ -196,7 +190,6 @@ export class ProvaAgendadaDAO {
   private mapRowToProva(row: ProvaAgendadaRow): ProvaAgendada {
     const prova = new ProvaAgendada();
     prova.ProvaAgendadaGUID = row.ProvaAgendadaGUID;
-    prova.TurmaGUID = row.TurmaGUID;
     prova.MateriaGUID = row.MateriaGUID;
     prova.ProvaData = row.ProvaData;
     prova.ProvaDescricao = row.ProvaDescricao;
