@@ -40,15 +40,16 @@ export class CalendarioDAO {
 
     const query = `
       -- TAREFAS VISÍVEIS AO USUÁRIO (ALUNO OU PROFESSOR)
+      -- Modelo normalizado: tarefaacademica + tarefaacademica_matricula
       SELECT
         'tarefa' AS TipoAviso,
         t.TarefaGUID AS AvisoId,
         t.TarefaPrazoData AS DataPrazo,
         t.TarefaTitulo AS Titulo,
         t.TarefaConteudo AS Descricao,
-        t.TarefaFeito AS StatusBoolean,
+        tm.TarefaFeito AS StatusBoolean,
         CASE
-          WHEN t.TarefaFeito = 1 THEN 'Feita'
+          WHEN tm.TarefaFeito = 1 THEN 'Feita'
           WHEN t.TarefaPrazoData < NOW() THEN 'Atrasada'
           ELSE 'Pendente'
         END AS StatusTexto,
@@ -57,20 +58,21 @@ export class CalendarioDAO {
           SELECT COUNT(*)
           FROM relacaoanexostarefa rat
           WHERE rat.TarefaGUID = t.TarefaGUID
-            AND rat.AnexoTipo = 'descricao'
+            AND rat.AnexoTipo = 'tarefa'
         ) AS QtdAnexosDescricao,
         (
           SELECT COUNT(*)
           FROM relacaoanexostarefa rat
           WHERE rat.TarefaGUID = t.TarefaGUID
-            AND rat.AnexoTipo = 'entrega'
+            AND rat.AnexoTipo = 'resposta'
         ) AS QtdAnexosEntrega,
         TRUE AS PermiteMarcarFeito,
         TRUE AS PermiteEnviarAnexo,
         'tarefa' AS IconeTipo,
-        t.CreatedAt
+        t.TarefaCreatedAt AS CreatedAt
       FROM tarefaacademica t
-      INNER JOIN matricula m ON m.MatriculaGUID = t.MatriculaGUID
+      INNER JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID
+      INNER JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
       INNER JOIN turma tur ON tur.TurmaGUID = m.TurmaGUID
       LEFT JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
       WHERE tur.EscolaGUID = ?
