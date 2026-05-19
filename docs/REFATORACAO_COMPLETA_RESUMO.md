@@ -148,10 +148,10 @@ Exemplo: 30 alunos = 1 tarefa + 30 atribuições (SEM DUPLICAÇÃO)
 ### 1. Executar Migration (CRÍTICO)
 ```bash
 # 1. Fazer backup do banco
-mysqldump -u root -p ecossistema_escolar > backup_antes_refatoracao.sql
+mysqldump -u root -p railway > backup_antes_refatoracao.sql
 
 # 2. Executar migration
-mysql -u root -p ecossistema_escolar < backend/database/migrations/refactor-tarefa-normalized.sql
+mysql -u root -p railway < backend/database/migrations/refactor-tarefa-normalized.sql
 
 # 3. Verificar resultado (queries de verificação estão no final do arquivo)
 ```

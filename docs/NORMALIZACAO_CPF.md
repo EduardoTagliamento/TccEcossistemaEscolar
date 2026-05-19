@@ -58,12 +58,12 @@ Criado `backend/database/migrations/fix-cpf-formatting.sql` para:
 
 ### Passo 1: Backup do Banco
 ```bash
-mysqldump -u root -p ecossistema_escolar > backup_antes_cpf_$(date +%Y%m%d).sql
+mysqldump -u root -p railway > backup_antes_cpf_$(date +%Y%m%d).sql
 ```
 
 ### Passo 2: Executar Script SQL
 ```bash
-mysql -u root -p ecossistema_escolar < backend/database/migrations/fix-cpf-formatting.sql
+mysql -u root -p railway < backend/database/migrations/fix-cpf-formatting.sql
 ```
 
 Ou no MySQL Workbench:
