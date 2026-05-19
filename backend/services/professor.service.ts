@@ -412,10 +412,11 @@ export default class ProfessorService {
 
   /**
    * Buscar matérias que o professor leciona em uma escola
-   * Retorna lista com: MatProfTurGUID, MateriaNome, TurmaNome, TurmaSerie
+   * Retorna lista com: MatProfTurGUID, MateriaGUID, MateriaNome, TurmaNome, TurmaSerie
    */
   async buscarMateriasProfessor(usuarioCPF: string, escolaGUID: string): Promise<Array<{
     MatProfTurGUID: string;
+    MateriaGUID: string;
     MateriaNome: string;
     TurmaNome: string;
     TurmaSerie: string;
@@ -445,6 +446,7 @@ export default class ProfessorService {
 
         return {
           MatProfTurGUID: alocacao.MatProfTurGUID,
+          MateriaGUID: materia.MateriaGUID,
           MateriaNome: materia.MateriaNome,
           TurmaNome: turma.TurmaNome,
           TurmaSerie: turma.TurmaSerie
@@ -455,6 +457,7 @@ export default class ProfessorService {
     // Filtrar nulos e retornar
     return materias.filter(m => m !== null) as Array<{
       MatProfTurGUID: string;
+      MateriaGUID: string;
       MateriaNome: string;
       TurmaNome: string;
       TurmaSerie: string;

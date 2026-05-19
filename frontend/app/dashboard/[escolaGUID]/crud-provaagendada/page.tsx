@@ -17,6 +17,7 @@ interface Prova {
 
 interface MateriaOption {
   MatProfTurGUID: string;
+  MateriaGUID: string;
   MateriaNome: string;
   TurmaNome: string;
   TurmaSerie: string;
@@ -53,6 +54,7 @@ export default function CrudProvaAgendadaPage() {
   const [loadingModal, setLoadingModal] = useState(false);
   const [form, setForm] = useState({
     MateriaGUID: '',
+    MatProfTurGUID: '', // Para buscar turmas
     ProvaData: '',
     ProvaDescricao: '',
     ProvaStatus: 'Agendada' as 'Agendada' | 'Realizada' | 'Cancelada',
@@ -91,11 +93,16 @@ export default function CrudProvaAgendadaPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || 'Erro ao carregar matérias');
       const materiasData = data?.data || [];
+      
       setMaterias(materiasData);
 
       // Auto-preencher se tiver apenas uma matéria
       if (materiasData.length === 1) {
-        setForm(prev => ({ ...prev, MateriaGUID: materiasData[0].MatProfTurGUID }));
+        setForm(prev => ({
+          ...prev,
+          MateriaGUID: materiasData[0].MateriaGUID,
+          MatProfTurGUID: materiasData[0].MatProfTurGUID
+        }));
       }
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar matérias');
@@ -120,7 +127,7 @@ export default function CrudProvaAgendadaPage() {
   };
 
   const abrirModalTurmas = async () => {
-    if (!form.MateriaGUID) {
+    if (!form.MatProfTurGUID) {
       alert('Por favor, selecione uma matéria primeiro.');
       return;
     }
@@ -130,7 +137,7 @@ export default function CrudProvaAgendadaPage() {
     setErro(null);
 
     try {
-      const url = `/api/professor/turmas-alunos?MatProfTurGUID=${form.MateriaGUID}`;
+      const url = `/api/professor/turmas-alunos?MatProfTurGUID=${form.MatProfTurGUID}`;
 
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
@@ -231,7 +238,8 @@ export default function CrudProvaAgendadaPage() {
   const limparFormulario = () => {
     setEditingGUID(null);
     setForm({
-      MateriaGUID: materias.length === 1 ? materias[0].MatProfTurGUID : '',
+      MateriaGUID: materias.length === 1 ? materias[0].MateriaGUID : '',
+      MatProfTurGUID: materias.length === 1 ? materias[0].MatProfTurGUID : '',
       ProvaData: obterDataPadraoFimDoDia(),
       ProvaDescricao: '',
       ProvaStatus: 'Agendada',
@@ -320,6 +328,7 @@ export default function CrudProvaAgendadaPage() {
     setEditingGUID(prova.ProvaAgendadaGUID);
     setForm({
       MateriaGUID: prova.MateriaGUID,
+      MatProfTurGUID: '', // Não precisa para edição
       ProvaData: prova.ProvaData.slice(0, 16),
       ProvaDescricao: prova.ProvaDescricao || '',
       ProvaStatus: prova.ProvaStatus,
@@ -343,7 +352,7 @@ export default function CrudProvaAgendadaPage() {
     }
   };
 
-  const materiaSelecionada = materias.find(m => m.MatProfTurGUID === form.MateriaGUID);
+  const materiaSelecionada = materias.find(m => m.MatProfTurGUID === form.MatProfTurGUID);
   const totalTurmasSelecionadas = obterTurmasSelecionadas().length;
 
   return (
@@ -369,7 +378,12 @@ export default function CrudProvaAgendadaPage() {
             <select
               value={form.MateriaGUID}
               onChange={(e) => {
-                setForm(prev => ({ ...prev, MateriaGUID: e.target.value }));
+                const materiaSelecionada = materias.find(m => m.MateriaGUID === e.target.value);
+                setForm(prev => ({
+                  ...prev,
+                  MateriaGUID: e.target.value,
+                  MatProfTurGUID: materiaSelecionada?.MatProfTurGUID || ''
+                }));
                 setSeries([]); // Limpar seleção de turmas ao mudar matéria
               }}
               required
@@ -377,7 +391,7 @@ export default function CrudProvaAgendadaPage() {
             >
               <option value="">Selecione uma matéria</option>
               {materias.map(materia => (
-                <option key={materia.MatProfTurGUID} value={materia.MatProfTurGUID}>
+                <option key={materia.MatProfTurGUID} value={materia.MateriaGUID}>
                   {materia.MateriaNome} - {materia.TurmaSerie}º {materia.TurmaNome}
                 </option>
               ))}
@@ -393,13 +407,13 @@ export default function CrudProvaAgendadaPage() {
               type="button"
               onClick={abrirModalTurmas}
               className={styles.selectButton}
-              disabled={!form.MateriaGUID}
+              disabled={!form.MatProfTurGUID}
             >
               {totalTurmasSelecionadas === 0
                 ? 'Selecionar Turmas'
                 : `${totalTurmasSelecionadas} turma(s) selecionada(s)`}
             </button>
-            {!form.MateriaGUID && (
+            {!form.MatProfTurGUID && (
               <p className={styles.hint}>Selecione uma matéria primeiro</p>
             )}
           </div>
