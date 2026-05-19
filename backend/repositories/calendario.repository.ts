@@ -45,15 +45,15 @@ export class CalendarioDAO {
         'tarefa' AS TipoAviso,
         t.TarefaGUID AS AvisoId,
         t.TarefaPrazoData AS DataPrazo,
-        t.TarefaTitulo AS Titulo,
-        t.TarefaConteudo AS Descricao,
+        t.TarefaTitulo COLLATE utf8mb4_0900_ai_ci AS Titulo,
+        t.TarefaConteudo COLLATE utf8mb4_0900_ai_ci AS Descricao,
         tm.TarefaFeito AS StatusBoolean,
         CASE
           WHEN tm.TarefaFeito = 1 THEN 'Feita'
           WHEN t.TarefaPrazoData < NOW() THEN 'Atrasada'
           ELSE 'Pendente'
-        END AS StatusTexto,
-        t.TarefaTipoEntrega AS TipoEntrega,
+        END COLLATE utf8mb4_0900_ai_ci AS StatusTexto,
+        t.TarefaTipoEntrega COLLATE utf8mb4_0900_ai_ci AS TipoEntrega,
         (
           SELECT COUNT(*)
           FROM relacaoanexostarefa rat
@@ -93,10 +93,10 @@ export class CalendarioDAO {
         'prova' AS TipoAviso,
         p.ProvaAgendadaGUID AS AvisoId,
         p.ProvaData AS DataPrazo,
-        COALESCE(mat.MateriaNome, 'Prova agendada') AS Titulo,
-        p.ProvaDescricao AS Descricao,
+        COALESCE(mat.MateriaNome, 'Prova agendada') COLLATE utf8mb4_0900_ai_ci AS Titulo,
+        p.ProvaDescricao COLLATE utf8mb4_0900_ai_ci AS Descricao,
         NULL AS StatusBoolean,
-        p.ProvaStatus AS StatusTexto,
+        p.ProvaStatus COLLATE utf8mb4_0900_ai_ci AS StatusTexto,
         NULL AS TipoEntrega,
         (
           SELECT COUNT(*)
