@@ -89,6 +89,7 @@ export class CalendarioDAO {
       UNION
 
       -- PROVAS VISÍVEIS AO USUÁRIO (ALUNO OU PROFESSOR)
+      -- Modelo normalizado: provaagendada + provaagendada_turma
       SELECT
         'prova' AS TipoAviso,
         p.ProvaAgendadaGUID AS AvisoId,
@@ -109,11 +110,12 @@ export class CalendarioDAO {
         'prova' AS IconeTipo,
         p.CreatedAt
       FROM provaagendada p
-      INNER JOIN turma tur ON tur.TurmaGUID = p.TurmaGUID
+      INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
+      INNER JOIN turma tur ON tur.TurmaGUID = pt.TurmaGUID
       INNER JOIN materia mat ON mat.MateriaGUID = p.MateriaGUID
-      LEFT JOIN matricula m ON m.TurmaGUID = p.TurmaGUID
+      LEFT JOIN matricula m ON m.TurmaGUID = pt.TurmaGUID
       LEFT JOIN materiaxprofessorxturma mpt
-        ON mpt.TurmaGUID = p.TurmaGUID
+        ON mpt.TurmaGUID = pt.TurmaGUID
        AND mpt.MateriaGUID = p.MateriaGUID
       WHERE tur.EscolaGUID = ?
         AND (
