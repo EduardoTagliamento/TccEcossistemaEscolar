@@ -1,18 +1,20 @@
 /**
- * Representa a entidade ProvaAgendada do sistema.
+ * Representa a entidade ProvaAgendada do sistema (NORMALIZADA).
  *
  * Objetivo:
- * - Encapsular os dados de uma prova agendada para uma turma/matéria.
+ * - Encapsular os dados ÚNICOS de uma prova agendada.
  * - Garantir integridade dos atributos via getters e setters.
+ * - Uma prova é criada UMA VEZ e compartilhada por N turmas via tabela intermediária.
  *
  * Relacionamentos:
- * - N:1 com Turma
  * - N:1 com Materia
+ * - 1:N com ProvaAgendadaTurma (tabela intermediária N:N com Turma)
  * - 1:N com Anexo (via relacaoanexosprova)
+ * 
+ * ⚠️ TurmaGUID foi REMOVIDO - Agora está na tabela provaagendada_turma
  */
 export default class ProvaAgendada {
   #ProvaAgendadaGUID!: string;
-  #TurmaGUID!: string;
   #MateriaGUID!: string;
   #ProvaData!: Date;
   #ProvaDescricao: string | null = null;
@@ -38,22 +40,6 @@ export default class ProvaAgendada {
       throw new Error("ProvaAgendadaGUID deve ter 36 caracteres.");
     }
     this.#ProvaAgendadaGUID = guid;
-  }
-
-  // ========== TurmaGUID ==========
-  get TurmaGUID(): string {
-    return this.#TurmaGUID;
-  }
-
-  set TurmaGUID(value: string) {
-    if (typeof value !== "string" || value.trim() === "") {
-      throw new Error("TurmaGUID deve ser uma string não vazia.");
-    }
-    const guid = value.trim();
-    if (guid.length !== 36) {
-      throw new Error("TurmaGUID deve ter 36 caracteres.");
-    }
-    this.#TurmaGUID = guid;
   }
 
   // ========== MateriaGUID ==========

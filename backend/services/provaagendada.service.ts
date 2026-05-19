@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
 import ProvaAgendada from "../entities/provaagendada.model";
+import ProvaAgendadaTurma from "../entities/provaagendada-turma.model";
 import { ProvaAgendadaDAO, ProvaAgendadaFilters } from "../repositories/provaagendada.repository";
+import ProvaAgendadaTurmaDAO from "../repositories/provaagendada-turma.repository";
 import { AnexoDAO } from "../repositories/anexo.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
@@ -8,19 +10,22 @@ import ErrorResponse from "../utils/ErrorResponse";
 
 const DATA_VALIDACAO_TOLERANCIA_MS = 60 * 1000;
 
+/**
+ * DTO para retorno de prova com turmas atribuídas (N:N normalizado)
+ */
 export interface ProvaAgendadaDTO {
   ProvaAgendadaGUID: string;
-  TurmaGUID: string;
   MateriaGUID: string;
   ProvaData: string;
   ProvaDescricao: string | null;
   ProvaStatus: "Agendada" | "Realizada" | "Cancelada";
+  TurmasAtribuidas: string[]; // Array de TurmaGUID
   CreatedAt: string | null;
   UpdatedAt: string | null;
 }
 
 export interface ProvaAgendadaCreateDTO {
-  TurmaGUID: string;
+  TurmasGUID: string[]; // Array de turmas para atribuir
   MateriaGUID: string;
   ProvaData: Date;
   ProvaDescricao?: string;
@@ -34,32 +39,45 @@ export interface ProvaAgendadaUpdateDTO {
 }
 
 /**
- * Service para lógica de negócio de ProvaAgendada
+ * Service para lógica de negócio de ProvaAgendada (REFATORADO - N:N NORMALIZADO)
+ *
+ * Modelo anterior (desnormalizado):
+ * - 1 prova para 5 turmas = 5 registros COM DADOS DUPLICADOS
+ *
+ * Modelo atual (normalizado):
+ * - 1 prova para 5 turmas = 1 registro + 5 atribuições
  *
  * Regras principais:
  * - Usuário autenticado pode criar/editar/excluir prova
  * - Data da prova não pode ser no passado ao criar/atualizar
  * - Anexos vinculados são apenas descritivos
+ * - Uma prova é criada UMA VEZ e compartilhada por N turmas
  */
 export default class ProvaAgendadaService {
   #provaDAO: ProvaAgendadaDAO;
+  #provaTurmaDAO: ProvaAgendadaTurmaDAO;
   #anexoDAO: AnexoDAO;
   #turmaDAO: TurmaDAO;
   #materiaDAO: MateriaDAO;
 
   constructor(
     provaDAODependency: ProvaAgendadaDAO,
+    provaTurmaDAODependency: ProvaAgendadaTurmaDAO,
     anexoDAODependency: AnexoDAO,
     turmaDAODependency: TurmaDAO,
     materiaDAODependency: MateriaDAO
   ) {
     console.log("⬆️  ProvaAgendadaService.constructor()");
     this.#provaDAO = provaDAODependency;
+    this.#provaTurmaDAO = provaTurmaDAODependency;
     this.#anexoDAO = anexoDAODependency;
     this.#turmaDAO = turmaDAODependency;
     this.#materiaDAO = materiaDAODependency;
   }
 
+  /**
+   * Cria uma prova UMA VEZ e atribui a N turmas
+   */
   criarProva = async (
     data: ProvaAgendadaCreateDTO,
     usuarioCPF?: string
@@ -72,11 +90,20 @@ export default class ProvaAgendadaService {
       });
     }
 
-    const turma = await this.#turmaDAO.findById(data.TurmaGUID);
-    if (!turma) {
-      throw new ErrorResponse(404, "Turma não encontrada", {
-        message: `Não existe turma com id ${data.TurmaGUID}`,
+    if (!data.TurmasGUID || data.TurmasGUID.length === 0) {
+      throw new ErrorResponse(400, "Nenhuma turma selecionada", {
+        message: "É necessário selecionar pelo menos uma turma para criar a prova.",
       });
+    }
+
+    // Validar todas as turmas existem
+    for (const turmaGUID of data.TurmasGUID) {
+      const turma = await this.#turmaDAO.findById(turmaGUID);
+      if (!turma) {
+        throw new ErrorResponse(404, "Turma não encontrada", {
+          message: `Não existe turma com id ${turmaGUID}`,
+        });
+      }
     }
 
     const materia = await this.#materiaDAO.findById(data.MateriaGUID);
@@ -94,9 +121,9 @@ export default class ProvaAgendadaService {
       });
     }
 
+    // 1. Criar prova ÚNICA (dados compartilhados)
     const prova = new ProvaAgendada();
     prova.ProvaAgendadaGUID = uuidv4();
-    prova.TurmaGUID = data.TurmaGUID;
     prova.MateriaGUID = data.MateriaGUID;
     prova.ProvaData = dataProva;
     prova.ProvaDescricao = data.ProvaDescricao ? data.ProvaDescricao.trim() : null;
@@ -104,6 +131,19 @@ export default class ProvaAgendadaService {
 
     const provaCriada = await this.#provaDAO.create(prova);
 
+    // 2. Criar atribuições para N turmas
+    const atribuicoes: ProvaAgendadaTurma[] = [];
+    for (const turmaGUID of data.TurmasGUID) {
+      const atribuicao = new ProvaAgendadaTurma();
+      atribuicao.ProvaAgendadaTurmaGUID = uuidv4();
+      atribuicao.ProvaAgendadaGUID = provaCriada.ProvaAgendadaGUID;
+      atribuicao.TurmaGUID = turmaGUID;
+      atribuicoes.push(atribuicao);
+    }
+
+    await this.#provaTurmaDAO.createBatch(atribuicoes);
+
+    // 3. Vincular anexos (se houver)
     if (data.anexosDescricao && data.anexosDescricao.length > 0) {
       for (const anexoGUID of data.anexosDescricao) {
         const anexo = await this.#anexoDAO.findById(anexoGUID);
@@ -113,16 +153,32 @@ export default class ProvaAgendadaService {
       }
     }
 
-    return this.toDTO(provaCriada);
+    return this.toDTO(provaCriada, data.TurmasGUID);
   };
 
+  /**
+   * Lista provas com turmas atribuídas
+   */
   listarProvas = async (filters?: ProvaAgendadaFilters): Promise<ProvaAgendadaDTO[]> => {
     console.log("🟣 ProvaAgendadaService.listarProvas()");
 
     const provas = await this.#provaDAO.findAll(filters);
-    return provas.map((prova) => this.toDTO(prova));
+
+    // Buscar turmas atribuídas para cada prova
+    const provasComTurmas = await Promise.all(
+      provas.map(async (prova) => {
+        const atribuicoes = await this.#provaTurmaDAO.findByProva(prova.ProvaAgendadaGUID);
+        const turmasGUID = atribuicoes.map(a => a.TurmaGUID);
+        return this.toDTO(prova, turmasGUID);
+      })
+    );
+
+    return provasComTurmas;
   };
 
+  /**
+   * Busca prova com turmas atribuídas
+   */
   buscarProva = async (ProvaAgendadaGUID: string): Promise<ProvaAgendadaDTO> => {
     console.log("🟣 ProvaAgendadaService.buscarProva()");
 
@@ -134,9 +190,15 @@ export default class ProvaAgendadaService {
       });
     }
 
-    return this.toDTO(prova);
+    const atribuicoes = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
+    const turmasGUID = atribuicoes.map(a => a.TurmaGUID);
+
+    return this.toDTO(prova, turmasGUID);
   };
 
+  /**
+   * Atualiza dados compartilhados da prova (afeta TODAS as turmas)
+   */
   atualizarProva = async (
     ProvaAgendadaGUID: string,
     data: ProvaAgendadaUpdateDTO,
@@ -181,9 +243,16 @@ export default class ProvaAgendadaService {
       });
     }
 
-    return this.toDTO(provaAtualizada);
+    // Buscar turmas atribuídas
+    const atribuicoes = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
+    const turmasGUID = atribuicoes.map(a => a.TurmaGUID);
+
+    return this.toDTO(provaAtualizada, turmasGUID);
   };
 
+  /**
+   * Exclui prova (cascata: deleta atribuições automaticamente)
+   */
   excluirProva = async (ProvaAgendadaGUID: string, usuarioCPF?: string): Promise<boolean> => {
     console.log("🟣 ProvaAgendadaService.excluirProva()");
 
@@ -200,20 +269,21 @@ export default class ProvaAgendadaService {
       });
     }
 
+    // Deleta prova (CASCADE deleta atribuições automaticamente)
     return await this.#provaDAO.delete(ProvaAgendadaGUID);
   };
 
   /**
    * Converte ProvaAgendada (classe) para ProvaAgendadaDTO (interface JSON)
    */
-  private toDTO(prova: ProvaAgendada): ProvaAgendadaDTO {
+  private toDTO(prova: ProvaAgendada, turmasGUID: string[]): ProvaAgendadaDTO {
     return {
       ProvaAgendadaGUID: prova.ProvaAgendadaGUID,
-      TurmaGUID: prova.TurmaGUID,
       MateriaGUID: prova.MateriaGUID,
       ProvaData: prova.ProvaData.toISOString(),
       ProvaDescricao: prova.ProvaDescricao,
       ProvaStatus: prova.ProvaStatus,
+      TurmasAtribuidas: turmasGUID,
       CreatedAt: prova.CreatedAt ? prova.CreatedAt.toISOString() : null,
       UpdatedAt: prova.UpdatedAt ? prova.UpdatedAt.toISOString() : null,
     };

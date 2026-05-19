@@ -4,6 +4,7 @@ import ProvaAgendadaControl from "../backend/controllers/provaagendada.controlle
 import ProvaAgendadaMiddleware from "../backend/middlewares/provaagendada.middleware";
 import ProvaAgendadaService from "../backend/services/provaagendada.service";
 import { ProvaAgendadaDAO } from "../backend/repositories/provaagendada.repository";
+import ProvaAgendadaTurmaDAO from "../backend/repositories/provaagendada-turma.repository";
 import { AnexoDAO } from "../backend/repositories/anexo.repository";
 import { TurmaDAO } from "../backend/repositories/turma.repository";
 import { MateriaDAO } from "../backend/repositories/materia.repository";
@@ -62,13 +63,14 @@ export default class ProvaAgendadaRoteador {
   };
 }
 
-// ========== Instanciação e Injeção de Dependências ==========
+// ========== Instanciação e Injeção de Dependências (N:N Normalizado) ==========
 const db = MysqlDatabase.getInstance();
 const provaDAO = new ProvaAgendadaDAO(db);
+const provaTurmaDAO = new ProvaAgendadaTurmaDAO(db); // Nova tabela intermediária
 const anexoDAO = new AnexoDAO(db);
 const turmaDAO = new TurmaDAO(db);
 const materiaDAO = new MateriaDAO(db);
-const provaService = new ProvaAgendadaService(provaDAO, anexoDAO, turmaDAO, materiaDAO);
+const provaService = new ProvaAgendadaService(provaDAO, provaTurmaDAO, anexoDAO, turmaDAO, materiaDAO);
 const provaControle = new ProvaAgendadaControl(provaService);
 const provaMiddleware = new ProvaAgendadaMiddleware();
 
