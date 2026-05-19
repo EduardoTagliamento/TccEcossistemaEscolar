@@ -46,7 +46,7 @@ Solução: 1 tarefa + 30 atribuições = SEM DUPLICAÇÃO
 
 **Execução**:
 ```bash
-mysql -u root -p ecossistema_escolar < backend/database/migrations/refactor-tarefa-normalized.sql
+mysql -u root -p railway < backend/database/migrations/refactor-tarefa-normalized.sql
 ```
 
 ### 2. **Entidades**

@@ -5,10 +5,10 @@
 --            para modelo normalizado (1 tarefa → N alunos)
 -- =====================================================
 -- ⚠️ IMPORTANTE: FAÇA BACKUP ANTES DE EXECUTAR!
--- mysqldump -u root -p ecossistema_escolar > backup_antes_refatoracao.sql
+-- mysqldump -u root -p railway > backup_antes_refatoracao.sql
 -- =====================================================
 
-USE ecossistema_escolar;
+USE railway;
 
 -- Desabilitar verificações temporariamente
 SET FOREIGN_KEY_CHECKS = 0;
