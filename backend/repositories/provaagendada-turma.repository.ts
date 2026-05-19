@@ -37,7 +37,8 @@ export default class ProvaAgendadaTurmaDAO {
       atribuicao.TurmaGUID
     ];
 
-    const [result] = await this.db.getConnection().execute<ResultSetHeader>(sql, params);
+    const pool = await this.db.getPool();
+    const [result] = await pool.execute<ResultSetHeader>(sql, params);
 
     if (result.affectedRows === 0) {
       throw new ErrorResponse(500, 'Erro ao criar atribuição de prova');
@@ -68,7 +69,8 @@ export default class ProvaAgendadaTurmaDAO {
       a.TurmaGUID
     ]);
 
-    const [result] = await this.db.getConnection().query<ResultSetHeader>(sql, [values]);
+    const pool = await this.db.getPool();
+    const [result] = await pool.query<ResultSetHeader>(sql, [values]);
 
     return result.affectedRows;
   }
@@ -83,9 +85,10 @@ export default class ProvaAgendadaTurmaDAO {
       ORDER BY CreatedAt ASC
     `;
 
-    const [rows] = await this.db.getConnection().execute<RowDataPacket[]>(sql, [ProvaAgendadaGUID]);
+    const pool = await this.db.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [ProvaAgendadaGUID]);
 
-    return rows.map(row => this.mapRowToEntity(row));
+    return rows.map((row) => this.mapRowToEntity(row));
   }
 
   /**
@@ -98,9 +101,10 @@ export default class ProvaAgendadaTurmaDAO {
       ORDER BY CreatedAt ASC
     `;
 
-    const [rows] = await this.db.getConnection().execute<RowDataPacket[]>(sql, [TurmaGUID]);
+    const pool = await this.db.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [TurmaGUID]);
 
-    return rows.map(row => this.mapRowToEntity(row));
+    return rows.map((row) => this.mapRowToEntity(row));
   }
 
   /**
@@ -113,7 +117,8 @@ export default class ProvaAgendadaTurmaDAO {
       LIMIT 1
     `;
 
-    const [rows] = await this.db.getConnection().execute<RowDataPacket[]>(
+    const pool = await this.db.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(
       sql,
       [ProvaAgendadaGUID, TurmaGUID]
     );
@@ -131,7 +136,8 @@ export default class ProvaAgendadaTurmaDAO {
   async delete(ProvaAgendadaTurmaGUID: string): Promise<boolean> {
     const sql = `DELETE FROM provaagendada_turma WHERE ProvaAgendadaTurmaGUID = ?`;
 
-    const [result] = await this.db.getConnection().execute<ResultSetHeader>(sql, [ProvaAgendadaTurmaGUID]);
+    const pool = await this.db.getPool();
+    const [result] = await pool.execute<ResultSetHeader>(sql, [ProvaAgendadaTurmaGUID]);
 
     return result.affectedRows > 0;
   }
@@ -142,7 +148,8 @@ export default class ProvaAgendadaTurmaDAO {
   async deleteByProva(ProvaAgendadaGUID: string): Promise<number> {
     const sql = `DELETE FROM provaagendada_turma WHERE ProvaAgendadaGUID = ?`;
 
-    const [result] = await this.db.getConnection().execute<ResultSetHeader>(sql, [ProvaAgendadaGUID]);
+    const pool = await this.db.getPool();
+    const [result] = await pool.execute<ResultSetHeader>(sql, [ProvaAgendadaGUID]);
 
     return result.affectedRows;
   }
