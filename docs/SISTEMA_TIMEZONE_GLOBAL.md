@@ -463,4 +463,4 @@ Para adicionar suporte de timezone em uma nova feature:
 
 **Última atualização**: 20/05/2026  
 **Versão**: 1.0  
-**Autor**: Sistema TCC Ecossistema Escolar
+**Autor**: Sistema TCC Ecossistema Escolaar
