@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import styles from './page.module.css';
 
 interface Prova {
@@ -257,7 +258,7 @@ export default function CrudProvaAgendadaPage() {
       if (editingGUID) {
         const payload = {
           prova: {
-            ProvaData: new Date(form.ProvaData).toISOString(),
+            ProvaData: converterParaBrasil(form.ProvaData), // Converte do timezone do usuário para GMT-3
             ProvaDescricao: form.ProvaDescricao || undefined,
             ProvaStatus: form.ProvaStatus,
           },
@@ -294,7 +295,7 @@ export default function CrudProvaAgendadaPage() {
         prova: {
           TurmasGUID: turmasSelecionadas,
           MateriaGUID: form.MateriaGUID,
-          ProvaData: new Date(form.ProvaData).toISOString(),
+          ProvaData: converterParaBrasil(form.ProvaData), // Converte do timezone do usuário para GMT-3
           ProvaDescricao: form.ProvaDescricao || undefined,
         },
       };
@@ -329,7 +330,7 @@ export default function CrudProvaAgendadaPage() {
     setForm({
       MateriaGUID: prova.MateriaGUID,
       MatProfTurGUID: '', // Não precisa para edição
-      ProvaData: prova.ProvaData.slice(0, 16),
+      ProvaData: converterDoBrasil(prova.ProvaData), // Converte GMT-3 para timezone do usuário
       ProvaDescricao: prova.ProvaDescricao || '',
       ProvaStatus: prova.ProvaStatus,
     });
@@ -361,6 +362,14 @@ export default function CrudProvaAgendadaPage() {
         <h1>{editingGUID ? '✏️ Editando Prova' : 'Cadastro de Prova Agendada'}</h1>
         <Link href={`/dashboard/${escolaGUID}`} className={styles.backLink}>Voltar ao Dashboard</Link>
       </header>
+
+      {/* Aviso de Timezone */}
+      {usuarioForaDoBrasil() && (
+        <div className={styles.timezoneAlert}>
+          🌍 <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3). 
+          As datas e horários exibidos foram ajustados para o seu fuso local.
+        </div>
+      )}
 
       <form className={styles.form} onSubmit={onSubmit}>
         {/* Campo de Matéria */}

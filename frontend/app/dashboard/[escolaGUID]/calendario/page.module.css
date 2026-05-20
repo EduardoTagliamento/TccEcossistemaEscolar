@@ -30,6 +30,22 @@
   font-weight: 500;
 }
 
+.timezoneAlert {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timezoneAlert strong {
+  font-weight: 700;
+}
+
 .backLink:hover {
   background-color: #007bff;
   color: white;

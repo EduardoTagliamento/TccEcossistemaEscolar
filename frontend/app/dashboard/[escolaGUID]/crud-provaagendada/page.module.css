@@ -18,6 +18,22 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.timezoneAlert {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.timezoneAlert strong {
+  font-weight: var(--font-weight-bold);
+}
+
 .form {
   background: var(--bg-primary);
   padding: var(--spacing-lg);
