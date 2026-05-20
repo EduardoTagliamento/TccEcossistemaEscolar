@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import styles from './page.module.css';
 
 interface AvisoCalendario {
@@ -197,6 +198,14 @@ export default function CalendarioAlunoPage() {
         <h1>Calendário de Avisos</h1>
         <Link href={`/dashboard/${escolaGUID}`} className={styles.backLink}>Voltar ao Dashboard</Link>
       </header>
+
+      {/* Aviso de Timezone */}
+      {usuarioForaDoBrasil() && (
+        <div className={styles.timezoneAlert}>
+          🌍 <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3). 
+          As datas e horários exibidos foram ajustados para o seu fuso local.
+        </div>
+      )}
 
       <section className={styles.calendarControls}>
         <button onClick={() => mudarMes(-1)} className={styles.navButton}>

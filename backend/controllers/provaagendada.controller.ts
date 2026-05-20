@@ -36,7 +36,7 @@ export default class ProvaAgendadaControl {
       const createData: ProvaAgendadaCreateDTO = {
         TurmasGUID: prova.TurmasGUID, // Array de turmas
         MateriaGUID: prova.MateriaGUID,
-        ProvaData: new Date(prova.ProvaData),
+        ProvaData: new Date(prova.ProvaData), // Formato: "2026-05-20T15:00:00"
         ProvaDescricao: prova.ProvaDescricao,
         anexosDescricao: prova.anexosDescricao,
       };
@@ -117,7 +117,7 @@ export default class ProvaAgendadaControl {
       const usuarioCPF = request.user?.UsuarioCPF;
 
       const updateData: ProvaAgendadaUpdateDTO = {
-        ProvaData: prova.ProvaData ? new Date(prova.ProvaData) : undefined,
+        ProvaData: prova.ProvaData ? new Date(prova.ProvaData) : undefined, // Formato: "2026-05-20T15:00:00"
         ProvaDescricao: prova.ProvaDescricao,
         ProvaStatus: prova.ProvaStatus,
       };

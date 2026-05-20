@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import styles from './page.module.css';
 
 interface Tarefa {
@@ -320,7 +321,7 @@ export default function CrudTarefaPage() {
           tarefa: {
             TarefaTitulo: form.TarefaTitulo,
             TarefaConteudo: form.TarefaConteudo || undefined,
-            TarefaPrazoData: new Date(form.TarefaPrazoData).toISOString(),
+            TarefaPrazoData: converterParaBrasil(form.TarefaPrazoData), // Converte do timezone do usuário para GMT-3
             TarefaTipoEntrega: form.TarefaTipoEntrega,
           },
         };
@@ -359,7 +360,7 @@ export default function CrudTarefaPage() {
           matXprofXturxescGUID: form.matXprofXturxescGUID,
           TarefaTitulo: form.TarefaTitulo,
           TarefaConteudo: form.TarefaConteudo || undefined,
-          TarefaPrazoData: new Date(form.TarefaPrazoData).toISOString(),
+          TarefaPrazoData: converterParaBrasil(form.TarefaPrazoData), // Converte do timezone do usuário para GMT-3
           TarefaTipoEntrega: form.TarefaTipoEntrega,
         },
       };
@@ -395,7 +396,7 @@ export default function CrudTarefaPage() {
       matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
       TarefaTitulo: tarefa.TarefaTitulo,
       TarefaConteudo: tarefa.TarefaConteudo || '',
-      TarefaPrazoData: tarefa.TarefaPrazoData.slice(0, 16),
+      TarefaPrazoData: converterDoBrasil(tarefa.TarefaPrazoData), // Converte GMT-3 para timezone do usuário
       TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
     });
     // Scroll para o topo para visualizar o formulário
@@ -426,6 +427,14 @@ export default function CrudTarefaPage() {
         <h1>{editingGUID ? '✏️ Editando Tarefa' : 'Cadastro de Tarefa'}</h1>
         <Link href={`/dashboard/${escolaGUID}`} className={styles.backLink}>Voltar ao Dashboard</Link>
       </header>
+
+      {/* Aviso de Timezone */}
+      {usuarioForaDoBrasil() && (
+        <div className={styles.timezoneAlert}>
+          🌍 <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3). 
+          As datas e horários exibidos foram ajustados para o seu fuso local.
+        </div>
+      )}
 
       <form className={styles.form} onSubmit={onSubmit}>
         {/* Campo de Matéria */}
