@@ -339,12 +339,14 @@ export default function CalendarioAlunoPage() {
                     >
                       {aviso.TipoAviso.toUpperCase()}
                     </span>
-                    <span className={styles.avisoHora}>
-                      {new Date(aviso.DataPrazo).toLocaleTimeString('pt-BR', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
+                    {aviso.TipoAviso !== 'prova' && (
+                      <span className={styles.avisoHora}>
+                        {new Date(aviso.DataPrazo).toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    )}
                   </div>
                   <h3>{aviso.Titulo}</h3>
                   {aviso.Descricao && (
