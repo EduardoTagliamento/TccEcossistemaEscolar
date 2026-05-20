@@ -22,6 +22,7 @@ interface DiaCalendario {
   diaDoMes: number;
   ehMesAtual: boolean;
   ehHoje: boolean;
+  ehPassado: boolean;
   avisos: AvisoCalendario[];
 }
 
@@ -101,11 +102,15 @@ export default function CalendarioAlunoPage() {
     for (let i = diaSemanaInicio - 1; i >= 0; i--) {
       const dia = diasMesAnterior - i;
       const data = new Date(ano, mes - 1, dia);
+      const dataComparacao = new Date(data);
+      dataComparacao.setHours(0, 0, 0, 0);
+      
       dias.push({
         data,
         diaDoMes: dia,
         ehMesAtual: false,
         ehHoje: false,
+        ehPassado: dataComparacao.getTime() < hoje.getTime(),
         avisos: []
       });
     }
@@ -127,6 +132,7 @@ export default function CalendarioAlunoPage() {
         diaDoMes: dia,
         ehMesAtual: true,
         ehHoje: dataComparacao.getTime() === hoje.getTime(),
+        ehPassado: dataComparacao.getTime() < hoje.getTime(),
         avisos: avisosNoDia
       });
     }
@@ -135,11 +141,15 @@ export default function CalendarioAlunoPage() {
     const diasRestantes = 42 - dias.length; // 6 semanas x 7 dias
     for (let dia = 1; dia <= diasRestantes; dia++) {
       const data = new Date(ano, mes + 1, dia);
+      const dataComparacao = new Date(data);
+      dataComparacao.setHours(0, 0, 0, 0);
+      
       dias.push({
         data,
         diaDoMes: dia,
         ehMesAtual: false,
         ehHoje: false,
+        ehPassado: dataComparacao.getTime() < hoje.getTime(),
         avisos: []
       });
     }
@@ -242,7 +252,8 @@ export default function CalendarioAlunoPage() {
                   className={`${styles.dayCell} ${
                     !dia.ehMesAtual ? styles.outroMes : ''
                   } ${dia.ehHoje ? styles.hoje : ''} ${
-                    dia.avisos.length > 0 ? styles.temAvisos : ''
+                    dia.ehPassado && dia.ehMesAtual ? styles.passado : ''
+                  } ${dia.avisos.length > 0 ? styles.temAvisos : ''
                   }`}
                   onClick={() => abrirModal(dia)}
                 >
