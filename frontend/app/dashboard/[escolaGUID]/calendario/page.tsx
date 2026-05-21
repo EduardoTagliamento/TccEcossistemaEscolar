@@ -5,16 +5,26 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { usuarioForaDoBrasil } from '@/lib/timezone-utils';
+import { converterParaBrasil, converterDoBrasil } from '@/lib/timezone-utils';
+import { Anotacao } from '@/types/anotacao';
+import {
+  criarAnotacao,
+  listarAnotacoesPorPeriodo,
+  toggleAnotacaoFeito,
+  excluirAnotacao,
+  atualizarAnotacao
+} from '@/lib/api/anotacao.api';
 import styles from './page.module.css';
 
 interface AvisoCalendario {
-  TipoAviso: 'tarefa' | 'prova' | 'evento';
+  TipoAviso: 'tarefa' | 'prova' | 'evento' | 'anotacao';
   AvisoId: string;
   DataPrazo: string;
   Titulo: string;
   Descricao: string | null;
   StatusTexto: string;
   TipoEntrega: 'digital' | 'fisica' | null;
+  IsFeito?: boolean;
 }
 
 interface DiaCalendario {
@@ -40,6 +50,10 @@ export default function CalendarioAlunoPage() {
   const [modalAberto, setModalAberto] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState<DiaCalendario | null>(null);
   const [indiceDiaModal, setIndiceDiaModal] = useState(0);
+  const [anotacoes, setAnotacoes] = useState<Anotacao[]>([]);
+  const [mostrarAnotacoes, setMostrarAnotacoes] = useState(true);
+  const [modoEdicaoAnotacao, setModoEdicaoAnotacao] = useState<string | null>(null);
+  const [formAnotacao, setFormAnotacao] = useState({ titulo: '', descricao: '' });
 
   const mesSelecionado = useMemo(() => {
     return `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}`;
@@ -76,6 +90,18 @@ export default function CalendarioAlunoPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || 'Erro ao carregar calendário');
       setAvisos(data?.data?.avisos || []);
+
+      // Buscar anotações do período
+      try {
+        const anotacoesData = await listarAnotacoesPorPeriodo(
+          escolaGUID,
+          inicio.toISOString().split('T')[0],
+          fim.toISOString().split('T')[0]
+        );
+        setAnotacoes(anotacoesData);
+      } catch (err) {
+        console.error('Erro ao carregar anotações:', err);
+      }
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar calendário');
     } finally {
@@ -124,6 +150,27 @@ export default function CalendarioAlunoPage() {
         return avisoData.toISOString().split('T')[0] === dataStr;
       });
 
+      // Adicionar anotações se toggle estiver ativado
+      if (mostrarAnotacoes) {
+        const anotacoesNoDia = anotacoes.filter(anotacao => {
+          const dataAnotacao = new Date(anotacao.AnotacaoData);
+          return dataAnotacao.toISOString().split('T')[0] === dataStr;
+        });
+
+        anotacoesNoDia.forEach(anotacao => {
+          avisosNoDia.push({
+            AvisoId: anotacao.AnotacaoGUID,
+            Titulo: anotacao.AnotacaoTitulo,
+            Descricao: anotacao.AnotacaoDescricao,
+            DataPrazo: anotacao.AnotacaoData,
+            TipoAviso: 'anotacao',
+            StatusTexto: anotacao.AnotacaoIsFeito ? 'Feita' : 'Pendente',
+            TipoEntrega: null,
+            IsFeito: anotacao.AnotacaoIsFeito
+          });
+        });
+      }
+
       const dataComparacao = new Date(data);
       dataComparacao.setHours(0, 0, 0, 0);
 
@@ -155,7 +202,7 @@ export default function CalendarioAlunoPage() {
     }
 
     return dias;
-  }, [dataAtual, avisos]);
+  }, [dataAtual, avisos, anotacoes, mostrarAnotacoes]);
 
   const diasComAvisos = useMemo(() => {
     return diasDoCalendario.filter(dia => dia.ehMesAtual && dia.avisos.length > 0);
@@ -191,6 +238,73 @@ export default function CalendarioAlunoPage() {
   const fecharModal = () => {
     setModalAberto(false);
     setDiaSelecionado(null);
+    setModoEdicaoAnotacao(null);
+    setFormAnotacao({ titulo: '', descricao: '' });
+  };
+
+  const handleCriarAnotacao = async () => {
+    if (!diaSelecionado || !formAnotacao.titulo.trim()) {
+      alert('Título é obrigatório');
+      return;
+    }
+
+    try {
+      const dataGMT3 = converterParaBrasil(
+        `${diaSelecionado.data.toISOString().split('T')[0]}T12:00:00`
+      );
+
+      await criarAnotacao(
+        escolaGUID,
+        dataGMT3,
+        formAnotacao.titulo,
+        formAnotacao.descricao || undefined
+      );
+
+      setFormAnotacao({ titulo: '', descricao: '' });
+      await carregarCalendario();
+    } catch (error: any) {
+      alert(error.message || 'Erro ao criar anotação');
+    }
+  };
+
+  const handleToggleAnotacao = async (guid: string) => {
+    try {
+      await toggleAnotacaoFeito(guid);
+      await carregarCalendario();
+    } catch (error: any) {
+      alert(error.message || 'Erro ao atualizar status');
+    }
+  };
+
+  const handleExcluirAnotacao = async (guid: string) => {
+    if (!confirm('Deseja realmente excluir esta anotação?')) return;
+
+    try {
+      await excluirAnotacao(guid);
+      await carregarCalendario();
+    } catch (error: any) {
+      alert(error.message || 'Erro ao excluir anotação');
+    }
+  };
+
+  const handleEditarAnotacao = async (guid: string) => {
+    if (!formAnotacao.titulo.trim()) {
+      alert('Título é obrigatório');
+      return;
+    }
+
+    try {
+      await atualizarAnotacao(guid, {
+        AnotacaoTitulo: formAnotacao.titulo,
+        AnotacaoDescricao: formAnotacao.descricao || null
+      });
+
+      setModoEdicaoAnotacao(null);
+      setFormAnotacao({ titulo: '', descricao: '' });
+      await carregarCalendario();
+    } catch (error: any) {
+      alert(error.message || 'Erro ao editar anotação');
+    }
   };
 
   const obterCorTipo = (tipo: string) => {
@@ -198,6 +312,7 @@ export default function CalendarioAlunoPage() {
       case 'tarefa': return '#4CAF50';
       case 'prova': return '#FF5722';
       case 'evento': return '#2196F3';
+      case 'anotacao': return '#FFC107';
       default: return '#9E9E9E';
     }
   };
@@ -295,6 +410,21 @@ export default function CalendarioAlunoPage() {
           <div className={styles.legendaCor} style={{ backgroundColor: '#2196F3' }}></div>
           <span>Evento</span>
         </div>
+        <div className={styles.legendaItem}>
+          <div className={styles.legendaCor} style={{ backgroundColor: '#FFC107' }}></div>
+          <span>Anotação</span>
+        </div>
+        <div className={styles.toggleContainer}>
+          <label className={styles.toggleLabel}>
+            <input
+              type="checkbox"
+              checked={mostrarAnotacoes}
+              onChange={() => setMostrarAnotacoes(!mostrarAnotacoes)}
+              className={styles.toggleCheckbox}
+            />
+            <span>Mostrar Anotações</span>
+          </label>
+        </div>
       </div>
 
       {modalAberto && diaSelecionado && (
@@ -363,6 +493,113 @@ export default function CalendarioAlunoPage() {
                 </div>
                 ))
               )}
+
+              {/* Seção de Anotações */}
+              <div className={styles.anotacoesSection}>
+                <h3>📝 Minhas Anotações</h3>
+                
+                {/* Form para criar/editar */}
+                <div className={styles.anotacaoForm}>
+                  <input
+                    type="text"
+                    placeholder="Título da anotação"
+                    value={formAnotacao.titulo}
+                    onChange={(e) => setFormAnotacao({ ...formAnotacao, titulo: e.target.value })}
+                    maxLength={256}
+                    className={styles.input}
+                  />
+                  <textarea
+                    placeholder="Descrição (opcional)"
+                    value={formAnotacao.descricao}
+                    onChange={(e) => setFormAnotacao({ ...formAnotacao, descricao: e.target.value })}
+                    maxLength={2048}
+                    className={styles.textarea}
+                  />
+                  <button onClick={handleCriarAnotacao} className={styles.btnAdicionar}>
+                    ➕ Adicionar Anotação
+                  </button>
+                </div>
+
+                {/* Lista de anotações do dia */}
+                <div className={styles.listaAnotacoes}>
+                  {anotacoes
+                    .filter(a => {
+                      const dataAnotacao = new Date(a.AnotacaoData);
+                      return (
+                        dataAnotacao.getFullYear() === diaSelecionado.data.getFullYear() &&
+                        dataAnotacao.getMonth() === diaSelecionado.data.getMonth() &&
+                        dataAnotacao.getDate() === diaSelecionado.data.getDate()
+                      );
+                    })
+                    .map(anotacao => (
+                      <div key={anotacao.AnotacaoGUID} className={styles.anotacaoCard}>
+                        {modoEdicaoAnotacao === anotacao.AnotacaoGUID ? (
+                          <>
+                            <input
+                              type="text"
+                              value={formAnotacao.titulo}
+                              onChange={(e) => setFormAnotacao({ ...formAnotacao, titulo: e.target.value })}
+                              className={styles.input}
+                            />
+                            <textarea
+                              value={formAnotacao.descricao}
+                              onChange={(e) => setFormAnotacao({ ...formAnotacao, descricao: e.target.value })}
+                              className={styles.textarea}
+                            />
+                            <div className={styles.acoesEdicao}>
+                              <button onClick={() => handleEditarAnotacao(anotacao.AnotacaoGUID)}>
+                                💾 Salvar
+                              </button>
+                              <button onClick={() => {
+                                setModoEdicaoAnotacao(null);
+                                setFormAnotacao({ titulo: '', descricao: '' });
+                              }}>
+                                ❌ Cancelar
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className={styles.anotacaoHeader}>
+                              <input
+                                type="checkbox"
+                                checked={anotacao.AnotacaoIsFeito}
+                                onChange={() => handleToggleAnotacao(anotacao.AnotacaoGUID)}
+                                className={styles.checkbox}
+                              />
+                              <h4 className={anotacao.AnotacaoIsFeito ? styles.feito : ''}>
+                                {anotacao.AnotacaoTitulo}
+                              </h4>
+                            </div>
+                            {anotacao.AnotacaoDescricao && (
+                              <p className={styles.descricao}>{anotacao.AnotacaoDescricao}</p>
+                            )}
+                            <div className={styles.acoesAnotacao}>
+                              <button
+                                onClick={() => {
+                                  setModoEdicaoAnotacao(anotacao.AnotacaoGUID);
+                                  setFormAnotacao({
+                                    titulo: anotacao.AnotacaoTitulo,
+                                    descricao: anotacao.AnotacaoDescricao || ''
+                                  });
+                                }}
+                                className={styles.btnEditar}
+                              >
+                                ✏️ Editar
+                              </button>
+                              <button
+                                onClick={() => handleExcluirAnotacao(anotacao.AnotacaoGUID)}
+                                className={styles.btnExcluir}
+                              >
+                                🗑️ Excluir
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
