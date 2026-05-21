@@ -23,6 +23,7 @@ import { provaAgendadaRoutes } from "../routes/provaagendada.routes";
 import { calendarioRoutes } from "../routes/calendario.routes";
 import { pendenciaRoutes } from "../routes/pendencia.routes";
 import { eventoRoutes } from "../routes/evento.routes";
+import { anotacaoRouterFactory } from "../routes/anotacao.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { pool } from "./database/mysql";
 
@@ -373,6 +374,11 @@ export default class Server {
     // 🎉 Rotas de Evento
     this.#app.use("/api/evento", eventoRoutes());
     console.log("✅ Rotas de Evento registradas em /api/evento");
+
+    // 📝 Rotas de Anotação
+    const anotacaoRouter = anotacaoRouterFactory();
+    this.#app.use("/api/anotacao", anotacaoRouter);
+    console.log("✅ Rotas de Anotação registradas em /api/anotacao");
 
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {
