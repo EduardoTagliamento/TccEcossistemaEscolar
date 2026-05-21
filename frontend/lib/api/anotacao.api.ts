@@ -5,7 +5,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 // Helper: obter token do localStorage
 function getToken(): string {
   if (typeof window === 'undefined') return '';
-  return localStorage.getItem('token') || '';
+  return localStorage.getItem('@baua:token') || '';
 }
 
 // Helper: headers padrão
