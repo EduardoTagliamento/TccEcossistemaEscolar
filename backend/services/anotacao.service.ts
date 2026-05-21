@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { AnotacaoDAO, AnotacaoFilters } from '../repositories/anotacao.repository';
 import { EscolaxUsuarioxFuncaoDAO } from '../repositories/escolaxusuarioxfuncao.repository';
 import { Anotacao, AnotacaoEntity, AnotacaoCreateDTO, AnotacaoUpdateDTO } from '../entities/anotacao.model';
-import { ErrorResponse } from '../utils/ErrorResponse';
+import ErrorResponse from '../utils/ErrorResponse';
 
 export class AnotacaoService {
   constructor(
@@ -13,13 +13,15 @@ export class AnotacaoService {
   // CREATE
   async criarAnotacao(data: AnotacaoCreateDTO): Promise<Anotacao> {
     // Validar vínculo usuário-escola
-    const vinculo = await this.escolaxUsuarioxFuncaoDAO.findByEscolaAndUsuario(
-      data.EscolaGUID,
-      data.UsuarioCPF
-    );
+    const vinculos = await this.escolaxUsuarioxFuncaoDAO.findAll({
+      EscolaGUID: data.EscolaGUID,
+      UsuarioCPF: data.UsuarioCPF
+    });
+
+    const vinculo = vinculos.length > 0 ? vinculos[0] : null;
 
     if (!vinculo || vinculo.Status !== 'Ativo') {
-      throw new ErrorResponse('Usuário não vinculado à escola ou vínculo inativo', 403);
+      throw new ErrorResponse(403, 'Usuário não vinculado à escola ou vínculo inativo');
     }
 
     // Criar objeto Anotacao
@@ -50,16 +52,18 @@ export class AnotacaoService {
 
   // READ (por usuário e escola)
   async listarAnotacoesUsuario(usuarioCPF: string, escolaGUID: string): Promise<Anotacao[]> {
-    const vinculo = await this.escolaxUsuarioxFuncaoDAO.findByEscolaAndUsuario(
-      escolaGUID,
-      usuarioCPF
-    );
+    const vinculos = await this.escolaxUsuarioxFuncaoDAO.findAll({
+      EscolaGUID: escolaGUID,
+      UsuarioCPF: usuarioCPF
+    });
+
+    const vinculo = vinculos.length > 0 ? vinculos[0] : null;
 
     if (!vinculo || vinculo.Status !== 'Ativo') {
-      throw new ErrorResponse('Usuário não vinculado à escola', 403);
+      throw new ErrorResponse(403, 'Usuário não vinculado à escola');
     }
 
-    return await this.anotacaoDAO.findByUsuarioAndEscola(usuarioCPF, escolaGUID);
+    return await this.anotacaoDAO.findAll({ UsuarioCPF: usuarioCPF, EscolaGUID: escolaGUID });
   }
 
   // READ (por range de datas - para calendário)
@@ -69,13 +73,15 @@ export class AnotacaoService {
     dataInicio: string,
     dataFim: string
   ): Promise<Anotacao[]> {
-    const vinculo = await this.escolaxUsuarioxFuncaoDAO.findByEscolaAndUsuario(
-      escolaGUID,
-      usuarioCPF
-    );
+    const vinculos = await this.escolaxUsuarioxFuncaoDAO.findAll({
+      EscolaGUID: escolaGUID,
+      UsuarioCPF: usuarioCPF
+    });
+
+    const vinculo = vinculos.length > 0 ? vinculos[0] : null;
 
     if (!vinculo || vinculo.Status !== 'Ativo') {
-      throw new ErrorResponse('Usuário não vinculado à escola', 403);
+      throw new ErrorResponse(403, 'Usuário não vinculado à escola');
     }
 
     return await this.anotacaoDAO.findByDateRange(
@@ -91,12 +97,12 @@ export class AnotacaoService {
     const anotacao = await this.anotacaoDAO.findById(guid);
 
     if (!anotacao) {
-      throw new ErrorResponse('Anotação não encontrada', 404);
+      throw new ErrorResponse(404, 'Anotação não encontrada');
     }
 
     // Validar permissão (apenas dono pode ver)
     if (anotacao.UsuarioCPF !== usuarioCPF) {
-      throw new ErrorResponse('Sem permissão para acessar esta anotação', 403);
+      throw new ErrorResponse(403, 'Sem permissão para acessar esta anotação');
     }
 
     return anotacao;
@@ -112,12 +118,12 @@ export class AnotacaoService {
     const anotacaoExistente = await this.anotacaoDAO.findById(guid);
 
     if (!anotacaoExistente) {
-      throw new ErrorResponse('Anotação não encontrada', 404);
+      throw new ErrorResponse(404, 'Anotação não encontrada');
     }
 
     // Validar permissão (apenas dono pode editar)
     if (anotacaoExistente.UsuarioCPF !== usuarioCPF) {
-      throw new ErrorResponse('Sem permissão para editar esta anotação', 403);
+      throw new ErrorResponse(403, 'Sem permissão para editar esta anotação');
     }
 
     // Preparar updates
@@ -152,7 +158,7 @@ export class AnotacaoService {
     const updated = await this.anotacaoDAO.update(guid, updateData);
 
     if (!updated) {
-      throw new ErrorResponse('Erro ao atualizar anotação', 500);
+      throw new ErrorResponse(500, 'Erro ao atualizar anotação');
     }
 
     return updated;
@@ -163,11 +169,11 @@ export class AnotacaoService {
     const anotacao = await this.anotacaoDAO.findById(guid);
 
     if (!anotacao) {
-      throw new ErrorResponse('Anotação não encontrada', 404);
+      throw new ErrorResponse(404, 'Anotação não encontrada');
     }
 
     if (anotacao.UsuarioCPF !== usuarioCPF) {
-      throw new ErrorResponse('Sem permissão para marcar esta anotação', 403);
+      throw new ErrorResponse(403, 'Sem permissão para marcar esta anotação');
     }
 
     const novoStatus = !anotacao.AnotacaoIsFeito;
@@ -177,7 +183,7 @@ export class AnotacaoService {
     });
 
     if (!updated) {
-      throw new ErrorResponse('Erro ao atualizar status', 500);
+      throw new ErrorResponse(500, 'Erro ao atualizar status');
     }
 
     return updated;
@@ -188,18 +194,18 @@ export class AnotacaoService {
     const anotacao = await this.anotacaoDAO.findById(guid);
 
     if (!anotacao) {
-      throw new ErrorResponse('Anotação não encontrada', 404);
+      throw new ErrorResponse(404, 'Anotação não encontrada');
     }
 
     // Validar permissão (apenas dono pode excluir)
     if (anotacao.UsuarioCPF !== usuarioCPF) {
-      throw new ErrorResponse('Sem permissão para excluir esta anotação', 403);
+      throw new ErrorResponse(403, 'Sem permissão para excluir esta anotação');
     }
 
     const deleted = await this.anotacaoDAO.delete(guid);
 
     if (!deleted) {
-      throw new ErrorResponse('Erro ao excluir anotação', 500);
+      throw new ErrorResponse(500, 'Erro ao excluir anotação');
     }
   }
 
@@ -209,13 +215,15 @@ export class AnotacaoService {
     feitas: number;
     pendentes: number;
   }> {
-    const vinculo = await this.escolaxUsuarioxFuncaoDAO.findByEscolaAndUsuario(
-      escolaGUID,
-      usuarioCPF
-    );
+    const vinculos = await this.escolaxUsuarioxFuncaoDAO.findAll({
+      EscolaGUID: escolaGUID,
+      UsuarioCPF: usuarioCPF
+    });
+
+    const vinculo = vinculos.length > 0 ? vinculos[0] : null;
 
     if (!vinculo || vinculo.Status !== 'Ativo') {
-      throw new ErrorResponse('Usuário não vinculado à escola', 403);
+      throw new ErrorResponse(403, 'Usuário não vinculado à escola');
     }
 
     const total = await this.anotacaoDAO.count({

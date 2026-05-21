@@ -1,4 +1,4 @@
-import { getPool } from '../database/mysql';
+import MysqlDatabase from '../database/MysqlDatabase';
 import { Anotacao, AnotacaoEntity } from '../entities/anotacao.model';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
@@ -11,9 +11,16 @@ export interface AnotacaoFilters {
 }
 
 export class AnotacaoDAO {
+  #database: MysqlDatabase;
+
+  constructor(databaseInstance: MysqlDatabase) {
+    console.log('Server: AnotacaoDAO.constructor()');
+    this.#database = databaseInstance;
+  }
+
   // CREATE
   async create(anotacao: Anotacao): Promise<Anotacao> {
-    const pool = getPool();
+    const pool = await this.#database.getPool();
     const query = `
       INSERT INTO anotacao (
         AnotacaoGUID, UsuarioCPF, EscolaGUID, AnotacaoData,
@@ -36,7 +43,7 @@ export class AnotacaoDAO {
 
   // READ BY ID
   async findById(guid: string): Promise<Anotacao | null> {
-    const pool = getPool();
+    const pool = await this.#database.getPool();
     const query = `
       SELECT * FROM anotacao
       WHERE AnotacaoGUID = ?
@@ -53,7 +60,7 @@ export class AnotacaoDAO {
 
   // READ ALL (com filtros)
   async findAll(filters: AnotacaoFilters): Promise<Anotacao[]> {
-    const pool = getPool();
+    const pool = await this.#database.getPool();
     let query = 'SELECT * FROM anotacao WHERE 1=1';
     const params: any[] = [];
 
@@ -110,7 +117,7 @@ export class AnotacaoDAO {
 
   // UPDATE
   async update(guid: string, updates: Partial<Anotacao>): Promise<Anotacao | null> {
-    const pool = getPool();
+    const pool = await this.#database.getPool();
     
     const allowedFields = [
       'AnotacaoData',
@@ -152,7 +159,7 @@ export class AnotacaoDAO {
 
   // DELETE
   async delete(guid: string): Promise<boolean> {
-    const pool = getPool();
+    const pool = await this.#database.getPool();
     const query = 'DELETE FROM anotacao WHERE AnotacaoGUID = ?';
 
     const [result] = await pool.execute<ResultSetHeader>(query, [guid]);
@@ -161,7 +168,7 @@ export class AnotacaoDAO {
 
   // COUNT
   async count(filters: AnotacaoFilters): Promise<number> {
-    const pool = getPool();
+    const pool = await this.#database.getPool();
     let query = 'SELECT COUNT(*) as total FROM anotacao WHERE 1=1';
     const params: any[] = [];
 
