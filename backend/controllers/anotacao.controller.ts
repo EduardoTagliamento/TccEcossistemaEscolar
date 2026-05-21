@@ -8,7 +8,16 @@ export class AnotacaoController {
   // POST /api/anotacao - Criar nova anotação
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF;
+      
+      if (!usuarioCPF) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado'
+        });
+        return;
+      }
+
       const { EscolaGUID, AnotacaoData, AnotacaoTitulo, AnotacaoDescricao } = req.body;
 
       const createDTO: AnotacaoCreateDTO = {
@@ -34,7 +43,16 @@ export class AnotacaoController {
   // GET /api/anotacao - Listar anotações (com filtros)
   index = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF;
+      
+      if (!usuarioCPF) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado'
+        });
+        return;
+      }
+
       const { EscolaGUID, DataInicio, DataFim, AnotacaoIsFeito } = req.query;
 
       let anotacoes;
@@ -74,7 +92,16 @@ export class AnotacaoController {
   // GET /api/anotacao/:guid - Buscar anotação específica
   show = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF;
+      
+      if (!usuarioCPF) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado'
+        });
+        return;
+      }
+
       const { guid } = req.params;
 
       const anotacao = await this.anotacaoService.buscarAnotacao(guid, usuarioCPF);
@@ -91,7 +118,16 @@ export class AnotacaoController {
   // PUT /api/anotacao/:guid - Atualizar anotação
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF;
+      
+      if (!usuarioCPF) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado'
+        });
+        return;
+      }
+
       const { guid } = req.params;
       const { AnotacaoData, AnotacaoTitulo, AnotacaoDescricao, AnotacaoIsFeito } = req.body;
 
@@ -117,7 +153,16 @@ export class AnotacaoController {
   // PATCH /api/anotacao/:guid/toggle - Marcar/desmarcar como feito
   toggleFeito = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF;
+      
+      if (!usuarioCPF) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado'
+        });
+        return;
+      }
+
       const { guid } = req.params;
 
       const anotacao = await this.anotacaoService.marcarComoFeito(guid, usuarioCPF);
@@ -135,7 +180,16 @@ export class AnotacaoController {
   // DELETE /api/anotacao/:guid - Excluir anotação
   destroy = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF;
+      
+      if (!usuarioCPF) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado'
+        });
+        return;
+      }
+
       const { guid } = req.params;
 
       await this.anotacaoService.excluirAnotacao(guid, usuarioCPF);
@@ -152,7 +206,16 @@ export class AnotacaoController {
   // GET /api/anotacao/estatisticas - Estatísticas do usuário
   stats = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF;
+      
+      if (!usuarioCPF) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuário não autenticado'
+        });
+        return;
+      }
+
       const { EscolaGUID } = req.query;
 
       if (!EscolaGUID) {
