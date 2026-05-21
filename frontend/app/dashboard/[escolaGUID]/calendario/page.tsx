@@ -416,10 +416,19 @@ export default function CalendarioAlunoPage() {
                   <div className={styles.diaNumero}>{dia.diaDoMes}</div>
                   {dia.avisos.length > 0 && (
                     <div className={styles.avisosContainer}>
-                      {dia.avisos.slice(0, 3).map((aviso, idx) => (
+                      {[...dia.avisos]
+                        .sort((a, b) => {
+                          const aConcluido = avisoEstaConcluido(a);
+                          const bConcluido = avisoEstaConcluido(b);
+
+                          if (aConcluido === bConcluido) return 0;
+                          return aConcluido ? 1 : -1;
+                        })
+                        .slice(0, 3)
+                        .map((aviso, idx) => (
                         <div
                           key={aviso.AvisoId}
-                          className={styles.avisoFita}
+                          className={`${styles.avisoFita} ${avisoEstaConcluido(aviso) ? styles.avisoFitaConcluida : ''}`}
                           style={{ backgroundColor: obterCorTipo(aviso.TipoAviso) }}
                           title={aviso.Titulo}
                         >
