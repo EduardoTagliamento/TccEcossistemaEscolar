@@ -482,6 +482,11 @@
   font-size: 1.25rem;
   color: var(--text-primary, #333);
   margin-bottom: 0.75rem;
+
+.avisoFitaConcluida {
+  opacity: 0.5;
+  filter: saturate(0.7);
+}
   margin-top: 0;
 }
 
