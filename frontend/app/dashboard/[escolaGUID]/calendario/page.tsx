@@ -334,6 +334,30 @@ export default function CalendarioAlunoPage() {
     }
   };
 
+  const avisoEstaConcluido = (aviso: AvisoCalendario) => {
+    if (aviso.TipoAviso === 'anotacao') {
+      return Boolean(aviso.IsFeito) || /feito|conclu/i.test(aviso.StatusTexto);
+    }
+
+    if (aviso.TipoAviso === 'tarefa') {
+      return /feito|conclu/i.test(aviso.StatusTexto);
+    }
+
+    return false;
+  };
+
+  const avisosDoDiaOrdenados = useMemo(() => {
+    if (!diaSelecionado) return [];
+
+    return [...diaSelecionado.avisos].sort((a, b) => {
+      const aConcluido = avisoEstaConcluido(a);
+      const bConcluido = avisoEstaConcluido(b);
+
+      if (aConcluido === bConcluido) return 0;
+      return aConcluido ? 1 : -1;
+    });
+  }, [diaSelecionado]);
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -484,16 +508,19 @@ export default function CalendarioAlunoPage() {
             </div>
             <button onClick={fecharModal} className={styles.modalClose}>✕</button>
             <div className={styles.modalBody}>
-              {diaSelecionado.avisos.length === 0 ? (
+              {avisosDoDiaOrdenados.length === 0 ? (
                 <div className={styles.semAvisos}>
                   <p>📅 Nenhum aviso agendado para este dia.</p>
                 </div>
               ) : (
-                diaSelecionado.avisos.map((aviso) => {
+                avisosDoDiaOrdenados.map((aviso) => {
                   if (aviso.TipoAviso === 'anotacao') {
                     if (modoEdicaoAnotacao === aviso.AvisoId) {
                       return (
-                        <div key={aviso.AvisoId} className={styles.avisoDetalhes}>
+                        <div
+                          key={aviso.AvisoId}
+                          className={`${styles.avisoDetalhes} ${avisoEstaConcluido(aviso) ? styles.avisoConcluido : ''}`}
+                        >
                           <div className={styles.avisoHeader}>
                             <span className={styles.avisoBadge} style={{ backgroundColor: '#FFC107', color: '#5D4037' }}>
                               ANOTAÇÃO
@@ -527,7 +554,10 @@ export default function CalendarioAlunoPage() {
                       );
                     }
                     return (
-                      <div key={aviso.AvisoId} className={styles.avisoDetalhes}>
+                      <div
+                        key={aviso.AvisoId}
+                        className={`${styles.avisoDetalhes} ${avisoEstaConcluido(aviso) ? styles.avisoConcluido : ''}`}
+                      >
                         <div className={styles.avisoHeader}>
                           <span className={styles.avisoBadge} style={{ backgroundColor: '#FFC107', color: '#5D4037' }}>
                             ANOTAÇÃO
@@ -575,7 +605,10 @@ export default function CalendarioAlunoPage() {
                   }
 
                   return (
-                    <div key={aviso.AvisoId} className={styles.avisoDetalhes}>
+                    <div
+                      key={aviso.AvisoId}
+                      className={`${styles.avisoDetalhes} ${avisoEstaConcluido(aviso) ? styles.avisoConcluido : ''}`}
+                    >
                       <div className={styles.avisoHeader}>
                         <span
                           className={styles.avisoBadge}
