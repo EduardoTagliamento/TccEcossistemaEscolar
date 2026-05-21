@@ -452,6 +452,10 @@
   border-left: 4px solid var(--border-color, #ddd);
 }
 
+.avisoConcluido {
+  opacity: 0.62;
+}
+
 .avisoHeader {
   display: flex;
   justify-content: space-between;
