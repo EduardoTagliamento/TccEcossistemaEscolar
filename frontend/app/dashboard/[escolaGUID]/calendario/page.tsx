@@ -469,7 +469,7 @@ export default function CalendarioAlunoPage() {
                     >
                       {aviso.TipoAviso.toUpperCase()}
                     </span>
-                    {aviso.TipoAviso !== 'prova' && (
+                    {aviso.TipoAviso !== 'prova' && aviso.TipoAviso !== 'anotacao' && (
                       <span className={styles.avisoHora}>
                         {new Date(aviso.DataPrazo).toLocaleTimeString('pt-BR', {
                           hour: '2-digit',
@@ -498,7 +498,7 @@ export default function CalendarioAlunoPage() {
               <div className={styles.anotacoesSection}>
                 <h3>📝 Minhas Anotações</h3>
                 
-                {/* Form para criar/editar */}
+                {/* Form para criar */}
                 <div className={styles.anotacaoForm}>
                   <input
                     type="text"
@@ -540,21 +540,23 @@ export default function CalendarioAlunoPage() {
                               value={formAnotacao.titulo}
                               onChange={(e) => setFormAnotacao({ ...formAnotacao, titulo: e.target.value })}
                               className={styles.input}
+                              placeholder="Título"
                             />
                             <textarea
                               value={formAnotacao.descricao}
                               onChange={(e) => setFormAnotacao({ ...formAnotacao, descricao: e.target.value })}
                               className={styles.textarea}
+                              placeholder="Descrição (opcional)"
                             />
                             <div className={styles.acoesEdicao}>
-                              <button onClick={() => handleEditarAnotacao(anotacao.AnotacaoGUID)}>
-                                💾 Salvar
+                              <button onClick={() => handleEditarAnotacao(anotacao.AnotacaoGUID)} className={styles.btnConfirmar}>
+                                ✓ Confirmar
                               </button>
                               <button onClick={() => {
                                 setModoEdicaoAnotacao(null);
                                 setFormAnotacao({ titulo: '', descricao: '' });
-                              }}>
-                                ❌ Cancelar
+                              }} className={styles.btnCancelar}>
+                                ✕ Cancelar
                               </button>
                             </div>
                           </>
@@ -570,30 +572,32 @@ export default function CalendarioAlunoPage() {
                               <h4 className={anotacao.AnotacaoIsFeito ? styles.feito : ''}>
                                 {anotacao.AnotacaoTitulo}
                               </h4>
+                              <div className={styles.acoesInline}>
+                                <button
+                                  onClick={() => {
+                                    setModoEdicaoAnotacao(anotacao.AnotacaoGUID);
+                                    setFormAnotacao({
+                                      titulo: anotacao.AnotacaoTitulo,
+                                      descricao: anotacao.AnotacaoDescricao || ''
+                                    });
+                                  }}
+                                  className={styles.iconBtn}
+                                  title="Editar"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  onClick={() => handleExcluirAnotacao(anotacao.AnotacaoGUID)}
+                                  className={styles.iconBtn}
+                                  title="Excluir"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
                             </div>
                             {anotacao.AnotacaoDescricao && (
                               <p className={styles.descricao}>{anotacao.AnotacaoDescricao}</p>
                             )}
-                            <div className={styles.acoesAnotacao}>
-                              <button
-                                onClick={() => {
-                                  setModoEdicaoAnotacao(anotacao.AnotacaoGUID);
-                                  setFormAnotacao({
-                                    titulo: anotacao.AnotacaoTitulo,
-                                    descricao: anotacao.AnotacaoDescricao || ''
-                                  });
-                                }}
-                                className={styles.btnEditar}
-                              >
-                                ✏️ Editar
-                              </button>
-                              <button
-                                onClick={() => handleExcluirAnotacao(anotacao.AnotacaoGUID)}
-                                className={styles.btnExcluir}
-                              >
-                                🗑️ Excluir
-                              </button>
-                            </div>
                           </>
                         )}
                       </div>
