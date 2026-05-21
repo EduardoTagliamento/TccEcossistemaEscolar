@@ -44,17 +44,23 @@ export default class CalendarioService {
       EscolaGUID: escolaGUID,
     });
 
+    console.log("🟣 [CalendarioService] Vínculo encontrado:", vinculoAtivo.length, "registros");
+
     if (!vinculoAtivo.some((item) => item.Status === "Ativo")) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você não possui vínculo ativo com esta escola.",
       });
     }
 
+    console.log("🟣 [CalendarioService] Chamando buscarAvisosCalendario...");
+
     const avisos = await this.#calendarioDAO.buscarAvisosCalendario(
       usuarioCPF,
       escolaGUID,
       filters
     );
+
+    console.log("🟣 [CalendarioService] Avisos encontrados:", avisos.length);
 
     if (filters?.TipoAviso) {
       return avisos.filter((aviso) => aviso.TipoAviso === filters.TipoAviso);

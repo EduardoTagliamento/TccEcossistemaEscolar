@@ -124,6 +124,7 @@ export class EscolaxUsuarioxFuncaoDAO {
 
   findAll = async (filters?: FindAllFilters): Promise<EscolaxUsuarioxFuncao[]> => {
     console.log("Repository: EscolaxUsuarioxFuncaoDAO.findAll()");
+    console.log("Repository: Filters:", filters);
 
     let SQL = `
       SELECT euf.*, f.FuncaoNome
@@ -155,8 +156,10 @@ export class EscolaxUsuarioxFuncaoDAO {
 
     SQL += " ORDER BY euf.EscolaxUsuarioxFuncaoId DESC;";
 
+    console.log("Repository: Executando query SQL...");
     const pool = await this.#database.getPool();
     const [linhas] = await pool.execute(SQL, params);
+    console.log("Repository: Query executada. Rows:", (linhas as any[]).length);
 
     return (linhas as EscolaxUsuarioxFuncaoRow[]).map((row) => this.mapRowToEntity(row));
   };

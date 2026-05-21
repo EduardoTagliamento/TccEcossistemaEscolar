@@ -147,8 +147,14 @@ export class CalendarioDAO {
       filters?.DataFim || null,
     ];
 
+    console.log("🟢 [CalendarioDAO] Executando query SQL...");
+    console.log("🟢 [CalendarioDAO] Params:", { escolaGUID, usuarioCPF, filters });
+
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<CalendarioAvisoRow[]>(query, params);
+    
+    console.log("🟢 [CalendarioDAO] Query executada. Rows:", rows.length);
+    
     return rows.map((row) => this.mapRow(row));
   };
 
