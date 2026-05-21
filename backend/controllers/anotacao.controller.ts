@@ -21,7 +21,7 @@ export class AnotacaoController {
 
       const anotacao = await this.anotacaoService.criarAnotacao(createDTO);
 
-      return res.status(201).json({
+      res.status(201).json({
         success: true,
         message: 'Anotação criada com sucesso',
         data: anotacao
@@ -61,7 +61,7 @@ export class AnotacaoController {
         anotacoes = await this.anotacaoService.listarAnotacoes(filters);
       }
 
-      return res.json({
+      res.json({
         success: true,
         data: anotacoes,
         total: anotacoes.length
@@ -79,7 +79,7 @@ export class AnotacaoController {
 
       const anotacao = await this.anotacaoService.buscarAnotacao(guid, usuarioCPF);
 
-      return res.json({
+      res.json({
         success: true,
         data: anotacao
       });
@@ -104,7 +104,7 @@ export class AnotacaoController {
 
       const anotacao = await this.anotacaoService.atualizarAnotacao(guid, usuarioCPF, updateDTO);
 
-      return res.json({
+      res.json({
         success: true,
         message: 'Anotação atualizada com sucesso',
         data: anotacao
@@ -122,7 +122,7 @@ export class AnotacaoController {
 
       const anotacao = await this.anotacaoService.marcarComoFeito(guid, usuarioCPF);
 
-      return res.json({
+      res.json({
         success: true,
         message: `Anotação marcada como ${anotacao.AnotacaoIsFeito ? 'feita' : 'pendente'}`,
         data: anotacao
@@ -140,7 +140,7 @@ export class AnotacaoController {
 
       await this.anotacaoService.excluirAnotacao(guid, usuarioCPF);
 
-      return res.json({
+      res.json({
         success: true,
         message: 'Anotação excluída com sucesso'
       });
@@ -156,10 +156,11 @@ export class AnotacaoController {
       const { EscolaGUID } = req.query;
 
       if (!EscolaGUID) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'EscolaGUID é obrigatório'
         });
+        return;
       }
 
       const stats = await this.anotacaoService.obterEstatisticas(
@@ -167,7 +168,7 @@ export class AnotacaoController {
         EscolaGUID as string
       );
 
-      return res.json({
+      res.json({
         success: true,
         data: stats
       });
