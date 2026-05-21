@@ -53,7 +53,9 @@ export default function CalendarioAlunoPage() {
   const [anotacoes, setAnotacoes] = useState<Anotacao[]>([]);
   const [mostrarAnotacoes, setMostrarAnotacoes] = useState(true);
   const [modoEdicaoAnotacao, setModoEdicaoAnotacao] = useState<string | null>(null);
-  const [formAnotacao, setFormAnotacao] = useState({ titulo: '', descricao: '' });
+  const [modalCriarAnotacaoAberto, setModalCriarAnotacaoAberto] = useState(false);
+  const [formNovaAnotacao, setFormNovaAnotacao] = useState({ titulo: '', descricao: '' });
+  const [formEdicaoAnotacao, setFormEdicaoAnotacao] = useState({ titulo: '', descricao: '' });
 
   const mesSelecionado = useMemo(() => {
     return `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}`;
@@ -212,6 +214,18 @@ export default function CalendarioAlunoPage() {
     return diasDoCalendario.filter(dia => dia.ehMesAtual);
   }, [diasDoCalendario]);
 
+  useEffect(() => {
+    if (!modalAberto || !diaSelecionado) return;
+
+    const diaAtualizado = diasDoMesAtual.find(
+      d => d.data.getTime() === diaSelecionado.data.getTime()
+    );
+
+    if (diaAtualizado && diaAtualizado !== diaSelecionado) {
+      setDiaSelecionado(diaAtualizado);
+    }
+  }, [modalAberto, diaSelecionado, diasDoMesAtual]);
+
   const mudarMes = (direcao: number) => {
     setDataAtual(prev => {
       const nova = new Date(prev);
@@ -239,11 +253,13 @@ export default function CalendarioAlunoPage() {
     setModalAberto(false);
     setDiaSelecionado(null);
     setModoEdicaoAnotacao(null);
-    setFormAnotacao({ titulo: '', descricao: '' });
+    setModalCriarAnotacaoAberto(false);
+    setFormNovaAnotacao({ titulo: '', descricao: '' });
+    setFormEdicaoAnotacao({ titulo: '', descricao: '' });
   };
 
   const handleCriarAnotacao = async () => {
-    if (!diaSelecionado || !formAnotacao.titulo.trim()) {
+    if (!diaSelecionado || !formNovaAnotacao.titulo.trim()) {
       alert('Título é obrigatório');
       return;
     }
@@ -256,11 +272,12 @@ export default function CalendarioAlunoPage() {
       await criarAnotacao(
         escolaGUID,
         dataGMT3,
-        formAnotacao.titulo,
-        formAnotacao.descricao || undefined
+        formNovaAnotacao.titulo,
+        formNovaAnotacao.descricao || undefined
       );
 
-      setFormAnotacao({ titulo: '', descricao: '' });
+      setFormNovaAnotacao({ titulo: '', descricao: '' });
+      setModalCriarAnotacaoAberto(false);
       await carregarCalendario();
     } catch (error: any) {
       alert(error.message || 'Erro ao criar anotação');
@@ -288,19 +305,19 @@ export default function CalendarioAlunoPage() {
   };
 
   const handleEditarAnotacao = async (guid: string) => {
-    if (!formAnotacao.titulo.trim()) {
+    if (!formEdicaoAnotacao.titulo.trim()) {
       alert('Título é obrigatório');
       return;
     }
 
     try {
       await atualizarAnotacao(guid, {
-        AnotacaoTitulo: formAnotacao.titulo,
-        AnotacaoDescricao: formAnotacao.descricao || null
+        AnotacaoTitulo: formEdicaoAnotacao.titulo,
+        AnotacaoDescricao: formEdicaoAnotacao.descricao || null
       });
 
       setModoEdicaoAnotacao(null);
-      setFormAnotacao({ titulo: '', descricao: '' });
+      setFormEdicaoAnotacao({ titulo: '', descricao: '' });
       await carregarCalendario();
     } catch (error: any) {
       alert(error.message || 'Erro ao editar anotação');
@@ -445,13 +462,25 @@ export default function CalendarioAlunoPage() {
                   year: 'numeric'
                 })}
               </h2>
-              <button
-                onClick={() => navegarDiaModal(1)}
-                disabled={indiceDiaModal === diasDoMesAtual.length - 1}
-                className={styles.modalNavButton}
-              >
-                →
-              </button>
+              <div className={styles.modalHeaderActions}>
+                <button
+                  onClick={() => setModalCriarAnotacaoAberto(true)}
+                  className={styles.novaAnotacaoIconBtn}
+                  title="Nova anotação"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 5v14"/>
+                    <path d="M5 12h14"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => navegarDiaModal(1)}
+                  disabled={indiceDiaModal === diasDoMesAtual.length - 1}
+                  className={styles.modalNavButton}
+                >
+                  →
+                </button>
+              </div>
             </div>
             <button onClick={fecharModal} className={styles.modalClose}>✕</button>
             <div className={styles.modalBody}>
@@ -472,14 +501,14 @@ export default function CalendarioAlunoPage() {
                           </div>
                           <input
                             type="text"
-                            value={formAnotacao.titulo}
-                            onChange={(e) => setFormAnotacao({ ...formAnotacao, titulo: e.target.value })}
+                            value={formEdicaoAnotacao.titulo}
+                            onChange={(e) => setFormEdicaoAnotacao({ ...formEdicaoAnotacao, titulo: e.target.value })}
                             className={styles.input}
                             placeholder="Título"
                           />
                           <textarea
-                            value={formAnotacao.descricao}
-                            onChange={(e) => setFormAnotacao({ ...formAnotacao, descricao: e.target.value })}
+                            value={formEdicaoAnotacao.descricao}
+                            onChange={(e) => setFormEdicaoAnotacao({ ...formEdicaoAnotacao, descricao: e.target.value })}
                             className={styles.textarea}
                             placeholder="Descrição (opcional)"
                           />
@@ -489,7 +518,7 @@ export default function CalendarioAlunoPage() {
                             </button>
                             <button onClick={() => {
                               setModoEdicaoAnotacao(null);
-                              setFormAnotacao({ titulo: '', descricao: '' });
+                              setFormEdicaoAnotacao({ titulo: '', descricao: '' });
                             }} className={styles.btnCancelar}>
                               ✕ Cancelar
                             </button>
@@ -507,7 +536,7 @@ export default function CalendarioAlunoPage() {
                             <button
                               onClick={() => {
                                 setModoEdicaoAnotacao(aviso.AvisoId);
-                                setFormAnotacao({ titulo: aviso.Titulo, descricao: aviso.Descricao || '' });
+                                setFormEdicaoAnotacao({ titulo: aviso.Titulo, descricao: aviso.Descricao || '' });
                               }}
                               className={styles.iconBtnAnotacao}
                               title="Editar"
@@ -579,32 +608,48 @@ export default function CalendarioAlunoPage() {
                   );
                 })
               )}
+            </div>
 
-              {/* Seção de Anotações - apenas formulário de criação */}
-              <div className={styles.anotacoesSection}>
-                <h3>📝 Nova Anotação</h3>
-                <div className={styles.anotacaoForm}>
-                  <input
-                    type="text"
-                    placeholder="Título da anotação"
-                    value={formAnotacao.titulo}
-                    onChange={(e) => setFormAnotacao({ ...formAnotacao, titulo: e.target.value })}
-                    maxLength={256}
-                    className={styles.input}
-                  />
-                  <textarea
-                    placeholder="Descrição (opcional)"
-                    value={formAnotacao.descricao}
-                    onChange={(e) => setFormAnotacao({ ...formAnotacao, descricao: e.target.value })}
-                    maxLength={2048}
-                    className={styles.textarea}
-                  />
-                  <button onClick={handleCriarAnotacao} className={styles.btnAdicionar}>
-                    ➕ Adicionar Anotação
-                  </button>
+            {modalCriarAnotacaoAberto && (
+              <div className={styles.subModalOverlay} onClick={() => setModalCriarAnotacaoAberto(false)}>
+                <div className={styles.subModalContent} onClick={(e) => e.stopPropagation()}>
+                  <h3>
+                    Nova anotação em {diaSelecionado.data.toLocaleDateString('pt-BR')}
+                  </h3>
+                  <div className={styles.anotacaoForm}>
+                    <input
+                      type="text"
+                      placeholder="Título da anotação"
+                      value={formNovaAnotacao.titulo}
+                      onChange={(e) => setFormNovaAnotacao({ ...formNovaAnotacao, titulo: e.target.value })}
+                      maxLength={256}
+                      className={styles.input}
+                    />
+                    <textarea
+                      placeholder="Descrição (opcional)"
+                      value={formNovaAnotacao.descricao}
+                      onChange={(e) => setFormNovaAnotacao({ ...formNovaAnotacao, descricao: e.target.value })}
+                      maxLength={2048}
+                      className={styles.textarea}
+                    />
+                    <div className={styles.acoesEdicao}>
+                      <button onClick={handleCriarAnotacao} className={styles.btnConfirmar}>
+                        ✓ Salvar
+                      </button>
+                      <button
+                        onClick={() => {
+                          setModalCriarAnotacaoAberto(false);
+                          setFormNovaAnotacao({ titulo: '', descricao: '' });
+                        }}
+                        className={styles.btnCancelar}
+                      >
+                        ✕ Cancelar
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
