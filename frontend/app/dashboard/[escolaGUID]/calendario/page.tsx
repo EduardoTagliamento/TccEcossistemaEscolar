@@ -460,45 +460,129 @@ export default function CalendarioAlunoPage() {
                   <p>📅 Nenhum aviso agendado para este dia.</p>
                 </div>
               ) : (
-                diaSelecionado.avisos.map((aviso) => (
-                  <div key={aviso.AvisoId} className={styles.avisoDetalhes}>
-                  <div className={styles.avisoHeader}>
-                    <span
-                      className={styles.avisoBadge}
-                      style={{ backgroundColor: obterCorTipo(aviso.TipoAviso) }}
-                    >
-                      {aviso.TipoAviso.toUpperCase()}
-                    </span>
-                    {aviso.TipoAviso !== 'prova' && aviso.TipoAviso !== 'anotacao' && (
-                      <span className={styles.avisoHora}>
-                        {new Date(aviso.DataPrazo).toLocaleTimeString('pt-BR', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    )}
-                  </div>
-                  <h3>{aviso.Titulo}</h3>
-                  {aviso.Descricao && (
-                    <p className={styles.avisoDescricao}>{aviso.Descricao}</p>
-                  )}
-                  <div className={styles.avisoFooter}>
-                    <span className={styles.avisoStatus}>{aviso.StatusTexto}</span>
-                    {aviso.TipoEntrega && (
-                      <span className={styles.avisoEntrega}>
-                        Entrega: {aviso.TipoEntrega === 'digital' ? 'Digital' : 'Física'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                ))
+                diaSelecionado.avisos.map((aviso) => {
+                  if (aviso.TipoAviso === 'anotacao') {
+                    if (modoEdicaoAnotacao === aviso.AvisoId) {
+                      return (
+                        <div key={aviso.AvisoId} className={styles.avisoDetalhes}>
+                          <div className={styles.avisoHeader}>
+                            <span className={styles.avisoBadge} style={{ backgroundColor: '#FFC107', color: '#5D4037' }}>
+                              ANOTAÇÃO
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            value={formAnotacao.titulo}
+                            onChange={(e) => setFormAnotacao({ ...formAnotacao, titulo: e.target.value })}
+                            className={styles.input}
+                            placeholder="Título"
+                          />
+                          <textarea
+                            value={formAnotacao.descricao}
+                            onChange={(e) => setFormAnotacao({ ...formAnotacao, descricao: e.target.value })}
+                            className={styles.textarea}
+                            placeholder="Descrição (opcional)"
+                          />
+                          <div className={styles.acoesEdicao}>
+                            <button onClick={() => handleEditarAnotacao(aviso.AvisoId)} className={styles.btnConfirmar}>
+                              ✓ Confirmar
+                            </button>
+                            <button onClick={() => {
+                              setModoEdicaoAnotacao(null);
+                              setFormAnotacao({ titulo: '', descricao: '' });
+                            }} className={styles.btnCancelar}>
+                              ✕ Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={aviso.AvisoId} className={styles.avisoDetalhes}>
+                        <div className={styles.avisoHeader}>
+                          <span className={styles.avisoBadge} style={{ backgroundColor: '#FFC107', color: '#5D4037' }}>
+                            ANOTAÇÃO
+                          </span>
+                          <div className={styles.acoesInline}>
+                            <button
+                              onClick={() => {
+                                setModoEdicaoAnotacao(aviso.AvisoId);
+                                setFormAnotacao({ titulo: aviso.Titulo, descricao: aviso.Descricao || '' });
+                              }}
+                              className={styles.iconBtnAnotacao}
+                              title="Editar"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleExcluirAnotacao(aviso.AvisoId)}
+                              className={styles.iconBtnAnotacao}
+                              title="Excluir"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        <div className={styles.anotacaoCheckTitle}>
+                          <input
+                            type="checkbox"
+                            checked={aviso.IsFeito}
+                            onChange={() => handleToggleAnotacao(aviso.AvisoId)}
+                            className={styles.checkbox}
+                          />
+                          <h3 className={aviso.IsFeito ? styles.feito : ''}>{aviso.Titulo}</h3>
+                        </div>
+                        {aviso.Descricao && (
+                          <p className={styles.avisoDescricao}>{aviso.Descricao}</p>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={aviso.AvisoId} className={styles.avisoDetalhes}>
+                      <div className={styles.avisoHeader}>
+                        <span
+                          className={styles.avisoBadge}
+                          style={{ backgroundColor: obterCorTipo(aviso.TipoAviso) }}
+                        >
+                          {aviso.TipoAviso.toUpperCase()}
+                        </span>
+                        {aviso.TipoAviso !== 'prova' && (
+                          <span className={styles.avisoHora}>
+                            {new Date(aviso.DataPrazo).toLocaleTimeString('pt-BR', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        )}
+                      </div>
+                      <h3>{aviso.Titulo}</h3>
+                      {aviso.Descricao && (
+                        <p className={styles.avisoDescricao}>{aviso.Descricao}</p>
+                      )}
+                      <div className={styles.avisoFooter}>
+                        <span className={styles.avisoStatus}>{aviso.StatusTexto}</span>
+                        {aviso.TipoEntrega && (
+                          <span className={styles.avisoEntrega}>
+                            Entrega: {aviso.TipoEntrega === 'digital' ? 'Digital' : 'Física'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               )}
 
-              {/* Seção de Anotações */}
+              {/* Seção de Anotações - apenas formulário de criação */}
               <div className={styles.anotacoesSection}>
-                <h3>📝 Minhas Anotações</h3>
-                
-                {/* Form para criar */}
+                <h3>📝 Nova Anotação</h3>
                 <div className={styles.anotacaoForm}>
                   <input
                     type="text"
@@ -518,90 +602,6 @@ export default function CalendarioAlunoPage() {
                   <button onClick={handleCriarAnotacao} className={styles.btnAdicionar}>
                     ➕ Adicionar Anotação
                   </button>
-                </div>
-
-                {/* Lista de anotações do dia */}
-                <div className={styles.listaAnotacoes}>
-                  {anotacoes
-                    .filter(a => {
-                      const dataAnotacao = new Date(a.AnotacaoData);
-                      return (
-                        dataAnotacao.getFullYear() === diaSelecionado.data.getFullYear() &&
-                        dataAnotacao.getMonth() === diaSelecionado.data.getMonth() &&
-                        dataAnotacao.getDate() === diaSelecionado.data.getDate()
-                      );
-                    })
-                    .map(anotacao => (
-                      <div key={anotacao.AnotacaoGUID} className={styles.anotacaoCard}>
-                        {modoEdicaoAnotacao === anotacao.AnotacaoGUID ? (
-                          <>
-                            <input
-                              type="text"
-                              value={formAnotacao.titulo}
-                              onChange={(e) => setFormAnotacao({ ...formAnotacao, titulo: e.target.value })}
-                              className={styles.input}
-                              placeholder="Título"
-                            />
-                            <textarea
-                              value={formAnotacao.descricao}
-                              onChange={(e) => setFormAnotacao({ ...formAnotacao, descricao: e.target.value })}
-                              className={styles.textarea}
-                              placeholder="Descrição (opcional)"
-                            />
-                            <div className={styles.acoesEdicao}>
-                              <button onClick={() => handleEditarAnotacao(anotacao.AnotacaoGUID)} className={styles.btnConfirmar}>
-                                ✓ Confirmar
-                              </button>
-                              <button onClick={() => {
-                                setModoEdicaoAnotacao(null);
-                                setFormAnotacao({ titulo: '', descricao: '' });
-                              }} className={styles.btnCancelar}>
-                                ✕ Cancelar
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className={styles.anotacaoHeader}>
-                              <input
-                                type="checkbox"
-                                checked={anotacao.AnotacaoIsFeito}
-                                onChange={() => handleToggleAnotacao(anotacao.AnotacaoGUID)}
-                                className={styles.checkbox}
-                              />
-                              <h4 className={anotacao.AnotacaoIsFeito ? styles.feito : ''}>
-                                {anotacao.AnotacaoTitulo}
-                              </h4>
-                              <div className={styles.acoesInline}>
-                                <button
-                                  onClick={() => {
-                                    setModoEdicaoAnotacao(anotacao.AnotacaoGUID);
-                                    setFormAnotacao({
-                                      titulo: anotacao.AnotacaoTitulo,
-                                      descricao: anotacao.AnotacaoDescricao || ''
-                                    });
-                                  }}
-                                  className={styles.iconBtn}
-                                  title="Editar"
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  onClick={() => handleExcluirAnotacao(anotacao.AnotacaoGUID)}
-                                  className={styles.iconBtn}
-                                  title="Excluir"
-                                >
-                                  🗑️
-                                </button>
-                              </div>
-                            </div>
-                            {anotacao.AnotacaoDescricao && (
-                              <p className={styles.descricao}>{anotacao.AnotacaoDescricao}</p>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    ))}
                 </div>
               </div>
             </div>
