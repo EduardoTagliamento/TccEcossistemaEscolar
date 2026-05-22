@@ -370,6 +370,29 @@ export default function CalendarioAlunoPage() {
     }
   };
 
+  const hexParaRgba = (hex: string, alpha: number) => {
+    const normalizado = hex.replace('#', '');
+    const bigint = parseInt(normalizado, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
+  const obterEstiloFita = (aviso: AvisoCalendario) => {
+    const corBase = obterCorTipo(aviso.TipoAviso);
+
+    if (!avisoEstaConcluido(aviso)) {
+      return { backgroundColor: corBase };
+    }
+
+    return {
+      backgroundColor: hexParaRgba(corBase, 0.28),
+      border: '1px solid rgba(0, 0, 0, 0.15)',
+      color: aviso.TipoAviso === 'anotacao' ? '#5D4037' : 'rgba(255, 255, 255, 0.9)',
+    };
+  };
+
   const avisoEstaConcluido = (aviso: AvisoCalendario) => {
     if (aviso.TipoAviso === 'anotacao') {
       return Boolean(aviso.IsFeito) || /feito|conclu/i.test(aviso.StatusTexto);
@@ -466,7 +489,7 @@ export default function CalendarioAlunoPage() {
                         <div
                           key={aviso.AvisoId}
                           className={`${styles.avisoFita} ${avisoEstaConcluido(aviso) ? styles.avisoFitaConcluida : ''}`}
-                          style={{ backgroundColor: obterCorTipo(aviso.TipoAviso) }}
+                          style={obterEstiloFita(aviso)}
                           title={aviso.Titulo}
                         >
                           <span className={styles.avisoTitulo}>{aviso.Titulo}</span>
