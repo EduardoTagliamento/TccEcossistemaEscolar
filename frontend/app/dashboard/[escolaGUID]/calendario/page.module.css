@@ -491,7 +491,7 @@
 
 .avisoFitaConcluida {
   opacity: 0.35;
-  filter: saturate(0.7) grayscale(0.6);
+  filter: saturate(0.0) grayscale(0.0);
 }
 
 .avisoDescricao {
