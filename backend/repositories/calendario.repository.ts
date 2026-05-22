@@ -9,6 +9,7 @@ import {
 interface CalendarioAvisoRow extends RowDataPacket {
   TipoAviso: CalendarioTipoAviso;
   AvisoId: string;
+  MatriculaGUID: string | null;
   DataPrazo: Date;
   Titulo: string;
   Descricao: string | null;
@@ -44,6 +45,7 @@ export class CalendarioDAO {
       SELECT
         'tarefa' AS TipoAviso,
         t.TarefaGUID AS AvisoId,
+        tm.MatriculaGUID AS MatriculaGUID,
         t.TarefaPrazoData AS DataPrazo,
         t.TarefaTitulo COLLATE utf8mb4_0900_ai_ci AS Titulo,
         t.TarefaConteudo COLLATE utf8mb4_0900_ai_ci AS Descricao,
@@ -93,6 +95,7 @@ export class CalendarioDAO {
       SELECT
         'prova' AS TipoAviso,
         p.ProvaAgendadaGUID AS AvisoId,
+        NULL AS MatriculaGUID,
         p.ProvaData AS DataPrazo,
         COALESCE(mat.MateriaNome, 'Prova agendada') COLLATE utf8mb4_0900_ai_ci AS Titulo,
         p.ProvaDescricao COLLATE utf8mb4_0900_ai_ci AS Descricao,
@@ -183,6 +186,7 @@ export class CalendarioDAO {
     return {
       TipoAviso: row.TipoAviso,
       AvisoId: row.AvisoId,
+      MatriculaGUID: row.MatriculaGUID,
       DataPrazo: row.DataPrazo,
       Titulo: row.Titulo,
       Descricao: row.Descricao,
