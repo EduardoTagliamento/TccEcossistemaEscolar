@@ -580,6 +580,13 @@ export default function CalendarioAlunoPage() {
               {avisosDoDiaOrdenados.length === 0 ? (
                 <div className={styles.semAvisos}>
                   <p>📅 Nenhum aviso agendado para este dia.</p>
+                  <button
+                    type="button"
+                    className={styles.semAvisosLink}
+                    onClick={() => setModalCriarAnotacaoAberto(true)}
+                  >
+                    Deseja criar uma anotação?
+                  </button>
                 </div>
               ) : (
                 avisosDoDiaOrdenados.map((aviso) => {
