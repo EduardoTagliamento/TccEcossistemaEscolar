@@ -517,6 +517,13 @@
   color: white;
 }
 
+.avisoTipoGrupo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
 .avisoBadgeTexto {
   font-size: 0.78rem;
   font-weight: 800;
@@ -531,8 +538,8 @@
 }
 
 .avisoResumoLinha {
-  margin-top: -0.72rem;
-  padding: 0 0.85rem 0.75rem;
+  margin-top: 0;
+  padding: 0.45rem 0.85rem 0.85rem;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -542,10 +549,11 @@
 .avisoTituloPrincipal {
   margin: 0;
   flex: 1;
-  color: white;
+  color: #2c2c2c;
   font-size: 1.08rem;
   line-height: 1.2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+  text-shadow: none;
+  word-break: break-word;
 }
 
 .avisoToggleExpandido {
@@ -556,7 +564,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.2);
   color: white;
   font-size: 1rem;
   font-weight: 800;

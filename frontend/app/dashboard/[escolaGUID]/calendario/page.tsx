@@ -741,19 +741,21 @@ export default function CalendarioAlunoPage() {
                         onClick={() => alternarAvisoExpandido(aviso.AvisoId)}
                         aria-expanded={expandido}
                       >
-                        <span
+                        <div
                           className={styles.avisoBadgeFaixa}
                           style={{ backgroundColor: obterCorTipo(aviso.TipoAviso) }}
                         >
-                          <span className={styles.avisoBadgeTexto}>{obterLabelTipoAviso(aviso.TipoAviso)}</span>
+                          <span className={styles.avisoTipoGrupo}>
+                            <span className={styles.avisoToggleExpandido}>{expandido ? '▼' : '▶'}</span>
+                            <span className={styles.avisoBadgeTexto}>{obterLabelTipoAviso(aviso.TipoAviso)}</span>
+                          </span>
                           {aviso.TipoAviso !== 'prova' && (
                             <span className={styles.avisoHoraFaixa}>{formatarHoraAviso(aviso)}</span>
                           )}
-                        </span>
+                        </div>
 
-                        <div className={styles.avisoResumoLinha}>
+                        <div className={styles.avisoTituloLinha}>
                           <h3 className={styles.avisoTituloPrincipal}>{aviso.Titulo}</h3>
-                          <span className={styles.avisoToggleExpandido}>{expandido ? '−' : '+'}</span>
                         </div>
                       </button>
 
