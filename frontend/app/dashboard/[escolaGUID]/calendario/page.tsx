@@ -595,19 +595,21 @@ export default function CalendarioAlunoPage() {
                               ANOTAÇÃO
                             </span>
                           </div>
-                          <input
-                            type="text"
-                            value={formEdicaoAnotacao.titulo}
-                            onChange={(e) => setFormEdicaoAnotacao({ ...formEdicaoAnotacao, titulo: e.target.value })}
-                            className={styles.input}
-                            placeholder="Título"
-                          />
-                          <textarea
-                            value={formEdicaoAnotacao.descricao}
-                            onChange={(e) => setFormEdicaoAnotacao({ ...formEdicaoAnotacao, descricao: e.target.value })}
-                            className={styles.textarea}
-                            placeholder="Descrição (opcional)"
-                          />
+                          <div className={styles.edicaoAnotacaoForm}>
+                            <input
+                              type="text"
+                              value={formEdicaoAnotacao.titulo}
+                              onChange={(e) => setFormEdicaoAnotacao({ ...formEdicaoAnotacao, titulo: e.target.value })}
+                              className={styles.input}
+                              placeholder="Título"
+                            />
+                            <textarea
+                              value={formEdicaoAnotacao.descricao}
+                              onChange={(e) => setFormEdicaoAnotacao({ ...formEdicaoAnotacao, descricao: e.target.value })}
+                              className={styles.textarea}
+                              placeholder="Descrição (opcional)"
+                            />
+                          </div>
                           <div className={styles.acoesEdicao}>
                             <button onClick={() => handleEditarAnotacao(aviso.AvisoId)} className={styles.btnConfirmar}>
                               ✓ Confirmar
@@ -726,47 +728,47 @@ export default function CalendarioAlunoPage() {
                 })
               )}
             </div>
+          </div>
+        </div>
+      )}
 
-            {modalCriarAnotacaoAberto && (
-              <div className={styles.subModalOverlay} onClick={() => setModalCriarAnotacaoAberto(false)}>
-                <div className={styles.subModalContent} onClick={(e) => e.stopPropagation()}>
-                  <h3>
-                    Nova anotação em {diaSelecionado.data.toLocaleDateString('pt-BR')}
-                  </h3>
-                  <div className={styles.anotacaoForm}>
-                    <input
-                      type="text"
-                      placeholder="Título da anotação"
-                      value={formNovaAnotacao.titulo}
-                      onChange={(e) => setFormNovaAnotacao({ ...formNovaAnotacao, titulo: e.target.value })}
-                      maxLength={256}
-                      className={styles.input}
-                    />
-                    <textarea
-                      placeholder="Descrição (opcional)"
-                      value={formNovaAnotacao.descricao}
-                      onChange={(e) => setFormNovaAnotacao({ ...formNovaAnotacao, descricao: e.target.value })}
-                      maxLength={2048}
-                      className={styles.textarea}
-                    />
-                    <div className={styles.acoesEdicao}>
-                      <button onClick={handleCriarAnotacao} className={styles.btnConfirmar}>
-                        ✓ Salvar
-                      </button>
-                      <button
-                        onClick={() => {
-                          setModalCriarAnotacaoAberto(false);
-                          setFormNovaAnotacao({ titulo: '', descricao: '' });
-                        }}
-                        className={styles.btnCancelar}
-                      >
-                        ✕ Cancelar
-                      </button>
-                    </div>
-                  </div>
-                </div>
+      {modalCriarAnotacaoAberto && diaSelecionado && (
+        <div className={styles.subModalOverlay} onClick={() => setModalCriarAnotacaoAberto(false)}>
+          <div className={styles.subModalContent} onClick={(e) => e.stopPropagation()}>
+            <h3>
+              Nova anotação em {diaSelecionado.data.toLocaleDateString('pt-BR')}
+            </h3>
+            <div className={styles.anotacaoForm}>
+              <input
+                type="text"
+                placeholder="Título da anotação"
+                value={formNovaAnotacao.titulo}
+                onChange={(e) => setFormNovaAnotacao({ ...formNovaAnotacao, titulo: e.target.value })}
+                maxLength={256}
+                className={styles.input}
+              />
+              <textarea
+                placeholder="Descrição (opcional)"
+                value={formNovaAnotacao.descricao}
+                onChange={(e) => setFormNovaAnotacao({ ...formNovaAnotacao, descricao: e.target.value })}
+                maxLength={2048}
+                className={styles.textarea}
+              />
+              <div className={styles.acoesEdicao}>
+                <button onClick={handleCriarAnotacao} className={styles.btnConfirmar}>
+                  ✓ Salvar
+                </button>
+                <button
+                  onClick={() => {
+                    setModalCriarAnotacaoAberto(false);
+                    setFormNovaAnotacao({ titulo: '', descricao: '' });
+                  }}
+                  className={styles.btnCancelar}
+                >
+                  ✕ Cancelar
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
