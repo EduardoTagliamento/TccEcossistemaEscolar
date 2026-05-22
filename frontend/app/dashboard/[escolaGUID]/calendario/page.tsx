@@ -19,9 +19,11 @@ import styles from './page.module.css';
 interface AvisoCalendario {
   TipoAviso: 'tarefa' | 'prova' | 'evento' | 'anotacao';
   AvisoId: string;
+  MatriculaGUID?: string | null;
   DataPrazo: string;
   Titulo: string;
   Descricao: string | null;
+  StatusBoolean?: boolean | null;
   StatusTexto: string;
   TipoEntrega: 'digital' | 'fisica' | null;
   IsFeito?: boolean;
@@ -324,6 +326,40 @@ export default function CalendarioAlunoPage() {
     }
   };
 
+  const handleToggleTarefaFisica = async (aviso: AvisoCalendario) => {
+    if (aviso.TipoAviso !== 'tarefa') return;
+    if (aviso.TipoEntrega !== 'fisica') return;
+    if (!aviso.MatriculaGUID) {
+      alert('Não foi possível identificar a matrícula para atualizar esta tarefa.');
+      return;
+    }
+
+    const tarefaFeitoAtual = avisoEstaConcluido(aviso);
+
+    try {
+      const response = await fetch(`/api/tarefa/${aviso.AvisoId}/marcar-feito`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          MatriculaGUID: aviso.MatriculaGUID,
+          TarefaFeito: !tarefaFeitoAtual,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.message || 'Erro ao atualizar tarefa');
+      }
+
+      await carregarCalendario();
+    } catch (error: any) {
+      alert(error.message || 'Erro ao atualizar tarefa física');
+    }
+  };
+
   const obterCorTipo = (tipo: string) => {
     switch (tipo) {
       case 'tarefa': return '#4CAF50';
@@ -340,6 +376,7 @@ export default function CalendarioAlunoPage() {
     }
 
     if (aviso.TipoAviso === 'tarefa') {
+      if (typeof aviso.StatusBoolean === 'boolean') return aviso.StatusBoolean;
       return /feito|conclu/i.test(aviso.StatusTexto);
     }
 
@@ -639,6 +676,21 @@ export default function CalendarioAlunoPage() {
                         <p className={styles.avisoDescricao}>{aviso.Descricao}</p>
                       )}
                       <div className={styles.avisoFooter}>
+                        {aviso.TipoAviso === 'tarefa' && (
+                          <label className={styles.tarefaCheckboxInline}>
+                            <input
+                              type="checkbox"
+                              checked={avisoEstaConcluido(aviso)}
+                              disabled={aviso.TipoEntrega !== 'fisica'}
+                              onChange={() => handleToggleTarefaFisica(aviso)}
+                            />
+                            <span>
+                              {aviso.TipoEntrega === 'fisica'
+                                ? 'Entregue'
+                                : 'Entrega digital'}
+                            </span>
+                          </label>
+                        )}
                         <span className={styles.avisoStatus}>{aviso.StatusTexto}</span>
                         {aviso.TipoEntrega && (
                           <span className={styles.avisoEntrega}>

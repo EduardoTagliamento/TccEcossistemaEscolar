@@ -484,8 +484,8 @@
   margin-bottom: 0.75rem;
 
 .avisoFitaConcluida {
-  opacity: 0.5;
-  filter: saturate(0.7);
+  opacity: 0.3;
+  filter: saturate(0.45) grayscale(0.25);
 }
   margin-top: 0;
 }
@@ -504,6 +504,25 @@
   padding-top: 1rem;
   border-top: 1px solid var(--border-color, #e0e0e0);
   font-size: 0.875rem;
+}
+
+.tarefaCheckboxInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-secondary, #666);
+  font-weight: 500;
+}
+
+.tarefaCheckboxInline input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.tarefaCheckboxInline input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .avisoStatus {

@@ -3,6 +3,7 @@ export type CalendarioTipoAviso = "tarefa" | "prova";
 export interface CalendarioAviso {
   TipoAviso: CalendarioTipoAviso;
   AvisoId: string;
+  MatriculaGUID: string | null;
   DataPrazo: Date;
   Titulo: string;
   Descricao: string | null;
