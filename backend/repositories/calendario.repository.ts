@@ -52,7 +52,7 @@ export class CalendarioDAO {
         tm.TarefaFeito AS StatusBoolean,
         CASE
           WHEN tm.TarefaFeito = 1 THEN 'Feita'
-          WHEN t.TarefaPrazoData < NOW() THEN 'Atrasada'
+          WHEN t.TarefaPrazoData < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR) THEN 'Atrasada'
           ELSE 'Pendente'
         END COLLATE utf8mb4_0900_ai_ci AS StatusTexto,
         t.TarefaTipoEntrega COLLATE utf8mb4_0900_ai_ci AS TipoEntrega,

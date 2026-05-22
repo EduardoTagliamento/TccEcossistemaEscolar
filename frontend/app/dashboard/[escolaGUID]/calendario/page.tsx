@@ -58,6 +58,7 @@ export default function CalendarioAlunoPage() {
   const [modalCriarAnotacaoAberto, setModalCriarAnotacaoAberto] = useState(false);
   const [formNovaAnotacao, setFormNovaAnotacao] = useState({ titulo: '', descricao: '' });
   const [formEdicaoAnotacao, setFormEdicaoAnotacao] = useState({ titulo: '', descricao: '' });
+  const [avisosExpandidos, setAvisosExpandidos] = useState<Record<string, boolean>>({});
 
   const mesSelecionado = useMemo(() => {
     return `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}`;
@@ -368,6 +369,51 @@ export default function CalendarioAlunoPage() {
       case 'anotacao': return '#FFC107';
       default: return '#9E9E9E';
     }
+  };
+
+  const obterLabelTipoAviso = (tipo: AvisoCalendario['TipoAviso']) => {
+    switch (tipo) {
+      case 'tarefa':
+        return 'Tarefa';
+      case 'prova':
+        return 'Prova';
+      case 'evento':
+        return 'Evento';
+      case 'anotacao':
+        return 'Anotação';
+      default:
+        return 'Aviso';
+    }
+  };
+
+  const alternarAvisoExpandido = (avisoId: string) => {
+    setAvisosExpandidos((prev) => ({
+      ...prev,
+      [avisoId]: !prev[avisoId],
+    }));
+  };
+
+  const avisoExpandido = (avisoId: string) => Boolean(avisosExpandidos[avisoId]);
+
+  const formatarHoraAviso = (aviso: AvisoCalendario) => {
+    return new Date(aviso.DataPrazo).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const obterClasseStatusTarefa = (aviso: AvisoCalendario) => {
+    const statusNormalizado = aviso.StatusTexto.toLowerCase();
+
+    if (aviso.IsFeito || /feito|conclu/i.test(statusNormalizado)) {
+      return styles.statusFeita;
+    }
+
+    if (/atras/i.test(statusNormalizado)) {
+      return styles.statusAtrasada;
+    }
+
+    return styles.statusPendente;
   };
 
   const hexParaRgba = (hex: string, alpha: number) => {
@@ -682,54 +728,72 @@ export default function CalendarioAlunoPage() {
                     );
                   }
 
+                  const expandido = avisoExpandido(aviso.AvisoId);
+
                   return (
                     <div
                       key={aviso.AvisoId}
-                      className={`${styles.avisoDetalhes} ${avisoEstaConcluido(aviso) ? styles.avisoConcluido : ''}`}
+                      className={`${styles.avisoDetalhes} ${expandido ? styles.avisoDetalhesExpandido : styles.avisoDetalhesMinimizado} ${avisoEstaConcluido(aviso) ? styles.avisoConcluido : ''}`}
                     >
-                      <div className={styles.avisoHeader}>
+                      <button
+                        type="button"
+                        className={styles.avisoResumoBar}
+                        onClick={() => alternarAvisoExpandido(aviso.AvisoId)}
+                        aria-expanded={expandido}
+                      >
                         <span
-                          className={styles.avisoBadge}
+                          className={styles.avisoBadgeFaixa}
                           style={{ backgroundColor: obterCorTipo(aviso.TipoAviso) }}
                         >
-                          {aviso.TipoAviso.toUpperCase()}
+                          <span className={styles.avisoBadgeTexto}>{obterLabelTipoAviso(aviso.TipoAviso)}</span>
+                          {aviso.TipoAviso !== 'prova' && (
+                            <span className={styles.avisoHoraFaixa}>{formatarHoraAviso(aviso)}</span>
+                          )}
                         </span>
-                        {aviso.TipoAviso !== 'prova' && (
-                          <span className={styles.avisoHora}>
-                            {new Date(aviso.DataPrazo).toLocaleTimeString('pt-BR', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        )}
-                      </div>
-                      <h3>{aviso.Titulo}</h3>
-                      {aviso.Descricao && (
-                        <p className={styles.avisoDescricao}>{aviso.Descricao}</p>
+
+                        <div className={styles.avisoResumoLinha}>
+                          <h3 className={styles.avisoTituloPrincipal}>{aviso.Titulo}</h3>
+                          <span className={styles.avisoToggleExpandido}>{expandido ? '−' : '+'}</span>
+                        </div>
+                      </button>
+
+                      {expandido && (
+                        <div className={styles.avisoConteudoExpandido}>
+                          {aviso.Descricao && (
+                            <p className={styles.avisoDescricao}>{aviso.Descricao}</p>
+                          )}
+                          <div className={styles.avisoFooter}>
+                            {aviso.TipoAviso === 'tarefa' && (
+                              <label className={styles.tarefaCheckboxInline}>
+                                <input
+                                  type="checkbox"
+                                  checked={avisoEstaConcluido(aviso)}
+                                  disabled={aviso.TipoEntrega !== 'fisica'}
+                                  onChange={() => handleToggleTarefaFisica(aviso)}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <span>
+                                  {aviso.TipoEntrega === 'fisica'
+                                    ? 'Entregue'
+                                    : 'Entrega digital'}
+                                </span>
+                              </label>
+                            )}
+                            {aviso.TipoAviso === 'tarefa' ? (
+                              <span className={`${styles.avisoStatus} ${obterClasseStatusTarefa(aviso)}`}>
+                                {aviso.StatusTexto}
+                              </span>
+                            ) : (
+                              <span className={styles.avisoStatus}>{aviso.StatusTexto}</span>
+                            )}
+                            {aviso.TipoEntrega && (
+                              <span className={styles.avisoEntrega}>
+                                Entrega: {aviso.TipoEntrega === 'digital' ? 'Digital' : 'Física'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       )}
-                      <div className={styles.avisoFooter}>
-                        {aviso.TipoAviso === 'tarefa' && (
-                          <label className={styles.tarefaCheckboxInline}>
-                            <input
-                              type="checkbox"
-                              checked={avisoEstaConcluido(aviso)}
-                              disabled={aviso.TipoEntrega !== 'fisica'}
-                              onChange={() => handleToggleTarefaFisica(aviso)}
-                            />
-                            <span>
-                              {aviso.TipoEntrega === 'fisica'
-                                ? 'Entregue'
-                                : 'Entrega digital'}
-                            </span>
-                          </label>
-                        )}
-                        <span className={styles.avisoStatus}>{aviso.StatusTexto}</span>
-                        {aviso.TipoEntrega && (
-                          <span className={styles.avisoEntrega}>
-                            Entrega: {aviso.TipoEntrega === 'digital' ? 'Digital' : 'Física'}
-                          </span>
-                        )}
-                      </div>
                     </div>
                   );
                 })
