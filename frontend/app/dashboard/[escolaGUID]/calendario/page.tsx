@@ -389,7 +389,7 @@ export default function CalendarioAlunoPage() {
     return {
       backgroundColor: hexParaRgba(corBase, 0.28),
       border: '1px solid rgba(0, 0, 0, 0.15)',
-      color: aviso.TipoAviso === 'anotacao' ? '#5D4037' : 'rgba(255, 255, 255, 0.9)',
+      color: aviso.TipoAviso === 'anotacao' ? '#c6ce97' : 'rgba(255, 255, 255, 0.9)',
     };
   };
 
