@@ -258,9 +258,14 @@ export default function DashboardPage() {
                   </>
                 )}
                 {isAluno && (
-                  <Link href={`/dashboard/${escolaGUID}/calendario`} className={styles.quickActionButton}>
-                    <FiCalendar /> Calendário de Avisos
-                  </Link>
+                  <>
+                    <Link href={`/dashboard/${escolaGUID}/tarefas`} className={styles.quickActionButton}>
+                      <FiBookOpen /> Minhas Tarefas
+                    </Link>
+                    <Link href={`/dashboard/${escolaGUID}/calendario`} className={styles.quickActionButton}>
+                      <FiCalendar /> Calendário de Avisos
+                    </Link>
+                  </>
                 )}
               </div>
             )}
