@@ -10,6 +10,9 @@ interface TarefaAcademicaRow extends RowDataPacket {
   TarefaPostagemData: Date;
   TarefaPrazoData: Date;
   TarefaTipoEntrega: "digital" | "fisica";
+  TarefaCompartilhada: boolean;
+  TarefaMinPessoas: number | null;
+  TarefaMaxPessoas: number | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }
@@ -18,6 +21,7 @@ export interface TarefaAcademicaFilters {
   matXprofXturxescGUID?: string;
   DataInicio?: Date;
   DataFim?: Date;
+  TarefaCompartilhada?: boolean;
 }
 
 /**
@@ -47,8 +51,9 @@ export class TarefaAcademicaDAO {
     const SQL = `
       INSERT INTO tarefaacademica
       (TarefaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo,
-       TarefaPostagemData, TarefaPrazoData, TarefaTipoEntrega)
-      VALUES (?, ?, ?, ?, ?, ?, ?);
+       TarefaPostagemData, TarefaPrazoData, TarefaTipoEntrega,
+       TarefaCompartilhada, TarefaMinPessoas, TarefaMaxPessoas)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       tarefa.TarefaGUID,
@@ -58,6 +63,9 @@ export class TarefaAcademicaDAO {
       tarefa.TarefaPostagemData,
       tarefa.TarefaPrazoData,
       tarefa.TarefaTipoEntrega,
+      tarefa.TarefaCompartilhada,
+      tarefa.TarefaMinPessoas,
+      tarefa.TarefaMaxPessoas,
     ];
 
     const pool = await this.#database.getPool();
@@ -99,6 +107,11 @@ export class TarefaAcademicaDAO {
       params.push(filters.DataFim);
     }
 
+    if (filters?.TarefaCompartilhada !== undefined) {
+      SQL += " AND TarefaCompartilhada = ?";
+      params.push(filters.TarefaCompartilhada);
+    }
+
     SQL += " ORDER BY TarefaPrazoData ASC;";
 
     const pool = await this.#database.getPool();
@@ -125,7 +138,8 @@ export class TarefaAcademicaDAO {
     TarefaGUID: string,
     updates: Partial<Pick<
       TarefaAcademica,
-      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega"
+      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega" |
+      "TarefaCompartilhada" | "TarefaMinPessoas" | "TarefaMaxPessoas"
     >>
   ): Promise<TarefaAcademica | null> => {
     console.log("🟢 TarefaAcademicaDAO.update()");
@@ -148,6 +162,18 @@ export class TarefaAcademicaDAO {
     if (updates.TarefaTipoEntrega !== undefined) {
       fields.push("TarefaTipoEntrega = ?");
       values.push(updates.TarefaTipoEntrega);
+    }
+    if (updates.TarefaCompartilhada !== undefined) {
+      fields.push("TarefaCompartilhada = ?");
+      values.push(updates.TarefaCompartilhada);
+    }
+    if (updates.TarefaMinPessoas !== undefined) {
+      fields.push("TarefaMinPessoas = ?");
+      values.push(updates.TarefaMinPessoas);
+    }
+    if (updates.TarefaMaxPessoas !== undefined) {
+      fields.push("TarefaMaxPessoas = ?");
+      values.push(updates.TarefaMaxPessoas);
     }
 
     if (fields.length === 0) {
@@ -209,6 +235,9 @@ export class TarefaAcademicaDAO {
     tarefa.TarefaPostagemData = row.TarefaPostagemData;
     tarefa.TarefaPrazoData = row.TarefaPrazoData;
     tarefa.TarefaTipoEntrega = row.TarefaTipoEntrega;
+    tarefa.TarefaCompartilhada = Boolean(row.TarefaCompartilhada);
+    tarefa.TarefaMinPessoas = row.TarefaMinPessoas;
+    tarefa.TarefaMaxPessoas = row.TarefaMaxPessoas;
     tarefa.CreatedAt = row.CreatedAt;
     tarefa.UpdatedAt = row.UpdatedAt;
     return tarefa;

@@ -1,0 +1,217 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.closeButton:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  transition: border-color 0.2s;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.alunosList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.alunoCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  transition: all 0.2s;
+}
+
+.alunoCard:hover {
+  border-color: var(--color-primary);
+}
+
+.alunoInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.alunoAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.25rem;
+}
+
+.alunoNome {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.alunoEmail {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.badgeTemMembros {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: #ff6b6b;
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.btnConvidar {
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btnConvidar:hover:not(:disabled) {
+  background: var(--color-primary);
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+}
+
+.btnConvidar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading,
+.error,
+.empty {
+  text-align: center;
+  padding: 2rem;
+}
+
+.loading,
+.empty {
+  color: var(--text-secondary);
+}
+
+.error {
+  color: var(--color-error);
+  background: rgba(255, 107, 107, 0.1);
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 768px) {
+  .modal {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .alunoCard {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .btnConvidar {
+    width: 100%;
+  }
+}
