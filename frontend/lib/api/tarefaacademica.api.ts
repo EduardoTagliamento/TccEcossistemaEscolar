@@ -83,7 +83,7 @@ export async function listarTarefas(filters?: {
     throw new Error(result.error || result.message || 'Erro ao listar tarefas');
   }
 
-  return result.data;
+  return result.data?.tarefas || [];
 }
 
 // UPDATE - Atualizar tarefa
