@@ -72,7 +72,7 @@ export default class GrupoTarefaService {
             TarefaGUID: tarefaGUID,
             TurmaGUID: turmaGUID,
             UsuarioCPFLider: matricula.UsuarioCPF,
-            GrupoNome: null  // Será gerado automaticamente no frontend
+            GrupoNome: undefined  // Será gerado automaticamente no frontend
           };
 
           await this.#grupoTarefaDAO.create(grupoData);
@@ -183,7 +183,7 @@ export default class GrupoTarefaService {
         TarefaGUID: grupo.TarefaGUID,
         TurmaGUID: grupo.TurmaGUID,
         UsuarioCPFLider: membroCPF,
-        GrupoNome: null
+        GrupoNome: undefined
       };
       
       const novoGrupo = await this.#grupoTarefaDAO.create(novoGrupoData);
