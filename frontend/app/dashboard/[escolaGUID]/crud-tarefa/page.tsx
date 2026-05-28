@@ -62,12 +62,16 @@ export default function CrudTarefaPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
+  const [compartilhadaReadonly, setCompartilhadaReadonly] = useState(false);
   const [form, setForm] = useState({
     matXprofXturxescGUID: '',
     TarefaTitulo: '',
     TarefaConteudo: '',
     TarefaPrazoData: '',
     TarefaTipoEntrega: 'digital' as 'digital' | 'fisica',
+    TarefaCompartilhada: false,
+    TarefaMinPessoas: null as number | null,
+    TarefaMaxPessoas: null as number | null,
   });
 
   /**
@@ -299,12 +303,16 @@ export default function CrudTarefaPage() {
 
   const limparFormulario = () => {
     setEditingGUID(null);
+    setCompartilhadaReadonly(false);
     setForm({
       matXprofXturxescGUID: materias.length === 1 ? materias[0].MatProfTurGUID : '',
       TarefaTitulo: '',
       TarefaConteudo: '',
       TarefaPrazoData: obterDataPadraoFimDoDia(),
       TarefaTipoEntrega: 'digital',
+      TarefaCompartilhada: false,
+      TarefaMinPessoas: null,
+      TarefaMaxPessoas: null,
     });
     setSeries([]);
   };
@@ -323,6 +331,8 @@ export default function CrudTarefaPage() {
             TarefaConteudo: form.TarefaConteudo || undefined,
             TarefaPrazoData: converterParaBrasil(form.TarefaPrazoData), // Converte do timezone do usuário para GMT-3
             TarefaTipoEntrega: form.TarefaTipoEntrega,
+            TarefaMinPessoas: form.TarefaCompartilhada ? form.TarefaMinPessoas : null,
+            TarefaMaxPessoas: form.TarefaCompartilhada ? form.TarefaMaxPessoas : null,
           },
         };
 
@@ -362,6 +372,9 @@ export default function CrudTarefaPage() {
           TarefaConteudo: form.TarefaConteudo || undefined,
           TarefaPrazoData: converterParaBrasil(form.TarefaPrazoData), // Converte do timezone do usuário para GMT-3
           TarefaTipoEntrega: form.TarefaTipoEntrega,
+          TarefaCompartilhada: form.TarefaCompartilhada,
+          TarefaMinPessoas: form.TarefaCompartilhada ? form.TarefaMinPessoas : null,
+          TarefaMaxPessoas: form.TarefaCompartilhada ? form.TarefaMaxPessoas : null,
         },
       };
 
@@ -390,14 +403,18 @@ export default function CrudTarefaPage() {
     }
   };
 
-  const editarTarefa = (tarefa: Tarefa) => {
+  const editarTarefa = (tarefa: any) => {
     setEditingGUID(tarefa.TarefaGUID);
+    setCompartilhadaReadonly(!!tarefa.TarefaCompartilhada);
     setForm({
       matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
       TarefaTitulo: tarefa.TarefaTitulo,
       TarefaConteudo: tarefa.TarefaConteudo || '',
       TarefaPrazoData: converterDoBrasil(tarefa.TarefaPrazoData), // Converte GMT-3 para timezone do usuário
       TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+      TarefaCompartilhada: !!tarefa.TarefaCompartilhada,
+      TarefaMinPessoas: tarefa.TarefaMinPessoas,
+      TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
     });
     // Scroll para o topo para visualizar o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -511,6 +528,93 @@ export default function CrudTarefaPage() {
           <option value="digital">Digital</option>
           <option value="fisica">Física</option>
         </select>
+
+        {/* Checkbox Tarefa Compartilhada */}
+        <div className={styles.formGroup}>
+          <label htmlFor="tarefaCompartilhada" className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              id="tarefaCompartilhada"
+              name="tarefaCompartilhada"
+              checked={form.TarefaCompartilhada}
+              disabled={compartilhadaReadonly}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setForm({
+                  ...form,
+                  TarefaCompartilhada: checked,
+                  TarefaMinPessoas: checked ? 1 : null,
+                  TarefaMaxPessoas: checked ? 5 : null
+                });
+              }}
+            />
+            <span>Tarefa Compartilhada (alunos trabalham em grupos)</span>
+          </label>
+          <p className={styles.helpText}>
+            Ao marcar esta opção, cada aluno receberá um grupo próprio e poderá convidar colegas.
+          </p>
+          {compartilhadaReadonly && (
+            <p className={styles.warning}>
+              ⚠️ Não é possível alterar o tipo de tarefa após criação
+            </p>
+          )}
+        </div>
+
+        {/* Configuração de Grupos (condicional) */}
+        {form.TarefaCompartilhada && (
+          <div className={styles.grupoConfiguracao}>
+            <h3>Configuração de Grupos</h3>
+            
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
+                <label htmlFor="minPessoas">Mínimo de Pessoas *</label>
+                <input
+                  type="number"
+                  id="minPessoas"
+                  name="minPessoas"
+                  min="1"
+                  value={form.TarefaMinPessoas || 1}
+                  onChange={(e) => {
+                    const min = parseInt(e.target.value);
+                    setForm({
+                      ...form,
+                      TarefaMinPessoas: min,
+                      TarefaMaxPessoas: Math.max(min, form.TarefaMaxPessoas || min)
+                    });
+                  }}
+                  required
+                />
+                <p className={styles.helpText}>Quantidade mínima de pessoas por grupo</p>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="maxPessoas">Máximo de Pessoas *</label>
+                <input
+                  type="number"
+                  id="maxPessoas"
+                  name="maxPessoas"
+                  min={form.TarefaMinPessoas || 1}
+                  value={form.TarefaMaxPessoas || 5}
+                  onChange={(e) => setForm({
+                    ...form,
+                    TarefaMaxPessoas: parseInt(e.target.value)
+                  })}
+                  required
+                />
+                <p className={styles.helpText}>Quantidade máxima de pessoas por grupo</p>
+              </div>
+            </div>
+
+            <div className={styles.configPreview}>
+              <strong>Grupos serão criados com:</strong>
+              <ul>
+                <li>Mínimo: {form.TarefaMinPessoas || 1} pessoa(s)</li>
+                <li>Máximo: {form.TarefaMaxPessoas || 5} pessoa(s)</li>
+                <li>Cada aluno começa como líder do próprio grupo</li>
+              </ul>
+            </div>
+          </div>
+        )}
 
         <div className={styles.actions}>
           <button type="submit" disabled={submitting || (!editingGUID && totalAlunosSelecionados === 0)}>

@@ -26,6 +26,11 @@ export default class TarefaAcademica {
   #TarefaTipoEntrega!: "digital" | "fisica";
   #CreatedAt: Date | null = null;
   #UpdatedAt: Date | null = null;
+  
+  // NOVOS CAMPOS - Sistema de Tarefas Compartilhadas
+  #TarefaCompartilhada: boolean = false;
+  #TarefaMinPessoas: number | null = null;
+  #TarefaMaxPessoas: number | null = null;
 
   constructor() {
     console.log("⬆️  TarefaAcademica.constructor()");
@@ -165,5 +170,71 @@ export default class TarefaAcademica {
       throw new Error("UpdatedAt deve ser uma data válida.");
     }
     this.#UpdatedAt = value;
+  }
+
+  // ========== TarefaCompartilhada ==========
+  get TarefaCompartilhada(): boolean {
+    return this.#TarefaCompartilhada;
+  }
+
+  set TarefaCompartilhada(value: boolean) {
+    this.#TarefaCompartilhada = Boolean(value);
+  }
+
+  // ========== TarefaMinPessoas ==========
+  get TarefaMinPessoas(): number | null {
+    return this.#TarefaMinPessoas;
+  }
+
+  set TarefaMinPessoas(value: number | null) {
+    if (value === null || value === undefined) {
+      this.#TarefaMinPessoas = null;
+      return;
+    }
+    const minPessoas = Number(value);
+    if (isNaN(minPessoas) || minPessoas < 1) {
+      throw new Error("TarefaMinPessoas deve ser um número >= 1.");
+    }
+    this.#TarefaMinPessoas = minPessoas;
+  }
+
+  // ========== TarefaMaxPessoas ==========
+  get TarefaMaxPessoas(): number | null {
+    return this.#TarefaMaxPessoas;
+  }
+
+  set TarefaMaxPessoas(value: number | null) {
+    if (value === null || value === undefined) {
+      this.#TarefaMaxPessoas = null;
+      return;
+    }
+    const maxPessoas = Number(value);
+    if (isNaN(maxPessoas) || maxPessoas < 1) {
+      throw new Error("TarefaMaxPessoas deve ser um número >= 1.");
+    }
+    this.#TarefaMaxPessoas = maxPessoas;
+  }
+
+  // ========== Validações Tarefa Compartilhada ==========
+  validarCompartilhada(): void {
+    if (this.#TarefaCompartilhada) {
+      // Se compartilhada, min e max são obrigatórios
+      if (this.#TarefaMinPessoas === null || this.#TarefaMaxPessoas === null) {
+        throw new Error('Tarefa compartilhada requer TarefaMinPessoas e TarefaMaxPessoas');
+      }
+      
+      if (this.#TarefaMinPessoas < 1) {
+        throw new Error('TarefaMinPessoas deve ser >= 1');
+      }
+      
+      if (this.#TarefaMaxPessoas < this.#TarefaMinPessoas) {
+        throw new Error('TarefaMaxPessoas deve ser >= TarefaMinPessoas');
+      }
+    } else {
+      // Se não compartilhada, min e max devem ser null
+      if (this.#TarefaMinPessoas !== null || this.#TarefaMaxPessoas !== null) {
+        throw new Error('Tarefa individual não pode ter limites de pessoas');
+      }
+    }
   }
 }

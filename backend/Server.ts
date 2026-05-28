@@ -24,6 +24,8 @@ import { calendarioRoutes } from "../routes/calendario.routes";
 import { pendenciaRoutes } from "../routes/pendencia.routes";
 import { eventoRoutes } from "../routes/evento.routes";
 import { anotacaoRouterFactory } from "../routes/anotacao.routes";
+import { grupoTarefaRoutes } from "../routes/grupotarefa.routes";
+import { conviteGrupoTarefaRoutes } from "../routes/convitegrupotarefa.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { pool } from "./database/mysql";
 
@@ -379,6 +381,14 @@ export default class Server {
     const anotacaoRouter = anotacaoRouterFactory();
     this.#app.use("/api/anotacao", anotacaoRouter);
     console.log("✅ Rotas de Anotação registradas em /api/anotacao");
+
+    // 👥 Rotas de Grupo Tarefa
+    this.#app.use("/api/grupotarefa", grupoTarefaRoutes());
+    console.log("✅ Rotas de Grupo Tarefa registradas em /api/grupotarefa");
+
+    // 💌 Rotas de Convite Grupo Tarefa
+    this.#app.use("/api/convitegrupotarefa", conviteGrupoTarefaRoutes());
+    console.log("✅ Rotas de Convite Grupo Tarefa registradas em /api/convitegrupotarefa");
 
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {

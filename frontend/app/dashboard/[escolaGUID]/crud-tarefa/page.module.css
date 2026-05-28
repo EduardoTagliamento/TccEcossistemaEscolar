@@ -393,3 +393,104 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
+
+/* Estilos para Tarefa Compartilhada */
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.checkboxLabel input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.helpText {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.warning {
+  font-size: 0.85rem;
+  color: #ff6b6b;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #fff3f3;
+  border-radius: var(--radius-sm);
+  border-left: 4px solid #ff6b6b;
+}
+
+.grupoConfiguracao {
+  background-color: #f8f9fa;
+  border: 2px solid #4CAF50;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+.grupoConfiguracao h3 {
+  color: #2e7d32;
+  margin-bottom: 1rem;
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.configPreview {
+  background-color: white;
+  border-left: 4px solid #4CAF50;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: var(--radius-sm);
+}
+
+.configPreview strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.configPreview ul {
+  margin: 0.5rem 0 0 1.5rem;
+  color: #555;
+}
+
+.configPreview li {
+  margin: 0.25rem 0;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+}
