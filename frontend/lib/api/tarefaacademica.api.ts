@@ -45,7 +45,7 @@ export async function buscarTarefa(tarefaGUID: string): Promise<TarefaAcademica>
     throw new Error(result.error || result.message || 'Erro ao buscar tarefa');
   }
 
-  return result.data;
+  return result.data.tarefa;
 }
 
 // READ - Listar tarefas

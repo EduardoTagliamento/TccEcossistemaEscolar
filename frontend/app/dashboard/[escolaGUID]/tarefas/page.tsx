@@ -56,7 +56,12 @@ export default function TarefasPage() {
           status = 'Pendente';
         }
         
-        return { ...tarefa, Status: status };
+        // Garantir que TarefaCompartilhada seja tratado como boolean
+        return { 
+          ...tarefa, 
+          TarefaCompartilhada: Boolean(tarefa.TarefaCompartilhada),
+          Status: status 
+        };
       });
 
       // Ordenar por prazo (mais próximo primeiro)

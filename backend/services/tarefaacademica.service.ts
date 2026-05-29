@@ -19,6 +19,9 @@ export interface TarefaAcademicaDTO {
   TarefaPostagemData: string;
   TarefaPrazoData: string;
   TarefaTipoEntrega: "digital" | "fisica";
+  TarefaCompartilhada: boolean;
+  TarefaMinPessoas: number | null;
+  TarefaMaxPessoas: number | null;
   MatriculasAtribuidas: MatriculaAtribuidaDTO[]; // Alunos que receberam a tarefa
   CreatedAt: string | null;
   UpdatedAt: string | null;
@@ -431,6 +434,9 @@ export default class TarefaAcademicaService {
       TarefaPostagemData: tarefa.TarefaPostagemData.toISOString(),
       TarefaPrazoData: tarefa.TarefaPrazoData.toISOString(),
       TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+      TarefaCompartilhada: tarefa.TarefaCompartilhada,
+      TarefaMinPessoas: tarefa.TarefaMinPessoas,
+      TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
       MatriculasAtribuidas: atribuicoes.map((atrib) => ({
         TarefaMatriculaGUID: atrib.TarefaMatriculaGUID,
         MatriculaGUID: atrib.MatriculaGUID,

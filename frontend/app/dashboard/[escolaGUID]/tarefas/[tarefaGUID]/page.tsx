@@ -57,6 +57,8 @@ export default function TarefaDetalhesPage() {
     setErro(null);
     try {
       const tarefaData = await buscarTarefa(tarefaGUID);
+      // Garantir que TarefaCompartilhada seja tratado como boolean
+      tarefaData.TarefaCompartilhada = Boolean(tarefaData.TarefaCompartilhada);
       setTarefa(tarefaData);
 
       if (tarefaData.TarefaCompartilhada && usuario) {
