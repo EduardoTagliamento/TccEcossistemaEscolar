@@ -105,7 +105,7 @@ export default class TarefaAcademicaControl {
   /**
    * GET /api/tarefa
    * Listar tarefas com filtros opcionais
-   * Query: ?matXprofXturxescGUID=Y&DataInicio=Z&DataFim=W
+   * Query: ?matXprofXturxescGUID=Y&DataInicio=Z&DataFim=W&TarefaCompartilhada=true
    */
   index = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 TarefaAcademicaControl.index()");
@@ -116,6 +116,9 @@ export default class TarefaAcademicaControl {
           ? new Date(request.query.DataInicio as string)
           : undefined,
         DataFim: request.query.DataFim ? new Date(request.query.DataFim as string) : undefined,
+        TarefaCompartilhada: request.query.TarefaCompartilhada !== undefined
+          ? request.query.TarefaCompartilhada === 'true'
+          : undefined,
       };
 
       const tarefas = await this.#tarefaService.listarTarefas(filters);
