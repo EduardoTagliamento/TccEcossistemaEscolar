@@ -44,6 +44,14 @@ export default function TarefasPage() {
 
       const dados = await listarTarefas(filters);
       
+      // DEBUG: Verificar dados recebidos
+      console.log('🔍 DEBUG Frontend - Tarefas recebidas:', dados.map(t => ({
+        TarefaGUID: t.TarefaGUID,
+        TarefaTitulo: t.TarefaTitulo,
+        TarefaCompartilhada: t.TarefaCompartilhada,
+        tipo: typeof t.TarefaCompartilhada
+      })));
+      
       // Calcular status de cada tarefa
       const tarefasComStatus = dados.map((tarefa) => {
         const prazo = new Date(tarefa.TarefaPrazoData);
