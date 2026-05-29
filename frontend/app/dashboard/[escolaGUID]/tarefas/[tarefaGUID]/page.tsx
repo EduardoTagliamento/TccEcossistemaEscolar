@@ -57,8 +57,21 @@ export default function TarefaDetalhesPage() {
     setErro(null);
     try {
       const tarefaData = await buscarTarefa(tarefaGUID);
+      
+      // DEBUG: Verificar dados recebidos
+      console.log('🔍 DEBUG Frontend - Tarefa recebida:', {
+        TarefaGUID: tarefaData.TarefaGUID,
+        TarefaTitulo: tarefaData.TarefaTitulo,
+        TarefaCompartilhada: tarefaData.TarefaCompartilhada,
+        tipo: typeof tarefaData.TarefaCompartilhada,
+        valorOriginal: tarefaData.TarefaCompartilhada
+      });
+      
       // Garantir que TarefaCompartilhada seja tratado como boolean
       tarefaData.TarefaCompartilhada = Boolean(tarefaData.TarefaCompartilhada);
+      
+      console.log('🔍 DEBUG Frontend - Após Boolean():', tarefaData.TarefaCompartilhada);
+      
       setTarefa(tarefaData);
 
       if (tarefaData.TarefaCompartilhada && usuario) {

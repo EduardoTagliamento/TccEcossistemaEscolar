@@ -426,7 +426,15 @@ export default class TarefaAcademicaService {
     tarefa: TarefaAcademica,
     atribuicoes: TarefaAcademicaMatricula[]
   ): TarefaAcademicaDTO {
-    return {
+    // DEBUG: Verificar valor antes de converter para DTO
+    console.log('🔍 DEBUG Service - Tarefa antes do DTO:', {
+      TarefaGUID: tarefa.TarefaGUID,
+      TarefaTitulo: tarefa.TarefaTitulo,
+      TarefaCompartilhada: tarefa.TarefaCompartilhada,
+      tipo: typeof tarefa.TarefaCompartilhada
+    });
+    
+    const dto = {
       TarefaGUID: tarefa.TarefaGUID,
       matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
       TarefaTitulo: tarefa.TarefaTitulo,
@@ -448,5 +456,14 @@ export default class TarefaAcademicaService {
       CreatedAt: tarefa.CreatedAt ? tarefa.CreatedAt.toISOString() : null,
       UpdatedAt: tarefa.UpdatedAt ? tarefa.UpdatedAt.toISOString() : null,
     };
+    
+    console.log('🔍 DEBUG Service - DTO gerado:', {
+      TarefaGUID: dto.TarefaGUID,
+      TarefaTitulo: dto.TarefaTitulo,
+      TarefaCompartilhada: dto.TarefaCompartilhada,
+      tipo: typeof dto.TarefaCompartilhada
+    });
+    
+    return dto;
   }
 }
