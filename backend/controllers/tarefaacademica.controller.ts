@@ -53,6 +53,9 @@ export default class TarefaAcademicaControl {
         TarefaPrazoData: new Date(tarefa.TarefaPrazoData),
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
         anexosDescricao: tarefa.anexosDescricao,
+        TarefaCompartilhada: tarefa.TarefaCompartilhada || false,
+        TarefaMinPessoas: tarefa.TarefaMinPessoas,
+        TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
       };
 
       const tarefaCriada = await this.#tarefaService.criarTarefa(createData, usuarioCPF);
@@ -88,6 +91,9 @@ export default class TarefaAcademicaControl {
         TarefaPrazoData: new Date(tarefa.TarefaPrazoData),
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
         anexosDescricao: tarefa.anexosDescricao,
+        TarefaCompartilhada: tarefa.TarefaCompartilhada || false,
+        TarefaMinPessoas: tarefa.TarefaMinPessoas,
+        TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
       };
 
       const resultado = await this.#tarefaService.criarTarefasBatch(batchCreateData, usuarioCPF);
@@ -187,6 +193,8 @@ export default class TarefaAcademicaControl {
         TarefaConteudo: tarefa.TarefaConteudo,
         TarefaPrazoData: tarefa.TarefaPrazoData ? new Date(tarefa.TarefaPrazoData) : undefined,
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+        TarefaMinPessoas: tarefa.TarefaMinPessoas,
+        TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
       };
 
       const tarefaAtualizada = await this.#tarefaService.atualizarTarefa(

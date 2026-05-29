@@ -42,6 +42,9 @@ export interface TarefaAcademicaCreateDTO {
   TarefaPrazoData: Date;
   TarefaTipoEntrega: "digital" | "fisica";
   anexosDescricao?: string[]; // GUIDs de anexos já enviados para descrição
+  TarefaCompartilhada?: boolean;
+  TarefaMinPessoas?: number | null;
+  TarefaMaxPessoas?: number | null;
 }
 
 // Batch agora é o mesmo que Create (sempre atribui para N alunos)
@@ -52,6 +55,8 @@ export interface TarefaAcademicaUpdateDTO {
   TarefaConteudo?: string;
   TarefaPrazoData?: Date;
   TarefaTipoEntrega?: "digital" | "fisica";
+  TarefaMinPessoas?: number | null;
+  TarefaMaxPessoas?: number | null;
 }
 
 export interface TarefaAcademicaMarcarFeitoDTO {
@@ -149,6 +154,14 @@ export default class TarefaAcademicaService {
     tarefa.TarefaPostagemData = new Date();
     tarefa.TarefaPrazoData = prazo;
     tarefa.TarefaTipoEntrega = data.TarefaTipoEntrega;
+    
+    // Campos de tarefa compartilhada
+    tarefa.TarefaCompartilhada = data.TarefaCompartilhada || false;
+    tarefa.TarefaMinPessoas = data.TarefaMinPessoas || null;
+    tarefa.TarefaMaxPessoas = data.TarefaMaxPessoas || null;
+    
+    // Validar campos de tarefa compartilhada
+    tarefa.validarCompartilhada();
 
     const tarefaCriada = await this.#tarefaDAO.create(tarefa);
 
@@ -250,6 +263,10 @@ export default class TarefaAcademicaService {
       });
     }
 
+    // VALIDAÇÃO: TarefaCompartilhada é IMUTÁVEL
+    // Não pode ser alterado após criação (dados já podem ter grupos criados)
+    // Campo não deve estar presente no UpdateDTO, mas validamos por segurança
+
     // Validar prazo se fornecido
     if (data.TarefaPrazoData !== undefined) {
       const prazo = new Date(data.TarefaPrazoData);
@@ -261,15 +278,43 @@ export default class TarefaAcademicaService {
       data.TarefaPrazoData = prazo;
     }
 
+    // VALIDAÇÃO: Min/Max Pessoas só podem ser editados se tarefa for compartilhada
+    if (data.TarefaMinPessoas !== undefined || data.TarefaMaxPessoas !== undefined) {
+      if (!tarefa.TarefaCompartilhada) {
+        throw new ErrorResponse(400, "Operação inválida", {
+          message: "Não é possível definir limites de pessoas em tarefa individual.",
+        });
+      }
+
+      // Validar novos limites
+      const novoMin = data.TarefaMinPessoas !== undefined ? data.TarefaMinPessoas : tarefa.TarefaMinPessoas;
+      const novoMax = data.TarefaMaxPessoas !== undefined ? data.TarefaMaxPessoas : tarefa.TarefaMaxPessoas;
+
+      if (novoMin !== null && novoMin < 1) {
+        throw new ErrorResponse(400, "TarefaMinPessoas inválido", {
+          message: "TarefaMinPessoas deve ser >= 1",
+        });
+      }
+
+      if (novoMax !== null && novoMin !== null && novoMax < novoMin) {
+        throw new ErrorResponse(400, "TarefaMaxPessoas inválido", {
+          message: "TarefaMaxPessoas deve ser >= TarefaMinPessoas",
+        });
+      }
+    }
+
     const updates: Partial<Pick<
       TarefaAcademica,
-      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega"
+      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega" | 
+      "TarefaMinPessoas" | "TarefaMaxPessoas"
     >> = {};
 
     if (data.TarefaTitulo !== undefined) updates.TarefaTitulo = data.TarefaTitulo.trim();
     if (data.TarefaConteudo !== undefined) updates.TarefaConteudo = data.TarefaConteudo?.trim() ?? null;
     if (data.TarefaPrazoData !== undefined) updates.TarefaPrazoData = new Date(data.TarefaPrazoData);
     if (data.TarefaTipoEntrega !== undefined) updates.TarefaTipoEntrega = data.TarefaTipoEntrega;
+    if (data.TarefaMinPessoas !== undefined) updates.TarefaMinPessoas = data.TarefaMinPessoas;
+    if (data.TarefaMaxPessoas !== undefined) updates.TarefaMaxPessoas = data.TarefaMaxPessoas;
 
     const tarefaAtualizada = await this.#tarefaDAO.update(TarefaGUID, updates);
 
