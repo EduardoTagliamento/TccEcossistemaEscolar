@@ -12,6 +12,7 @@ export interface BuscaFigurinhaFiltros {
   grupo: string;
   prefixo: string;
   selecao: string;
+  conclusao: "todas" | "completas" | "incompletas";
 }
 
 interface BuscaFigurinhaProps {
@@ -32,6 +33,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
   const [grupo, setGrupo] = useState("");
   const [prefixo, setPrefixo] = useState("");
   const [selecao, setSelecao] = useState("");
+  const [conclusao, setConclusao] = useState<"todas" | "completas" | "incompletas">("todas");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +44,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
       grupo,
       prefixo,
       selecao,
+      conclusao,
     });
   };
 
@@ -51,6 +54,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
     setGrupo("");
     setPrefixo("");
     setSelecao("");
+    setConclusao("todas");
     onLimpar();
   };
 
@@ -117,6 +121,16 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
           placeholder="Filtrar por selecao"
           className="copa-search-input"
         />
+
+        <select
+          value={conclusao}
+          onChange={(e) => setConclusao(e.target.value as "todas" | "completas" | "incompletas")}
+          className="copa-search-select"
+        >
+          <option value="todas">Todas (completas e incompletas)</option>
+          <option value="completas">Somente completas</option>
+          <option value="incompletas">Somente incompletas</option>
+        </select>
       </div>
 
       <p className="copa-search-tip">

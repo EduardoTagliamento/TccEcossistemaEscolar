@@ -56,7 +56,7 @@ export default function PesquisaPage() {
     const albunsAtivos = albunsRef || albuns;
     if (!albunsAtivos.length || !figs.length) {
       setStatusMap({});
-      return;
+      return {} as { [key: number]: StatusFigurinha[] };
     }
 
     try {
@@ -71,8 +71,10 @@ export default function PesquisaPage() {
       });
 
       setStatusMap(map);
+      return map;
     } catch (error) {
       console.error("Erro ao carregar status:", error);
+      return {} as { [key: number]: StatusFigurinha[] };
     }
   };
 
@@ -110,12 +112,28 @@ export default function PesquisaPage() {
         );
       }
 
+      const mapStatus = await carregarStatusParaFigurinhas(figs);
+
+      if (filtros.conclusao !== "todas") {
+        figs = figs.filter((fig) => {
+          const statusList = mapStatus[fig.id] || [];
+          const totalPossui = statusList.filter((item) => item.possui).length;
+          const isCompleta = totalPossui === 3;
+
+          return filtros.conclusao === "completas" ? isCompleta : !isCompleta;
+        });
+      }
+
       if (!figs.length) {
         setErro("Nenhuma figurinha encontrada com os filtros informados.");
       }
 
       setFigurinhas(figs);
-      await carregarStatusParaFigurinhas(figs);
+      const mapStatusFiltrado: { [key: number]: StatusFigurinha[] } = {};
+      figs.forEach((fig) => {
+        mapStatusFiltrado[fig.id] = mapStatus[fig.id] || [];
+      });
+      setStatusMap(mapStatusFiltrado);
     } catch (error: any) {
       setErro("Figurinha não encontrada");
       setFigurinhas([]);
