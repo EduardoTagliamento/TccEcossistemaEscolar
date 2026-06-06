@@ -3,12 +3,17 @@
   "/cadastro/page": "app/cadastro/page.js",
   "/criar-escola/page": "app/criar-escola/page.js",
   "/dashboard/[escolaGUID]/calendario/page": "app/dashboard/[escolaGUID]/calendario/page.js",
-  "/dashboard/[escolaGUID]/crud-provaagendada/page": "app/dashboard/[escolaGUID]/crud-provaagendada/page.js",
   "/dashboard/[escolaGUID]/crud-tarefa/page": "app/dashboard/[escolaGUID]/crud-tarefa/page.js",
+  "/dashboard/[escolaGUID]/crud-provaagendada/page": "app/dashboard/[escolaGUID]/crud-provaagendada/page.js",
   "/dashboard/[escolaGUID]/page": "app/dashboard/[escolaGUID]/page.js",
+  "/dashboard/[escolaGUID]/tarefas/[tarefaGUID]/page": "app/dashboard/[escolaGUID]/tarefas/[tarefaGUID]/page.js",
+  "/dashboard/[escolaGUID]/tarefas/page": "app/dashboard/[escolaGUID]/tarefas/page.js",
   "/login/page": "app/login/page.js",
   "/page": "app/page.js",
   "/saiba-mais/page": "app/saiba-mais/page.js",
   "/selecionar-escola/page": "app/selecionar-escola/page.js",
-  "/verificar-email/page": "app/verificar-email/page.js"
+  "/verificar-email/page": "app/verificar-email/page.js",
+  "/album/meus-albuns/page": "app/album/meus-albuns/page.js",
+  "/album/pesquisa/page": "app/album/pesquisa/page.js",
+  "/album/page": "app/album/page.js"
 }
