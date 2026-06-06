@@ -8,13 +8,17 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { copaApi } from "@/lib/copa/api";
-import { Album, FigurinhasFaltantes } from "@/lib/copa/types";
+import { Album, FigurinhasFaltantes, Figurinha, StatusFigurinha } from "@/lib/copa/types";
+import { ModalEditarStatus } from "@/components/copa/ModalEditarStatus";
 
 export default function MeusAlbunsPage() {
   const router = useRouter();
   const [albuns, setAlbuns] = useState<Album[]>([]);
   const [albumSelecionado, setAlbumSelecionado] = useState<Album | null>(null);
   const [faltantes, setFaltantes] = useState<FigurinhasFaltantes[]>([]);
+  const [figurinhaSelecionada, setFigurinhaSelecionada] = useState<Figurinha | null>(null);
+  const [statusFigurinhaSelecionada, setStatusFigurinhaSelecionada] = useState<StatusFigurinha[]>([]);
+  const [modalAberto, setModalAberto] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +49,38 @@ export default function MeusAlbunsPage() {
       console.error("Erro ao carregar faltantes:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const carregarStatusFigurinha = async (figurinhaId: number) => {
+    const statusPorAlbum = await Promise.all(
+      albuns.map((album) => copaApi.buscarFigurinhasAlbum(album.id))
+    );
+
+    return statusPorAlbum.flat().filter((status) => status.figurinhaId === figurinhaId);
+  };
+
+  const handleClickFaltante = async (codigo: string) => {
+    try {
+      const figurinha = await copaApi.buscarFigurinhaPorCodigo(codigo);
+      const status = await carregarStatusFigurinha(figurinha.id);
+
+      setFigurinhaSelecionada(figurinha);
+      setStatusFigurinhaSelecionada(status);
+      setModalAberto(true);
+    } catch (error) {
+      console.error("Erro ao abrir figurinha no modal:", error);
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!albumSelecionado) return;
+
+    await selecionarAlbum(albumSelecionado);
+
+    if (figurinhaSelecionada) {
+      const statusAtualizado = await carregarStatusFigurinha(figurinhaSelecionada.id);
+      setStatusFigurinhaSelecionada(statusAtualizado);
     }
   };
 
@@ -135,12 +171,14 @@ export default function MeusAlbunsPage() {
                     </h4>
                     <div className="copa-tag-list">
                       {grupo.faltantes.map((fig) => (
-                        <span
+                        <button
+                          type="button"
                           key={fig.codigo}
-                          className="copa-tag"
+                          className="copa-tag copa-tag-button"
+                          onClick={() => handleClickFaltante(fig.codigo)}
                         >
                           {fig.codigo}
-                        </span>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -150,6 +188,15 @@ export default function MeusAlbunsPage() {
           )}
         </div>
       )}
+
+      <ModalEditarStatus
+        figurinha={figurinhaSelecionada}
+        statusList={statusFigurinhaSelecionada}
+        albuns={albuns}
+        isOpen={modalAberto}
+        onClose={() => setModalAberto(false)}
+        onUpdate={handleUpdateStatus}
+      />
     </div>
   );
 }
