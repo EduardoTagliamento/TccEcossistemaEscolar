@@ -56,6 +56,30 @@ export default function AlbumPage() {
   if (!estatisticas) return null;
 
   const percentualNos3 = (estatisticas.completasNos3 / 994) * 100;
+  const overallCompletas =
+    estatisticas.prata.completas +
+    estatisticas.normal.completas +
+    estatisticas.ouro.completas;
+  const overallFaltantes =
+    estatisticas.prata.faltantes +
+    estatisticas.normal.faltantes +
+    estatisticas.ouro.faltantes;
+  const overallTotal =
+    estatisticas.prata.totalFigurinhas +
+    estatisticas.normal.totalFigurinhas +
+    estatisticas.ouro.totalFigurinhas;
+  const overallPercentual = overallTotal > 0 ? (overallCompletas / overallTotal) * 100 : 0;
+
+  const overallStats = {
+    albumNome: "overall",
+    albumDisplay: "Overall (3 Albuns)",
+    albumCor: "#0f766e",
+    albumIcone: "📊",
+    totalFigurinhas: overallTotal,
+    completas: overallCompletas,
+    faltantes: overallFaltantes,
+    percentualCompleto: overallPercentual,
+  };
 
   return (
     <div className="copa-page">
@@ -73,6 +97,7 @@ export default function AlbumPage() {
         <EstatisticasCard stats={estatisticas.prata} />
         <EstatisticasCard stats={estatisticas.normal} />
         <EstatisticasCard stats={estatisticas.ouro} />
+        <EstatisticasCard stats={overallStats} />
       </div>
 
       <section className="copa-progress-panel">
