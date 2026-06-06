@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   /* 🎨 Cores do tema Bauá (default) */
   --color-primary: #1cc47b; /* Verde-água */ 
