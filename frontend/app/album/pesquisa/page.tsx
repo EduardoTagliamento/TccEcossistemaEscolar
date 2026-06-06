@@ -8,7 +8,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { copaApi } from "@/lib/copa/api";
 import { Figurinha, StatusFigurinha, Album } from "@/lib/copa/types";
-import { BuscaFigurinha } from "@/components/copa/BuscaFigurinha";
+import { BuscaFigurinha, BuscaFigurinhaFiltros } from "@/components/copa/BuscaFigurinha";
 import { FigurinhaCard } from "@/components/copa/FigurinhaCard";
 import { ModalEditarStatus } from "@/components/copa/ModalEditarStatus";
 
@@ -17,6 +17,8 @@ export default function PesquisaPage() {
   const [figurinhas, setFigurinhas] = useState<Figurinha[]>([]);
   const [statusMap, setStatusMap] = useState<{ [key: number]: StatusFigurinha[] }>({});
   const [albuns, setAlbuns] = useState<Album[]>([]);
+  const [grupos, setGrupos] = useState<string[]>([]);
+  const [prefixos, setPrefixos] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
   const [figurinhaSelecionada, setFigurinhaSelecionada] = useState<Figurinha | null>(null);
@@ -31,12 +33,16 @@ export default function PesquisaPage() {
     setErro("");
 
     try {
-      const [albunsData, figurinhasData] = await Promise.all([
+      const [albunsData, figurinhasData, gruposData, prefixosData] = await Promise.all([
         copaApi.listarAlbuns(),
         copaApi.buscarFigurinhas(),
+        copaApi.listarGrupos(),
+        copaApi.listarPrefixos(),
       ]);
 
       setAlbuns(albunsData);
+      setGrupos(gruposData);
+      setPrefixos(prefixosData);
       setFigurinhas(figurinhasData);
       await carregarStatusParaFigurinhas(figurinhasData, albunsData);
     } catch (error: any) {
@@ -70,25 +76,46 @@ export default function PesquisaPage() {
     }
   };
 
-  const handleBuscar = async (codigo: string) => {
+  const handleBuscar = async (filtros: BuscaFigurinhaFiltros) => {
     setLoading(true);
     setErro("");
 
     try {
-      // Tentar buscar como código exato
-      const codigoUpper = codigo.toUpperCase();
+      const termoUpper = filtros.termo.trim().toUpperCase();
+      const payload: {
+        tipo?: string;
+        prefixo?: string;
+        codigo?: string;
+        grupo?: string;
+      } = {};
 
-      // Se tem número, é código completo (ex: GHA01)
-      if (/\d/.test(codigoUpper)) {
-        const figurinha = await copaApi.buscarFigurinhaPorCodigo(codigoUpper);
-        setFigurinhas([figurinha]);
-        await carregarStatusParaFigurinhas([figurinha]);
-      } else {
-        // Senão, buscar por prefixo (ex: GHA retorna GHA01...GHA20)
-        const figs = await copaApi.buscarFigurinhasPorPrefixo(codigoUpper);
-        setFigurinhas(figs);
-        await carregarStatusParaFigurinhas(figs);
+      if (filtros.tipo) payload.tipo = filtros.tipo;
+      if (filtros.grupo) payload.grupo = filtros.grupo;
+      if (filtros.prefixo) payload.prefixo = filtros.prefixo.toUpperCase();
+
+      if (termoUpper) {
+        if (/\d/.test(termoUpper)) {
+          payload.codigo = termoUpper;
+        } else if (!payload.prefixo) {
+          payload.prefixo = termoUpper;
+        }
       }
+
+      let figs = await copaApi.buscarFigurinhas(payload);
+
+      if (filtros.selecao.trim()) {
+        const selecaoLower = filtros.selecao.trim().toLowerCase();
+        figs = figs.filter((fig) =>
+          (fig.selecao || "").toLowerCase().includes(selecaoLower)
+        );
+      }
+
+      if (!figs.length) {
+        setErro("Nenhuma figurinha encontrada com os filtros informados.");
+      }
+
+      setFigurinhas(figs);
+      await carregarStatusParaFigurinhas(figs);
     } catch (error: any) {
       setErro("Figurinha não encontrada");
       setFigurinhas([]);
@@ -129,7 +156,12 @@ export default function PesquisaPage() {
         </button>
       </div>
 
-      <BuscaFigurinha onBuscar={handleBuscar} onLimpar={handleLimpar} />
+      <BuscaFigurinha
+        onBuscar={handleBuscar}
+        onLimpar={handleLimpar}
+        grupos={grupos}
+        prefixos={prefixos}
+      />
 
       {erro && (
         <div className="copa-state-box copa-state-box-error copa-gap-top">

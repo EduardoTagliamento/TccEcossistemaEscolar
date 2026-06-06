@@ -23,7 +23,16 @@ export const copaApi = {
     codigo?: string;
     grupo?: string;
   }): Promise<Figurinha[]> {
-    const params = new URLSearchParams(filtros as any);
+    const params = new URLSearchParams();
+
+    if (filtros) {
+      Object.entries(filtros).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && String(value).trim() !== "") {
+          params.append(key, String(value));
+        }
+      });
+    }
+
     const response = await axios.get(`${API_BASE}/album/figurinhas?${params}`);
     return response.data.data;
   },

@@ -691,6 +691,27 @@ textarea::placeholder {
   font-size: 0.9rem;
 }
 
+.copa-search-filters-grid {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.copa-search-select {
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  padding: 0.75rem 0.9rem;
+}
+
+.copa-search-select:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+}
+
 .copa-results-title {
   color: #e2e8f0;
   font-size: 0.9rem;
@@ -988,6 +1009,16 @@ textarea::placeholder {
   color: #334155;
 }
 
+.copa-tag-button {
+  cursor: pointer;
+}
+
+.copa-tag-button:hover {
+  background: #ecfeff;
+  border-color: #67e8f9;
+  color: #0e7490;
+}
+
 .copa-modal-overlay {
   position: fixed;
   inset: 0;
@@ -1138,6 +1169,10 @@ textarea::placeholder {
   .copa-results-panel,
   .copa-progress-panel,
   .copa-state-box { padding: 1.5rem; }
+
+  .copa-search-filters-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 900px) {
