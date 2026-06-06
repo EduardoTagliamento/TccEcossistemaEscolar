@@ -884,6 +884,14 @@ textarea::placeholder {
   text-overflow: ellipsis;
 }
 
+.copa-figurinha-progress {
+  margin-top: 0.35rem;
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #0f766e;
+}
+
 .copa-albums-tabs {
   display: grid;
   grid-template-columns: 1fr;

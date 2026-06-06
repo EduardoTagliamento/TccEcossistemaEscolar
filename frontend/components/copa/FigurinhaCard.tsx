@@ -25,6 +25,7 @@ export const FigurinhaCard: React.FC<FigurinhaCardProps> = ({
   const ouroStatus = statusList.find((s) => s.albumId === 3)?.possui || false;
 
   const isCompleta = prataStatus && normalStatus && ouroStatus;
+  const totalPossui = [prataStatus, normalStatus, ouroStatus].filter(Boolean).length;
 
   return (
     <div
@@ -60,6 +61,9 @@ export const FigurinhaCard: React.FC<FigurinhaCardProps> = ({
           Ouro
         </span>
       </div>
+      {!isCompleta && (
+        <p className="copa-figurinha-progress">{totalPossui}/3</p>
+      )}
       {figurinha.selecao && (
         <p className="copa-figurinha-selecao">
           {figurinha.selecao}
