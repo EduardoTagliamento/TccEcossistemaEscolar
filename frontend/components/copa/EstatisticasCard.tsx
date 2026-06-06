@@ -14,40 +14,42 @@ interface EstatisticasCardProps {
 export const EstatisticasCard: React.FC<EstatisticasCardProps> = ({ stats }) => {
   return (
     <div
-      className="bg-white rounded-lg shadow-lg p-6 border-t-4"
-      style={{ borderTopColor: stats.albumCor }}
+      className="rounded-3xl border border-white/25 bg-white/95 p-6 shadow-2xl backdrop-blur-xl"
+      style={{ boxShadow: `0 18px 40px -22px ${stats.albumCor}` }}
     >
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-gray-800">{stats.albumDisplay}</h3>
-        <span className="text-3xl">{stats.albumIcone}</span>
+      <div className="mb-5 flex items-center justify-between">
+        <h3 className="text-xl font-extrabold tracking-tight text-slate-900">{stats.albumDisplay}</h3>
+        <span className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-1 text-2xl">
+          {stats.albumIcone}
+        </span>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 rounded-2xl bg-slate-100/90 p-4">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Completas:</span>
-          <span className="font-bold text-green-600">{stats.completas}</span>
+          <span className="text-slate-600">Completas</span>
+          <span className="font-bold text-emerald-700">{stats.completas}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Faltantes:</span>
-          <span className="font-bold text-red-600">{stats.faltantes}</span>
+          <span className="text-slate-600">Faltantes</span>
+          <span className="font-bold text-rose-700">{stats.faltantes}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Total:</span>
-          <span className="font-bold text-gray-800">{stats.totalFigurinhas}</span>
+          <span className="text-slate-600">Total</span>
+          <span className="font-bold text-slate-900">{stats.totalFigurinhas}</span>
         </div>
       </div>
 
-      <div className="mt-4">
-        <div className="w-full bg-gray-200 rounded-full h-4">
+      <div className="mt-5">
+        <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
           <div
-            className="h-4 rounded-full transition-all"
+            className="h-3 rounded-full transition-all duration-500"
             style={{
               width: `${stats.percentualCompleto}%`,
               backgroundColor: stats.albumCor,
             }}
           />
         </div>
-        <p className="text-center mt-2 text-lg font-bold" style={{ color: stats.albumCor }}>
+        <p className="mt-3 text-center text-xl font-black" style={{ color: stats.albumCor }}>
           {stats.percentualCompleto.toFixed(1)}%
         </p>
       </div>

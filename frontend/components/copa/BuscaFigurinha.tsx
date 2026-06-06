@@ -27,33 +27,35 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({ onBuscar, onLimp
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-6">
-      <label className="block text-gray-700 font-bold mb-2">
+    <form onSubmit={handleSubmit} className="rounded-3xl border border-white/25 bg-slate-950/45 p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+      <label className="mb-3 block text-sm font-bold uppercase tracking-[0.14em] text-slate-100">
         Pesquisar Figurinha
       </label>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <input
           type="text"
           value={codigo}
           onChange={(e) => setCodigo(e.target.value)}
           placeholder="Digite o código (ex: GHA01 ou GHA)"
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 rounded-2xl border border-white/25 bg-white/90 px-4 py-3 text-slate-900 placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-cyan-500"
         />
-        <button
-          type="submit"
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition"
-        >
-          🔍 Buscar
-        </button>
-        <button
-          type="button"
-          onClick={handleLimpar}
-          className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition"
-        >
-          Limpar
-        </button>
+        <div className="flex gap-2 sm:gap-3">
+          <button
+            type="submit"
+            className="rounded-2xl bg-cyan-500 px-5 py-3 font-bold text-slate-950 transition hover:-translate-y-0.5 hover:bg-cyan-400"
+          >
+            Buscar
+          </button>
+          <button
+            type="button"
+            onClick={handleLimpar}
+            className="rounded-2xl border border-white/30 bg-white/10 px-4 py-3 font-semibold text-white transition hover:bg-white/20"
+          >
+            Limpar
+          </button>
+        </div>
       </div>
-      <p className="text-sm text-gray-500 mt-2">
+      <p className="mt-3 text-sm text-slate-300">
         Dica: Digite o código completo (GHA01) ou apenas o prefixo (GHA) para ver todas as 20
         figurinhas
       </p>

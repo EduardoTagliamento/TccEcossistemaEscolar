@@ -23,35 +23,38 @@ export default function PesquisaPage() {
   const [modalAberto, setModalAberto] = useState(false);
 
   useEffect(() => {
-    carregarAlbuns();
-    carregarTodasFigurinhas();
+    inicializar();
   }, []);
 
-  const carregarAlbuns = async () => {
-    try {
-      const data = await copaApi.listarAlbuns();
-      setAlbuns(data);
-    } catch (error) {
-      console.error("Erro ao carregar álbuns:", error);
-    }
-  };
-
-  const carregarTodasFigurinhas = async () => {
+  const inicializar = async () => {
     setLoading(true);
+    setErro("");
+
     try {
-      const data = await copaApi.buscarFigurinhas();
-      setFigurinhas(data);
-      await carregarStatusParaFigurinhas(data);
+      const [albunsData, figurinhasData] = await Promise.all([
+        copaApi.listarAlbuns(),
+        copaApi.buscarFigurinhas(),
+      ]);
+
+      setAlbuns(albunsData);
+      setFigurinhas(figurinhasData);
+      await carregarStatusParaFigurinhas(figurinhasData, albunsData);
     } catch (error: any) {
-      setErro("Erro ao carregar figurinhas");
+      setErro("Erro ao carregar os dados iniciais.");
     } finally {
       setLoading(false);
     }
   };
 
-  const carregarStatusParaFigurinhas = async (figs: Figurinha[]) => {
+  const carregarStatusParaFigurinhas = async (figs: Figurinha[], albunsRef?: Album[]) => {
+    const albunsAtivos = albunsRef || albuns;
+    if (!albunsAtivos.length || !figs.length) {
+      setStatusMap({});
+      return;
+    }
+
     try {
-      const statusPromises = albuns.map((album) =>
+      const statusPromises = albunsAtivos.map((album) =>
         copaApi.buscarFigurinhasAlbum(album.id)
       );
       const allStatus = await Promise.all(statusPromises);
@@ -95,7 +98,7 @@ export default function PesquisaPage() {
   };
 
   const handleLimpar = () => {
-    carregarTodasFigurinhas();
+    inicializar();
     setErro("");
   };
 
@@ -107,38 +110,43 @@ export default function PesquisaPage() {
   const handleUpdateStatus = async () => {
     // Recarregar status após atualização
     if (figurinhaSelecionada) {
-      await carregarStatusParaFigurinhas([figurinhaSelecionada]);
+      await carregarStatusParaFigurinhas([figurinhaSelecionada], albuns);
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-white">Pesquisar Figurinhas</h2>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">Busca inteligente</p>
+          <h2 className="mt-1 text-3xl font-black tracking-tight text-white sm:text-4xl">Pesquisar Figurinhas</h2>
+        </div>
         <button
           onClick={() => router.push("/album")}
-          className="bg-white hover:bg-gray-100 text-gray-800 px-4 py-2 rounded-lg transition"
+          className="rounded-xl border border-white/30 bg-white/10 px-4 py-2 font-semibold text-white transition hover:bg-white/20"
         >
-          ← Voltar
+          Voltar ao painel
         </button>
       </div>
 
       <BuscaFigurinha onBuscar={handleBuscar} onLimpar={handleLimpar} />
 
       {erro && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mt-4">
+        <div className="mt-4 rounded-2xl border border-rose-300/60 bg-rose-50/95 px-4 py-3 text-rose-700 shadow-lg">
           {erro}
         </div>
       )}
 
       {loading ? (
-        <div className="text-center text-white text-xl mt-8">Carregando...</div>
+        <div className="mt-8 rounded-2xl border border-white/20 bg-white/10 py-10 text-center text-lg font-semibold text-white backdrop-blur-xl">
+          Carregando figurinhas...
+        </div>
       ) : (
-        <div className="mt-8">
-          <p className="text-white text-lg mb-4">
+        <div className="mt-8 rounded-3xl border border-white/15 bg-slate-950/55 p-5 shadow-2xl backdrop-blur-xl sm:p-6">
+          <p className="mb-4 text-sm font-bold uppercase tracking-[0.12em] text-slate-200">
             Resultados: {figurinhas.length} figurinha{figurinhas.length !== 1 ? "s" : ""}
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-6">
             {figurinhas.map((fig) => (
               <FigurinhaCard
                 key={fig.id}
