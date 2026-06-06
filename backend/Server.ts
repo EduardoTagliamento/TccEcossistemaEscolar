@@ -392,8 +392,10 @@ export default class Server {
 
     // 🏆 Rotas da Copa do Mundo 2026 (Sistema Isolado)
     const { copaRoutes } = require("../routes/copa/index");
+    this.#app.use("/api/album", copaRoutes);
+    console.log("✅ Rotas da Copa do Mundo 2026 registradas em /api/album");
     this.#app.use("/album", copaRoutes);
-    console.log("✅ Rotas da Copa do Mundo 2026 registradas em /album");
+    console.log("✅ Rotas da Copa do Mundo 2026 registradas em /album (legado)");
 
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {
