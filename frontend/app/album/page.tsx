@@ -55,19 +55,21 @@ export default function AlbumPage() {
 
   if (!estatisticas) return null;
 
-  const percentualNos3 = (estatisticas.completasNos3 / 994) * 100;
+  const toNumber = (value: unknown): number => Number(value) || 0;
+
+  const percentualNos3 = (toNumber(estatisticas.completasNos3) / 994) * 100;
   const overallCompletas =
-    estatisticas.prata.completas +
-    estatisticas.normal.completas +
-    estatisticas.ouro.completas;
+    toNumber(estatisticas.prata.completas) +
+    toNumber(estatisticas.normal.completas) +
+    toNumber(estatisticas.ouro.completas);
   const overallFaltantes =
-    estatisticas.prata.faltantes +
-    estatisticas.normal.faltantes +
-    estatisticas.ouro.faltantes;
+    toNumber(estatisticas.prata.faltantes) +
+    toNumber(estatisticas.normal.faltantes) +
+    toNumber(estatisticas.ouro.faltantes);
   const overallTotal =
-    estatisticas.prata.totalFigurinhas +
-    estatisticas.normal.totalFigurinhas +
-    estatisticas.ouro.totalFigurinhas;
+    toNumber(estatisticas.prata.totalFigurinhas) +
+    toNumber(estatisticas.normal.totalFigurinhas) +
+    toNumber(estatisticas.ouro.totalFigurinhas);
   const overallPercentual = overallTotal > 0 ? (overallCompletas / overallTotal) * 100 : 0;
 
   const overallStats = {
