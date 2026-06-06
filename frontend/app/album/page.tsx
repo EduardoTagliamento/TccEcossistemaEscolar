@@ -35,16 +35,18 @@ export default function AlbumPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="text-center text-white text-2xl">Carregando...</div>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-white/20 bg-white/10 p-8 text-center text-xl font-semibold text-white backdrop-blur-xl">
+          Carregando estatisticas...
+        </div>
       </div>
     );
   }
 
   if (erro) {
     return (
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-rose-300/70 bg-rose-50/95 px-4 py-3 text-rose-700 shadow-lg">
           {erro}
         </div>
       </div>
@@ -53,46 +55,54 @@ export default function AlbumPage() {
 
   if (!estatisticas) return null;
 
-  return (
-    <div className="max-w-7xl mx-auto px-4">
-      <h2 className="text-4xl font-bold text-white mb-8 text-center">
-        Meu Álbum da Copa 2026
-      </h2>
+  const percentualNos3 = (estatisticas.completasNos3 / 994) * 100;
 
-      {/* Estatísticas dos 3 álbuns */}
+  return (
+    <div className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
+      <section className="copa-panel overflow-hidden rounded-[2rem] p-7 sm:p-10">
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">Painel do colecionador</p>
+        <h2 className="text-3xl font-black tracking-tight text-white sm:text-5xl">
+          Meu Album da Copa 2026
+        </h2>
+        <p className="mt-3 max-w-2xl text-sm text-slate-200 sm:text-base">
+          Acompanhe sua colecao em tempo real, veja desempenho por album e avance para completar as 994 figurinhas.
+        </p>
+      </section>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <EstatisticasCard stats={estatisticas.prata} />
         <EstatisticasCard stats={estatisticas.normal} />
         <EstatisticasCard stats={estatisticas.ouro} />
       </div>
 
-      {/* Completude geral */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <h3 className="text-2xl font-bold text-center mb-4 text-gray-800">
-          🏆 Completas nos 3 álbuns: {estatisticas.completasNos3} (
-          {((estatisticas.completasNos3 / 994) * 100).toFixed(1)}%)
+      <section className="rounded-3xl border border-white/20 bg-slate-950/60 p-6 text-white shadow-2xl backdrop-blur-xl sm:p-8">
+        <h3 className="text-center text-xl font-black tracking-tight sm:text-3xl">
+          Completas nos 3 albuns: {estatisticas.completasNos3} ({percentualNos3.toFixed(1)}%)
         </h3>
-        <div className="w-full bg-gray-200 rounded-full h-6">
+        <div className="mt-5 h-5 w-full overflow-hidden rounded-full bg-white/15">
           <div
-            className="bg-gradient-to-r from-green-500 to-green-600 h-6 rounded-full transition-all"
-            style={{ width: `${(estatisticas.completasNos3 / 994) * 100}%` }}
+            className="h-5 rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-teal-500 transition-all duration-700"
+            style={{ width: `${percentualNos3}%` }}
           />
         </div>
-      </div>
+      </section>
 
-      {/* Botões de navegação */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-5 pb-2 md:grid-cols-2">
         <button
           onClick={() => router.push("/album/pesquisa")}
-          className="bg-blue-600 hover:bg-blue-700 text-white py-8 rounded-lg text-xl font-bold transition-all hover:scale-105 shadow-lg"
+          className="group rounded-3xl border border-cyan-300/50 bg-cyan-400/90 px-6 py-8 text-left text-slate-950 shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:bg-cyan-300"
         >
-          🔍 Pesquisar Figurinhas
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-800/80">Navegacao rapida</p>
+          <p className="mt-2 text-2xl font-black">Pesquisar Figurinhas</p>
+          <p className="mt-2 text-sm font-medium text-slate-800/80">Busque por codigo exato ou prefixo para atualizar a colecao.</p>
         </button>
         <button
           onClick={() => router.push("/album/meus-albuns")}
-          className="bg-green-600 hover:bg-green-700 text-white py-8 rounded-lg text-xl font-bold transition-all hover:scale-105 shadow-lg"
+          className="group rounded-3xl border border-emerald-300/50 bg-emerald-400/90 px-6 py-8 text-left text-slate-950 shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:bg-emerald-300"
         >
-          📚 Ver Meus Álbuns
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-800/80">Acompanhamento</p>
+          <p className="mt-2 text-2xl font-black">Ver Meus Albuns</p>
+          <p className="mt-2 text-sm font-medium text-slate-800/80">Analise faltantes por grupo e descubra onde focar nas trocas.</p>
         </button>
       </div>
     </div>

@@ -144,6 +144,56 @@ body {
   transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
+/* Estilo visual dedicado ao modulo da Copa */
+.copa-bg {
+  background: radial-gradient(circle at 10% 5%, rgba(34, 211, 238, 0.18), transparent 38%),
+    radial-gradient(circle at 85% 15%, rgba(16, 185, 129, 0.22), transparent 34%),
+    linear-gradient(140deg, #06122b 0%, #08203d 35%, #10345e 70%, #146374 100%);
+}
+
+.copa-panel {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: linear-gradient(125deg, rgba(2, 6, 23, 0.68), rgba(3, 13, 35, 0.42));
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 70px -36px rgba(3, 7, 18, 0.9);
+  animation: fadeIn 500ms ease-out;
+}
+
+.copa-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.55;
+}
+
+.copa-glow-1 {
+  top: -8%;
+  left: -8%;
+  height: 320px;
+  width: 320px;
+  background: rgba(56, 189, 248, 0.42);
+  animation: floatY 10s ease-in-out infinite;
+}
+
+.copa-glow-2 {
+  right: -12%;
+  bottom: -10%;
+  height: 380px;
+  width: 380px;
+  background: rgba(16, 185, 129, 0.4);
+  animation: floatY 12s ease-in-out infinite;
+}
+
+.copa-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black 40%, transparent 82%);
+  opacity: 0.38;
+}
+
 /* 🔗 Links */
 a {
   color: var(--color-primary);
@@ -276,6 +326,18 @@ textarea::placeholder {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes floatY {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(22px);
+  }
+  100% {
+    transform: translateY(0px);
   }
 }
 
