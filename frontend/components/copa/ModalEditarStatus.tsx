@@ -91,42 +91,42 @@ export const ModalEditarStatus: React.FC<ModalEditarStatusProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-md"
+      className="copa-modal-overlay"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl rounded-3xl border border-white/25 bg-white p-6 shadow-2xl sm:p-8"
+        className="copa-modal-content"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-2xl font-black tracking-tight text-slate-900">
+        <div className="copa-modal-header">
+          <h2 className="copa-modal-title">
             Figurinha {figurinha.codigo}
           </h2>
           <button
             onClick={onClose}
-            className="rounded-xl border border-slate-200 px-3 py-1 text-2xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            className="copa-modal-close"
           >
             ×
           </button>
         </div>
 
         {figurinha.selecao && (
-          <p className="mb-4 text-slate-600">
+          <p className="copa-modal-subtitle">
             <strong>{figurinha.selecao}</strong> - {figurinha.grupo}
           </p>
         )}
 
         {erro && (
-          <div className="mb-4 rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-rose-700">
+          <div className="copa-modal-error">
             {erro}
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="copa-modal-status-list">
           {albuns.map((album) => (
             <label
               key={album.id}
-              className="flex cursor-pointer items-center rounded-2xl border p-4 transition hover:bg-slate-50"
+              className="copa-modal-status-item"
               style={{ borderColor: album.cor }}
             >
               <input
@@ -134,10 +134,10 @@ export const ModalEditarStatus: React.FC<ModalEditarStatusProps> = ({
                 checked={statusTemp[album.id] || false}
                 onChange={() => handlePedirConfirmacao(album.id)}
                 disabled={loading}
-                className="mr-3 h-5 w-5"
+                className="copa-modal-checkbox"
               />
-              <span className="text-2xl mr-2">{album.icone}</span>
-              <span className="font-bold" style={{ color: album.cor }}>
+              <span className="copa-modal-album-icon">{album.icone}</span>
+              <span className="copa-modal-album-name" style={{ color: album.cor }}>
                 {album.nomeDisplay}
               </span>
             </label>
@@ -145,21 +145,21 @@ export const ModalEditarStatus: React.FC<ModalEditarStatusProps> = ({
         </div>
 
         {albumPendente !== null && (
-          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-700">Digite a senha para confirmar a alteracao</p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <div className="copa-modal-password-box">
+            <p className="copa-modal-password-label">Digite a senha para confirmar a alteracao</p>
+            <div className="copa-modal-password-row">
               <input
                 type="password"
                 value={senhaInput}
                 onChange={(e) => setSenhaInput(e.target.value)}
                 placeholder="Senha"
-                className="flex-1 rounded-xl border border-slate-300 px-3 py-2"
+                className="copa-modal-password-input"
                 disabled={loading}
               />
               <button
                 onClick={handleConfirmarAlteracao}
                 disabled={loading}
-                className="rounded-xl bg-emerald-500 px-4 py-2 font-bold text-white transition hover:bg-emerald-600 disabled:opacity-60"
+                className="copa-modal-btn copa-modal-btn-confirm"
               >
                 Confirmar
               </button>
@@ -170,7 +170,7 @@ export const ModalEditarStatus: React.FC<ModalEditarStatusProps> = ({
                   setErro("");
                 }}
                 disabled={loading}
-                className="rounded-xl border border-slate-300 px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-200"
+                className="copa-modal-btn copa-modal-btn-cancel"
               >
                 Cancelar
               </button>
@@ -178,17 +178,17 @@ export const ModalEditarStatus: React.FC<ModalEditarStatusProps> = ({
           </div>
         )}
 
-        <div className="mt-6 flex gap-2">
+        <div className="copa-modal-footer">
           <button
             onClick={onClose}
-            className="flex-1 rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 font-bold text-slate-700 transition hover:bg-slate-200"
+            className="copa-modal-btn copa-modal-btn-close"
           >
             Fechar
           </button>
         </div>
 
         {loading && (
-          <div className="mt-4 text-center font-semibold text-slate-600">Atualizando...</div>
+          <div className="copa-modal-loading">Atualizando...</div>
         )}
       </div>
     </div>
