@@ -30,7 +30,7 @@ export default function PesquisaPage() {
   const [debugRequestSeq, setDebugRequestSeq] = useState(0);
 
   const debugBuscaAtivo =
-    DEBUG_COPA_SEARCH_ENV || searchParams.get("debugBusca") === "1";
+    DEBUG_COPA_SEARCH_ENV || searchParams?.get("debugBusca") === "1";
 
   const debugBusca = (etapa: string, dados?: unknown, reqId?: string) => {
     if (!debugBuscaAtivo) return;
