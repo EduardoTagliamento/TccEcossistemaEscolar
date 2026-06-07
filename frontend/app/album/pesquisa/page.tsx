@@ -150,9 +150,13 @@ export default function PesquisaPage() {
             (albumId) => mapaPossui.get(albumId) === true
           );
 
+          const incompletaEmAlgumSelecionado = albunsSelecionados.some(
+            (albumId) => mapaPossui.get(albumId) !== true
+          );
+
           return filtros.conclusao === "completas"
             ? completaEmAlgumSelecionado
-            : !completaEmAlgumSelecionado;
+            : incompletaEmAlgumSelecionado;
         });
       }
 
