@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { copaApi } from "@/lib/copa/api";
 import { Figurinha, StatusFigurinha, Album } from "@/lib/copa/types";
 import { BuscaFigurinha, BuscaFigurinhaFiltros } from "@/components/copa/BuscaFigurinha";
@@ -17,7 +17,7 @@ const DEBUG_SEPARATOR = "━━━━━━━━━━━━━━━━━━�
 
 export default function PesquisaPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [debugQueryParam, setDebugQueryParam] = useState<string | null>(null);
   const [figurinhas, setFigurinhas] = useState<Figurinha[]>([]);
   const [statusMap, setStatusMap] = useState<{ [key: number]: StatusFigurinha[] }>({});
   const [albuns, setAlbuns] = useState<Album[]>([]);
@@ -29,8 +29,7 @@ export default function PesquisaPage() {
   const [modalAberto, setModalAberto] = useState(false);
   const [debugRequestSeq, setDebugRequestSeq] = useState(0);
 
-  const debugBuscaAtivo =
-    DEBUG_COPA_SEARCH_ENV || searchParams?.get("debugBusca") === "1";
+  const debugBuscaAtivo = DEBUG_COPA_SEARCH_ENV || debugQueryParam === "1";
 
   const debugBusca = (etapa: string, dados?: unknown, reqId?: string) => {
     if (!debugBuscaAtivo) return;
@@ -54,6 +53,13 @@ export default function PesquisaPage() {
       dica: "Use /album/pesquisa?debugBusca=1 e abra o console do navegador.",
     });
   }, [debugBuscaAtivo]);
+
+  // Ler query param debugBusca no cliente para evitar usar useSearchParams (prerender/suspense)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search || "");
+    setDebugQueryParam(sp.get("debugBusca"));
+  }, []);
 
   const inicializar = async () => {
     setLoading(true);
