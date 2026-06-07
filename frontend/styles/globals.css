@@ -611,6 +611,15 @@ textarea::placeholder {
   background: #6ee7b7;
 }
 
+.copa-action-btn-report {
+  background: #fbbf24;
+  color: #0f172a;
+}
+
+.copa-action-btn-report:hover {
+  background: #fcd34d;
+}
+
 .copa-action-kicker {
   font-size: 0.75rem;
   font-weight: 700;
@@ -1150,6 +1159,53 @@ textarea::placeholder {
   font-weight: 600;
 }
 
+.copa-report-modal {
+  max-width: 860px;
+}
+
+.copa-report-options {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #f8fafc;
+  padding: 0.9rem;
+}
+
+.copa-report-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #334155;
+  font-weight: 600;
+}
+
+.copa-report-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.copa-report-textarea {
+  margin-top: 0.9rem;
+  width: 100%;
+  min-height: 320px;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.9rem;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  line-height: 1.5;
+  padding: 0.9rem;
+  resize: vertical;
+}
+
+.copa-report-success {
+  margin-top: 0.7rem;
+  color: #047857;
+  font-weight: 700;
+}
+
 @media (min-width: 640px) {
   .copa-main { padding: 2.4rem 0; }
   .copa-page { padding: 0 1.5rem; }
@@ -1177,6 +1233,10 @@ textarea::placeholder {
   .copa-results-panel,
   .copa-progress-panel,
   .copa-state-box { padding: 1.5rem; }
+
+  .copa-report-actions {
+    flex-direction: row;
+  }
 
   .copa-search-filters-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
