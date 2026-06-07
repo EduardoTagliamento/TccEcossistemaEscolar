@@ -13,11 +13,6 @@ export interface BuscaFigurinhaFiltros {
   prefixo: string;
   selecao: string;
   conclusao: "todas" | "completas" | "incompletas";
-  albunsConclusao: {
-    prata: boolean;
-    normal: boolean;
-    ouro: boolean;
-  };
 }
 
 interface BuscaFigurinhaProps {
@@ -39,18 +34,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
   const [prefixo, setPrefixo] = useState("");
   const [selecao, setSelecao] = useState("");
   const [conclusao, setConclusao] = useState<"todas" | "completas" | "incompletas">("todas");
-  const [albunsConclusao, setAlbunsConclusao] = useState({
-    prata: true,
-    normal: true,
-    ouro: true,
-  });
-
-  const alternarAlbumConclusao = (album: "prata" | "normal" | "ouro") => {
-    setAlbunsConclusao((prev) => ({
-      ...prev,
-      [album]: !prev[album],
-    }));
-  };
+  
 
   const toggleGrupo = (grupo: string) => {
     setGruposSelecionados((prev) =>
@@ -68,7 +52,6 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
       prefixo,
       selecao,
       conclusao,
-      albunsConclusao,
     });
   };
 
@@ -79,11 +62,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
     setPrefixo("");
     setSelecao("");
     setConclusao("todas");
-    setAlbunsConclusao({
-      prata: true,
-      normal: true,
-      ouro: true,
-    });
+    
     onLimpar();
   };
 
@@ -147,14 +126,6 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
           onChange={(e) => {
             const novoValor = e.target.value as "todas" | "completas" | "incompletas";
             setConclusao(novoValor);
-
-            if (novoValor !== "todas") {
-              setAlbunsConclusao({
-                prata: true,
-                normal: true,
-                ouro: true,
-              });
-            }
           }}
           className="copa-search-select"
         >
@@ -164,37 +135,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
         </select>
       </div>
 
-      {conclusao !== "todas" && (
-        <div className="copa-albums-completion-wrap">
-          <p className="copa-albums-completion-title">Aplicar em quais albuns</p>
-          <div className="copa-albums-completion-list">
-            <label className="copa-albums-completion-item">
-              <input
-                type="checkbox"
-                checked={albunsConclusao.prata}
-                onChange={() => alternarAlbumConclusao("prata")}
-              />
-              Prata
-            </label>
-            <label className="copa-albums-completion-item">
-              <input
-                type="checkbox"
-                checked={albunsConclusao.normal}
-                onChange={() => alternarAlbumConclusao("normal")}
-              />
-              Normal
-            </label>
-            <label className="copa-albums-completion-item">
-              <input
-                type="checkbox"
-                checked={albunsConclusao.ouro}
-                onChange={() => alternarAlbumConclusao("ouro")}
-              />
-              Ouro
-            </label>
-          </div>
-        </div>
-      )}
+      {/* Removed album-specific checkboxes — conclusion applies to all albums globally */}
 
       <div className="copa-groups-filter-wrap">
         <p className="copa-groups-filter-title">Filtrar por grupos</p>
