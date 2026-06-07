@@ -5,26 +5,18 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { copaApi } from "@/lib/copa/api";
 import { Figurinha, StatusFigurinha, Album } from "@/lib/copa/types";
 import { BuscaFigurinha, BuscaFigurinhaFiltros } from "@/components/copa/BuscaFigurinha";
 import { FigurinhaCard } from "@/components/copa/FigurinhaCard";
 import { ModalEditarStatus } from "@/components/copa/ModalEditarStatus";
 
-const DEBUG_COPA_SEARCH = process.env.NEXT_PUBLIC_DEBUG_COPA_SEARCH === "true";
-
-const debugBusca = (etapa: string, dados?: unknown) => {
-  if (!DEBUG_COPA_SEARCH) return;
-  if (dados !== undefined) {
-    console.log(`[COPA_BUSCA_DEBUG] ${etapa}`, dados);
-    return;
-  }
-  console.log(`[COPA_BUSCA_DEBUG] ${etapa}`);
-};
+const DEBUG_COPA_SEARCH_ENV = process.env.NEXT_PUBLIC_DEBUG_COPA_SEARCH === "true";
 
 export default function PesquisaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [figurinhas, setFigurinhas] = useState<Figurinha[]>([]);
   const [statusMap, setStatusMap] = useState<{ [key: number]: StatusFigurinha[] }>({});
   const [albuns, setAlbuns] = useState<Album[]>([]);
@@ -35,9 +27,29 @@ export default function PesquisaPage() {
   const [figurinhaSelecionada, setFigurinhaSelecionada] = useState<Figurinha | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
 
+  const debugBuscaAtivo =
+    DEBUG_COPA_SEARCH_ENV || searchParams.get("debugBusca") === "1";
+
+  const debugBusca = (etapa: string, dados?: unknown) => {
+    if (!debugBuscaAtivo) return;
+    if (dados !== undefined) {
+      console.log(`[COPA_BUSCA_DEBUG] ${etapa}`, dados);
+      return;
+    }
+    console.log(`[COPA_BUSCA_DEBUG] ${etapa}`);
+  };
+
   useEffect(() => {
     inicializar();
   }, []);
+
+  useEffect(() => {
+    if (!debugBuscaAtivo) return;
+    debugBusca("debug-ativo", {
+      origem: DEBUG_COPA_SEARCH_ENV ? "env" : "query-param",
+      dica: "Use /album/pesquisa?debugBusca=1 e abra o console do navegador.",
+    });
+  }, [debugBuscaAtivo]);
 
   const inicializar = async () => {
     setLoading(true);
