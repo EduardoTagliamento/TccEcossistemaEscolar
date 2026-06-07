@@ -185,14 +185,27 @@ export default function PesquisaPage() {
         }, reqId);
       }
 
-      const mapStatus = await carregarStatusParaFigurinhas(figs);
+      // Garantir que a lista de álbuns está carregada antes de consultar status
+      let albunsParaUso = albuns;
+      if (!albunsParaUso.length) {
+        try {
+          const albunsData = await copaApi.listarAlbuns();
+          setAlbuns(albunsData);
+          albunsParaUso = albunsData;
+          debugBusca("carregar albuns no handleBuscar", { quantidade: albunsData.length }, reqId);
+        } catch (err) {
+          console.error("Erro carregando albuns no handleBuscar:", err);
+        }
+      }
+
+      const mapStatus = await carregarStatusParaFigurinhas(figs, albunsParaUso);
       debugBusca("Status carregado para figurinhas", {
         figurinhasComStatus: Object.keys(mapStatus).length,
       }, reqId);
 
       if (filtros.conclusao !== "todas") {
         // Avaliar completude em todos os albuns carregados (comportamento padrão)
-        const albumIds = albuns.map((a) => a.id);
+        const albumIds = albunsParaUso.map((a) => a.id);
 
         debugBusca("Filtro de conclusao aplicando sobre todos os albuns", {
           conclusao: filtros.conclusao,
@@ -210,6 +223,17 @@ export default function PesquisaPage() {
 
           const completaEmTodos = albumIds.every((albumId) => mapaPossui.get(albumId) === true);
           const incompletaEmAlgum = albumIds.some((albumId) => mapaPossui.get(albumId) !== true);
+
+          // Debug detalhado das primeiras 5 figurinhas
+          if (debugBuscaAtivo && antes <= 10) {
+            const statusPorAlbum: any = {};
+            albumIds.forEach((albumId) => {
+              const album = albunsParaUso.find((a) => a.id === albumId);
+              statusPorAlbum[album?.nome || albumId] = mapaPossui.get(albumId);
+            });
+            console.log(`   [${fig.codigo}] statusList.length=${statusList.length}, statusPorAlbum=`, statusPorAlbum);
+            console.log(`   [${fig.codigo}] completaEmTodos=${completaEmTodos}, incompletaEmAlgum=${incompletaEmAlgum}`);
+          }
 
           return filtros.conclusao === "completas" ? completaEmTodos : incompletaEmAlgum;
         });
