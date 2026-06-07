@@ -10,12 +10,14 @@ import { useRouter } from "next/navigation";
 import { copaApi } from "@/lib/copa/api";
 import { EstatisticasGerais } from "@/lib/copa/types";
 import { EstatisticasCard } from "@/components/copa/EstatisticasCard";
+import { ModalGerarRelatorio } from "@/components/copa/ModalGerarRelatorio";
 
 export default function AlbumPage() {
   const router = useRouter();
   const [estatisticas, setEstatisticas] = useState<EstatisticasGerais | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
+  const [modalRelatorioAberto, setModalRelatorioAberto] = useState(false);
 
   useEffect(() => {
     carregarEstatisticas();
@@ -131,7 +133,20 @@ export default function AlbumPage() {
           <p className="copa-action-title">Ver Meus Albuns</p>
           <p className="copa-action-desc">Analise faltantes por grupo e descubra onde focar nas trocas.</p>
         </button>
+        <button
+          onClick={() => setModalRelatorioAberto(true)}
+          className="copa-action-btn copa-action-btn-report"
+        >
+          <p className="copa-action-kicker">Compartilhamento</p>
+          <p className="copa-action-title">Gerar Relatorio</p>
+          <p className="copa-action-desc">Monte um texto pronto com todas as faltantes por album.</p>
+        </button>
       </div>
+
+      <ModalGerarRelatorio
+        isOpen={modalRelatorioAberto}
+        onClose={() => setModalRelatorioAberto(false)}
+      />
     </div>
   );
 }
