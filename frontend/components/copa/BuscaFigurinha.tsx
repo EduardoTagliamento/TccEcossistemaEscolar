@@ -13,7 +13,11 @@ export interface BuscaFigurinhaFiltros {
   prefixo: string;
   selecao: string;
   conclusao: "todas" | "completas" | "incompletas";
-  albumConclusao: "todos" | "prata" | "normal" | "ouro";
+  albunsConclusao: {
+    prata: boolean;
+    normal: boolean;
+    ouro: boolean;
+  };
 }
 
 interface BuscaFigurinhaProps {
@@ -35,7 +39,18 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
   const [prefixo, setPrefixo] = useState("");
   const [selecao, setSelecao] = useState("");
   const [conclusao, setConclusao] = useState<"todas" | "completas" | "incompletas">("todas");
-  const [albumConclusao, setAlbumConclusao] = useState<"todos" | "prata" | "normal" | "ouro">("todos");
+  const [albunsConclusao, setAlbunsConclusao] = useState({
+    prata: true,
+    normal: true,
+    ouro: true,
+  });
+
+  const alternarAlbumConclusao = (album: "prata" | "normal" | "ouro") => {
+    setAlbunsConclusao((prev) => ({
+      ...prev,
+      [album]: !prev[album],
+    }));
+  };
 
   const toggleGrupo = (grupo: string) => {
     setGruposSelecionados((prev) =>
@@ -53,7 +68,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
       prefixo,
       selecao,
       conclusao,
-      albumConclusao,
+      albunsConclusao,
     });
   };
 
@@ -64,7 +79,11 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
     setPrefixo("");
     setSelecao("");
     setConclusao("todas");
-    setAlbumConclusao("todos");
+    setAlbunsConclusao({
+      prata: true,
+      normal: true,
+      ouro: true,
+    });
     onLimpar();
   };
 
@@ -125,27 +144,57 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
 
         <select
           value={conclusao}
-          onChange={(e) => setConclusao(e.target.value as "todas" | "completas" | "incompletas")}
+          onChange={(e) => {
+            const novoValor = e.target.value as "todas" | "completas" | "incompletas";
+            setConclusao(novoValor);
+
+            if (novoValor !== "todas") {
+              setAlbunsConclusao({
+                prata: true,
+                normal: true,
+                ouro: true,
+              });
+            }
+          }}
           className="copa-search-select"
         >
           <option value="todas">Todas (completas e incompletas)</option>
           <option value="completas">Somente completas</option>
           <option value="incompletas">Somente incompletas</option>
         </select>
-
-        <select
-          value={albumConclusao}
-          onChange={(e) =>
-            setAlbumConclusao(e.target.value as "todos" | "prata" | "normal" | "ouro")
-          }
-          className="copa-search-select"
-        >
-          <option value="todos">Conclusao nos 3 albuns</option>
-          <option value="prata">Conclusao no album Prata</option>
-          <option value="normal">Conclusao no album Normal</option>
-          <option value="ouro">Conclusao no album Ouro</option>
-        </select>
       </div>
+
+      {conclusao !== "todas" && (
+        <div className="copa-albums-completion-wrap">
+          <p className="copa-albums-completion-title">Aplicar em quais albuns</p>
+          <div className="copa-albums-completion-list">
+            <label className="copa-albums-completion-item">
+              <input
+                type="checkbox"
+                checked={albunsConclusao.prata}
+                onChange={() => alternarAlbumConclusao("prata")}
+              />
+              Prata
+            </label>
+            <label className="copa-albums-completion-item">
+              <input
+                type="checkbox"
+                checked={albunsConclusao.normal}
+                onChange={() => alternarAlbumConclusao("normal")}
+              />
+              Normal
+            </label>
+            <label className="copa-albums-completion-item">
+              <input
+                type="checkbox"
+                checked={albunsConclusao.ouro}
+                onChange={() => alternarAlbumConclusao("ouro")}
+              />
+              Ouro
+            </label>
+          </div>
+        </div>
+      )}
 
       <div className="copa-groups-filter-wrap">
         <p className="copa-groups-filter-title">Filtrar por grupos</p>

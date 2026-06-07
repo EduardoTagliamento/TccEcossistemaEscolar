@@ -726,6 +726,34 @@ textarea::placeholder {
   gap: 0.45rem;
 }
 
+.copa-albums-completion-wrap {
+  margin-top: 0.7rem;
+}
+
+.copa-albums-completion-title {
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.copa-albums-completion-list {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.copa-albums-completion-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .copa-group-filter-chip {
   border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.25);

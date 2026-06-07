@@ -125,25 +125,34 @@ export default function PesquisaPage() {
       const mapStatus = await carregarStatusParaFigurinhas(figs);
 
       if (filtros.conclusao !== "todas") {
+        const albunsSelecionados = [
+          filtros.albunsConclusao.prata ? 1 : null,
+          filtros.albunsConclusao.normal ? 2 : null,
+          filtros.albunsConclusao.ouro ? 3 : null,
+        ].filter((id): id is number => id !== null);
+
+        if (!albunsSelecionados.length) {
+          setErro("Selecione ao menos um album para o filtro de conclusao.");
+          setFigurinhas([]);
+          setStatusMap({});
+          return;
+        }
+
         figs = figs.filter((fig) => {
           const statusList = mapStatus[fig.id] || [];
-          let isCompleta = false;
 
-          if (filtros.albumConclusao === "todos") {
-            const totalPossui = statusList.filter((item) => item.possui).length;
-            isCompleta = totalPossui === 3;
-          } else {
-            const albumIdByNome: Record<"prata" | "normal" | "ouro", number> = {
-              prata: 1,
-              normal: 2,
-              ouro: 3,
-            };
+          const mapaPossui = new Map<number, boolean>();
+          statusList.forEach((item) => {
+            mapaPossui.set(item.albumId, item.possui);
+          });
 
-            const albumId = albumIdByNome[filtros.albumConclusao];
-            isCompleta = statusList.some((item) => item.albumId === albumId && item.possui);
-          }
+          const completaNosSelecionados = albunsSelecionados.every(
+            (albumId) => mapaPossui.get(albumId) === true
+          );
 
-          return filtros.conclusao === "completas" ? isCompleta : !isCompleta;
+          return filtros.conclusao === "completas"
+            ? completaNosSelecionados
+            : !completaNosSelecionados;
         });
       }
 
