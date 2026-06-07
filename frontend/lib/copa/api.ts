@@ -21,6 +21,7 @@ export const copaApi = {
     tipo?: string;
     prefixo?: string;
     codigo?: string;
+    numero?: string;
     grupo?: string;
   }): Promise<Figurinha[]> {
     const params = new URLSearchParams();

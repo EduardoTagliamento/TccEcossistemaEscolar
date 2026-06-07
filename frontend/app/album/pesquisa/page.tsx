@@ -131,6 +131,7 @@ export default function PesquisaPage() {
         tipo?: string;
         prefixo?: string;
         codigo?: string;
+        numero?: string;
         grupo?: string;
       } = {};
 
@@ -141,7 +142,9 @@ export default function PesquisaPage() {
       if (filtros.prefixo) payload.prefixo = filtros.prefixo.toUpperCase();
 
       if (termoUpper) {
-        if (/\d/.test(termoUpper)) {
+        if (/^\d+$/.test(termoUpper)) {
+          payload.numero = termoUpper;
+        } else if (/\d/.test(termoUpper)) {
           payload.codigo = termoUpper;
         } else if (!payload.prefixo) {
           payload.prefixo = termoUpper;
@@ -204,38 +207,31 @@ export default function PesquisaPage() {
       }, reqId);
 
       if (filtros.conclusao !== "todas") {
-        // Avaliar completude em todos os albuns carregados (comportamento padrão)
-        const albumIds = albunsParaUso.map((a) => a.id);
+        const TOTAL_ALBUNS = 3;
 
-        debugBusca("Filtro de conclusao aplicando sobre todos os albuns", {
+        debugBusca("Filtro de conclusao por contagem (3/3)", {
           conclusao: filtros.conclusao,
-          albumIds,
+          regraCompletas: "3/3",
+          regraIncompletas: "0/3, 1/3 ou 2/3",
         }, reqId);
 
         const antes = figs.length;
         figs = figs.filter((fig) => {
           const statusList = mapStatus[fig.id] || [];
 
-          const mapaPossui = new Map<number, boolean>();
-          statusList.forEach((item) => {
-            mapaPossui.set(item.albumId, item.possui);
-          });
+          const albumIdsComPossuiTrue = new Set(
+            statusList.filter((item) => item.possui === true).map((item) => item.albumId)
+          );
+          const quantidadeCompletos = albumIdsComPossuiTrue.size;
+          const isCompleta = quantidadeCompletos === TOTAL_ALBUNS;
 
-          const completaEmTodos = albumIds.every((albumId) => mapaPossui.get(albumId) === true);
-          const incompletaEmAlgum = albumIds.some((albumId) => mapaPossui.get(albumId) !== true);
-
-          // Debug detalhado das primeiras 5 figurinhas
           if (debugBuscaAtivo && antes <= 10) {
-            const statusPorAlbum: any = {};
-            albumIds.forEach((albumId) => {
-              const album = albunsParaUso.find((a) => a.id === albumId);
-              statusPorAlbum[album?.nome || albumId] = mapaPossui.get(albumId);
-            });
-            console.log(`   [${fig.codigo}] statusList.length=${statusList.length}, statusPorAlbum=`, statusPorAlbum);
-            console.log(`   [${fig.codigo}] completaEmTodos=${completaEmTodos}, incompletaEmAlgum=${incompletaEmAlgum}`);
+            console.log(
+              `   [${fig.codigo}] completos=${quantidadeCompletos}/${TOTAL_ALBUNS}, isCompleta=${isCompleta}`
+            );
           }
 
-          return filtros.conclusao === "completas" ? completaEmTodos : incompletaEmAlgum;
+          return filtros.conclusao === "completas" ? isCompleta : !isCompleta;
         });
 
         debugBusca("Resultado apos filtro de conclusao", {

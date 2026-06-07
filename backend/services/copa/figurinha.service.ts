@@ -61,31 +61,21 @@ export class FigurinhaService {
     tipo?: string;
     prefixo?: string;
     codigo?: string;
+    numero?: string;
     grupo?: string;
   }): Promise<CopaFigurinha[]> {
-    // Se código específico, buscar apenas ele
-    if (filtros.codigo) {
-      const figurinha = await this.buscarPorCodigo(filtros.codigo);
-      return figurinha ? [figurinha] : [];
-    }
+    const tipoValido =
+      filtros.tipo && this.isValidTipo(filtros.tipo)
+        ? (filtros.tipo.toUpperCase() as TipoFigurinha)
+        : undefined;
 
-    // Se prefixo específico, buscar todas do prefixo
-    if (filtros.prefixo) {
-      return await this.buscarPorPrefixo(filtros.prefixo);
-    }
-
-    // Se tipo específico, buscar todas do tipo
-    if (filtros.tipo && this.isValidTipo(filtros.tipo)) {
-      return await this.buscarPorTipo(filtros.tipo as TipoFigurinha);
-    }
-
-    // Se grupo específico, buscar todas do grupo
-    if (filtros.grupo) {
-      return await this.buscarPorGrupo(filtros.grupo);
-    }
-
-    // Senão, retornar todas
-    return await this.buscarTodas();
+    return await this.repository.buscarComFiltros({
+      tipo: tipoValido,
+      prefixo: filtros.prefixo,
+      codigo: filtros.codigo,
+      numero: filtros.numero,
+      grupo: filtros.grupo,
+    });
   }
 
   /**
