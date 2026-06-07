@@ -13,6 +13,7 @@ import { FigurinhaCard } from "@/components/copa/FigurinhaCard";
 import { ModalEditarStatus } from "@/components/copa/ModalEditarStatus";
 
 const DEBUG_COPA_SEARCH_ENV = process.env.NEXT_PUBLIC_DEBUG_COPA_SEARCH === "true";
+const DEBUG_SEPARATOR = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
 
 export default function PesquisaPage() {
   const router = useRouter();
@@ -26,17 +27,20 @@ export default function PesquisaPage() {
   const [erro, setErro] = useState("");
   const [figurinhaSelecionada, setFigurinhaSelecionada] = useState<Figurinha | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [debugRequestSeq, setDebugRequestSeq] = useState(0);
 
   const debugBuscaAtivo =
     DEBUG_COPA_SEARCH_ENV || searchParams.get("debugBusca") === "1";
 
-  const debugBusca = (etapa: string, dados?: unknown) => {
+  const debugBusca = (etapa: string, dados?: unknown, reqId?: string) => {
     if (!debugBuscaAtivo) return;
+    const prefixoReq = reqId ? `[${reqId}] ` : "";
+    console.log(DEBUG_SEPARATOR);
+    console.log(`🔍 ${prefixoReq}${etapa}`);
     if (dados !== undefined) {
-      console.log(`[COPA_BUSCA_DEBUG] ${etapa}`, dados);
+      console.log("   Dados:", dados);
       return;
     }
-    console.log(`[COPA_BUSCA_DEBUG] ${etapa}`);
   };
 
   useEffect(() => {
@@ -111,6 +115,9 @@ export default function PesquisaPage() {
   const handleBuscar = async (filtros: BuscaFigurinhaFiltros) => {
     setLoading(true);
     setErro("");
+    const nextSeq = debugRequestSeq + 1;
+    setDebugRequestSeq(nextSeq);
+    const reqId = `COPA-BUSCA-${String(nextSeq).padStart(4, "0")}`;
 
     try {
       const termoUpper = filtros.termo.trim().toUpperCase();
@@ -135,13 +142,15 @@ export default function PesquisaPage() {
         }
       }
 
-      debugBusca("buscar:entrada", {
+      debugBusca("Iniciando busca de figurinhas", {
         filtros,
         payload,
-      });
+      }, reqId);
 
       let figs = await copaApi.buscarFigurinhas(payload);
-      debugBusca("buscar:retorno-api", { quantidade: figs.length });
+      debugBusca("Retorno da API /album/figurinhas", {
+        quantidade: figs.length,
+      }, reqId);
 
       if (filtros.gruposSelecionados.length > 0) {
         const antes = figs.length;
@@ -150,7 +159,11 @@ export default function PesquisaPage() {
           const grupoFig = (fig.grupo || "").toUpperCase();
           return gruposAtivos.includes(grupoFig);
         });
-        debugBusca("buscar:filtro-grupos", { antes, depois: figs.length, gruposAtivos });
+        debugBusca("Aplicado filtro por grupos", {
+          antes,
+          depois: figs.length,
+          gruposAtivos,
+        }, reqId);
       }
 
       if (filtros.selecao.trim()) {
@@ -159,13 +172,17 @@ export default function PesquisaPage() {
         figs = figs.filter((fig) =>
           (fig.selecao || "").toLowerCase().includes(selecaoLower)
         );
-        debugBusca("buscar:filtro-selecao", { antes, depois: figs.length, selecao: filtros.selecao });
+        debugBusca("Aplicado filtro por selecao", {
+          antes,
+          depois: figs.length,
+          selecao: filtros.selecao,
+        }, reqId);
       }
 
       const mapStatus = await carregarStatusParaFigurinhas(figs);
-      debugBusca("buscar:status-carregado", {
+      debugBusca("Status carregado para figurinhas", {
         figurinhasComStatus: Object.keys(mapStatus).length,
-      });
+      }, reqId);
 
       if (filtros.conclusao !== "todas") {
         const albumIdPorNome = new Map(albuns.map((album) => [album.nome, album.id]));
@@ -186,18 +203,18 @@ export default function PesquisaPage() {
           if (idOuro !== undefined) albunsSelecionados.push(idOuro);
         }
 
-        debugBusca("buscar:filtro-conclusao-mapeamento", {
+        debugBusca("Mapeamento de albuns e filtro de conclusao", {
           conclusao: filtros.conclusao,
           albunsPorNome: Object.fromEntries(albumIdPorNome.entries()),
           albunsSelecionados,
           albunsConclusao: filtros.albunsConclusao,
-        });
+        }, reqId);
 
         if (!albunsSelecionados.length) {
           setErro("Nao foi possivel identificar os albuns selecionados para o filtro de conclusao.");
           setFigurinhas([]);
           setStatusMap({});
-          debugBusca("buscar:filtro-conclusao-sem-album-resolvido");
+          debugBusca("Falha: nenhum album selecionado foi resolvido para id", undefined, reqId);
           return;
         }
 
@@ -223,21 +240,21 @@ export default function PesquisaPage() {
             : incompletaEmAlgumSelecionado;
         });
 
-        debugBusca("buscar:filtro-conclusao-resultado", {
+        debugBusca("Resultado apos filtro de conclusao", {
           antes,
           depois: figs.length,
           amostraCodigos: figs.slice(0, 10).map((f) => f.codigo),
-        });
+        }, reqId);
       }
 
       if (!figs.length) {
         setErro("Nenhuma figurinha encontrada com os filtros informados.");
       }
 
-      debugBusca("buscar:resultado-final", {
+      debugBusca("Busca finalizada", {
         quantidade: figs.length,
         amostraCodigos: figs.slice(0, 20).map((f) => f.codigo),
-      });
+      }, reqId);
 
       setFigurinhas(figs);
       const mapStatusFiltrado: { [key: number]: StatusFigurinha[] } = {};
@@ -246,11 +263,11 @@ export default function PesquisaPage() {
       });
       setStatusMap(mapStatusFiltrado);
     } catch (error: any) {
-      debugBusca("buscar:erro", {
+      debugBusca("Erro durante a busca", {
         message: error?.message,
         status: error?.response?.status,
         data: error?.response?.data,
-      });
+      }, reqId);
       setErro("Figurinha não encontrada");
       setFigurinhas([]);
     } finally {
