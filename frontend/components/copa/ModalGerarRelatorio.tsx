@@ -10,6 +10,7 @@ interface ModalGerarRelatorioProps {
 }
 
 type AlbumNome = "prata" | "normal" | "ouro";
+type OrdemRelatorio = "alfabetica" | "grupos";
 
 interface AlbumInfo {
   nome: AlbumNome;
@@ -21,6 +22,43 @@ const ALBUNS: AlbumInfo[] = [
   { nome: "normal", titulo: "Album 2 - Normal" },
   { nome: "ouro", titulo: "Album 3 - Ouro" },
 ];
+
+const ORDEM_GRUPOS = [
+  "FWC",
+  "A",
+  "B",
+  "C",
+  "D",
+  "E",
+  "F",
+  "G",
+  "H",
+  "I",
+  "J",
+  "K",
+  "L",
+  "CC",
+];
+
+function normalizarAgrupamento(agrupamento: string): string {
+  const valor = (agrupamento || "").toUpperCase().trim();
+
+  if (valor.includes("FWC")) return "FWC";
+  if (valor.includes("COCA") || valor === "CC") return "CC";
+
+  const matchGrupo = valor.match(/(?:GRUPO\s*)?([A-L])/);
+  if (matchGrupo?.[1]) {
+    return matchGrupo[1];
+  }
+
+  return valor;
+}
+
+function pesoGrupo(agrupamento: string): number {
+  const key = normalizarAgrupamento(agrupamento);
+  const index = ORDEM_GRUPOS.indexOf(key);
+  return index >= 0 ? index : 999;
+}
 
 function extrairPrefixo(codigo: string, prefixo?: string): string {
   if (prefixo && prefixo.trim()) {
@@ -34,9 +72,10 @@ function extrairPrefixo(codigo: string, prefixo?: string): string {
 function montarBlocoAlbum(
   titulo: string,
   grupos: FigurinhasFaltantes[],
-  incluirCoca: boolean
+  incluirCoca: boolean,
+  ordem: OrdemRelatorio
 ): string {
-  const prefixos = new Map<string, number[]>();
+  const prefixos = new Map<string, { numeros: number[]; agrupamento: string }>();
 
   grupos.forEach((grupo) => {
     grupo.faltantes.forEach((fig) => {
@@ -52,16 +91,26 @@ function montarBlocoAlbum(
       }
 
       if (!prefixos.has(prefixo)) {
-        prefixos.set(prefixo, []);
+        prefixos.set(prefixo, { numeros: [], agrupamento: grupo.agrupamento });
       }
-      prefixos.get(prefixo)!.push(numero);
+      prefixos.get(prefixo)!.numeros.push(numero);
     });
   });
 
   const linhas = Array.from(prefixos.entries())
-    .sort(([a], [b]) => a.localeCompare(b, "pt-BR"))
-    .map(([prefixo, numeros]) => {
-      const numerosUnicosOrdenados = Array.from(new Set(numeros)).sort((a, b) => a - b);
+    .sort(([prefixoA, dataA], [prefixoB, dataB]) => {
+      if (ordem === "grupos") {
+        const diffPeso = pesoGrupo(dataA.agrupamento) - pesoGrupo(dataB.agrupamento);
+        if (diffPeso !== 0) return diffPeso;
+
+        const diffAgrupamento = dataA.agrupamento.localeCompare(dataB.agrupamento, "pt-BR");
+        if (diffAgrupamento !== 0) return diffAgrupamento;
+      }
+
+      return prefixoA.localeCompare(prefixoB, "pt-BR");
+    })
+    .map(([prefixo, data]) => {
+      const numerosUnicosOrdenados = Array.from(new Set(data.numeros)).sort((a, b) => a - b);
       return `${prefixo} ${numerosUnicosOrdenados.join(", ")}`;
     });
 
@@ -70,10 +119,11 @@ function montarBlocoAlbum(
 
 function montarRelatorio(
   dadosPorAlbum: Record<AlbumNome, FigurinhasFaltantes[]>,
-  incluirCoca: boolean
+  incluirCoca: boolean,
+  ordem: OrdemRelatorio
 ): string {
   return ALBUNS.map((album) =>
-    montarBlocoAlbum(album.titulo, dadosPorAlbum[album.nome] || [], incluirCoca)
+    montarBlocoAlbum(album.titulo, dadosPorAlbum[album.nome] || [], incluirCoca, ordem)
   ).join("\n\n");
 }
 
@@ -82,6 +132,7 @@ export const ModalGerarRelatorio: React.FC<ModalGerarRelatorioProps> = ({
   onClose,
 }) => {
   const [incluirCoca, setIncluirCoca] = useState(true);
+  const [ordemRelatorio, setOrdemRelatorio] = useState<OrdemRelatorio>("alfabetica");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
   const [copiado, setCopiado] = useState(false);
@@ -90,8 +141,8 @@ export const ModalGerarRelatorio: React.FC<ModalGerarRelatorioProps> = ({
 
   const relatorioPreview = useMemo(() => {
     if (!dados) return relatorio;
-    return montarRelatorio(dados, incluirCoca);
-  }, [dados, incluirCoca, relatorio]);
+    return montarRelatorio(dados, incluirCoca, ordemRelatorio);
+  }, [dados, incluirCoca, ordemRelatorio, relatorio]);
 
   if (!isOpen) return null;
 
@@ -116,7 +167,7 @@ export const ModalGerarRelatorio: React.FC<ModalGerarRelatorioProps> = ({
         setDados(dadosAtualizados);
       }
 
-      const texto = montarRelatorio(dadosAtualizados, incluirCoca);
+      const texto = montarRelatorio(dadosAtualizados, incluirCoca, ordemRelatorio);
       setRelatorio(texto);
     } catch (error) {
       console.error("Erro ao gerar relatorio:", error);
@@ -168,6 +219,24 @@ export const ModalGerarRelatorio: React.FC<ModalGerarRelatorioProps> = ({
             />
             Incluir figurinhas da Coca-Cola
           </label>
+
+          <div className="copa-report-order-wrap">
+            <label className="copa-report-order-label" htmlFor="ordemRelatorio">
+              Ordenacao do relatorio
+            </label>
+            <select
+              id="ordemRelatorio"
+              value={ordemRelatorio}
+              onChange={(e) => {
+                setOrdemRelatorio(e.target.value as OrdemRelatorio);
+                setCopiado(false);
+              }}
+              className="copa-search-select copa-report-order-select"
+            >
+              <option value="alfabetica">Alfabetica</option>
+              <option value="grupos">Ordem dos grupos (FWC - A - ... - L - CC)</option>
+            </select>
+          </div>
 
           <div className="copa-report-actions">
             <button
