@@ -191,38 +191,13 @@ export default function PesquisaPage() {
       }, reqId);
 
       if (filtros.conclusao !== "todas") {
-        const albumIdPorNome = new Map(albuns.map((album) => [album.nome, album.id]));
-        const albunsSelecionados: number[] = [];
+        // Avaliar completude em todos os albuns carregados (comportamento padrão)
+        const albumIds = albuns.map((a) => a.id);
 
-        if (filtros.albunsConclusao.prata) {
-          const idPrata = albumIdPorNome.get("prata");
-          if (idPrata !== undefined) albunsSelecionados.push(idPrata);
-        }
-
-        if (filtros.albunsConclusao.normal) {
-          const idNormal = albumIdPorNome.get("normal");
-          if (idNormal !== undefined) albunsSelecionados.push(idNormal);
-        }
-
-        if (filtros.albunsConclusao.ouro) {
-          const idOuro = albumIdPorNome.get("ouro");
-          if (idOuro !== undefined) albunsSelecionados.push(idOuro);
-        }
-
-        debugBusca("Mapeamento de albuns e filtro de conclusao", {
+        debugBusca("Filtro de conclusao aplicando sobre todos os albuns", {
           conclusao: filtros.conclusao,
-          albunsPorNome: Object.fromEntries(albumIdPorNome.entries()),
-          albunsSelecionados,
-          albunsConclusao: filtros.albunsConclusao,
+          albumIds,
         }, reqId);
-
-        if (!albunsSelecionados.length) {
-          setErro("Nao foi possivel identificar os albuns selecionados para o filtro de conclusao.");
-          setFigurinhas([]);
-          setStatusMap({});
-          debugBusca("Falha: nenhum album selecionado foi resolvido para id", undefined, reqId);
-          return;
-        }
 
         const antes = figs.length;
         figs = figs.filter((fig) => {
@@ -233,17 +208,10 @@ export default function PesquisaPage() {
             mapaPossui.set(item.albumId, item.possui);
           });
 
-          const completaEmAlgumSelecionado = albunsSelecionados.some(
-            (albumId) => mapaPossui.get(albumId) === true
-          );
+          const completaEmTodos = albumIds.every((albumId) => mapaPossui.get(albumId) === true);
+          const incompletaEmAlgum = albumIds.some((albumId) => mapaPossui.get(albumId) !== true);
 
-          const incompletaEmAlgumSelecionado = albunsSelecionados.some(
-            (albumId) => mapaPossui.get(albumId) !== true
-          );
-
-          return filtros.conclusao === "completas"
-            ? completaEmAlgumSelecionado
-            : incompletaEmAlgumSelecionado;
+          return filtros.conclusao === "completas" ? completaEmTodos : incompletaEmAlgum;
         });
 
         debugBusca("Resultado apos filtro de conclusao", {
