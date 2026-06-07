@@ -127,8 +127,21 @@ export default function PesquisaPage() {
       if (filtros.conclusao !== "todas") {
         figs = figs.filter((fig) => {
           const statusList = mapStatus[fig.id] || [];
-          const totalPossui = statusList.filter((item) => item.possui).length;
-          const isCompleta = totalPossui === 3;
+          let isCompleta = false;
+
+          if (filtros.albumConclusao === "todos") {
+            const totalPossui = statusList.filter((item) => item.possui).length;
+            isCompleta = totalPossui === 3;
+          } else {
+            const albumIdByNome: Record<"prata" | "normal" | "ouro", number> = {
+              prata: 1,
+              normal: 2,
+              ouro: 3,
+            };
+
+            const albumId = albumIdByNome[filtros.albumConclusao];
+            isCompleta = statusList.some((item) => item.albumId === albumId && item.possui);
+          }
 
           return filtros.conclusao === "completas" ? isCompleta : !isCompleta;
         });

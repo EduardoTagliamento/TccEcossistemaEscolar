@@ -13,6 +13,7 @@ export interface BuscaFigurinhaFiltros {
   prefixo: string;
   selecao: string;
   conclusao: "todas" | "completas" | "incompletas";
+  albumConclusao: "todos" | "prata" | "normal" | "ouro";
 }
 
 interface BuscaFigurinhaProps {
@@ -34,6 +35,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
   const [prefixo, setPrefixo] = useState("");
   const [selecao, setSelecao] = useState("");
   const [conclusao, setConclusao] = useState<"todas" | "completas" | "incompletas">("todas");
+  const [albumConclusao, setAlbumConclusao] = useState<"todos" | "prata" | "normal" | "ouro">("todos");
 
   const toggleGrupo = (grupo: string) => {
     setGruposSelecionados((prev) =>
@@ -51,6 +53,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
       prefixo,
       selecao,
       conclusao,
+      albumConclusao,
     });
   };
 
@@ -61,6 +64,7 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
     setPrefixo("");
     setSelecao("");
     setConclusao("todas");
+    setAlbumConclusao("todos");
     onLimpar();
   };
 
@@ -127,6 +131,19 @@ export const BuscaFigurinha: React.FC<BuscaFigurinhaProps> = ({
           <option value="todas">Todas (completas e incompletas)</option>
           <option value="completas">Somente completas</option>
           <option value="incompletas">Somente incompletas</option>
+        </select>
+
+        <select
+          value={albumConclusao}
+          onChange={(e) =>
+            setAlbumConclusao(e.target.value as "todos" | "prata" | "normal" | "ouro")
+          }
+          className="copa-search-select"
+        >
+          <option value="todos">Conclusao nos 3 albuns</option>
+          <option value="prata">Conclusao no album Prata</option>
+          <option value="normal">Conclusao no album Normal</option>
+          <option value="ouro">Conclusao no album Ouro</option>
         </select>
       </div>
 
