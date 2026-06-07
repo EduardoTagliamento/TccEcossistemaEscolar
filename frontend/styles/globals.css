@@ -707,6 +707,45 @@ textarea::placeholder {
   gap: 0.6rem;
 }
 
+.copa-groups-filter-wrap {
+  margin-top: 0.7rem;
+}
+
+.copa-groups-filter-title {
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.copa-groups-filter-list {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.copa-group-filter-chip {
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+}
+
+.copa-group-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.copa-group-filter-chip.is-active {
+  background: #22d3ee;
+  border-color: #67e8f9;
+  color: #0f172a;
+}
+
 .copa-search-select {
   width: 100%;
   border-radius: 0.85rem;
