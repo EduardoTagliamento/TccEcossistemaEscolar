@@ -20,12 +20,13 @@ export class FigurinhaController {
    */
   listarTodas = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { tipo, prefixo, codigo, grupo } = req.query;
+      const { tipo, prefixo, codigo, numero, grupo } = req.query;
 
       const figurinhas = await this.service.buscar({
         tipo: tipo as string,
         prefixo: prefixo as string,
         codigo: codigo as string,
+        numero: numero as string,
         grupo: grupo as string,
       });
 

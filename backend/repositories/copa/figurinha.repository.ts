@@ -79,6 +79,8 @@ export class FigurinhaRepository {
   async buscarComFiltros(filtros: {
     tipo?: TipoFigurinha;
     prefixo?: string;
+    codigo?: string;
+    numero?: string;
     grupo?: string;
   }): Promise<CopaFigurinha[]> {
     let query = "SELECT * FROM copa_figurinhas WHERE 1=1";
@@ -92,6 +94,16 @@ export class FigurinhaRepository {
     if (filtros.prefixo) {
       query += " AND prefixo = ?";
       params.push(filtros.prefixo.toUpperCase());
+    }
+
+    if (filtros.codigo) {
+      query += " AND codigo LIKE ?";
+      params.push(`%${filtros.codigo.toUpperCase()}%`);
+    }
+
+    if (filtros.numero) {
+      query += " AND CAST(numero AS CHAR) LIKE ?";
+      params.push(`%${filtros.numero}%`);
     }
 
     if (filtros.grupo) {
