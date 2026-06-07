@@ -92,7 +92,9 @@ export default function PesquisaPage() {
       } = {};
 
       if (filtros.tipo) payload.tipo = filtros.tipo;
-      if (filtros.grupo) payload.grupo = filtros.grupo;
+      if (filtros.gruposSelecionados.length === 1) {
+        payload.grupo = filtros.gruposSelecionados[0];
+      }
       if (filtros.prefixo) payload.prefixo = filtros.prefixo.toUpperCase();
 
       if (termoUpper) {
@@ -104,6 +106,14 @@ export default function PesquisaPage() {
       }
 
       let figs = await copaApi.buscarFigurinhas(payload);
+
+      if (filtros.gruposSelecionados.length > 0) {
+        const gruposAtivos = filtros.gruposSelecionados.map((g) => g.toUpperCase());
+        figs = figs.filter((fig) => {
+          const grupoFig = (fig.grupo || "").toUpperCase();
+          return gruposAtivos.includes(grupoFig);
+        });
+      }
 
       if (filtros.selecao.trim()) {
         const selecaoLower = filtros.selecao.trim().toLowerCase();
