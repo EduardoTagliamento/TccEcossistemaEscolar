@@ -146,13 +146,13 @@ export default function PesquisaPage() {
             mapaPossui.set(item.albumId, item.possui);
           });
 
-          const completaNosSelecionados = albunsSelecionados.every(
+          const completaEmAlgumSelecionado = albunsSelecionados.some(
             (albumId) => mapaPossui.get(albumId) === true
           );
 
           return filtros.conclusao === "completas"
-            ? completaNosSelecionados
-            : !completaNosSelecionados;
+            ? completaEmAlgumSelecionado
+            : !completaEmAlgumSelecionado;
         });
       }
 
