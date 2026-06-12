@@ -65,7 +65,7 @@ export async function listarConvitesPendentes(): Promise<ConvitePendente[]> {
     throw new Error(result.error || result.message || 'Erro ao listar convites pendentes');
   }
 
-  return result.data;
+  return result.data.convites || [];
 }
 
 // PATCH - Aceitar convite ou solicitação
