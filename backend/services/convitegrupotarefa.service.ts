@@ -7,6 +7,7 @@ import MysqlDatabase from '../database/MysqlDatabase';
 import {
   ConviteGrupoTarefa,
   ConviteGrupoTarefaCreateDTO,
+  ConviteGrupoTarefaDTO,
   ConviteTipo
 } from '../entities/convitegrupotarefa.model';
 
