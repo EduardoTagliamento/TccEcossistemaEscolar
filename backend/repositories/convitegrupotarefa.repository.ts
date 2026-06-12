@@ -128,10 +128,13 @@ export class ConviteGrupoTarefaDAO {
         c.ConviteStatus,
         c.CreatedAt,
         gt.GrupoNome,
-        u_lider.UsuarioNome AS NomeLider,
+        gt.UsuarioCPFLider AS LiderCPF,
+        u_lider.UsuarioNome AS LiderNome,
         u_convidado.UsuarioNome AS NomeConvidado,
-        t.TarefaMaxPessoas AS LimiteMaximo,
-        (1 + COUNT(uxgt.UsuarioCPF)) AS TotalMembrosAtual
+        t.TarefaTitulo,
+        t.TarefaPrazoData,
+        t.TarefaMaxPessoas AS MaxPessoas,
+        (1 + COUNT(uxgt.UsuarioCPF)) AS TotalMembros
       FROM convitegrupotarefa c
       INNER JOIN grupotarefa gt ON gt.GrupoTarefaGUID = c.GrupoTarefaGUID
       INNER JOIN tarefaacademica t ON t.TarefaGUID = gt.TarefaGUID
@@ -153,15 +156,70 @@ export class ConviteGrupoTarefaDAO {
       ConviteGUID: row.ConviteGUID,
       GrupoTarefaGUID: row.GrupoTarefaGUID,
       GrupoNome: row.GrupoNome,
-      NomeLider: row.NomeLider,
+      LiderCPF: row.LiderCPF,
+      LiderNome: row.LiderNome,
       UsuarioCPFConvidado: row.UsuarioCPFConvidado,
       NomeConvidado: row.NomeConvidado,
       ConviteTipo: row.ConviteTipo,
       ConviteStatus: row.ConviteStatus,
-      TotalMembrosAtual: row.TotalMembrosAtual,
-      LimiteMaximo: row.LimiteMaximo,
+      TarefaTitulo: row.TarefaTitulo,
+      TarefaPrazoData: row.TarefaPrazoData,
+      TotalMembros: row.TotalMembros,
+      MaxPessoas: row.MaxPessoas,
       CreatedAt: row.CreatedAt
     };
+  }
+
+  // READ - FIND ALL COM DETALHES (JOIN com grupo, tarefa, usuários)
+  async findAllComDetalhes(usuarioCPF: string): Promise<ConviteGrupoTarefaDTO[]> {
+    console.log('🟢 ConviteGrupoTarefaDAO.findAllComDetalhes()');
+    
+    const query = `
+      SELECT 
+        c.ConviteGUID,
+        c.GrupoTarefaGUID,
+        c.UsuarioCPFConvidado,
+        c.ConviteTipo,
+        c.ConviteStatus,
+        c.CreatedAt,
+        gt.GrupoNome,
+        gt.UsuarioCPFLider AS LiderCPF,
+        u_lider.UsuarioNome AS LiderNome,
+        u_convidado.UsuarioNome AS NomeConvidado,
+        t.TarefaTitulo,
+        t.TarefaPrazoData,
+        t.TarefaMaxPessoas AS MaxPessoas,
+        (1 + COUNT(uxgt.UsuarioCPF)) AS TotalMembros
+      FROM convitegrupotarefa c
+      INNER JOIN grupotarefa gt ON gt.GrupoTarefaGUID = c.GrupoTarefaGUID
+      INNER JOIN tarefaacademica t ON t.TarefaGUID = gt.TarefaGUID
+      INNER JOIN usuario u_lider ON u_lider.UsuarioCPF = gt.UsuarioCPFLider
+      INNER JOIN usuario u_convidado ON u_convidado.UsuarioCPF = c.UsuarioCPFConvidado
+      LEFT JOIN usuarioxgrupotarefa uxgt ON uxgt.GrupoTarefaGUID = gt.GrupoTarefaGUID
+      WHERE c.UsuarioCPFConvidado = ? AND c.ConviteStatus = 'Pendente'
+      GROUP BY c.ConviteGUID
+      ORDER BY c.CreatedAt DESC
+    `;
+    
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioCPF]);
+    
+    return rows.map((row: any) => ({
+      ConviteGUID: row.ConviteGUID,
+      GrupoTarefaGUID: row.GrupoTarefaGUID,
+      GrupoNome: row.GrupoNome,
+      LiderCPF: row.LiderCPF,
+      LiderNome: row.LiderNome,
+      UsuarioCPFConvidado: row.UsuarioCPFConvidado,
+      NomeConvidado: row.NomeConvidado,
+      ConviteTipo: row.ConviteTipo,
+      ConviteStatus: row.ConviteStatus,
+      TarefaTitulo: row.TarefaTitulo,
+      TarefaPrazoData: row.TarefaPrazoData,
+      TotalMembros: row.TotalMembros,
+      MaxPessoas: row.MaxPessoas,
+      CreatedAt: row.CreatedAt
+    }));
   }
 
   // UPDATE STATUS
