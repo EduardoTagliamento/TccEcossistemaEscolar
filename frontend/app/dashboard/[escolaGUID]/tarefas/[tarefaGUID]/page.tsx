@@ -180,30 +180,34 @@ export default function TarefaDetalhesPage() {
           />
         </>
       )}
-      <ConvitesPendentesModal
-        isOpen={modalConvitesPendentes}
-        onClose={() => setModalConvitesPendentes(false)}
-        onConviteRespondido={carregarDados}
-      />
-      {tarefa && (
-        <SolicitarEntradaModal
-          isOpen={modalSolicitar}
-          onClose={() => setModalSolicitar(false)}
-          tarefaGUID={tarefaGUID}
-          onSolicitacaoEnviada={carregarDados}
-        />
+      {tarefa?.TarefaCompartilhada && (
+        <>
+          <ConvitesPendentesModal
+            isOpen={modalConvitesPendentes}
+            onClose={() => setModalConvitesPendentes(false)}
+            onConviteRespondido={carregarDados}
+          />
+          <SolicitarEntradaModal
+            isOpen={modalSolicitar}
+            onClose={() => setModalSolicitar(false)}
+            tarefaGUID={tarefaGUID}
+            onSolicitacaoEnviada={carregarDados}
+          />
+        </>
       )}
 
       <header className={styles.header}>
         <Link href={`/dashboard/${escolaGUID}/tarefas`} className={styles.backLink}>
           ← Voltar para tarefas
         </Link>
-        <button
-          onClick={() => setModalConvitesPendentes(true)}
-          className={styles.btnNotificacoes}
-        >
-          📬 Convites
-        </button>
+        {tarefa.TarefaCompartilhada && (
+          <button
+            onClick={() => setModalConvitesPendentes(true)}
+            className={styles.btnNotificacoes}
+          >
+            📬 Convites
+          </button>
+        )}
       </header>
 
       <div className={styles.tarefaInfo}>
