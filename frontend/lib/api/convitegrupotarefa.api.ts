@@ -65,7 +65,24 @@ export async function listarConvitesPendentes(): Promise<ConvitePendente[]> {
     throw new Error(result.error || result.message || 'Erro ao listar convites pendentes');
   }
 
-  return result.data;
+  // Garantir que sempre retorne um array
+  if (Array.isArray(result.data)) {
+    return result.data;
+  }
+  
+  // Se result.data é um objeto com propriedade 'convites' ou similar
+  if (result.data && Array.isArray(result.data.convites)) {
+    return result.data.convites;
+  }
+  
+  // Se result é diretamente um array
+  if (Array.isArray(result)) {
+    return result;
+  }
+  
+  // Caso contrário, retornar array vazio
+  console.warn('API retornou formato inesperado:', result);
+  return [];
 }
 
 // PATCH - Aceitar convite ou solicitação
