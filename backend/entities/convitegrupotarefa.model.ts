@@ -21,13 +21,16 @@ export interface ConviteGrupoTarefaDTO {
   ConviteGUID: string;
   GrupoTarefaGUID: string;
   GrupoNome: string | null;
-  NomeLider: string;
+  LiderCPF: string;
+  LiderNome: string;
   UsuarioCPFConvidado: string;
   NomeConvidado: string;
   ConviteTipo: ConviteTipo;
   ConviteStatus: ConviteStatus;
-  TotalMembrosAtual: number;
-  LimiteMaximo: number;
+  TarefaTitulo: string;
+  TarefaPrazoData: string;
+  TotalMembros: number;
+  MaxPessoas: number;
   CreatedAt: Date;
 }
 

@@ -240,13 +240,10 @@ export default class ConviteGrupoTarefaService {
   /**
    * LISTAR CONVITES/SOLICITAÇÕES PENDENTES
    */
-  async listarPendentes(usuarioCPF: string): Promise<ConviteGrupoTarefa[]> {
+  async listarPendentes(usuarioCPF: string): Promise<ConviteGrupoTarefaDTO[]> {
     console.log('🟣 ConviteGrupoTarefaService.listarPendentes()');
 
-    const convites = await this.#conviteDAO.findAll({
-      UsuarioCPFConvidado: usuarioCPF,
-      ConviteStatus: 'Pendente'
-    });
+    const convites = await this.#conviteDAO.findAllComDetalhes(usuarioCPF);
 
     return convites;
   }
