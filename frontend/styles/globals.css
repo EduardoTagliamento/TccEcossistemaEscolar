@@ -144,6 +144,56 @@ body {
   transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
+/* Estilo visual dedicado ao modulo da Copa */
+.copa-bg {
+  background: radial-gradient(circle at 10% 5%, rgba(34, 211, 238, 0.18), transparent 38%),
+    radial-gradient(circle at 85% 15%, rgba(16, 185, 129, 0.22), transparent 34%),
+    linear-gradient(140deg, #06122b 0%, #08203d 35%, #10345e 70%, #146374 100%);
+}
+
+.copa-panel {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: linear-gradient(125deg, rgba(2, 6, 23, 0.68), rgba(3, 13, 35, 0.42));
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 70px -36px rgba(3, 7, 18, 0.9);
+  animation: fadeIn 500ms ease-out;
+}
+
+.copa-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.55;
+}
+
+.copa-glow-1 {
+  top: -8%;
+  left: -8%;
+  height: 320px;
+  width: 320px;
+  background: rgba(56, 189, 248, 0.42);
+  animation: floatY 10s ease-in-out infinite;
+}
+
+.copa-glow-2 {
+  right: -12%;
+  bottom: -10%;
+  height: 380px;
+  width: 380px;
+  background: rgba(16, 185, 129, 0.4);
+  animation: floatY 12s ease-in-out infinite;
+}
+
+.copa-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at center, black 40%, transparent 82%);
+  opacity: 0.38;
+}
+
 /* 🔗 Links */
 a {
   color: var(--color-primary);
@@ -279,6 +329,18 @@ textarea::placeholder {
   }
 }
 
+@keyframes floatY {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(22px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
 .animate-fadeIn {
   animation: fadeIn var(--transition-normal);
 }
@@ -289,4 +351,995 @@ textarea::placeholder {
 
 .animate-slideUp {
   animation: slideUp var(--transition-normal);
+}
+
+/* Copa: classes sem Tailwind */
+.copa-layout {
+  min-height: 100vh;
+  position: relative;
+  color: #e2e8f0;
+}
+
+.copa-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.copa-main {
+  position: relative;
+  z-index: 10;
+  padding: 2rem 0;
+}
+
+.copa-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(2, 6, 23, 0.65);
+  backdrop-filter: blur(18px);
+}
+
+.copa-nav-inner,
+.copa-page,
+.copa-footer-inner {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.copa-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.copa-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.copa-brand-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 1.5rem;
+  transition: transform var(--transition-normal);
+}
+
+.copa-brand:hover .copa-brand-icon {
+  transform: rotate(-6deg) scale(1.05);
+}
+
+.copa-brand-kicker,
+.copa-kicker {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  color: #a7f3d0;
+  margin-bottom: 0.2rem;
+}
+
+.copa-brand-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.copa-back-link,
+.copa-back-button {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.95rem;
+  font-weight: 600;
+}
+
+.copa-back-link:hover,
+.copa-back-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  text-decoration: none;
+}
+
+.copa-footer {
+  position: relative;
+  z-index: 10;
+  margin-top: 2.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(2, 6, 23, 0.7);
+  backdrop-filter: blur(18px);
+}
+
+.copa-footer-inner {
+  text-align: center;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+.copa-footer-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.copa-footer-site {
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a7f3d0;
+}
+
+.copa-page {
+  padding: 0 1rem;
+}
+
+.copa-page > * + * {
+  margin-top: 1.5rem;
+}
+
+.copa-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.copa-page-title,
+.copa-dashboard-title {
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.copa-dashboard-hero {
+  padding: 1.8rem;
+  border-radius: 2rem;
+}
+
+.copa-dashboard-desc {
+  margin-top: 0.6rem;
+  max-width: 700px;
+  color: #cbd5e1;
+}
+
+.copa-state-box {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(18px);
+  padding: 1rem;
+  text-align: center;
+  font-weight: 600;
+  color: #fff;
+}
+
+.copa-state-box-error {
+  border-color: #fca5a5;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.copa-gap-top {
+  margin-top: 1rem;
+}
+
+.copa-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.copa-progress-panel {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(2, 6, 23, 0.6);
+  box-shadow: var(--shadow-xl);
+  padding: 1.5rem;
+}
+
+.copa-progress-title {
+  text-align: center;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.copa-progress-track {
+  margin-top: 1rem;
+  height: 1.2rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.copa-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #34d399, #22d3ee, #14b8a6);
+  transition: width var(--transition-slow);
+}
+
+.copa-action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.copa-action-btn {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  padding: 1.5rem;
+  text-align: left;
+  box-shadow: var(--shadow-xl);
+  transition: transform var(--transition-normal), background-color var(--transition-normal);
+}
+
+.copa-action-btn:hover {
+  transform: translateY(-4px);
+}
+
+.copa-action-btn-search {
+  background: #22d3ee;
+  color: #0f172a;
+}
+
+.copa-action-btn-search:hover {
+  background: #67e8f9;
+}
+
+.copa-action-btn-albums {
+  background: #34d399;
+  color: #0f172a;
+}
+
+.copa-action-btn-albums:hover {
+  background: #6ee7b7;
+}
+
+.copa-action-btn-report {
+  background: #fbbf24;
+  color: #0f172a;
+}
+
+.copa-action-btn-report:hover {
+  background: #fcd34d;
+}
+
+.copa-action-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(15, 23, 42, 0.75);
+}
+
+.copa-action-title {
+  margin-top: 0.45rem;
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.copa-action-desc {
+  margin-top: 0.45rem;
+  font-size: 0.95rem;
+  color: rgba(15, 23, 42, 0.75);
+}
+
+.copa-search-form,
+.copa-results-panel {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-xl);
+  padding: 1rem;
+}
+
+.copa-search-label {
+  display: block;
+  margin-bottom: 0.6rem;
+  color: #f1f5f9;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.copa-search-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.copa-search-input {
+  flex: 1;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.copa-search-actions {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.copa-search-btn {
+  border-radius: 0.85rem;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+}
+
+.copa-search-btn-primary {
+  background: #22d3ee;
+  color: #0f172a;
+}
+
+.copa-search-btn-secondary {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.copa-search-tip {
+  margin-top: 0.65rem;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.copa-search-filters-grid {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.copa-groups-filter-wrap {
+  margin-top: 0.7rem;
+}
+
+.copa-groups-filter-title {
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.copa-groups-filter-list {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.copa-albums-completion-wrap {
+  margin-top: 0.7rem;
+}
+
+.copa-albums-completion-title {
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.copa-albums-completion-list {
+  margin-top: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.copa-albums-completion-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.copa-group-filter-chip {
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+}
+
+.copa-group-filter-chip:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.copa-group-filter-chip.is-active {
+  background: #22d3ee;
+  border-color: #67e8f9;
+  color: #0f172a;
+}
+
+.copa-search-select {
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  padding: 0.75rem 0.9rem;
+}
+
+.copa-search-select:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+}
+
+.copa-results-title {
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.copa-figurinhas-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.copa-stat-card {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1.2rem;
+}
+
+.copa-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.9rem;
+}
+
+.copa-stat-name {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.copa-stat-icon {
+  border-radius: 0.8rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.2rem 0.65rem;
+  font-size: 1.5rem;
+}
+
+.copa-stat-lines {
+  border-radius: 1rem;
+  background: #f1f5f9;
+  padding: 0.75rem;
+}
+
+.copa-stat-line {
+  display: flex;
+  justify-content: space-between;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.copa-stat-line + .copa-stat-line {
+  margin-top: 0.35rem;
+}
+
+.copa-stat-value-success { color: #047857; font-weight: 700; }
+.copa-stat-value-danger { color: #be123c; font-weight: 700; }
+.copa-stat-value-default { color: #0f172a; font-weight: 700; }
+
+.copa-stat-progress-wrap { margin-top: 0.9rem; }
+
+.copa-stat-progress-track {
+  height: 0.7rem;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.copa-stat-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width var(--transition-normal);
+}
+
+.copa-stat-percent {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.copa-figurinha-card {
+  border-radius: 1rem;
+  border: 1px solid #d1d5db;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.8rem;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.copa-figurinha-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-xl);
+}
+
+.copa-figurinha-card.is-completa {
+  border-color: #22c55e;
+}
+
+.copa-figurinha-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.copa-figurinha-code {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.copa-figurinha-badge {
+  border-radius: 9999px;
+  background: #dcfce7;
+  color: #047857;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+}
+
+.copa-figurinha-status-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.copa-status-chip {
+  border-radius: 9999px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.copa-status-chip.is-inactive {
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.copa-status-chip.is-active.prata {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.copa-status-chip.is-active.normal {
+  background: #cffafe;
+  color: #0e7490;
+}
+
+.copa-status-chip.is-active.ouro {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.copa-figurinha-selecao {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  text-align: center;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.copa-figurinha-progress {
+  margin-top: 0.35rem;
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #0f766e;
+}
+
+.copa-albums-tabs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.copa-album-tab {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  transition: transform var(--transition-normal), background-color var(--transition-normal);
+}
+
+.copa-album-tab:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.copa-album-tab.is-selected {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-xl);
+}
+
+.copa-album-tab-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.copa-album-tab-icon { font-size: 1.5rem; }
+
+.copa-album-tab-title {
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.copa-album-tab-subtitle {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.copa-album-content {
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1.2rem;
+  box-shadow: var(--shadow-xl);
+}
+
+.copa-album-content-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 0.8rem;
+}
+
+.copa-badge {
+  display: inline-flex;
+  background: #f1f5f9;
+  color: #334155;
+  border-radius: 9999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.copa-empty-state {
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.copa-empty-emoji {
+  font-size: 2.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.copa-empty-text {
+  color: #059669;
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.copa-album-summary {
+  margin-bottom: 1rem;
+  color: #334155;
+}
+
+.copa-groups-list > * + * {
+  margin-top: 1rem;
+}
+
+.copa-group-card {
+  border-left: 4px solid;
+  border-radius: 1rem;
+  background: #f8fafc;
+  padding: 1rem;
+}
+
+.copa-group-title {
+  margin-bottom: 0.7rem;
+  font-size: 1.1rem;
+  color: #1e293b;
+  font-weight: 900;
+}
+
+.copa-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.copa-tag {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #334155;
+}
+
+.copa-tag-button {
+  cursor: pointer;
+}
+
+.copa-tag-button:hover {
+  background: #ecfeff;
+  border-color: #67e8f9;
+  color: #0e7490;
+}
+
+.copa-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(8px);
+  padding: 1rem;
+}
+
+.copa-modal-content {
+  width: 100%;
+  max-width: 720px;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: #fff;
+  box-shadow: var(--shadow-xl);
+  padding: 1.2rem;
+}
+
+.copa-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.copa-modal-title {
+  color: #0f172a;
+  font-size: 1.55rem;
+  font-weight: 900;
+}
+
+.copa-modal-close {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.7rem;
+  padding: 0.1rem 0.65rem;
+  font-size: 1.8rem;
+  color: #64748b;
+}
+
+.copa-modal-subtitle { color: #475569; margin-bottom: 1rem; }
+
+.copa-modal-error {
+  border-radius: 0.75rem;
+  border: 1px solid #fda4af;
+  background: #fff1f2;
+  color: #be123c;
+  padding: 0.55rem 0.8rem;
+  margin-bottom: 0.85rem;
+}
+
+.copa-modal-status-list > * + * { margin-top: 0.7rem; }
+
+.copa-modal-status-item {
+  display: flex;
+  align-items: center;
+  border: 1px solid;
+  border-radius: 1rem;
+  padding: 0.75rem;
+}
+
+.copa-modal-checkbox { margin-right: 0.7rem; width: 1.15rem; height: 1.15rem; }
+.copa-modal-album-icon { font-size: 1.5rem; margin-right: 0.5rem; }
+.copa-modal-album-name { font-weight: 700; }
+
+.copa-modal-password-box {
+  margin-top: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #f8fafc;
+  padding: 0.85rem;
+}
+
+.copa-modal-password-label {
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.copa-modal-password-row {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.copa-modal-password-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+}
+
+.copa-modal-footer { margin-top: 1rem; display: flex; gap: 0.6rem; }
+
+.copa-modal-btn {
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.9rem;
+  font-weight: 700;
+}
+
+.copa-modal-btn-confirm {
+  background: #10b981;
+  color: #fff;
+}
+
+.copa-modal-btn-cancel,
+.copa-modal-btn-close {
+  border: 1px solid #cbd5e1;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.copa-modal-btn-close { flex: 1; }
+
+.copa-modal-loading {
+  margin-top: 0.85rem;
+  text-align: center;
+  color: #475569;
+  font-weight: 600;
+}
+
+.copa-report-modal {
+  max-width: 860px;
+}
+
+.copa-report-options {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #f8fafc;
+  padding: 0.9rem;
+}
+
+.copa-report-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #334155;
+  font-weight: 600;
+}
+
+.copa-report-order-wrap {
+  margin-top: 0.75rem;
+}
+
+.copa-report-order-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.copa-report-order-select {
+  max-width: 360px;
+}
+
+.copa-report-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.copa-report-textarea {
+  margin-top: 0.9rem;
+  width: 100%;
+  min-height: 320px;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.9rem;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  line-height: 1.5;
+  padding: 0.9rem;
+  resize: vertical;
+}
+
+.copa-report-success {
+  margin-top: 0.7rem;
+  color: #047857;
+  font-weight: 700;
+}
+
+@media (min-width: 640px) {
+  .copa-main { padding: 2.4rem 0; }
+  .copa-page { padding: 0 1.5rem; }
+  .copa-search-row,
+  .copa-modal-password-row,
+  .copa-page-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .copa-page-title,
+  .copa-dashboard-title {
+    font-size: 2.35rem;
+  }
+
+  .copa-figurinhas-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .copa-album-content,
+  .copa-modal-content,
+  .copa-search-form,
+  .copa-results-panel,
+  .copa-progress-panel,
+  .copa-state-box { padding: 1.5rem; }
+
+  .copa-report-actions {
+    flex-direction: row;
+  }
+
+  .copa-search-filters-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .copa-search-filters-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .copa-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .copa-action-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .copa-albums-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .copa-figurinhas-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1200px) {
+  .copa-stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .copa-figurinhas-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
