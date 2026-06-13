@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import ProfessorService, {
   AlocacaoCreateDTO,
   AlocacaoUpdateDTO,
+  ProfessorCreateDTO,
 } from "../services/professor.service";
 import ErrorResponse from "../utils/ErrorResponse";
 
@@ -13,9 +14,10 @@ import ErrorResponse from "../utils/ErrorResponse";
  * - Alocação = Vínculo professor-matéria-turma
  * 
  * Endpoints:
+ * - POST /api/professor (criar professor individual ou em massa)
  * - GET /api/professor?EscolaGUID=X (listar professores da escola)
  * - GET /api/professor/:cpf/escolas/:escolaGUID/alocacoes (buscar alocações do professor)
- * - POST /api/professor/alocacao (criar alocação)
+ * - POST /api/professor/alocacao (criar alocação individual ou em massa)
  * - GET /api/professor/alocacao (listar alocações com filtros)
  * - GET /api/professor/alocacao/:guid (buscar alocação)
  * - PUT /api/professor/alocacao/:guid (atualizar alocação)
@@ -63,6 +65,58 @@ export default class ProfessorController {
   };
 
   /**
+   * POST /api/professor
+   * Criar professores (individual ou em massa)
+   * 
+   * Body (Individual): { professor: { UsuarioCPF, UsuarioNome, ... }, EscolaGUID, EscolaNome }
+   * Body (Massa): { professores: [...], EscolaGUID, EscolaNome, enviarEmails? }
+   */
+  criarProfessores = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const body = req.body;
+
+      // Detectar se é batch ou individual
+      if (Array.isArray(body.professores)) {
+        // Batch
+        const { professores, EscolaGUID, EscolaNome, enviarEmails } = body;
+
+        const resultado = await this.#professorService.criarProfessoresEmMassa(
+          professores,
+          EscolaGUID,
+          EscolaNome || 'Escola',
+          enviarEmails !== false
+        );
+
+        res.status(201).json({
+          success: true,
+          message: `${resultado.criados} professores criados, ${resultado.existentes} já cadastrados, ${resultado.erros} erros`,
+          data: resultado
+        });
+      } else {
+        // Individual (para compatibilidade futura)
+        res.status(400).json({
+          success: false,
+          message: 'Para criar professor individual, use POST /api/professor/alocacao após criar o usuário'
+        });
+      }
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error("Erro ao criar professores:", error);
+        res.status(500).json({
+          success: false,
+          message: "Erro interno ao criar professores",
+        });
+      }
+    }
+  };
+
+  /**
    * GET /api/professor/:cpf/escolas/:escolaGUID/alocacoes
    * Buscar alocações de um professor em uma escola
    */
@@ -99,32 +153,54 @@ export default class ProfessorController {
 
   /**
    * POST /api/professor/alocacao
-   * Criar alocação (vincular professor a matéria+turma)
+   * Criar alocação (vincular professor a matéria+turma) - individual ou em massa
    * 
-   * Body: { alocacao: { MateriaGUID, TurmaGUID, UsuarioCPF, AlocacaoStatus? } }
+   * Body (Individual): { alocacao: { MateriaGUID, TurmaGUID, UsuarioCPF, AlocacaoStatus? } }
+   * Body (Massa): { alocacoes: [...], EscolaGUID }
    */
   criarAlocacao = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { alocacao } = req.body;
+      const body = req.body;
       const usuarioCPF = (req as any).usuario.cpf;
 
-      const createData: AlocacaoCreateDTO = {
-        MateriaGUID: alocacao.MateriaGUID,
-        TurmaGUID: alocacao.TurmaGUID,
-        UsuarioCPF: alocacao.UsuarioCPF,
-        AlocacaoStatus: alocacao.AlocacaoStatus,
-      };
+      // Detectar se é batch ou individual
+      if (Array.isArray(body.alocacoes)) {
+        // Batch
+        const { alocacoes, EscolaGUID } = body;
 
-      const alocacaoCriada = await this.#professorService.criarAlocacao(
-        createData,
-        usuarioCPF
-      );
+        const resultado = await this.#professorService.criarAlocacoesEmMassa(
+          alocacoes,
+          EscolaGUID,
+          usuarioCPF
+        );
 
-      res.status(201).json({
-        success: true,
-        message: "Alocação criada com sucesso",
-        data: alocacaoCriada,
-      });
+        res.status(201).json({
+          success: true,
+          message: `${resultado.criados} alocações criadas, ${resultado.existentes} já existentes, ${resultado.erros} erros`,
+          data: resultado
+        });
+      } else {
+        // Individual
+        const { alocacao } = body;
+
+        const createData: AlocacaoCreateDTO = {
+          MateriaGUID: alocacao.MateriaGUID,
+          TurmaGUID: alocacao.TurmaGUID,
+          UsuarioCPF: alocacao.UsuarioCPF,
+          AlocacaoStatus: alocacao.AlocacaoStatus,
+        };
+
+        const alocacaoCriada = await this.#professorService.criarAlocacao(
+          createData,
+          usuarioCPF
+        );
+
+        res.status(201).json({
+          success: true,
+          message: "Alocação criada com sucesso",
+          data: alocacaoCriada,
+        });
+      }
     } catch (error) {
       if (error instanceof ErrorResponse) {
         res.status(error.statusCode).json({

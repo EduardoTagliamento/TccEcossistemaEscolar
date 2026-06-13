@@ -29,6 +29,25 @@ export interface CursoUpdateDTO {
 }
 
 /**
+ * Interfaces para cadastro em massa (batch)
+ */
+export interface BatchItemResult {
+  item: CursoCreateDTO;
+  sucesso: boolean;
+  mensagem: string;
+  dados?: CursoDTO;
+  tipo?: 'criado' | 'duplicado' | 'erro';
+}
+
+export interface BatchCreateResponse {
+  totalProcessados: number;
+  criados: number;
+  duplicados: number;
+  erros: number;
+  resultados: BatchItemResult[];
+}
+
+/**
  * Service para lógica de negócio de Curso
  * 
  * Regras principais:
@@ -107,6 +126,133 @@ export default class CursoService {
     const cursoCriado = await this.#cursoDAO.create(curso);
 
     return this.toDTO(cursoCriado);
+  }
+
+  /**
+   * Criar múltiplos cursos em massa (batch)
+   * 
+   * Processa array de cursos e retorna resultado detalhado:
+   * - Cursos criados com sucesso
+   * - Duplicados (já existem)
+   * - Erros de validação
+   * 
+   * Validações:
+   * 1. Usuário tem permissão
+   * 2. Escola existe e é técnica
+   * 3. Detecta duplicatas (por nome na escola)
+   * 4. Continua processamento mesmo com erros individuais
+   */
+  async criarCursosEmMassa(
+    cursos: CursoCreateDTO[],
+    usuarioCPF: string
+  ): Promise<BatchCreateResponse> {
+    const resultados: BatchItemResult[] = [];
+    let criados = 0;
+    let duplicados = 0;
+    let erros = 0;
+
+    // Validações iniciais (primeira escola como referência)
+    if (cursos.length === 0) {
+      throw new ErrorResponse(400, 'Nenhum curso fornecido', {
+        message: 'A lista de cursos está vazia',
+      });
+    }
+
+    const escolaGUID = cursos[0].EscolaGUID;
+
+    // Validar permissão uma única vez
+    try {
+      await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        throw error;
+      }
+      throw new ErrorResponse(500, 'Erro ao validar permissão');
+    }
+
+    // Validar escola
+    const escola = await this.#escolaDAO.findById(escolaGUID);
+    if (!escola) {
+      throw new ErrorResponse(404, 'Escola não encontrada', {
+        message: `Não existe escola com id ${escolaGUID}`,
+      });
+    }
+
+    // Validar que é escola técnica
+    if (!escola.EscolaIsTecnica) {
+      throw new ErrorResponse(400, 'Cursos só podem ser criados em escolas técnicas', {
+        message: 'Esta escola não está marcada como técnica',
+      });
+    }
+
+    // Buscar todos os cursos existentes da escola para verificação rápida
+    const cursosExistentes = await this.#cursoDAO.findAll({ EscolaGUID: escolaGUID });
+    const nomesExistentes = new Set(
+      cursosExistentes.map(c => c.CursoNome.trim().toLowerCase())
+    );
+
+    // Processar cada curso
+    for (const cursoDados of cursos) {
+      try {
+        const nomeNormalizado = cursoDados.CursoNome.trim();
+        const nomeComparacao = nomeNormalizado.toLowerCase();
+
+        // Verificar duplicata
+        if (nomesExistentes.has(nomeComparacao)) {
+          duplicados++;
+          resultados.push({
+            item: cursoDados,
+            sucesso: true,
+            mensagem: `Curso "${nomeNormalizado}" já existe nesta escola`,
+            tipo: 'duplicado',
+          });
+          continue;
+        }
+
+        // Criar curso
+        const curso = new Curso();
+        curso.CursoGUID = uuidv4();
+        curso.EscolaGUID = escolaGUID;
+        curso.CursoNome = nomeNormalizado;
+        curso.CursoStatus = cursoDados.CursoStatus || 'Ativo';
+        curso.CursoCreatedAt = new Date();
+        curso.CursoUpdatedAt = new Date();
+
+        curso.validar();
+
+        const cursoCriado = await this.#cursoDAO.create(curso);
+        
+        // Adicionar ao conjunto de nomes existentes para evitar duplicatas no mesmo batch
+        nomesExistentes.add(nomeComparacao);
+
+        criados++;
+        resultados.push({
+          item: cursoDados,
+          sucesso: true,
+          mensagem: `Curso "${nomeNormalizado}" criado com sucesso`,
+          dados: this.toDTO(cursoCriado),
+          tipo: 'criado',
+        });
+
+      } catch (error) {
+        erros++;
+        const mensagem = error instanceof Error ? error.message : 'Erro desconhecido';
+        resultados.push({
+          item: cursoDados,
+          sucesso: false,
+          mensagem: `Erro: ${mensagem}`,
+          tipo: 'erro',
+        });
+      }
+    }
+
+    return {
+      totalProcessados: cursos.length,
+      criados,
+      duplicados,
+      erros,
+      resultados,
+    };
   }
 
   /**

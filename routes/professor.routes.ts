@@ -19,13 +19,14 @@ import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
  * - Alocação = Tabela de junção materiaxprofessorxturma
  * 
  * Padrão de roteamento:
- * 1. GET / - listar professores da escola (query: EscolaGUID)
- * 2. GET /:cpf/escolas/:escolaGUID/alocacoes - buscar alocações do professor
- * 3. POST /alocacao - criar alocação
- * 4. GET /alocacao - listar alocações
- * 5. GET /alocacao/:guid - buscar alocação
- * 6. PUT /alocacao/:guid - atualizar alocação
- * 7. DELETE /alocacao/:guid - excluir alocação
+ * 1. POST / - criar professores (individual ou massa)
+ * 2. GET / - listar professores da escola (query: EscolaGUID)
+ * 3. GET /:cpf/escolas/:escolaGUID/alocacoes - buscar alocações do professor
+ * 4. POST /alocacao - criar alocação (individual ou massa)
+ * 5. GET /alocacao - listar alocações
+ * 6. GET /alocacao/:guid - buscar alocação
+ * 7. PUT /alocacao/:guid - atualizar alocação
+ * 8. DELETE /alocacao/:guid - excluir alocação
  */
 export function professorRouterFactory(): Router {
   const router = Router();
@@ -51,6 +52,16 @@ export function professorRouterFactory(): Router {
   const professorController = new ProfessorController(professorService);
 
   // ==================== ROTAS ====================
+
+  /**
+   * POST /api/professor
+   * Criar professores (individual ou em massa)
+   */
+  router.post(
+    "/",
+    AuthMiddleware.authenticate,
+    professorController.criarProfessores
+  );
 
   /**
    * GET /api/professor?EscolaGUID=X

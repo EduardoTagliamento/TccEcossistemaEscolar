@@ -22,11 +22,30 @@ export class TurmaController {
   /**
    * POST /api/turma
    * Criar nova turma
+   * Aceita: { turma: {...} } OU { turmas: [...] }
    */
   store = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { turma } = req.body;
       const usuarioCPF = (req as any).usuario.cpf;
+
+      // Verificar se é batch (múltiplas turmas) ou individual
+      if (req.body.turmas && Array.isArray(req.body.turmas)) {
+        // Cadastro em massa
+        const resultado = await this.#turmaService.criarTurmasEmMassa(
+          req.body.turmas,
+          usuarioCPF
+        );
+
+        res.status(201).json({
+          success: true,
+          message: "Processamento em massa concluído",
+          data: resultado,
+        });
+        return;
+      }
+
+      // Cadastro individual
+      const { turma } = req.body;
 
       const turmaDTO: TurmaCreateDTO = {
         EscolaGUID: turma.EscolaGUID,
@@ -34,6 +53,7 @@ export class TurmaController {
         TurmaNome: turma.TurmaNome,
         TurmaIsTecnico: turma.TurmaIsTecnico,
         CursoGUID: turma.CursoGUID,
+        CursoNome: turma.CursoNome,
         TurmaStatus: turma.TurmaStatus,
       };
 
@@ -45,7 +65,7 @@ export class TurmaController {
       res.status(201).json({
         success: true,
         message: "Turma criada com sucesso",
-        data: turmaCriada,
+        data: { turma: turmaCriada },
       });
     } catch (error) {
       if (error instanceof ErrorResponse) {

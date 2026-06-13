@@ -21,29 +21,67 @@ export class CursoController {
 
   /**
    * POST /api/curso
-   * Criar novo curso
+   * Criar novo curso (individual ou em massa)
+   * 
+   * Body para individual:
+   * { curso: { EscolaGUID, CursoNome, CursoStatus? } }
+   * 
+   * Body para massa:
+   * { cursos: [{ EscolaGUID, CursoNome, CursoStatus? }, ...] }
    */
   store = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { curso } = req.body;
+      const { curso, cursos } = req.body;
       const usuarioCPF = (req as any).usuario.cpf;
 
-      const cursoDTO: CursoCreateDTO = {
-        EscolaGUID: curso.EscolaGUID,
-        CursoNome: curso.CursoNome,
-        CursoStatus: curso.CursoStatus,
-      };
+      // Cadastro em massa
+      if (cursos && Array.isArray(cursos)) {
+        const cursosDTO: CursoCreateDTO[] = cursos.map((c: any) => ({
+          EscolaGUID: c.EscolaGUID,
+          CursoNome: c.CursoNome,
+          CursoStatus: c.CursoStatus,
+        }));
 
-      const cursoCriado = await this.#cursoService.criarCurso(
-        cursoDTO,
-        usuarioCPF
-      );
+        const resultado = await this.#cursoService.criarCursosEmMassa(
+          cursosDTO,
+          usuarioCPF
+        );
 
-      res.status(201).json({
-        success: true,
-        message: "Curso criado com sucesso",
-        data: cursoCriado,
+        res.status(201).json({
+          success: true,
+          message: `Processamento concluído: ${resultado.criados} criados, ${resultado.duplicados} duplicados, ${resultado.erros} erros`,
+          data: resultado,
+        });
+        return;
+      }
+
+      // Cadastro individual
+      if (curso) {
+        const cursoDTO: CursoCreateDTO = {
+          EscolaGUID: curso.EscolaGUID,
+          CursoNome: curso.CursoNome,
+          CursoStatus: curso.CursoStatus,
+        };
+
+        const cursoCriado = await this.#cursoService.criarCurso(
+          cursoDTO,
+          usuarioCPF
+        );
+
+        res.status(201).json({
+          success: true,
+          message: "Curso criado com sucesso",
+          data: cursoCriado,
+        });
+        return;
+      }
+
+      // Nenhum dado fornecido
+      res.status(400).json({
+        success: false,
+        message: "Forneça 'curso' para cadastro individual ou 'cursos' para cadastro em massa",
       });
+
     } catch (error) {
       if (error instanceof ErrorResponse) {
         res.status(error.statusCode).json({

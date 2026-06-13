@@ -6,6 +6,7 @@ import MateriaService from "../backend/services/materia.service";
 import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { EscolaDAO } from "../backend/repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { CursoDAO } from "../backend/repositories/curso.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class MateriaRoteador {
@@ -65,7 +66,8 @@ export const materiaRouterFactory = () => {
   const materiaDAO = new MateriaDAO(database);
   const escolaDAO = new EscolaDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
-  const materiaService = new MateriaService(materiaDAO, escolaDAO, escolaxUsuarioxFuncaoDAO);
+  const cursoDAO = new CursoDAO(database);
+  const materiaService = new MateriaService(materiaDAO, escolaDAO, escolaxUsuarioxFuncaoDAO, cursoDAO);
   const materiaController = new MateriaController(materiaService);
   const roteador = new MateriaRoteador(materiaController);
 

@@ -1,5 +1,6 @@
 import MaterialProfessorTurma from "../entities/materiaxprofessorxturma.model";
 import Usuario from "../entities/usuario.model";
+import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 import { MaterialProfessorTurmaDAO, AlocacaoFilters } from "../repositories/materiaxprofessorxturma.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
@@ -8,6 +9,9 @@ import { MatriculaDAO } from "../repositories/matricula.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
+import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
+import EmailAlunoService from "./email-aluno.service";
+import bcrypt from "bcrypt";
 
 /**
  * DTOs para transferência de dados
@@ -23,8 +27,10 @@ export interface AlocacaoDTO {
 }
 
 export interface AlocacaoCreateDTO {
-  MateriaGUID: string;
-  TurmaGUID: string;
+  MateriaGUID?: string;
+  MateriaNome?: string; // Novo: aceita nome da matéria
+  TurmaGUID?: string;
+  TurmaNome?: string; // Novo: aceita nome da turma
   UsuarioCPF: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
 }
@@ -42,6 +48,49 @@ export interface ProfessorDTO {
   UsuarioStatus: 'Ativo' | 'Inativo' | 'Bloqueado';
   UsuarioCreatedAt: Date | null;
   UsuarioUpdatedAt: Date | null;
+}
+
+export interface ProfessorCreateDTO {
+  UsuarioCPF: string;
+  UsuarioNome: string;
+  UsuarioEmail?: string;
+  UsuarioTelefone?: string;
+  UsuarioDataNascimento?: string;
+  Materias?: string; // "Matemática, Física" ou "MateriaGUID1, MateriaGUID2"
+  Turmas?: string; // "1º Ano A, 2º Ano B" ou "TurmaGUID1, TurmaGUID2"
+}
+
+export interface BatchProfessorItemResult {
+  item: ProfessorCreateDTO;
+  sucesso: boolean;
+  mensagem: string;
+  dados?: any;
+  senhaTemporaria?: string;
+  tipo: 'criado' | 'existente' | 'erro';
+}
+
+export interface BatchProfessorCreateResponse {
+  totalProcessados: number;
+  criados: number;
+  existentes: number;
+  erros: number;
+  resultados: BatchProfessorItemResult[];
+}
+
+export interface BatchAlocacaoItemResult {
+  item: AlocacaoCreateDTO;
+  sucesso: boolean;
+  mensagem: string;
+  dados?: AlocacaoDTO;
+  tipo: 'criado' | 'existente' | 'erro';
+}
+
+export interface BatchAlocacaoCreateResponse {
+  totalProcessados: number;
+  criados: number;
+  existentes: number;
+  erros: number;
+  resultados: BatchAlocacaoItemResult[];
 }
 
 /**
@@ -341,6 +390,431 @@ export default class ProfessorService {
         message: 'Não foi possível excluir a alocação',
       });
     }
+  }
+
+  /**
+   * Criar professores em massa
+   * 
+   * Fluxo:
+   * 1. Para cada professor:
+   *    - Verificar se usuário já existe
+   *    - Se não existe: criar usuário + gerar senha
+   *    - Vincular como Professor (FuncaoId=3) na escola
+   * 2. Enviar emails em lote (opcional)
+   * 
+   * @param professores Array de dados de professores
+   * @param escolaGUID GUID da escola
+   * @param escolaNome Nome da escola (para emails)
+   * @param enviarEmails Se deve enviar emails automáticos
+   * @returns BatchProfessorCreateResponse com resultados detalhados
+   */
+  async criarProfessoresEmMassa(
+    professores: ProfessorCreateDTO[],
+    escolaGUID: string,
+    escolaNome: string,
+    enviarEmails: boolean = true
+  ): Promise<BatchProfessorCreateResponse> {
+    const resultados: BatchProfessorItemResult[] = [];
+    let criados = 0;
+    let existentes = 0;
+    let erros = 0;
+
+    const emailsParaEnviar: Array<{ tipo: 'novo' | 'existente'; dados: any }> = [];
+    const SALT_ROUNDS = 10;
+
+    for (const dados of professores) {
+      try {
+        const cpf = dados.UsuarioCPF;
+
+        if (!cpf) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'CPF é obrigatório',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
+        if (!dados.UsuarioNome) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'Nome é obrigatório',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
+        // Verificar se usuário já existe
+        const usuarioExistente = await this.#usuarioDAO.findById(cpf);
+
+        let usuario: Usuario;
+        let senhaTemporaria: string | undefined;
+
+        if (usuarioExistente) {
+          // Usuário já existe
+          usuario = usuarioExistente;
+
+          // Verificar se já é professor na escola
+          const vinculoExistente = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
+            cpf,
+            escolaGUID,
+            3 // FuncaoId Professor
+          );
+
+          if (vinculoExistente) {
+            resultados.push({
+              item: dados,
+              sucesso: true,
+              mensagem: 'Professor já cadastrado nesta escola',
+              dados: this.toProfessorDTO(usuario),
+              tipo: 'existente'
+            });
+            existentes++;
+            continue;
+          }
+
+          // Email de professor existente (se fornecido email e envio habilitado)
+          if (enviarEmails && usuario.UsuarioEmail) {
+            emailsParaEnviar.push({
+              tipo: 'existente',
+              dados: {
+                para: usuario.UsuarioEmail,
+                nomeAluno: usuario.UsuarioNome,
+                nomeEscola: escolaNome,
+                nomeTurma: 'Professor'
+              }
+            });
+          }
+
+        } else {
+          // Criar novo usuário
+          senhaTemporaria = gerarSenhaTemporaria(dados.UsuarioNome);
+
+          const novoUsuario = new Usuario();
+          novoUsuario.UsuarioCPF = cpf;
+          novoUsuario.UsuarioNome = dados.UsuarioNome;
+          novoUsuario.UsuarioEmail = dados.UsuarioEmail || null;
+          novoUsuario.UsuarioId = null;
+          novoUsuario.UsuarioTelefone = dados.UsuarioTelefone || null;
+          novoUsuario.UsuarioEmailVerificado = false;
+          novoUsuario.UsuarioStatus = 'Ativo';
+
+          if (dados.UsuarioDataNascimento) {
+            novoUsuario.UsuarioDataNascimento = new Date(dados.UsuarioDataNascimento);
+          }
+
+          // Hash da senha
+          const senhaHash = await bcrypt.hash(senhaTemporaria, SALT_ROUNDS);
+          novoUsuario.UsuarioSenha = senhaHash;
+
+          await this.#usuarioDAO.create(novoUsuario);
+          usuario = novoUsuario;
+
+          // Email de boas-vindas (se fornecido email e envio habilitado)
+          if (enviarEmails && usuario.UsuarioEmail) {
+            emailsParaEnviar.push({
+              tipo: 'novo',
+              dados: {
+                para: usuario.UsuarioEmail,
+                nomeAluno: usuario.UsuarioNome,
+                nomeEscola: escolaNome,
+                cpf: usuario.UsuarioCPF,
+                senhaTemporaria: senhaTemporaria,
+                linkLogin: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : 'http://localhost:3000/login'
+              }
+            });
+          }
+        }
+
+        // Vincular como Professor na escola
+        const vinculo = new EscolaxUsuarioxFuncao();
+        vinculo.EscolaUsuarioFuncaoGUID = uuidv4();
+        vinculo.EscolaGUID = escolaGUID;
+        vinculo.UsuarioCPF = cpf;
+        vinculo.FuncaoId = 3; // Professor
+        vinculo.Status = 'Ativo';
+        vinculo.EscolaUsuarioFuncaoCreatedAt = new Date();
+        vinculo.EscolaUsuarioFuncaoUpdatedAt = new Date();
+
+        await this.#escolaxUsuarioxFuncaoDAO.create(vinculo);
+
+        resultados.push({
+          item: dados,
+          sucesso: true,
+          mensagem: 'Professor criado/vinculado com sucesso',
+          dados: this.toProfessorDTO(usuario),
+          senhaTemporaria: senhaTemporaria,
+          tipo: usuarioExistente ? 'existente' : 'criado'
+        });
+
+        if (usuarioExistente) {
+          existentes++;
+        } else {
+          criados++;
+        }
+
+      } catch (erro: any) {
+        console.error('Erro ao processar professor:', erro);
+        resultados.push({
+          item: dados,
+          sucesso: false,
+          mensagem: erro.message || 'Erro ao processar professor',
+          tipo: 'erro'
+        });
+        erros++;
+      }
+    }
+
+    // Enviar emails em lote (não bloqueia se falhar)
+    if (enviarEmails && emailsParaEnviar.length > 0) {
+      EmailAlunoService.enviarEmailsEmLote(emailsParaEnviar).catch(erro => {
+        console.error('Erro ao enviar emails em lote:', erro);
+      });
+    }
+
+    return {
+      totalProcessados: professores.length,
+      criados,
+      existentes,
+      erros,
+      resultados
+    };
+  }
+
+  /**
+   * Criar alocações em massa
+   * 
+   * Fluxo:
+   * 1. Buscar todas as matérias e turmas da escola
+   * 2. Criar mapas de resolução: "MateriaNome" → MateriaGUID e "Serie|Nome" → TurmaGUID
+   * 3. Para cada alocação:
+   *    - Resolver MateriaNome → MateriaGUID (se fornecido nome)
+   *    - Resolver TurmaNome → TurmaGUID (se fornecido nome)
+   *    - Validar professor existe e está ativo
+   *    - Validar duplicidade
+   *    - Criar alocação
+   * 
+   * @param alocacoes Array de alocações
+   * @param escolaGUID GUID da escola
+   * @param usuarioCPF CPF do usuário que está criando (para validação de permissão)
+   * @returns BatchAlocacaoCreateResponse com resultados detalhados
+   */
+  async criarAlocacoesEmMassa(
+    alocacoes: AlocacaoCreateDTO[],
+    escolaGUID: string,
+    usuarioCPF: string
+  ): Promise<BatchAlocacaoCreateResponse> {
+    const resultados: BatchAlocacaoItemResult[] = [];
+    let criados = 0;
+    let existentes = 0;
+    let erros = 0;
+
+    // Validar permissão de escrita
+    await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+
+    // Buscar todas as matérias e turmas da escola para resolução
+    const todasMaterias = await this.#materiaDAO.findAll({ EscolaGUID: escolaGUID });
+    const todasTurmas = await this.#turmaDAO.findAll({ EscolaGUID: escolaGUID });
+
+    // Criar mapa de resolução de matérias: "MateriaNome" → MateriaGUID
+    const mapaMaterias = new Map<string, string>();
+    todasMaterias.forEach(materia => {
+      const chave = materia.MateriaNome.toLowerCase().trim();
+      mapaMaterias.set(chave, materia.MateriaGUID);
+    });
+
+    // Criar mapa de resolução de turmas: "serie|nome" → TurmaGUID
+    const mapaTurmas = new Map<string, string>();
+    todasTurmas.forEach(turma => {
+      const chave = `${turma.TurmaSerie}|${turma.TurmaNome}`.toLowerCase().trim();
+      mapaTurmas.set(chave, turma.TurmaGUID);
+    });
+
+    // Set para detectar duplicatas no batch
+    const setAlocacoes = new Set<string>();
+
+    for (const dados of alocacoes) {
+      try {
+        let materiaGUID = dados.MateriaGUID;
+        let turmaGUID = dados.TurmaGUID;
+
+        // Resolver MateriaNome → MateriaGUID
+        if (!materiaGUID && dados.MateriaNome) {
+          const chaveMateria = dados.MateriaNome.toLowerCase().trim();
+          materiaGUID = mapaMaterias.get(chaveMateria);
+
+          if (!materiaGUID) {
+            resultados.push({
+              item: dados,
+              sucesso: false,
+              mensagem: `Matéria "${dados.MateriaNome}" não encontrada`,
+              tipo: 'erro'
+            });
+            erros++;
+            continue;
+          }
+        }
+
+        // Resolver TurmaNome → TurmaGUID
+        if (!turmaGUID && dados.TurmaNome) {
+          // Tentar encontrar a turma buscando por todas as séries possíveis
+          let encontrou = false;
+          
+          for (const turma of todasTurmas) {
+            const chave = `${turma.TurmaSerie}|${turma.TurmaNome}`.toLowerCase().trim();
+            const nomeBuscado = dados.TurmaNome.toLowerCase().trim();
+            
+            // Buscar por "Serie Nome" ou apenas "Nome"
+            if (chave.includes(nomeBuscado) || turma.TurmaNome.toLowerCase().trim() === nomeBuscado) {
+              turmaGUID = turma.TurmaGUID;
+              encontrou = true;
+              break;
+            }
+          }
+
+          if (!encontrou) {
+            resultados.push({
+              item: dados,
+              sucesso: false,
+              mensagem: `Turma "${dados.TurmaNome}" não encontrada`,
+              tipo: 'erro'
+            });
+            erros++;
+            continue;
+          }
+        }
+
+        // Validar que matéria e turma foram resolvidos
+        if (!materiaGUID) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'MateriaGUID ou MateriaNome é obrigatório',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
+        if (!turmaGUID) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'TurmaGUID ou TurmaNome é obrigatório',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
+        // Validar que professor existe e está ativo na escola
+        const vinculo = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
+          dados.UsuarioCPF,
+          escolaGUID,
+          3 // FuncaoId Professor
+        );
+
+        if (!vinculo) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'Usuário não é professor nesta escola',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
+        if (vinculo.Status !== 'Ativo') {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'Professor inativo',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
+        // Detectar duplicata no batch
+        const chaveAlocacao = `${dados.UsuarioCPF}|${materiaGUID}|${turmaGUID}`;
+        if (setAlocacoes.has(chaveAlocacao)) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'Alocação duplicada no lote',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+        setAlocacoes.add(chaveAlocacao);
+
+        // Validar duplicidade no banco
+        const existente = await this.#alocacaoDAO.findByMateriaTurmaProfessor(
+          materiaGUID,
+          turmaGUID,
+          dados.UsuarioCPF
+        );
+
+        if (existente) {
+          resultados.push({
+            item: dados,
+            sucesso: true,
+            mensagem: 'Alocação já existe',
+            dados: this.toAlocacaoDTO(existente),
+            tipo: 'existente'
+          });
+          existentes++;
+          continue;
+        }
+
+        // Criar alocação
+        const alocacao = new MaterialProfessorTurma();
+        alocacao.MatProfTurGUID = uuidv4();
+        alocacao.MateriaGUID = materiaGUID;
+        alocacao.TurmaGUID = turmaGUID;
+        alocacao.UsuarioCPF = dados.UsuarioCPF;
+        alocacao.AlocacaoStatus = dados.AlocacaoStatus || 'Ativa';
+        alocacao.MatProfTurCreatedAt = new Date();
+        alocacao.MatProfTurUpdatedAt = new Date();
+
+        alocacao.validar();
+
+        const alocacaoCriada = await this.#alocacaoDAO.create(alocacao);
+
+        resultados.push({
+          item: dados,
+          sucesso: true,
+          mensagem: 'Alocação criada com sucesso',
+          dados: this.toAlocacaoDTO(alocacaoCriada),
+          tipo: 'criado'
+        });
+        criados++;
+
+      } catch (erro: any) {
+        console.error('Erro ao processar alocação:', erro);
+        resultados.push({
+          item: dados,
+          sucesso: false,
+          mensagem: erro.message || 'Erro ao processar alocação',
+          tipo: 'erro'
+        });
+        erros++;
+      }
+    }
+
+    return {
+      totalProcessados: alocacoes.length,
+      criados,
+      existentes,
+      erros,
+      resultados
+    };
   }
 
   /**
