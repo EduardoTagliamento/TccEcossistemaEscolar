@@ -24,7 +24,8 @@ export interface MatriculaDTO {
 export interface MatriculaCreateDTO {
   MatriculaGUID?: string; // Opcional: RA customizado OU gera UUID
   UsuarioCPF: string;
-  TurmaGUID: string;
+  TurmaGUID?: string; // GUID da turma
+  TurmaNome?: string; // NOME da turma (para resolução automática)
   MatriculaDataEntrada?: Date;
 }
 
@@ -39,6 +40,23 @@ export interface TransferenciaDTO {
   TurmaOrigemGUID: string;
   TurmaDestinoGUID: string;
   DataTransferencia: Date;
+}
+
+// Interfaces para operações em massa
+export interface BatchMatriculaItemResult {
+  item: MatriculaCreateDTO;
+  sucesso: boolean;
+  mensagem: string;
+  dados?: MatriculaDTO;
+  tipo?: 'criado' | 'existente' | 'erro';
+}
+
+export interface BatchMatriculaCreateResponse {
+  totalProcessados: number;
+  criados: number;
+  existentes: number; // Aluno já tinha matrícula ativa
+  erros: number;
+  resultados: BatchMatriculaItemResult[];
 }
 
 /**
@@ -425,6 +443,184 @@ export default class MatriculaService {
       MatriculaStatus: matricula.MatriculaStatus,
       MatriculaCreatedAt: matricula.MatriculaCreatedAt,
       MatriculaUpdatedAt: matricula.MatriculaUpdatedAt,
+    };
+  }
+
+  /**
+   * Criar matrículas em massa (para importação de planilhas)
+   * 
+   * Suporta resolução de turma por nome:
+   * - Se TurmaGUID fornecido: usa diretamente
+   * - Se TurmaNome fornecido: busca turma pelo nome na escola
+   * 
+   * Lógica:
+   * - Valida permissão uma única vez (não para cada matrícula)
+   * - Busca todas as turmas da escola (para resolução de nomes)
+   * - Para cada matrícula:
+   *   * Resolve TurmaNome → TurmaGUID (se necessário)
+   *   * Verifica se aluno já tem matrícula ativa
+   *   * Cria matrícula se tudo ok
+   * - Continua processamento mesmo com erros individuais
+   * 
+   * @param matriculas - Array de matrículas para criar
+   * @param escolaGUID - GUID da escola
+   * @param usuarioCPF - CPF do usuário que está criando
+   * @returns BatchMatriculaCreateResponse com resultados detalhados
+   */
+  async criarMatriculasEmMassa(
+    matriculas: MatriculaCreateDTO[],
+    escolaGUID: string,
+    usuarioCPF: string
+  ): Promise<BatchMatriculaCreateResponse> {
+    // 1. Validar permissão uma única vez
+    await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+
+    // 2. Buscar todas as turmas da escola (para resolução de nomes)
+    const turmasDaEscola = await this.#turmaDAO.findAll({ EscolaGUID: escolaGUID });
+
+    // Criar mapa: nome → GUID (case-insensitive)
+    const mapaTurmaNomeParaGUID = new Map<string, string>();
+    for (const turma of turmasDaEscola) {
+      const chave = `${turma.TurmaSerie.toLowerCase()}|${turma.TurmaNome.toLowerCase()}`;
+      mapaTurmaNomeParaGUID.set(chave, turma.TurmaGUID);
+    }
+
+    // 3. Buscar matrículas ativas existentes (para detecção de duplicatas)
+    const matriculasAtivas = await this.#matriculaDAO.findAll({
+      EscolaGUID: escolaGUID,
+      MatriculaStatus: 'Ativa'
+    });
+
+    // Criar Set de alunos com matrícula ativa
+    const alunosComMatriculaAtiva = new Set(
+      matriculasAtivas.map(m => m.UsuarioCPF)
+    );
+
+    // 4. Processar cada matrícula
+    const resultados: BatchMatriculaItemResult[] = [];
+    let criados = 0;
+    let existentes = 0;
+    let erros = 0;
+
+    for (const dados of matriculas) {
+      try {
+        let turmaGUID: string;
+
+        // Resolver TurmaGUID
+        if (dados.TurmaGUID) {
+          turmaGUID = dados.TurmaGUID;
+        } else if (dados.TurmaNome) {
+          // Resolver pelo nome
+          // Formato esperado: "Série Nome" ou usar campos separados
+          const nomeBusca = dados.TurmaNome.toLowerCase();
+          
+          // Tentar busca direta no mapa (assumindo formato "Série Nome")
+          let encontrado = false;
+          for (const [chave, guid] of mapaTurmaNomeParaGUID.entries()) {
+            // Reconstruir nome completo da turma
+            const [serie, nome] = chave.split('|');
+            const nomeCompleto = `${serie} ${nome}`;
+            
+            if (nomeCompleto === nomeBusca || chave.replace('|', ' ') === nomeBusca) {
+              turmaGUID = guid;
+              encontrado = true;
+              break;
+            }
+          }
+
+          if (!encontrado) {
+            resultados.push({
+              item: dados,
+              sucesso: false,
+              mensagem: `Turma "${dados.TurmaNome}" não encontrada na escola`,
+              tipo: 'erro'
+            });
+            erros++;
+            continue;
+          }
+        } else {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'TurmaGUID ou TurmaNome é obrigatório',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
+        // Verificar se turma existe
+        const turma = await this.#turmaDAO.findById(turmaGUID);
+        if (!turma) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: `Turma não encontrada (GUID: ${turmaGUID})`,
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
+        // Verificar se aluno já tem matrícula ativa
+        if (alunosComMatriculaAtiva.has(dados.UsuarioCPF)) {
+          // Buscar matrícula ativa do aluno
+          const matriculaAtiva = matriculasAtivas.find(m => m.UsuarioCPF === dados.UsuarioCPF);
+          
+          resultados.push({
+            item: dados,
+            sucesso: true,
+            mensagem: 'Aluno já possui matrícula ativa',
+            dados: matriculaAtiva ? this.toDTO(matriculaAtiva) : undefined,
+            tipo: 'existente'
+          });
+          existentes++;
+          continue;
+        }
+
+        // Criar nova matrícula
+        const novaMatricula = new Matricula();
+        novaMatricula.MatriculaGUID = dados.MatriculaGUID || uuidv4();
+        novaMatricula.UsuarioCPF = dados.UsuarioCPF;
+        novaMatricula.TurmaGUID = turmaGUID;
+        novaMatricula.MatriculaDataEntrada = dados.MatriculaDataEntrada || new Date();
+        novaMatricula.MatriculaDataSaida = null;
+        novaMatricula.MatriculaStatus = 'Ativa';
+        novaMatricula.MatriculaCreatedAt = new Date();
+        novaMatricula.MatriculaUpdatedAt = new Date();
+
+        await this.#matriculaDAO.create(novaMatricula);
+
+        // Adicionar ao Set para evitar duplicatas no mesmo lote
+        alunosComMatriculaAtiva.add(dados.UsuarioCPF);
+
+        resultados.push({
+          item: dados,
+          sucesso: true,
+          mensagem: 'Matrícula criada com sucesso',
+          dados: this.toDTO(novaMatricula),
+          tipo: 'criado'
+        });
+        criados++;
+
+      } catch (erro: any) {
+        console.error('Erro ao processar matrícula:', erro);
+        resultados.push({
+          item: dados,
+          sucesso: false,
+          mensagem: erro.message || 'Erro ao processar matrícula',
+          tipo: 'erro'
+        });
+        erros++;
+      }
+    }
+
+    return {
+      totalProcessados: matriculas.length,
+      criados,
+      existentes,
+      erros,
+      resultados
     };
   }
 }

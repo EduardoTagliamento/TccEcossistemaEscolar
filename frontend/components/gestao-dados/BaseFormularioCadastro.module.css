@@ -1,0 +1,110 @@
+.container {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.titulo {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #1a1a1a;
+}
+
+.erro {
+  background: #fee;
+  color: #c00;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid #fcc;
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.campoContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.obrigatorio {
+  color: #e53e3e;
+  margin-left: 0.25rem;
+}
+
+.input,
+.select {
+  padding: 0.75rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.acoes {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  justify-content: flex-end;
+}
+
+.botaoCancelar,
+.botaoSalvar {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.botaoCancelar {
+  background: #f0f0f0;
+  border: 1px solid #d0d0d0;
+  color: #333;
+}
+
+.botaoCancelar:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.botaoSalvar {
+  background: #007bff;
+  border: none;
+  color: white;
+}
+
+.botaoSalvar:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.botaoCancelar:disabled,
+.botaoSalvar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

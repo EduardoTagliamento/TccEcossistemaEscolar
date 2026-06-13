@@ -27,6 +27,7 @@ export interface TurmaCreateDTO {
   TurmaNome: string;
   TurmaIsTecnico: boolean;
   CursoGUID?: string | null;
+  CursoNome?: string; // Para resolução nome → GUID
   TurmaStatus?: 'Ativa' | 'Inativa' | 'Encerrada';
 }
 
@@ -36,6 +37,25 @@ export interface TurmaUpdateDTO {
   TurmaIsTecnico?: boolean;
   CursoGUID?: string | null;
   TurmaStatus?: 'Ativa' | 'Inativa' | 'Encerrada';
+}
+
+/**
+ * Interfaces para cadastro em massa (batch)
+ */
+export interface BatchItemResult {
+  item: TurmaCreateDTO;
+  sucesso: boolean;
+  mensagem: string;
+  dados?: TurmaDTO;
+  tipo?: 'criado' | 'duplicado' | 'erro';
+}
+
+export interface BatchCreateResponse {
+  totalProcessados: number;
+  criados: number;
+  duplicados: number;
+  erros: number;
+  resultados: BatchItemResult[];
 }
 
 /**
@@ -76,7 +96,8 @@ export default class TurmaService {
    * 3. Turma técnica requer escola técnica
    * 4. Escola não-técnica: forçar TurmaIsTecnico=false e CursoGUID=null
    * 5. Se CursoGUID informado, validar existência e pertencimento
-   * 6. Validar duplicidade: série + nome único por escola
+   * 6. Resolução CursoNome → CursoGUID (se fornecido)
+   * 7. Validar duplicidade: série + nome único por escola
    */
   async criarTurma(data: TurmaCreateDTO, usuarioCPF: string): Promise<TurmaDTO> {
     // 1. Validar permissão de escrita
@@ -106,7 +127,16 @@ export default class TurmaService {
       cursoGUID = null;
     }
 
-    // 5. Se informou curso, validar
+    // 5. Resolver CursoNome → CursoGUID se fornecido
+    if (data.CursoNome && !cursoGUID) {
+      const cursos = await this.#cursoDAO.findAll({ EscolaGUID: data.EscolaGUID });
+      const curso = cursos.find(c => c.CursoNome.trim().toLowerCase() === data.CursoNome!.trim().toLowerCase());
+      if (curso) {
+        cursoGUID = curso.CursoGUID;
+      }
+    }
+
+    // 6. Se informou curso, validar
     if (cursoGUID) {
       const curso = await this.#cursoDAO.findById(cursoGUID);
       if (!curso) {
@@ -152,6 +182,166 @@ export default class TurmaService {
     const turmaCriada = await this.#turmaDAO.create(turma);
 
     return this.toDTO(turmaCriada);
+  }
+
+  /**
+   * Criar múltiplas turmas em massa (batch)
+   * 
+   * Processa array de turmas e retorna resultado detalhado
+   * Inclui resolução de nome de curso → GUID
+   */
+  async criarTurmasEmMassa(
+    turmas: TurmaCreateDTO[],
+    usuarioCPF: string
+  ): Promise<BatchCreateResponse> {
+    const resultados: BatchItemResult[] = [];
+    let criados = 0;
+    let duplicados = 0;
+    let erros = 0;
+
+    if (turmas.length === 0) {
+      throw new ErrorResponse(400, 'Nenhuma turma fornecida', {
+        message: 'A lista de turmas está vazia',
+      });
+    }
+
+    const escolaGUID = turmas[0].EscolaGUID;
+
+    // Validar permissão uma única vez
+    try {
+      await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        throw error;
+      }
+      throw new ErrorResponse(500, 'Erro ao validar permissão');
+    }
+
+    // Validar escola
+    const escola = await this.#escolaDAO.findById(escolaGUID);
+    if (!escola) {
+      throw new ErrorResponse(404, 'Escola não encontrada', {
+        message: `Não existe escola com id ${escolaGUID}`,
+      });
+    }
+
+    // Buscar todas as turmas existentes para detecção de duplicatas
+    const turmasExistentes = await this.#turmaDAO.findAll({ EscolaGUID: escolaGUID });
+    const chavesExistentes = new Set(
+      turmasExistentes.map(t => `${t.TurmaSerie.trim().toLowerCase()}|${t.TurmaNome.trim().toLowerCase()}`)
+    );
+
+    // Buscar todos os cursos da escola para resolução de nomes
+    const cursosDaEscola = await this.#cursoDAO.findAll({ EscolaGUID: escolaGUID });
+    const mapaCursosPorNome = new Map<string, string>(); // nome → GUID
+    cursosDaEscola.forEach(curso => {
+      mapaCursosPorNome.set(curso.CursoNome.trim().toLowerCase(), curso.CursoGUID);
+    });
+
+    // Processar cada turma
+    for (const turmaDados of turmas) {
+      try {
+        const serieNormalizada = turmaDados.TurmaSerie.trim();
+        const nomeNormalizado = turmaDados.TurmaNome.trim();
+        const chave = `${serieNormalizada.toLowerCase()}|${nomeNormalizado.toLowerCase()}`;
+
+        // Verificar duplicata
+        if (chavesExistentes.has(chave)) {
+          duplicados++;
+          resultados.push({
+            item: turmaDados,
+            sucesso: true,
+            mensagem: `Turma "${serieNormalizada} ${nomeNormalizado}" já existe nesta escola`,
+            tipo: 'duplicado',
+          });
+          continue;
+        }
+
+        // Validar turma técnica em escola não-técnica
+        if (turmaDados.TurmaIsTecnico && !escola.EscolaIsTecnica) {
+          erros++;
+          resultados.push({
+            item: turmaDados,
+            sucesso: false,
+            mensagem: 'Turma técnica só pode ser criada em escola técnica',
+            tipo: 'erro',
+          });
+          continue;
+        }
+
+        // Ajustar valores se escola não-técnica
+        let turmaIsTecnico = turmaDados.TurmaIsTecnico;
+        let cursoGUID = turmaDados.CursoGUID || null;
+
+        if (!escola.EscolaIsTecnica) {
+          turmaIsTecnico = false;
+          cursoGUID = null;
+        } else {
+          // Resolver CursoNome → CursoGUID
+          if (turmaDados.CursoNome && !cursoGUID) {
+            const cursoNomeNormalizado = turmaDados.CursoNome.trim().toLowerCase();
+            cursoGUID = mapaCursosPorNome.get(cursoNomeNormalizado) || null;
+            
+            if (!cursoGUID && turmaDados.CursoNome) {
+              // Curso especificado mas não encontrado
+              erros++;
+              resultados.push({
+                item: turmaDados,
+                sucesso: false,
+                mensagem: `Curso "${turmaDados.CursoNome}" não encontrado`,
+                tipo: 'erro',
+              });
+              continue;
+            }
+          }
+        }
+
+        // Criar turma
+        const turma = new Turma();
+        turma.TurmaGUID = uuidv4();
+        turma.EscolaGUID = escolaGUID;
+        turma.TurmaSerie = serieNormalizada;
+        turma.TurmaNome = nomeNormalizado;
+        turma.TurmaIsTecnico = turmaIsTecnico;
+        turma.CursoGUID = cursoGUID;
+        turma.TurmaStatus = turmaDados.TurmaStatus || 'Ativa';
+        turma.TurmaCreatedAt = new Date();
+        turma.TurmaUpdatedAt = new Date();
+
+        turma.validar();
+        await this.#turmaDAO.create(turma);
+        
+        // Adicionar ao conjunto de chaves existentes
+        chavesExistentes.add(chave);
+
+        criados++;
+        resultados.push({
+          item: turmaDados,
+          sucesso: true,
+          mensagem: `Turma "${serieNormalizada} ${nomeNormalizado}" criada com sucesso`,
+          dados: this.toDTO(turma),
+          tipo: 'criado',
+        });
+
+      } catch (error) {
+        erros++;
+        const mensagem = error instanceof Error ? error.message : 'Erro desconhecido';
+        resultados.push({
+          item: turmaDados,
+          sucesso: false,
+          mensagem: `Erro: ${mensagem}`,
+          tipo: 'erro',
+        });
+      }
+    }
+
+    return {
+      totalProcessados: turmas.length,
+      criados,
+      duplicados,
+      erros,
+      resultados,
+    };
   }
 
   /**

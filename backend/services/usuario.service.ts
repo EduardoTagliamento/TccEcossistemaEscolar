@@ -2,6 +2,8 @@ import bcrypt from "bcrypt";
 import ErrorResponse from "../utils/ErrorResponse";
 import Usuario from "../entities/usuario.model";
 import { UsuarioDAO } from "../repositories/usuario.repository";
+import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
+import { EmailAlunoService } from "./email-aluno.service";
 
 export interface UsuarioDTO {
   UsuarioCPF: string;
@@ -16,6 +18,24 @@ export interface UsuarioDTO {
   UsuarioCreatedAt: string | null; // ISO string
   UsuarioUpdatedAt: string | null; // ISO string
   // Nota: UsuarioSenha e UsuarioDeletedAt NUNCA são retornados no DTO por questões de segurança
+}
+
+// Interfaces para operações em massa
+export interface BatchItemResult {
+  item: Record<string, any>;
+  sucesso: boolean;
+  mensagem: string;
+  dados?: UsuarioDTO;
+  senhaTemporaria?: string;
+  tipo?: 'criado' | 'existente' | 'erro';
+}
+
+export interface BatchCreateResponse {
+  totalProcessados: number;
+  criados: number;
+  existentes: number;
+  erros: number;
+  resultados: BatchItemResult[];
 }
 
 export default class UsuarioService {
@@ -228,5 +248,149 @@ export default class UsuarioService {
       .filter(Boolean)
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(" ");
+  }
+
+  /**
+   * Criar usuários em massa (para importação de planilhas)
+   * 
+   * Lógica:
+   * - Se CPF já existe: retorna usuário existente (não é erro)
+   * - Se CPF novo: cria usuário com senha gerada
+   * - Coleta emails para envio em lote
+   * 
+   * @param usuarios - Array de dados de usuários
+   * @param escolaNome - Nome da escola (para email)
+   * @param enviarEmails - Se true, envia emails automaticamente
+   * @returns BatchCreateResponse com resultados detalhados
+   */
+  async criarUsuariosEmMassa(
+    usuarios: Record<string, unknown>[],
+    escolaNome: string,
+    enviarEmails: boolean = true
+  ): Promise<BatchCreateResponse> {
+    const resultados: BatchItemResult[] = [];
+    let criados = 0;
+    let existentes = 0;
+    let erros = 0;
+
+    const emailsParaEnviar: Array<{ tipo: 'novo' | 'existente'; dados: any }> = [];
+
+    for (const dados of usuarios) {
+      try {
+        const cpf = dados.UsuarioCPF as string;
+
+        if (!cpf) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'CPF é obrigatório',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
+        // Verificar se usuário já existe
+        const usuarioExistente = await this.#usuarioDAO.findById(cpf);
+
+        if (usuarioExistente) {
+          // Usuário já cadastrado
+          resultados.push({
+            item: dados,
+            sucesso: true,
+            mensagem: 'Usuário já cadastrado',
+            dados: this.toDTO(usuarioExistente),
+            tipo: 'existente'
+          });
+          existentes++;
+
+          // Email de usuário existente (se fornecido email e envio habilitado)
+          if (enviarEmails && usuarioExistente.UsuarioEmail) {
+            emailsParaEnviar.push({
+              tipo: 'existente',
+              dados: {
+                para: usuarioExistente.UsuarioEmail,
+                nomeAluno: usuarioExistente.UsuarioNome,
+                nomeEscola: escolaNome,
+                nomeTurma: (dados.TurmaNome as string) || 'Não especificada'
+              }
+            });
+          }
+        } else {
+          // Criar novo usuário
+          // Gerar senha temporária
+          const senhaTemporaria = gerarSenhaTemporaria(dados.UsuarioNome as string);
+
+          // Criar usuário
+          const novoUsuario = new Usuario();
+          novoUsuario.UsuarioCPF = cpf;
+          novoUsuario.UsuarioNome = this.normalizeNomeCompleto(dados);
+          novoUsuario.UsuarioEmail = (dados.UsuarioEmail as string | null) ?? null;
+          novoUsuario.UsuarioId = (dados.UsuarioId as string | null) ?? null;
+          novoUsuario.UsuarioTelefone = (dados.UsuarioTelefone as string | null) ?? null;
+          novoUsuario.UsuarioEmailVerificado = false;
+          novoUsuario.UsuarioStatus = 'Ativo';
+
+          if (dados.UsuarioDataNascimento) {
+            novoUsuario.UsuarioDataNascimento = new Date(dados.UsuarioDataNascimento as string);
+          }
+
+          // Hash da senha
+          const senhaHash = await bcrypt.hash(senhaTemporaria, this.SALT_ROUNDS);
+          novoUsuario.UsuarioSenha = senhaHash;
+
+          await this.#usuarioDAO.create(novoUsuario);
+
+          resultados.push({
+            item: dados,
+            sucesso: true,
+            mensagem: 'Usuário criado com sucesso',
+            dados: this.toDTO(novoUsuario),
+            senhaTemporaria: senhaTemporaria,
+            tipo: 'criado'
+          });
+          criados++;
+
+          // Email de boas-vindas (se fornecido email e envio habilitado)
+          if (enviarEmails && novoUsuario.UsuarioEmail) {
+            emailsParaEnviar.push({
+              tipo: 'novo',
+              dados: {
+                para: novoUsuario.UsuarioEmail,
+                nomeAluno: novoUsuario.UsuarioNome,
+                nomeEscola: escolaNome,
+                cpf: novoUsuario.UsuarioCPF,
+                senhaTemporaria: senhaTemporaria,
+                linkLogin: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : 'http://localhost:3000/login'
+              }
+            });
+          }
+        }
+      } catch (erro: any) {
+        console.error('Erro ao processar usuário:', erro);
+        resultados.push({
+          item: dados,
+          sucesso: false,
+          mensagem: erro.message || 'Erro ao processar usuário',
+          tipo: 'erro'
+        });
+        erros++;
+      }
+    }
+
+    // Enviar emails em lote (não bloqueia se falhar)
+    if (enviarEmails && emailsParaEnviar.length > 0) {
+      EmailAlunoService.enviarEmailsEmLote(emailsParaEnviar).catch(erro => {
+        console.error('Erro ao enviar emails em lote:', erro);
+      });
+    }
+
+    return {
+      totalProcessados: usuarios.length,
+      criados,
+      existentes,
+      erros,
+      resultados
+    };
   }
 }

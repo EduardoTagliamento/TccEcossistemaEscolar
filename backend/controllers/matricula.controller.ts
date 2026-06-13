@@ -28,34 +28,64 @@ export default class MatriculaController {
 
   /**
    * POST /api/matricula
-   * Criar nova matrícula
+   * Criar nova matrícula (individual ou em massa)
    * 
-   * Body: { matricula: { UsuarioCPF, TurmaGUID, MatriculaGUID?, MatriculaDataEntrada? } }
+   * Body individual: { matricula: { UsuarioCPF, TurmaGUID, MatriculaGUID?, MatriculaDataEntrada? } }
+   * Body massa: { matriculas: [...], escolaGUID: "..." }
    */
   store = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { matricula } = req.body;
       const usuarioCPF = (req as any).usuario.cpf;
 
-      const createData: MatriculaCreateDTO = {
-        MatriculaGUID: matricula.MatriculaGUID,
-        UsuarioCPF: matricula.UsuarioCPF,
-        TurmaGUID: matricula.TurmaGUID,
-        MatriculaDataEntrada: matricula.MatriculaDataEntrada
-          ? new Date(matricula.MatriculaDataEntrada)
-          : undefined,
-      };
+      // Detectar se é cadastro individual ou em massa
+      if (req.body.matriculas && Array.isArray(req.body.matriculas)) {
+        // Cadastro em massa
+        const escolaGUID = req.body.escolaGUID;
 
-      const matriculaCriada = await this.#matriculaService.criarMatricula(
-        createData,
-        usuarioCPF
-      );
+        if (!escolaGUID) {
+          res.status(400).json({
+            success: false,
+            message: 'escolaGUID é obrigatório para cadastro em massa'
+          });
+          return;
+        }
 
-      res.status(201).json({
-        success: true,
-        message: "Matrícula criada com sucesso",
-        data: matriculaCriada,
-      });
+        const resultado = await this.#matriculaService.criarMatriculasEmMassa(
+          req.body.matriculas,
+          escolaGUID,
+          usuarioCPF
+        );
+
+        res.status(200).json({
+          success: true,
+          message: 'Processamento em massa concluído',
+          data: resultado
+        });
+      } else {
+        // Cadastro individual
+        const { matricula } = req.body;
+
+        const createData: MatriculaCreateDTO = {
+          MatriculaGUID: matricula.MatriculaGUID,
+          UsuarioCPF: matricula.UsuarioCPF,
+          TurmaGUID: matricula.TurmaGUID,
+          TurmaNome: matricula.TurmaNome,
+          MatriculaDataEntrada: matricula.MatriculaDataEntrada
+            ? new Date(matricula.MatriculaDataEntrada)
+            : undefined,
+        };
+
+        const matriculaCriada = await this.#matriculaService.criarMatricula(
+          createData,
+          usuarioCPF
+        );
+
+        res.status(201).json({
+          success: true,
+          message: "Matrícula criada com sucesso",
+          data: matriculaCriada,
+        });
+      }
     } catch (error) {
       if (error instanceof ErrorResponse) {
         res.status(error.statusCode).json({

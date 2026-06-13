@@ -12,14 +12,34 @@ export default class UsuarioControl {
   store = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 UsuarioControl.store()");
     try {
-      const jsonUsuario = request.body.usuario;
-      const usuarioCriado = await this.#usuarioService.createUsuario(jsonUsuario);
+      // Detectar se é cadastro individual ou em massa
+      if (request.body.usuarios && Array.isArray(request.body.usuarios)) {
+        // Cadastro em massa
+        const escolaNome = request.body.escolaNome || 'Escola';
+        const enviarEmails = request.body.enviarEmails !== false; // Default: true
 
-      response.status(201).json({
-        success: true,
-        message: "Usuário cadastrado com sucesso",
-        data: { usuario: usuarioCriado },
-      });
+        const resultado = await this.#usuarioService.criarUsuariosEmMassa(
+          request.body.usuarios,
+          escolaNome,
+          enviarEmails
+        );
+
+        response.status(200).json({
+          success: true,
+          message: 'Processamento em massa concluído',
+          data: resultado
+        });
+      } else {
+        // Cadastro individual
+        const jsonUsuario = request.body.usuario;
+        const usuarioCriado = await this.#usuarioService.createUsuario(jsonUsuario);
+
+        response.status(201).json({
+          success: true,
+          message: "Usuário cadastrado com sucesso",
+          data: { usuario: usuarioCriado },
+        });
+      }
     } catch (error) {
       next(error);
     }

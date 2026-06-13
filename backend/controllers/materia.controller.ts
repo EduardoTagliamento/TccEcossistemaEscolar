@@ -11,6 +11,7 @@ export class MateriaController {
   }
 
   // POST /api/materia
+  // Aceita: { materia: {...} } OU { materias: [...] }
   store = async (
     req: Request,
     res: Response,
@@ -30,6 +31,23 @@ export class MateriaController {
         return;
       }
 
+      // Verificar se é batch (múltiplas matérias) ou individual
+      if (req.body.materias && Array.isArray(req.body.materias)) {
+        // Cadastro em massa
+        const resultado = await this.#materiaService.criarMateriasEmMassa(
+          req.body.materias,
+          usuarioCPF
+        );
+
+        res.status(201).json({
+          success: true,
+          message: "Processamento em massa concluído",
+          data: resultado,
+        });
+        return;
+      }
+
+      // Cadastro individual
       const materia = await this.#materiaService.criarMateria(
         req.body.materia,
         usuarioCPF

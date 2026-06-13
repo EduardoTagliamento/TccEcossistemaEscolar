@@ -8,6 +8,7 @@
 export default class Materia {
   #MateriaGUID!: string;
   #EscolaGUID!: string;
+  #CursoGUID: string | null = null;
   #MateriaNome: string | null = null;
   #MateriaIsTecnico: boolean = false;
   #MateriaStatus: "Ativa" | "Inativa" = "Ativa";
@@ -52,6 +53,29 @@ export default class Materia {
     }
 
     this.#EscolaGUID = guid;
+  }
+
+  // ========== CursoGUID ==========
+  get CursoGUID(): string | null {
+    return this.#CursoGUID;
+  }
+
+  set CursoGUID(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#CursoGUID = null;
+      return;
+    }
+
+    if (typeof value !== "string") {
+      throw new Error("CursoGUID deve ser uma string.");
+    }
+
+    const guid = value.trim();
+    if (guid.length !== 36) {
+      throw new Error("CursoGUID deve ter 36 caracteres.");
+    }
+
+    this.#CursoGUID = guid;
   }
 
   // ========== MateriaNome ==========
