@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { FiHome, FiSettings, FiUsers, FiFileText, FiLogOut, FiBookOpen, FiEdit3, FiCalendar } from 'react-icons/fi';
+import { FiHome, FiSettings, FiUsers, FiFileText, FiLogOut, FiBookOpen, FiEdit3, FiCalendar, FiDatabase } from 'react-icons/fi';
 import styles from './page.module.css';
 
 interface Escola {
@@ -189,6 +189,7 @@ export default function DashboardPage() {
 
   const isProfessor = funcoesEscola.includes(3);
   const isAluno = funcoesEscola.includes(5);
+  const isCoordenacaoOuDirecao = funcoesEscola.includes(1) || funcoesEscola.includes(6);
 
   return (
     <div className={styles.container}>
@@ -245,8 +246,13 @@ export default function DashboardPage() {
           <div className={styles.welcomeSection}>
             <h2>Bem-vindo ao Dashboard</h2>
             <p>Aqui você pode gerenciar todas as atividades da sua escola</p>
-            {(isProfessor || isAluno) && (
+            {(isCoordenacaoOuDirecao || isProfessor || isAluno) && (
               <div className={styles.quickActions}>
+                {isCoordenacaoOuDirecao && (
+                  <Link href={`/dashboard/${escolaGUID}/gestao-dados`} className={styles.quickActionButton}>
+                    <FiDatabase /> Gestão de Dados
+                  </Link>
+                )}
                 {isProfessor && (
                   <>
                     <Link href={`/dashboard/${escolaGUID}/crud-tarefa`} className={styles.quickActionButton}>
