@@ -26,6 +26,7 @@ export default function AlunosPage() {
   const [dadosImportados, setDadosImportados] = useState<DadosPlanilha<any> | null>(null);
   const [processandoBatch, setProcessandoBatch] = useState(false);
   const [resultadoBatch, setResultadoBatch] = useState<AlunoAPI.BatchCreateResponse | null>(null);
+  const [alunoEditando, setAlunoEditando] = useState<AlunoAPI.Aluno | null>(null);
 
   // Estados do formulário
   const [valoresFormulario, setValoresFormulario] = useState<Record<string, any>>({
@@ -168,17 +169,27 @@ export default function AlunosPage() {
       setSalvandoFormulario(true);
       setErroFormulario('');
 
-      await AlunoAPI.criarAluno({
-        UsuarioCPF: valoresFormulario.UsuarioCPF,
-        UsuarioNome: valoresFormulario.UsuarioNome,
-        UsuarioEmail: valoresFormulario.UsuarioEmail,
-        UsuarioTelefone: valoresFormulario.UsuarioTelefone,
-        UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento,
-        TurmaGUID: valoresFormulario.TurmaGUID
-      }, escolaGUID);
+      if (alunoEditando) {
+        // Editar aluno (atualizar matrícula)
+        await AlunoAPI.atualizarMatricula(alunoEditando.matricula.MatriculaGUID, {
+          TurmaGUID: valoresFormulario.TurmaGUID
+        });
+        alert('Aluno atualizado com sucesso!');
+      } else {
+        // Criar novo aluno
+        await AlunoAPI.criarAluno({
+          UsuarioCPF: valoresFormulario.UsuarioCPF,
+          UsuarioNome: valoresFormulario.UsuarioNome,
+          UsuarioEmail: valoresFormulario.UsuarioEmail,
+          UsuarioTelefone: valoresFormulario.UsuarioTelefone,
+          UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento,
+          TurmaGUID: valoresFormulario.TurmaGUID
+        }, escolaGUID);
+        alert('Aluno criado com sucesso! Um email foi enviado com as credenciais de acesso.');
+      }
 
-      alert('Aluno criado com sucesso! Um email foi enviado com as credenciais de acesso.');
       setModalAberto(false);
+      setAlunoEditando(null);
       setValoresFormulario({
         UsuarioCPF: '',
         UsuarioNome: '',
@@ -190,11 +201,24 @@ export default function AlunosPage() {
       carregarDados();
 
     } catch (erro: any) {
-      console.error('Erro ao criar aluno:', erro);
-      setErroFormulario(erro.message || 'Erro ao criar aluno');
+      console.error('Erro ao salvar aluno:', erro);
+      setErroFormulario(erro.message || 'Erro ao salvar aluno');
     } finally {
       setSalvandoFormulario(false);
     }
+  };
+
+  const handleEditar = (aluno: AlunoAPI.Aluno) => {
+    setAlunoEditando(aluno);
+    setValoresFormulario({
+      UsuarioCPF: aluno.usuario.UsuarioCPF,
+      UsuarioNome: aluno.usuario.UsuarioNome,
+      UsuarioEmail: aluno.usuario.UsuarioEmail || '',
+      UsuarioTelefone: aluno.usuario.UsuarioTelefone || '',
+      UsuarioDataNascimento: aluno.usuario.UsuarioDataNascimento || '',
+      TurmaGUID: aluno.matricula.TurmaGUID
+    });
+    setModalAberto(true);
   };
 
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
@@ -238,17 +262,17 @@ export default function AlunosPage() {
   };
 
   const handleExcluir = async (aluno: AlunoAPI.Aluno, index: number) => {
-    if (!confirm(`Tem certeza que deseja cancelar a matrícula de "${aluno.usuario.UsuarioNome}"?`)) {
+    if (!confirm(`Tem certeza que deseja inativar a matrícula de "${aluno.usuario.UsuarioNome}"?`)) {
       return;
     }
 
     try {
-      await AlunoAPI.excluirAluno(aluno.matricula.MatriculaGUID);
-      alert('Matrícula cancelada com sucesso!');
+      await AlunoAPI.atualizarMatricula(aluno.matricula.MatriculaGUID, { MatriculaStatus: 'Cancelada' });
+      alert('Matrícula inativada com sucesso!');
       carregarDados();
     } catch (erro: any) {
-      console.error('Erro ao cancelar matrícula:', erro);
-      alert('Erro ao cancelar matrícula: ' + erro.message);
+      console.error('Erro ao inativar matrícula:', erro);
+      alert('Erro ao inativar matrícula: ' + erro.message);
     }
   };
 
@@ -283,6 +307,7 @@ export default function AlunosPage() {
         colunas={colunas}
         dados={alunos}
         carregando={carregando}
+        onEditar={handleEditar}
         onExcluir={handleExcluir}
         mensagemVazia="Nenhum aluno matriculado. Clique em 'Novo Aluno' ou importe uma planilha."
       />
@@ -292,15 +317,26 @@ export default function AlunosPage() {
         <div className={styles.overlay} onClick={() => setModalAberto(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <BaseFormularioCadastro
-              titulo="Novo Aluno"
+              titulo={alunoEditando ? "Editar Aluno" : "Novo Aluno"}
               campos={camposFormulario}
               valores={valoresFormulario}
               onChange={(campo, valor) => setValoresFormulario({ ...valoresFormulario, [campo]: valor })}
               onSubmit={handleSubmitFormulario}
-              onCancel={() => setModalAberto(false)}
+              onCancel={() => {
+                setModalAberto(false);
+                setAlunoEditando(null);
+                setValoresFormulario({
+                  UsuarioCPF: '',
+                  UsuarioNome: '',
+                  UsuarioEmail: '',
+                  UsuarioTelefone: '',
+                  UsuarioDataNascimento: '',
+                  TurmaGUID: ''
+                });
+              }}
               loading={salvandoFormulario}
               erro={erroFormulario}
-              botaoTexto="Criar Aluno"
+              botaoTexto={alunoEditando ? "Salvar Alterações" : "Criar Aluno"}
             />
           </div>
         </div>

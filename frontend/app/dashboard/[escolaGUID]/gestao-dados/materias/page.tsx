@@ -24,13 +24,13 @@ export default function MateriasPage() {
   const [dadosImportados, setDadosImportados] = useState<DadosPlanilha<any> | null>(null);
   const [processandoBatch, setProcessandoBatch] = useState(false);
   const [resultadoBatch, setResultadoBatch] = useState<MateriaAPI.BatchCreateResponse | null>(null);
+  const [materiaEditando, setMateriaEditando] = useState<MateriaAPI.Materia | null>(null);
 
   // Estados do formulário
   const [valoresFormulario, setValoresFormulario] = useState<Record<string, any>>({
     EscolaGUID: escolaGUID,
     MateriaNome: '',
     MateriaIsTecnica: false,
-    MateriaStatus: 'Ativa',
     CursoGUID: ''
   });
   const [salvandoFormulario, setSalvandoFormulario] = useState(false);
@@ -85,16 +85,6 @@ export default function MateriasPage() {
       label: 'É matéria técnica?',
       tipo: 'checkbox',
       obrigatorio: false
-    },
-    {
-      id: 'MateriaStatus',
-      label: 'Status',
-      tipo: 'select',
-      obrigatorio: true,
-      opcoes: [
-        { valor: 'Ativa', label: 'Ativa' },
-        { valor: 'Inativa', label: 'Inativa' }
-      ]
     }
   ];
 
@@ -149,31 +139,53 @@ export default function MateriasPage() {
       setSalvandoFormulario(true);
       setErroFormulario('');
 
-      await MateriaAPI.criarMateria({
-        EscolaGUID: escolaGUID,
-        MateriaNome: valoresFormulario.MateriaNome,
-        MateriaIsTecnica: valoresFormulario.MateriaIsTecnica,
-        MateriaStatus: valoresFormulario.MateriaStatus,
-        CursoGUID: valoresFormulario.CursoGUID || null
-      });
+      if (materiaEditando) {
+        // Editar matéria existente
+        await MateriaAPI.atualizarMateria(materiaEditando.MateriaGUID, {
+          MateriaNome: valoresFormulario.MateriaNome,
+          MateriaIsTecnica: valoresFormulario.MateriaIsTecnica,
+          CursoGUID: valoresFormulario.CursoGUID || null
+        });
+        alert('Matéria atualizada com sucesso!');
+      } else {
+        // Criar nova matéria
+        await MateriaAPI.criarMateria({
+          EscolaGUID: escolaGUID,
+          MateriaNome: valoresFormulario.MateriaNome,
+          MateriaIsTecnica: valoresFormulario.MateriaIsTecnica,
+          MateriaStatus: 'Ativa',
+          CursoGUID: valoresFormulario.CursoGUID || null
+        });
+        alert('Matéria criada com sucesso!');
+      }
 
-      alert('Matéria criada com sucesso!');
       setModalAberto(false);
+      setMateriaEditando(null);
       setValoresFormulario({
         EscolaGUID: escolaGUID,
         MateriaNome: '',
         MateriaIsTecnica: false,
-        MateriaStatus: 'Ativa',
         CursoGUID: ''
       });
       carregarDados();
 
     } catch (erro: any) {
-      console.error('Erro ao criar matéria:', erro);
-      setErroFormulario(erro.message || 'Erro ao criar matéria');
+      console.error('Erro ao salvar matéria:', erro);
+      setErroFormulario(erro.message || 'Erro ao salvar matéria');
     } finally {
       setSalvandoFormulario(false);
     }
+  };
+
+  const handleEditar = (materia: MateriaAPI.Materia) => {
+    setMateriaEditando(materia);
+    setValoresFormulario({
+      EscolaGUID: escolaGUID,
+      MateriaNome: materia.MateriaNome,
+      MateriaIsTecnica: materia.MateriaIsTecnica,
+      CursoGUID: materia.CursoGUID || ''
+    });
+    setModalAberto(true);
   };
 
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
@@ -212,17 +224,17 @@ export default function MateriasPage() {
   };
 
   const handleExcluir = async (materia: MateriaAPI.Materia, index: number) => {
-    if (!confirm(`Tem certeza que deseja excluir a matéria "${materia.MateriaNome}"?`)) {
+    if (!confirm(`Tem certeza que deseja inativar a matéria "${materia.MateriaNome}"?`)) {
       return;
     }
 
     try {
-      await MateriaAPI.excluirMateria(materia.MateriaGUID);
-      alert('Matéria excluída com sucesso!');
+      await MateriaAPI.atualizarMateria(materia.MateriaGUID, { MateriaStatus: 'Inativa' });
+      alert('Matéria inativada com sucesso!');
       carregarDados();
     } catch (erro: any) {
-      console.error('Erro ao excluir matéria:', erro);
-      alert('Erro ao excluir matéria: ' + erro.message);
+      console.error('Erro ao inativar matéria:', erro);
+      alert('Erro ao inativar matéria: ' + erro.message);
     }
   };
 
@@ -257,6 +269,7 @@ export default function MateriasPage() {
         colunas={colunas}
         dados={materias}
         carregando={carregando}
+        onEditar={handleEditar}
         onExcluir={handleExcluir}
         mensagemVazia="Nenhuma matéria cadastrada. Clique em 'Nova Matéria' ou importe uma planilha."
       />
@@ -266,15 +279,24 @@ export default function MateriasPage() {
         <div className={styles.overlay} onClick={() => setModalAberto(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <BaseFormularioCadastro
-              titulo="Nova Matéria"
+              titulo={materiaEditando ? "Editar Matéria" : "Nova Matéria"}
               campos={camposFormulario}
               valores={valoresFormulario}
               onChange={(campo, valor) => setValoresFormulario({ ...valoresFormulario, [campo]: valor })}
               onSubmit={handleSubmitFormulario}
-              onCancel={() => setModalAberto(false)}
+              onCancel={() => {
+                setModalAberto(false);
+                setMateriaEditando(null);
+                setValoresFormulario({
+                  EscolaGUID: escolaGUID,
+                  MateriaNome: '',
+                  MateriaIsTecnica: false,
+                  CursoGUID: ''
+                });
+              }}
               loading={salvandoFormulario}
               erro={erroFormulario}
-              botaoTexto="Criar Matéria"
+              botaoTexto={materiaEditando ? "Salvar Alterações" : "Criar Matéria"}
             />
           </div>
         </div>

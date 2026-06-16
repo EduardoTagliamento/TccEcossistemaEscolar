@@ -391,3 +391,52 @@ export async function listarTurmas(escolaGUID: string): Promise<Turma[]> {
   const resultado = await response.json();
   return resultado.data;
 }
+
+/**
+ * Atualizar dados básicos do professor (usuário)
+ * 
+ * @param cpf CPF do professor
+ * @param updates Dados a atualizar
+ */
+export async function atualizarProfessor(
+  cpf: string,
+  updates: {
+    UsuarioNome?: string;
+    UsuarioEmail?: string;
+    UsuarioTelefone?: string;
+    UsuarioDataNascimento?: string;
+  }
+): Promise<Usuario> {
+  const response = await fetch(`${API_URL}/api/usuario/${cpf}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ usuario: updates }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao atualizar professor');
+  }
+
+  const resultado = await response.json();
+  return resultado.data.usuario;
+}
+
+/**
+ * Inativar vínculo professor-escola
+ * (Atualiza Status para 'Inativo' na tabela escolaxusuarioxfuncao)
+ * 
+ * @param cpf CPF do professor
+ * @param escolaGUID GUID da escola
+ */
+export async function inativarProfessor(cpf: string, escolaGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/escolaxusuarioxfuncao/${escolaGUID}/${cpf}/3`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao inativar professor');
+  }
+}
