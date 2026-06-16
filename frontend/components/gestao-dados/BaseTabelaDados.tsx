@@ -2,7 +2,7 @@ import React from 'react';
 import styles from './BaseTabelaDados.module.css';
 
 export interface Coluna<T = any> {
-  id: keyof T;
+  id: string; // Alterado de keyof T para string para permitir IDs arbitrários
   label: string;
   width?: string;
   render?: (valor: any, linha: T) => React.ReactNode;
@@ -89,8 +89,8 @@ export default function BaseTabelaDados<T = any>({
                   {colunas.map((coluna) => (
                     <td key={String(coluna.id)}>
                       {coluna.render 
-                        ? coluna.render(linha[coluna.id], linha)
-                        : String(linha[coluna.id] || '-')
+                        ? coluna.render((linha as any)[coluna.id], linha)
+                        : String((linha as any)[coluna.id] || '-')
                       }
                     </td>
                   ))}

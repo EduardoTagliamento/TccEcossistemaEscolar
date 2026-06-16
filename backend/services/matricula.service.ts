@@ -101,6 +101,11 @@ export default class MatriculaService {
    */
   async criarMatricula(data: MatriculaCreateDTO, usuarioCPF: string): Promise<MatriculaDTO> {
     // 1. Validar que turma existe
+    if (!data.TurmaGUID) {
+      throw new ErrorResponse(400, 'TurmaGUID é obrigatório', {
+        message: 'O campo TurmaGUID é obrigatório para criar uma matrícula',
+      });
+    }
     const turma = await this.#turmaDAO.findById(data.TurmaGUID);
     if (!turma) {
       throw new ErrorResponse(404, 'Turma não encontrada', {
@@ -109,6 +114,11 @@ export default class MatriculaService {
     }
 
     // 2. Validar permissão de escrita
+    if (!turma.EscolaGUID) {
+      throw new ErrorResponse(500, 'Turma sem EscolaGUID', {
+        message: 'A turma não possui EscolaGUID associado',
+      });
+    }
     await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
 
     // 3. Validar que usuário (aluno) existe
@@ -487,7 +497,6 @@ export default class MatriculaService {
 
     // 3. Buscar matrículas ativas existentes (para detecção de duplicatas)
     const matriculasAtivas = await this.#matriculaDAO.findAll({
-      EscolaGUID: escolaGUID,
       MatriculaStatus: 'Ativa'
     });
 
@@ -504,7 +513,7 @@ export default class MatriculaService {
 
     for (const dados of matriculas) {
       try {
-        let turmaGUID: string;
+        let turmaGUID: string | undefined;
 
         // Resolver TurmaGUID
         if (dados.TurmaGUID) {
@@ -550,6 +559,16 @@ export default class MatriculaService {
         }
 
         // Verificar se turma existe
+        if (!turmaGUID) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'Erro ao resolver TurmaGUID',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
         const turma = await this.#turmaDAO.findById(turmaGUID);
         if (!turma) {
           resultados.push({

@@ -10,7 +10,7 @@ import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
-import EmailAlunoService from "./email-aluno.service";
+import { EmailAlunoService } from "./email-aluno.service";
 import bcrypt from "bcrypt";
 
 /**
@@ -210,6 +210,11 @@ export default class ProfessorService {
    */
   async criarAlocacao(data: AlocacaoCreateDTO, usuarioCPF: string): Promise<AlocacaoDTO> {
     // 1. Buscar turma
+    if (!data.TurmaGUID) {
+      throw new ErrorResponse(400, 'TurmaGUID é obrigatório', {
+        message: 'O campo TurmaGUID é obrigatório para criar uma alocação',
+      });
+    }
     const turma = await this.#turmaDAO.findById(data.TurmaGUID);
     if (!turma) {
       throw new ErrorResponse(404, 'Turma não encontrada', {
@@ -221,6 +226,11 @@ export default class ProfessorService {
     await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
 
     // 3. Buscar matéria
+    if (!data.MateriaGUID) {
+      throw new ErrorResponse(400, 'MateriaGUID é obrigatório', {
+        message: 'O campo MateriaGUID é obrigatório para criar uma alocação',
+      });
+    }
     const materia = await this.#materiaDAO.findById(data.MateriaGUID);
     if (!materia) {
       throw new ErrorResponse(404, 'Matéria não encontrada', {
@@ -258,8 +268,8 @@ export default class ProfessorService {
 
     // 6. Validar duplicidade
     const existente = await this.#alocacaoDAO.findByMateriaTurmaProfessor(
-      data.MateriaGUID,
-      data.TurmaGUID,
+      data.MateriaGUID!,
+      data.TurmaGUID!,
       data.UsuarioCPF
     );
 
@@ -276,8 +286,8 @@ export default class ProfessorService {
     // 7. Criar alocação
     const alocacao = new MaterialProfessorTurma();
     alocacao.MatProfTurGUID = uuidv4();
-    alocacao.MateriaGUID = data.MateriaGUID;
-    alocacao.TurmaGUID = data.TurmaGUID;
+    alocacao.MateriaGUID = data.MateriaGUID!;
+    alocacao.TurmaGUID = data.TurmaGUID!;
     alocacao.UsuarioCPF = data.UsuarioCPF;
     alocacao.AlocacaoStatus = data.AlocacaoStatus || 'Ativa';
     alocacao.MatProfTurCreatedAt = new Date();
@@ -532,13 +542,10 @@ export default class ProfessorService {
 
         // Vincular como Professor na escola
         const vinculo = new EscolaxUsuarioxFuncao();
-        vinculo.EscolaUsuarioFuncaoGUID = uuidv4();
         vinculo.EscolaGUID = escolaGUID;
         vinculo.UsuarioCPF = cpf;
         vinculo.FuncaoId = 3; // Professor
         vinculo.Status = 'Ativo';
-        vinculo.EscolaUsuarioFuncaoCreatedAt = new Date();
-        vinculo.EscolaUsuarioFuncaoUpdatedAt = new Date();
 
         await this.#escolaxUsuarioxFuncaoDAO.create(vinculo);
 
@@ -557,12 +564,13 @@ export default class ProfessorService {
           criados++;
         }
 
-      } catch (erro: any) {
+      } catch (erro: unknown) {
         console.error('Erro ao processar professor:', erro);
+        const errorMessage = erro instanceof Error ? erro.message : 'Erro ao processar professor';
         resultados.push({
           item: dados,
           sucesso: false,
-          mensagem: erro.message || 'Erro ao processar professor',
+          mensagem: errorMessage,
           tipo: 'erro'
         });
         erros++;
@@ -623,8 +631,10 @@ export default class ProfessorService {
     // Criar mapa de resolução de matérias: "MateriaNome" → MateriaGUID
     const mapaMaterias = new Map<string, string>();
     todasMaterias.forEach(materia => {
-      const chave = materia.MateriaNome.toLowerCase().trim();
-      mapaMaterias.set(chave, materia.MateriaGUID);
+      const chave = (materia.MateriaNome || '').toLowerCase().trim();
+      if (chave) {
+        mapaMaterias.set(chave, materia.MateriaGUID);
+      }
     });
 
     // Criar mapa de resolução de turmas: "serie|nome" → TurmaGUID

@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/auth/AuthContext';
 import '../styles/globals.css';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Bauá - Ecossistema Educacional',
   description: 'Plataforma de gestão educacional integrada',
