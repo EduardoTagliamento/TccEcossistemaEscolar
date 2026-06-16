@@ -22,12 +22,12 @@ export default function CursosPage() {
   const [dadosImportados, setDadosImportados] = useState<DadosPlanilha<any> | null>(null);
   const [processandoBatch, setProcessandoBatch] = useState(false);
   const [resultadoBatch, setResultadoBatch] = useState<CursoAPI.BatchCreateResponse | null>(null);
+  const [cursoEditando, setCursoEditando] = useState<CursoAPI.Curso | null>(null);
 
   // Estados do formulário
   const [valoresFormulario, setValoresFormulario] = useState<Record<string, any>>({
     EscolaGUID: escolaGUID,
-    CursoNome: '',
-    CursoStatus: 'Ativo'
+    CursoNome: ''
   });
   const [salvandoFormulario, setSalvandoFormulario] = useState(false);
   const [erroFormulario, setErroFormulario] = useState('');
@@ -58,16 +58,6 @@ export default function CursosPage() {
       tipo: 'text',
       obrigatorio: true,
       placeholder: 'Ex: Técnico em Informática'
-    },
-    {
-      id: 'CursoStatus',
-      label: 'Status',
-      tipo: 'select',
-      obrigatorio: true,
-      opcoes: [
-        { valor: 'Ativo', label: 'Ativo' },
-        { valor: 'Inativo', label: 'Inativo' }
-      ]
     }
   ];
 
@@ -102,23 +92,42 @@ export default function CursosPage() {
       setSalvandoFormulario(true);
       setErroFormulario('');
 
-      await CursoAPI.criarCurso({
-        EscolaGUID: escolaGUID,
-        CursoNome: valoresFormulario.CursoNome,
-        CursoStatus: valoresFormulario.CursoStatus
-      });
+      if (cursoEditando) {
+        // Editar curso existente
+        await CursoAPI.atualizarCurso(cursoEditando.CursoGUID, {
+          CursoNome: valoresFormulario.CursoNome
+        });
+        alert('Curso atualizado com sucesso!');
+      } else {
+        // Criar novo curso
+        await CursoAPI.criarCurso({
+          EscolaGUID: escolaGUID,
+          CursoNome: valoresFormulario.CursoNome,
+          CursoStatus: 'Ativo'
+        });
+        alert('Curso criado com sucesso!');
+      }
 
-      alert('Curso criado com sucesso!');
       setModalAberto(false);
-      setValoresFormulario({ EscolaGUID: escolaGUID, CursoNome: '', CursoStatus: 'Ativo' });
+      setCursoEditando(null);
+      setValoresFormulario({ EscolaGUID: escolaGUID, CursoNome: '' });
       carregarCursos();
 
     } catch (erro: any) {
-      console.error('Erro ao criar curso:', erro);
-      setErroFormulario(erro.message || 'Erro ao criar curso');
+      console.error('Erro ao salvar curso:', erro);
+      setErroFormulario(erro.message || 'Erro ao salvar curso');
     } finally {
       setSalvandoFormulario(false);
     }
+  };
+
+  const handleEditar = (curso: CursoAPI.Curso) => {
+    setCursoEditando(curso);
+    setValoresFormulario({
+      EscolaGUID: escolaGUID,
+      CursoNome: curso.CursoNome
+    });
+    setModalAberto(true);
   };
 
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
@@ -155,17 +164,17 @@ export default function CursosPage() {
   };
 
   const handleExcluir = async (curso: CursoAPI.Curso, index: number) => {
-    if (!confirm(`Tem certeza que deseja excluir o curso "${curso.CursoNome}"?`)) {
+    if (!confirm(`Tem certeza que deseja inativar o curso "${curso.CursoNome}"?`)) {
       return;
     }
 
     try {
-      await CursoAPI.excluirCurso(curso.CursoGUID);
-      alert('Curso excluído com sucesso!');
+      await CursoAPI.atualizarCurso(curso.CursoGUID, { CursoStatus: 'Inativo' });
+      alert('Curso inativado com sucesso!');
       carregarCursos();
     } catch (erro: any) {
-      console.error('Erro ao excluir curso:', erro);
-      alert('Erro ao excluir curso: ' + erro.message);
+      console.error('Erro ao inativar curso:', erro);
+      alert('Erro ao inativar curso: ' + erro.message);
     }
   };
 
@@ -200,6 +209,7 @@ export default function CursosPage() {
         colunas={colunas}
         dados={cursos}
         carregando={carregando}
+        onEditar={handleEditar}
         onExcluir={handleExcluir}
         mensagemVazia="Nenhum curso cadastrado. Clique em 'Novo Curso' ou importe uma planilha."
       />
@@ -209,15 +219,19 @@ export default function CursosPage() {
         <div className={styles.overlay} onClick={() => setModalAberto(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <BaseFormularioCadastro
-              titulo="Novo Curso"
+              titulo={cursoEditando ? "Editar Curso" : "Novo Curso"}
               campos={camposFormulario}
               valores={valoresFormulario}
               onChange={(campo, valor) => setValoresFormulario({ ...valoresFormulario, [campo]: valor })}
               onSubmit={handleSubmitFormulario}
-              onCancel={() => setModalAberto(false)}
+              onCancel={() => {
+                setModalAberto(false);
+                setCursoEditando(null);
+                setValoresFormulario({ EscolaGUID: escolaGUID, CursoNome: '' });
+              }}
               loading={salvandoFormulario}
               erro={erroFormulario}
-              botaoTexto="Criar Curso"
+              botaoTexto={cursoEditando ? "Salvar Alterações" : "Criar Curso"}
             />
           </div>
         </div>

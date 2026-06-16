@@ -24,6 +24,7 @@ export default function TurmasPage() {
   const [dadosImportados, setDadosImportados] = useState<DadosPlanilha<any> | null>(null);
   const [processandoBatch, setProcessandoBatch] = useState(false);
   const [resultadoBatch, setResultadoBatch] = useState<TurmaAPI.BatchCreateResponse | null>(null);
+  const [turmaEditando, setTurmaEditando] = useState<TurmaAPI.Turma | null>(null);
 
   // Estados do formulário
   const [valoresFormulario, setValoresFormulario] = useState<Record<string, any>>({
@@ -31,7 +32,6 @@ export default function TurmasPage() {
     TurmaSerie: '',
     TurmaNome: '',
     TurmaIsTecnico: false,
-    TurmaStatus: 'Ativa',
     CursoGUID: ''
   });
   const [salvandoFormulario, setSalvandoFormulario] = useState(false);
@@ -93,17 +93,6 @@ export default function TurmasPage() {
       label: 'É turma técnica?',
       tipo: 'checkbox',
       obrigatorio: false
-    },
-    {
-      id: 'TurmaStatus',
-      label: 'Status',
-      tipo: 'select',
-      obrigatorio: true,
-      opcoes: [
-        { valor: 'Ativa', label: 'Ativa' },
-        { valor: 'Inativa', label: 'Inativa' },
-        { valor: 'Encerrada', label: 'Encerrada' }
-      ]
     }
   ];
 
@@ -164,33 +153,57 @@ export default function TurmasPage() {
       setSalvandoFormulario(true);
       setErroFormulario('');
 
-      await TurmaAPI.criarTurma({
-        EscolaGUID: escolaGUID,
-        TurmaSerie: valoresFormulario.TurmaSerie,
-        TurmaNome: valoresFormulario.TurmaNome,
-        TurmaIsTecnico: valoresFormulario.TurmaIsTecnico,
-        TurmaStatus: valoresFormulario.TurmaStatus,
-        CursoGUID: valoresFormulario.CursoGUID || null
-      });
+      if (turmaEditando) {
+        // Editar turma existente
+        await TurmaAPI.atualizarTurma(turmaEditando.TurmaGUID, {
+          TurmaSerie: valoresFormulario.TurmaSerie,
+          TurmaNome: valoresFormulario.TurmaNome,
+          TurmaIsTecnico: valoresFormulario.TurmaIsTecnico,
+          CursoGUID: valoresFormulario.CursoGUID || null
+        });
+        alert('Turma atualizada com sucesso!');
+      } else {
+        // Criar nova turma
+        await TurmaAPI.criarTurma({
+          EscolaGUID: escolaGUID,
+          TurmaSerie: valoresFormulario.TurmaSerie,
+          TurmaNome: valoresFormulario.TurmaNome,
+          TurmaIsTecnico: valoresFormulario.TurmaIsTecnico,
+          TurmaStatus: 'Ativa',
+          CursoGUID: valoresFormulario.CursoGUID || null
+        });
+        alert('Turma criada com sucesso!');
+      }
 
-      alert('Turma criada com sucesso!');
       setModalAberto(false);
+      setTurmaEditando(null);
       setValoresFormulario({
         EscolaGUID: escolaGUID,
         TurmaSerie: '',
         TurmaNome: '',
         TurmaIsTecnico: false,
-        TurmaStatus: 'Ativa',
         CursoGUID: ''
       });
       carregarDados();
 
     } catch (erro: any) {
-      console.error('Erro ao criar turma:', erro);
-      setErroFormulario(erro.message || 'Erro ao criar turma');
+      console.error('Erro ao salvar turma:', erro);
+      setErroFormulario(erro.message || 'Erro ao salvar turma');
     } finally {
       setSalvandoFormulario(false);
     }
+  };
+
+  const handleEditar = (turma: TurmaAPI.Turma) => {
+    setTurmaEditando(turma);
+    setValoresFormulario({
+      EscolaGUID: escolaGUID,
+      TurmaSerie: turma.TurmaSerie,
+      TurmaNome: turma.TurmaNome,
+      TurmaIsTecnico: turma.TurmaIsTecnico,
+      CursoGUID: turma.CursoGUID || ''
+    });
+    setModalAberto(true);
   };
 
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
@@ -230,17 +243,17 @@ export default function TurmasPage() {
   };
 
   const handleExcluir = async (turma: TurmaAPI.Turma, index: number) => {
-    if (!confirm(`Tem certeza que deseja excluir a turma "${turma.TurmaSerie} ${turma.TurmaNome}"?`)) {
+    if (!confirm(`Tem certeza que deseja inativar a turma "${turma.TurmaSerie} ${turma.TurmaNome}"?`)) {
       return;
     }
 
     try {
-      await TurmaAPI.excluirTurma(turma.TurmaGUID);
-      alert('Turma excluída com sucesso!');
+      await TurmaAPI.atualizarTurma(turma.TurmaGUID, { TurmaStatus: 'Inativa' });
+      alert('Turma inativada com sucesso!');
       carregarDados();
     } catch (erro: any) {
-      console.error('Erro ao excluir turma:', erro);
-      alert('Erro ao excluir turma: ' + erro.message);
+      console.error('Erro ao inativar turma:', erro);
+      alert('Erro ao inativar turma: ' + erro.message);
     }
   };
 
@@ -275,6 +288,7 @@ export default function TurmasPage() {
         colunas={colunas}
         dados={turmas}
         carregando={carregando}
+        onEditar={handleEditar}
         onExcluir={handleExcluir}
         mensagemVazia="Nenhuma turma cadastrada. Clique em 'Nova Turma' ou importe uma planilha."
       />
@@ -284,15 +298,25 @@ export default function TurmasPage() {
         <div className={styles.overlay} onClick={() => setModalAberto(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <BaseFormularioCadastro
-              titulo="Nova Turma"
+              titulo={turmaEditando ? "Editar Turma" : "Nova Turma"}
               campos={camposFormulario}
               valores={valoresFormulario}
               onChange={(campo, valor) => setValoresFormulario({ ...valoresFormulario, [campo]: valor })}
               onSubmit={handleSubmitFormulario}
-              onCancel={() => setModalAberto(false)}
+              onCancel={() => {
+                setModalAberto(false);
+                setTurmaEditando(null);
+                setValoresFormulario({
+                  EscolaGUID: escolaGUID,
+                  TurmaSerie: '',
+                  TurmaNome: '',
+                  TurmaIsTecnico: false,
+                  CursoGUID: ''
+                });
+              }}
               loading={salvandoFormulario}
               erro={erroFormulario}
-              botaoTexto="Criar Turma"
+              botaoTexto={turmaEditando ? "Salvar Alterações" : "Criar Turma"}
             />
           </div>
         </div>

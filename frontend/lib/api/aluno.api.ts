@@ -353,3 +353,36 @@ export async function excluirAluno(matriculaGUID: string): Promise<void> {
     throw erro;
   }
 }
+
+/**
+ * Atualizar matrícula do aluno (ex: trocar turma)
+ */
+export async function atualizarMatricula(
+  matriculaGUID: string,
+  updates: {
+    TurmaGUID?: string;
+    MatriculaStatus?: 'Ativa' | 'Transferida' | 'Concluida' | 'Cancelada';
+  }
+): Promise<Matricula> {
+  try {
+    const response = await fetch(`${API_URL}/api/matricula/${matriculaGUID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getAuthToken()}`
+      },
+      body: JSON.stringify({ matricula: updates })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Erro ao atualizar matrícula');
+    }
+
+    const data = await response.json();
+    return data.data;
+  } catch (erro: any) {
+    console.error('Erro ao atualizar matrícula:', erro);
+    throw erro;
+  }
+}

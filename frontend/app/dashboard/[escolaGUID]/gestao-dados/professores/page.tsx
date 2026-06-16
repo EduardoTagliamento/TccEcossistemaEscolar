@@ -26,6 +26,7 @@ export default function ProfessoresPage() {
   const [dadosImportados, setDadosImportados] = useState<DadosPlanilha<any> | null>(null);
   const [processandoBatch, setProcessandoBatch] = useState(false);
   const [resultadoBatch, setResultadoBatch] = useState<ProfessorAPI.BatchCreateResponse | null>(null);
+  const [professorEditando, setProfessorEditando] = useState<ProfessorAPI.Professor | null>(null);
 
   // Estados do formulário
   const [valoresFormulario, setValoresFormulario] = useState<Record<string, any>>({
@@ -163,18 +164,31 @@ export default function ProfessoresPage() {
       setSalvandoFormulario(true);
       setErroFormulario('');
 
-      await ProfessorAPI.criarProfessor({
-        UsuarioCPF: valoresFormulario.UsuarioCPF,
-        UsuarioNome: valoresFormulario.UsuarioNome,
-        UsuarioEmail: valoresFormulario.UsuarioEmail,
-        UsuarioTelefone: valoresFormulario.UsuarioTelefone,
-        UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento,
-        Materias: valoresFormulario.Materias,
-        Turmas: valoresFormulario.Turmas
-      }, escolaGUID, escola?.EscolaNome || 'Escola');
+      if (professorEditando) {
+        // Editar professor existente
+        await ProfessorAPI.atualizarProfessor(professorEditando.UsuarioCPF, {
+          UsuarioNome: valoresFormulario.UsuarioNome,
+          UsuarioEmail: valoresFormulario.UsuarioEmail,
+          UsuarioTelefone: valoresFormulario.UsuarioTelefone,
+          UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento
+        });
+        alert('Professor atualizado com sucesso!');
+      } else {
+        // Criar novo professor
+        await ProfessorAPI.criarProfessor({
+          UsuarioCPF: valoresFormulario.UsuarioCPF,
+          UsuarioNome: valoresFormulario.UsuarioNome,
+          UsuarioEmail: valoresFormulario.UsuarioEmail,
+          UsuarioTelefone: valoresFormulario.UsuarioTelefone,
+          UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento,
+          Materias: valoresFormulario.Materias,
+          Turmas: valoresFormulario.Turmas
+        }, escolaGUID, escola?.EscolaNome || 'Escola');
+        alert('Professor criado com sucesso! Um email foi enviado com as credenciais de acesso.');
+      }
 
-      alert('Professor criado com sucesso! Um email foi enviado com as credenciais de acesso.');
       setModalAberto(false);
+      setProfessorEditando(null);
       setValoresFormulario({
         UsuarioCPF: '',
         UsuarioNome: '',
@@ -187,10 +201,39 @@ export default function ProfessoresPage() {
       carregarDados();
 
     } catch (erro: any) {
-      console.error('Erro ao criar professor:', erro);
-      setErroFormulario(erro.message || 'Erro ao criar professor');
+      console.error('Erro ao salvar professor:', erro);
+      setErroFormulario(erro.message || 'Erro ao salvar professor');
     } finally {
       setSalvandoFormulario(false);
+    }
+  };
+
+  const handleEditar = (professor: ProfessorAPI.Professor) => {
+    setProfessorEditando(professor);
+    setValoresFormulario({
+      UsuarioCPF: professor.UsuarioCPF,
+      UsuarioNome: professor.UsuarioNome,
+      UsuarioEmail: professor.UsuarioEmail || '',
+      UsuarioTelefone: professor.UsuarioTelefone || '',
+      UsuarioDataNascimento: professor.UsuarioDataNascimento || '',
+      Materias: '',
+      Turmas: ''
+    });
+    setModalAberto(true);
+  };
+
+  const handleExcluir = async (professor: ProfessorAPI.Professor, index: number) => {
+    if (!confirm(`Tem certeza que deseja inativar o professor "${professor.UsuarioNome}"?`)) {
+      return;
+    }
+
+    try {
+      await ProfessorAPI.inativarProfessor(professor.UsuarioCPF, escolaGUID);
+      alert('Professor inativado com sucesso!');
+      carregarDados();
+    } catch (erro: any) {
+      console.error('Erro ao inativar professor:', erro);
+      alert('Erro ao inativar professor: ' + erro.message);
     }
   };
 
@@ -266,6 +309,8 @@ export default function ProfessoresPage() {
         colunas={colunas}
         dados={professores}
         carregando={carregando}
+        onEditar={handleEditar}
+        onExcluir={handleExcluir}
         mensagemVazia="Nenhum professor cadastrado. Clique em 'Novo Professor' ou importe uma planilha."
       />
 
@@ -274,15 +319,27 @@ export default function ProfessoresPage() {
         <div className={styles.overlay} onClick={() => setModalAberto(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <BaseFormularioCadastro
-              titulo="Novo Professor"
+              titulo={professorEditando ? "Editar Professor" : "Novo Professor"}
               campos={camposFormulario}
               valores={valoresFormulario}
               onChange={(campo, valor) => setValoresFormulario({ ...valoresFormulario, [campo]: valor })}
               onSubmit={handleSubmitFormulario}
-              onCancel={() => setModalAberto(false)}
+              onCancel={() => {
+                setModalAberto(false);
+                setProfessorEditando(null);
+                setValoresFormulario({
+                  UsuarioCPF: '',
+                  UsuarioNome: '',
+                  UsuarioEmail: '',
+                  UsuarioTelefone: '',
+                  UsuarioDataNascimento: '',
+                  Materias: '',
+                  Turmas: ''
+                });
+              }}
               loading={salvandoFormulario}
               erro={erroFormulario}
-              botaoTexto="Criar Professor"
+              botaoTexto={professorEditando ? "Salvar Alterações" : "Criar Professor"}
             />
             <div className={styles.ajuda}>
               <p><strong>💡 Dica:</strong> Você pode deixar Matérias e Turmas em branco e adicioná-las depois.</p>
