@@ -10,7 +10,7 @@ export default class Materia {
   #EscolaGUID!: string;
   #CursoGUID: string | null = null;
   #MateriaNome: string | null = null;
-  #MateriaIsTecnico: boolean = false;
+  #MateriaIsTecnica: boolean = false;
   #MateriaStatus: "Ativa" | "Inativa" = "Ativa";
   #MateriaCreatedAt: Date | null = null;
   #MateriaUpdatedAt: Date | null = null;
@@ -104,16 +104,16 @@ export default class Materia {
     this.#MateriaNome = nome;
   }
 
-  // ========== MateriaIsTecnico ==========
-  get MateriaIsTecnico(): boolean {
-    return this.#MateriaIsTecnico;
+  // ========== MateriaIsTecnica ==========
+  get MateriaIsTecnica(): boolean {
+    return this.#MateriaIsTecnica;
   }
 
-  set MateriaIsTecnico(value: boolean) {
+  set MateriaIsTecnica(value: boolean) {
     if (typeof value !== "boolean") {
-      throw new Error("MateriaIsTecnico deve ser um booleano.");
+      throw new Error("MateriaIsTecnica deve ser um booleano.");
     }
-    this.#MateriaIsTecnico = value;
+    this.#MateriaIsTecnica = value;
   }
 
   // ========== MateriaStatus ==========

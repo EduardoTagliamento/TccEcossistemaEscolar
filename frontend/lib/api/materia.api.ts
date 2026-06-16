@@ -26,7 +26,7 @@ export interface Materia {
   EscolaGUID: string;
   CursoGUID: string | null;
   MateriaNome: string;
-  MateriaIsTecnico: boolean;
+  MateriaIsTecnica: boolean;
   MateriaStatus: 'Ativa' | 'Inativa';
   MateriaCreatedAt: Date | string;
   MateriaUpdatedAt: Date | string;
@@ -37,7 +37,7 @@ export interface MateriaCreateDTO {
   CursoGUID?: string | null;
   CursoNome?: string; // Para resolução nome → GUID
   MateriaNome: string;
-  MateriaIsTecnico: boolean;
+  MateriaIsTecnica: boolean;
   MateriaStatus?: 'Ativa' | 'Inativa';
 }
 
@@ -105,7 +105,7 @@ export async function criarMateriasEmMassa(materias: MateriaCreateDTO[]): Promis
 export async function listarMaterias(filters?: {
   EscolaGUID?: string;
   MateriaStatus?: 'Ativa' | 'Inativa';
-  MateriaIsTecnico?: boolean;
+  MateriaIsTecnica?: boolean;
 }): Promise<{ materias: Materia[]; total: number }> {
   const params = new URLSearchParams();
   
@@ -117,8 +117,8 @@ export async function listarMaterias(filters?: {
     params.append('MateriaStatus', filters.MateriaStatus);
   }
 
-  if (filters?.MateriaIsTecnico !== undefined) {
-    params.append('MateriaIsTecnico', String(filters.MateriaIsTecnico));
+  if (filters?.MateriaIsTecnica !== undefined) {
+    params.append('MateriaIsTecnica', String(filters.MateriaIsTecnica));
   }
 
   const response = await fetch(`${API_URL}/materia?${params}`, {
@@ -164,7 +164,7 @@ export async function atualizarMateria(
   updates: {
     MateriaNome?: string;
     MateriaStatus?: 'Ativa' | 'Inativa';
-    MateriaIsTecnico?: boolean;
+    MateriaIsTecnica?: boolean;
     CursoGUID?: string | null;
   }
 ): Promise<Materia> {

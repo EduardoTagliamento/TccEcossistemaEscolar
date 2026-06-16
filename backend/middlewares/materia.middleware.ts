@@ -16,7 +16,7 @@ export class MateriaMiddleware {
       );
     }
 
-    const { EscolaGUID, MateriaNome, MateriaIsTecnico } = materia;
+    const { EscolaGUID, MateriaNome, MateriaIsTecnica } = materia;
 
     // Validar EscolaGUID
     if (!EscolaGUID || typeof EscolaGUID !== "string") {
@@ -55,11 +55,11 @@ export class MateriaMiddleware {
       );
     }
 
-    // Validar MateriaIsTecnico
-    if (typeof MateriaIsTecnico !== "boolean") {
+    // Validar MateriaIsTecnica
+    if (typeof MateriaIsTecnica !== "boolean") {
       return next(
-        new ErrorResponse(400, "MateriaIsTecnico inválido", {
-          message: "MateriaIsTecnico é obrigatório e deve ser um booleano",
+        new ErrorResponse(400, "MateriaIsTecnica inválido", {
+          message: "MateriaIsTecnica é obrigatório e deve ser um booleano",
         })
       );
     }

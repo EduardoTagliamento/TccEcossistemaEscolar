@@ -29,7 +29,7 @@ export default function MateriasPage() {
   const [valoresFormulario, setValoresFormulario] = useState<Record<string, any>>({
     EscolaGUID: escolaGUID,
     MateriaNome: '',
-    MateriaIsTecnico: false,
+    MateriaIsTecnica: false,
     MateriaStatus: 'Ativa',
     CursoGUID: ''
   });
@@ -81,7 +81,7 @@ export default function MateriasPage() {
       ]
     },
     {
-      id: 'MateriaIsTecnico',
+      id: 'MateriaIsTecnica',
       label: 'É matéria técnica?',
       tipo: 'checkbox',
       obrigatorio: false
@@ -116,7 +116,7 @@ export default function MateriasPage() {
       }
     },
     {
-      id: 'MateriaIsTecnico',
+      id: 'MateriaIsTecnica',
       label: 'Técnica',
       width: '10%',
       render: (valor: any) => (
@@ -152,7 +152,7 @@ export default function MateriasPage() {
       await MateriaAPI.criarMateria({
         EscolaGUID: escolaGUID,
         MateriaNome: valoresFormulario.MateriaNome,
-        MateriaIsTecnico: valoresFormulario.MateriaIsTecnico,
+        MateriaIsTecnica: valoresFormulario.MateriaIsTecnica,
         MateriaStatus: valoresFormulario.MateriaStatus,
         CursoGUID: valoresFormulario.CursoGUID || null
       });
@@ -162,7 +162,7 @@ export default function MateriasPage() {
       setValoresFormulario({
         EscolaGUID: escolaGUID,
         MateriaNome: '',
-        MateriaIsTecnico: false,
+        MateriaIsTecnica: false,
         MateriaStatus: 'Ativa',
         CursoGUID: ''
       });
@@ -192,7 +192,7 @@ export default function MateriasPage() {
         EscolaGUID: escolaGUID,
         MateriaNome: linha['Nome da Matéria'] || linha.MateriaNome || linha.nome,
         CursoNome: linha['Nome do Curso'] || linha.CursoNome || undefined,
-        MateriaIsTecnico: linha['É Técnica?'] === 'Sim' || linha.MateriaIsTecnico === true || false,
+        MateriaIsTecnica: linha['É Técnica?'] === 'Sim' || linha.MateriaIsTecnica === true || false,
         MateriaStatus: 'Ativa'
       }));
 
