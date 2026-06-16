@@ -5,7 +5,7 @@ interface MateriaRow {
   MateriaGUID: string;
   EscolaGUID: string;
   MateriaNome: string;
-  MateriaIsTecnico: boolean;
+  MateriaIsTecnica: boolean;
   MateriaStatus: "Ativa" | "Inativa";
   MateriaCreatedAt: Date;
   MateriaUpdatedAt: Date;
@@ -14,7 +14,7 @@ interface MateriaRow {
 export interface MateriaFilters {
   EscolaGUID?: string;
   MateriaStatus?: "Ativa" | "Inativa";
-  MateriaIsTecnico?: boolean;
+  MateriaIsTecnica?: boolean;
 }
 
 export class MateriaDAO {
@@ -30,14 +30,14 @@ export class MateriaDAO {
 
     const SQL = `
       INSERT INTO materia
-      (MateriaGUID, EscolaGUID, MateriaNome, MateriaIsTecnico, MateriaStatus)
+      (MateriaGUID, EscolaGUID, MateriaNome, MateriaIsTecnica, MateriaStatus)
       VALUES (?, ?, ?, ?, ?);
     `;
     const params = [
       materia.MateriaGUID,
       materia.EscolaGUID,
       materia.MateriaNome,
-      materia.MateriaIsTecnico,
+      materia.MateriaIsTecnica,
       materia.MateriaStatus,
     ];
 
@@ -64,9 +64,9 @@ export class MateriaDAO {
       params.push(filters.MateriaStatus);
     }
 
-    if (filters.MateriaIsTecnico !== undefined) {
-      conditions.push("MateriaIsTecnico = ?");
-      params.push(filters.MateriaIsTecnico);
+    if (filters.MateriaIsTecnica !== undefined) {
+      conditions.push("MateriaIsTecnica = ?");
+      params.push(filters.MateriaIsTecnica);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -115,14 +115,14 @@ export class MateriaDAO {
     const SQL = `
       UPDATE materia
       SET MateriaNome = ?, 
-          MateriaIsTecnico = ?, 
+          MateriaIsTecnica = ?, 
           MateriaStatus = ?,
           MateriaUpdatedAt = CURRENT_TIMESTAMP
       WHERE MateriaGUID = ?
     `;
     const params = [
       materia.MateriaNome,
-      materia.MateriaIsTecnico,
+      materia.MateriaIsTecnica,
       materia.MateriaStatus,
       materiaGUID,
     ];
@@ -173,7 +173,7 @@ export class MateriaDAO {
       materia.MateriaGUID = row.MateriaGUID;
       materia.EscolaGUID = row.EscolaGUID;
       materia.MateriaNome = row.MateriaNome;
-      materia.MateriaIsTecnico = Boolean(row.MateriaIsTecnico);
+      materia.MateriaIsTecnica = Boolean(row.MateriaIsTecnica);
       materia.MateriaStatus = row.MateriaStatus;
       materia.MateriaCreatedAt = new Date(row.MateriaCreatedAt);
       materia.MateriaUpdatedAt = new Date(row.MateriaUpdatedAt);

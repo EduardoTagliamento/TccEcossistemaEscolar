@@ -76,10 +76,10 @@ export class MateriaController {
       const filters: MateriaFilters = {
         EscolaGUID: req.query.EscolaGUID as string | undefined,
         MateriaStatus: req.query.MateriaStatus as "Ativa" | "Inativa" | undefined,
-        MateriaIsTecnico:
-          req.query.MateriaIsTecnico === "true"
+        MateriaIsTecnica:
+          req.query.MateriaIsTecnica === "true"
             ? true
-            : req.query.MateriaIsTecnico === "false"
+            : req.query.MateriaIsTecnica === "false"
             ? false
             : undefined,
       };

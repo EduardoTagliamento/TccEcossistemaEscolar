@@ -15,7 +15,6 @@ interface Modulo {
   nome: string;
   descricao: string;
   icone: string;
-  fase: number;
   contador?: number;
 }
 
@@ -23,11 +22,11 @@ export default function GestaoDadosPage() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
   const [modulos, setModulos] = useState<Modulo[]>([
-    { id: 'cursos', nome: 'Cursos', descricao: 'Gerencie cursos técnicos', icone: '🎓', fase: 1 },
-    { id: 'materias', nome: 'Matérias', descricao: 'Gerencie disciplinas', icone: '📚', fase: 2 },
-    { id: 'turmas', nome: 'Turmas', descricao: 'Gerencie turmas/classes', icone: '🏫', fase: 3 },
-    { id: 'alunos', nome: 'Alunos', descricao: 'Gerencie matrículas', icone: '👨‍🎓', fase: 4 },
-    { id: 'professores', nome: 'Professores', descricao: 'Gerencie corpo docente', icone: '👩‍🏫', fase: 5 },
+    { id: 'cursos', nome: 'Cursos', descricao: 'Gerencie cursos técnicos', icone: '🎓' },
+    { id: 'materias', nome: 'Matérias', descricao: 'Gerencie disciplinas', icone: '📚' },
+    { id: 'turmas', nome: 'Turmas', descricao: 'Gerencie turmas/classes', icone: '🏫' },
+    { id: 'alunos', nome: 'Alunos', descricao: 'Gerencie matrículas', icone: '👨‍🎓' },
+    { id: 'professores', nome: 'Professores', descricao: 'Gerencie corpo docente', icone: '👩‍🏫' },
   ]);
   const [loading, setLoading] = useState(true);
 
@@ -98,7 +97,6 @@ export default function GestaoDadosPage() {
               href={`/dashboard/${escolaGUID}/gestao-dados/${modulo.id}`}
               className={styles.card}
             >
-              <span className={styles.fase}>Fase {modulo.fase}</span>
               <div className={styles.icone}>{modulo.icone}</div>
               <h2 className={styles.cardTitulo}>{modulo.nome}</h2>
               <p className={styles.cardDescricao}>{modulo.descricao}</p>

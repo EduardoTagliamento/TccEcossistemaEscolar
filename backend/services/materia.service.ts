@@ -11,7 +11,7 @@ export interface MateriaDTO {
   EscolaGUID: string;
   CursoGUID: string | null;
   MateriaNome: string;
-  MateriaIsTecnico: boolean;
+  MateriaIsTecnica: boolean;
   MateriaStatus: "Ativa" | "Inativa";
   MateriaCreatedAt: string;
   MateriaUpdatedAt: string;
@@ -22,13 +22,13 @@ export interface MateriaCreateDTO {
   CursoGUID?: string | null;
   CursoNome?: string; // Para resolução nome → GUID
   MateriaNome: string;
-  MateriaIsTecnico: boolean;
+  MateriaIsTecnica: boolean;
   MateriaStatus?: "Ativa" | "Inativa";
 }
 
 export interface MateriaUpdateDTO {
   MateriaNome?: string;
-  MateriaIsTecnico?: boolean;
+  MateriaIsTecnica?: boolean;
   MateriaStatus?: "Ativa" | "Inativa";
   CursoGUID?: string | null;
 }
@@ -98,7 +98,7 @@ export default class MateriaService {
     }
 
     // 4. Validar se matéria técnica requer escola técnica
-    if (data.MateriaIsTecnico && !escola.EscolaIsTecnica) {
+    if (data.MateriaIsTecnica && !escola.EscolaIsTecnica) {
       throw new ErrorResponse(400, "Matéria técnica só pode ser criada em escola técnica", {
         message:
           "Esta escola não está marcada como técnica. Para criar matérias técnicas, atualize a configuração da escola.",
@@ -122,7 +122,7 @@ export default class MateriaService {
     materia.EscolaGUID = data.EscolaGUID;
     materia.CursoGUID = cursoGUID;
     materia.MateriaNome = data.MateriaNome.trim();
-    materia.MateriaIsTecnico = data.MateriaIsTecnico;
+    materia.MateriaIsTecnica = data.MateriaIsTecnica;
     materia.MateriaStatus = data.MateriaStatus || "Ativa";
     materia.MateriaCreatedAt = new Date();
     materia.MateriaUpdatedAt = new Date();
@@ -224,7 +224,7 @@ export default class MateriaService {
         }
 
         // Validar matéria técnica
-        if (materiaDados.MateriaIsTecnico && !escola.EscolaIsTecnica) {
+        if (materiaDados.MateriaIsTecnica && !escola.EscolaIsTecnica) {
           erros++;
           resultados.push({
             item: materiaDados,
@@ -241,7 +241,7 @@ export default class MateriaService {
         materia.EscolaGUID = escolaGUID;
         materia.CursoGUID = cursoGUID;
         materia.MateriaNome = nomeNormalizado;
-        materia.MateriaIsTecnico = materiaDados.MateriaIsTecnico;
+        materia.MateriaIsTecnica = materiaDados.MateriaIsTecnica;
         materia.MateriaStatus = materiaDados.MateriaStatus || 'Ativa';
         materia.MateriaCreatedAt = new Date();
         materia.MateriaUpdatedAt = new Date();
@@ -333,7 +333,7 @@ export default class MateriaService {
     }
 
     // 4. Se mudou para técnica, validar escola técnica
-    if (data.MateriaIsTecnico !== undefined && data.MateriaIsTecnico) {
+    if (data.MateriaIsTecnica !== undefined && data.MateriaIsTecnica) {
       const escola = await this.#escolaDAO.findById(materiaExistente.EscolaGUID);
       if (!escola?.EscolaIsTecnica) {
         throw new ErrorResponse(400, "Escola não é técnica", {
@@ -348,10 +348,10 @@ export default class MateriaService {
     materiaAtualizada.EscolaGUID = materiaExistente.EscolaGUID;
     materiaAtualizada.MateriaNome =
       data.MateriaNome !== undefined ? data.MateriaNome.trim() : materiaExistente.MateriaNome;
-    materiaAtualizada.MateriaIsTecnico =
-      data.MateriaIsTecnico !== undefined
-        ? data.MateriaIsTecnico
-        : materiaExistente.MateriaIsTecnico;
+    materiaAtualizada.MateriaIsTecnica =
+      data.MateriaIsTecnica !== undefined
+        ? data.MateriaIsTecnica
+        : materiaExistente.MateriaIsTecnica;
     materiaAtualizada.MateriaStatus =
       data.MateriaStatus !== undefined ? data.MateriaStatus : materiaExistente.MateriaStatus;
 
@@ -425,7 +425,7 @@ export default class MateriaService {
       EscolaGUID: materia.EscolaGUID,
       CursoGUID: materia.CursoGUID,
       MateriaNome: materia.MateriaNome || "",
-      MateriaIsTecnico: materia.MateriaIsTecnico,
+      MateriaIsTecnica: materia.MateriaIsTecnica,
       MateriaStatus: materia.MateriaStatus,
       MateriaCreatedAt: materia.MateriaCreatedAt
         ? materia.MateriaCreatedAt.toISOString()
