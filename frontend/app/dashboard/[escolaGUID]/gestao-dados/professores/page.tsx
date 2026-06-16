@@ -13,7 +13,7 @@ import * as EscolaAPI from '@/lib/api/escola.api';
 
 export default function ProfessoresPage() {
   const params = useParams();
-  const escolaGUID = params.escolaGUID as string;
+  const escolaGUID = (params?.escolaGUID as string) || '';
 
   // Estados
   const [professores, setProfessores] = useState<ProfessorAPI.Professor[]>([]);

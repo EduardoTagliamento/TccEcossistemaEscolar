@@ -4,11 +4,11 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from './page.module.css';
-import { CursoAPI } from '@/lib/api/curso.api';
-import { MateriaAPI } from '@/lib/api/materia.api';
-import { TurmaAPI } from '@/lib/api/turma.api';
-import { AlunoAPI } from '@/lib/api/aluno.api';
-import { ProfessorAPI } from '@/lib/api/professor.api';
+import * as CursoAPI from '@/lib/api/curso.api';
+import * as MateriaAPI from '@/lib/api/materia.api';
+import * as TurmaAPI from '@/lib/api/turma.api';
+import * as AlunoAPI from '@/lib/api/aluno.api';
+import * as ProfessorAPI from '@/lib/api/professor.api';
 
 interface Modulo {
   id: string;
@@ -21,7 +21,7 @@ interface Modulo {
 
 export default function GestaoDadosPage() {
   const params = useParams();
-  const escolaGUID = params.escolaGUID as string;
+  const escolaGUID = (params?.escolaGUID as string) || '';
   const [modulos, setModulos] = useState<Modulo[]>([
     { id: 'cursos', nome: 'Cursos', descricao: 'Gerencie cursos técnicos', icone: '🎓', fase: 1 },
     { id: 'materias', nome: 'Matérias', descricao: 'Gerencie disciplinas', icone: '📚', fase: 2 },
@@ -43,26 +43,26 @@ export default function GestaoDadosPage() {
       
       // Buscar contadores em paralelo
       const [cursosRes, materiasRes, turmasRes, alunosRes, professoresRes] = await Promise.all([
-        CursoAPI.listarCursos(escolaGUID).catch(() => ({ data: [] })),
-        MateriaAPI.listarMaterias(escolaGUID).catch(() => ({ data: [] })),
-        TurmaAPI.listarTurmas(escolaGUID).catch(() => ({ data: [] })),
-        AlunoAPI.listarAlunos(escolaGUID).catch(() => ({ data: [] })),
-        ProfessorAPI.listarProfessores(escolaGUID).catch(() => ({ data: [] })),
+        CursoAPI.listarCursos({ EscolaGUID: escolaGUID }).catch(() => ({ cursos: [], total: 0 })),
+        MateriaAPI.listarMaterias({ EscolaGUID: escolaGUID }).catch(() => ({ materias: [], total: 0 })),
+        TurmaAPI.listarTurmas({ EscolaGUID: escolaGUID }).catch(() => ({ turmas: [], total: 0 })),
+        AlunoAPI.listarAlunos({ EscolaGUID: escolaGUID }).catch(() => ({ alunos: [], total: 0 })),
+        ProfessorAPI.listarProfessores({ EscolaGUID: escolaGUID }).catch(() => ({ professores: [], total: 0 })),
       ]);
 
       // Atualizar módulos com contadores
       setModulos(prev => prev.map(modulo => {
         switch (modulo.id) {
           case 'cursos':
-            return { ...modulo, contador: cursosRes.data?.length || 0 };
+            return { ...modulo, contador: cursosRes.cursos?.length || 0 };
           case 'materias':
-            return { ...modulo, contador: materiasRes.data?.length || 0 };
+            return { ...modulo, contador: materiasRes.materias?.length || 0 };
           case 'turmas':
-            return { ...modulo, contador: turmasRes.data?.length || 0 };
+            return { ...modulo, contador: turmasRes.turmas?.length || 0 };
           case 'alunos':
-            return { ...modulo, contador: alunosRes.data?.length || 0 };
+            return { ...modulo, contador: alunosRes.alunos?.length || 0 };
           case 'professores':
-            return { ...modulo, contador: professoresRes.data?.length || 0 };
+            return { ...modulo, contador: professoresRes.professores?.length || 0 };
           default:
             return modulo;
         }

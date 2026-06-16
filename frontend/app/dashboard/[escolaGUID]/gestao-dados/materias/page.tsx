@@ -13,7 +13,7 @@ import * as CursoAPI from '@/lib/api/curso.api';
 
 export default function MateriasPage() {
   const params = useParams();
-  const escolaGUID = params.escolaGUID as string;
+  const escolaGUID = (params?.escolaGUID as string) || '';
 
   // Estados
   const [materias, setMaterias] = useState<MateriaAPI.Materia[]>([]);

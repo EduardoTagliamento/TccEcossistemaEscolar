@@ -12,7 +12,7 @@ import * as CursoAPI from '@/lib/api/curso.api';
 
 export default function CursosPage() {
   const params = useParams();
-  const escolaGUID = params.escolaGUID as string;
+  const escolaGUID = (params?.escolaGUID as string) || '';
 
   // Estados
   const [cursos, setCursos] = useState<CursoAPI.Curso[]>([]);

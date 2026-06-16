@@ -6,6 +6,9 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   
+  // Desabilitar static export para evitar problemas com contexto em páginas de erro
+  output: 'standalone',
+  
   // Proxy para backend durante desenvolvimento
   async rewrites() {
     return [
