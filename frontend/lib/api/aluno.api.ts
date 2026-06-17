@@ -76,7 +76,7 @@ export interface BatchCreateResponse {
 
 function getAuthToken(): string {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('token') || '';
+    return localStorage.getItem('@baua:token') || '';
   }
   return '';
 }
