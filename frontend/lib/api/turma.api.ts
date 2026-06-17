@@ -13,10 +13,16 @@ function getToken(): string {
 
 // Helper: headers padrão
 function getHeaders(): HeadersInit {
-  return {
+  const token = getToken();
+  const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${getToken()}`
   };
+  
+  if (token && token.trim() !== '') {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
 }
 
 // ==================== TYPES ====================

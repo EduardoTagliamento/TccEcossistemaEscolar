@@ -48,6 +48,12 @@ export class AuthMiddleware {
 
       const token = parts[1];
 
+      if (!token || token.trim() === '') {
+        throw new ErrorResponse(401, 'Token vazio', {
+          message: 'O token não pode estar vazio',
+        });
+      }
+
       // 3. Verificar e decodificar token
       const decoded = JwtService.verifyToken(token);
 
