@@ -26,7 +26,7 @@ export class TurmaController {
    */
   store = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       // Verificar se é batch (múltiplas turmas) ou individual
       if (req.body.turmas && Array.isArray(req.body.turmas)) {
@@ -171,7 +171,7 @@ export class TurmaController {
     try {
       const { guid } = req.params;
       const { turma } = req.body;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       const turmaDTO: TurmaUpdateDTO = {
         TurmaSerie: turma.TurmaSerie,
@@ -215,7 +215,7 @@ export class TurmaController {
   destroy = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       await this.#turmaService.excluirTurma(guid, usuarioCPF);
 

@@ -28,6 +28,26 @@
   gap: 1rem;
 }
 
+.botaoVoltar {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  font-size: 1rem;
+  background: #6c757d;
+  color: white;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.botaoVoltar:hover {
+  background: #5a6268;
+}
+
 .botaoNovo,
 .botaoUpload {
   padding: 0.75rem 1.5rem;

@@ -35,7 +35,7 @@ export default class MatriculaController {
    */
   store = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       // Detectar se é cadastro individual ou em massa
       if (req.body.matriculas && Array.isArray(req.body.matriculas)) {
@@ -112,7 +112,7 @@ export default class MatriculaController {
   transferir = async (req: Request, res: Response): Promise<void> => {
     try {
       const { transferencia } = req.body;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       const transferenciaData: TransferenciaDTO = {
         UsuarioCPF: transferencia.UsuarioCPF,
@@ -237,7 +237,7 @@ export default class MatriculaController {
     try {
       const { guid } = req.params;
       const { matricula } = req.body;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       const updateData: MatriculaUpdateDTO = {};
 
@@ -290,7 +290,7 @@ export default class MatriculaController {
   destroy = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       await this.#matriculaService.excluirMatricula(guid, usuarioCPF);
 

@@ -32,7 +32,7 @@ export class CursoController {
   store = async (req: Request, res: Response): Promise<void> => {
     try {
       const { curso, cursos } = req.body;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       // Cadastro em massa
       if (cursos && Array.isArray(cursos)) {
@@ -178,7 +178,7 @@ export class CursoController {
     try {
       const { guid } = req.params;
       const { curso } = req.body;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       const cursoDTO: CursoUpdateDTO = {
         CursoNome: curso.CursoNome,
@@ -219,7 +219,7 @@ export class CursoController {
   destroy = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       await this.#cursoService.excluirCurso(guid, usuarioCPF);
 
