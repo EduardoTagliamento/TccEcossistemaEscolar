@@ -161,7 +161,7 @@ export default class ProfessorController {
   criarAlocacao = async (req: Request, res: Response): Promise<void> => {
     try {
       const body = req.body;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       // Detectar se é batch ou individual
       if (Array.isArray(body.alocacoes)) {
@@ -311,7 +311,7 @@ export default class ProfessorController {
     try {
       const { guid } = req.params;
       const { alocacao } = req.body;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       const updateData: AlocacaoUpdateDTO = {
         AlocacaoStatus: alocacao.AlocacaoStatus,
@@ -352,7 +352,7 @@ export default class ProfessorController {
   excluirAlocacao = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = (req as any).usuario.cpf;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
 
       await this.#professorService.excluirAlocacao(guid, usuarioCPF);
 
