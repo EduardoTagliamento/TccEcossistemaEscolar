@@ -12,6 +12,7 @@ import ErrorResponse from "../utils/ErrorResponse";
 export class CursoMiddleware {
   /**
    * Valida body para criação de curso (POST)
+   * Aceita tanto cadastro individual quanto em massa
    */
   static validarCriacao = (
     req: Request,
@@ -19,8 +20,18 @@ export class CursoMiddleware {
     next: NextFunction
   ): void => {
     try {
-      const { curso } = req.body;
+      const { curso, cursos } = req.body;
 
+      // Se for cadastro em massa, pular validação detalhada (controller valida)
+      if (cursos && Array.isArray(cursos)) {
+        if (cursos.length === 0) {
+          throw new ErrorResponse(400, 'Array "cursos" não pode estar vazio');
+        }
+        next();
+        return;
+      }
+
+      // Validação para cadastro individual
       if (!curso || typeof curso !== "object") {
         throw new ErrorResponse(
           400,
