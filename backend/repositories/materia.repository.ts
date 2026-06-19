@@ -4,6 +4,7 @@ import Materia from "../entities/materia.model";
 interface MateriaRow {
   MateriaGUID: string;
   EscolaGUID: string;
+  CursoGUID: string | null;
   MateriaNome: string;
   MateriaIsTecnica: boolean;
   MateriaStatus: "Ativa" | "Inativa";
@@ -85,17 +86,7 @@ export class MateriaDAO {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(SQL, params);
 
-    console.log('🐛 [DEBUG DAO] Rows do banco (findById):', JSON.stringify(rows, null, 2));
-
     const materias = this.mapRows(rows as MateriaRow[]);
-    
-    console.log('🐛 [DEBUG DAO] Materia após mapRows:', materias[0] ? JSON.stringify({
-      MateriaGUID: materias[0].MateriaGUID,
-      MateriaNome: materias[0].MateriaNome,
-      MateriaIsTecnica: materias[0].MateriaIsTecnica,
-      CursoGUID: materias[0].CursoGUID
-    }, null, 2) : 'null');
-    
     return materias[0] || null;
   };
 
@@ -121,12 +112,6 @@ export class MateriaDAO {
 
   update = async (materiaGUID: string, materia: Partial<Materia>): Promise<Materia | null> => {
     console.log("🟢 MateriaDAO.update()");
-    console.log('🐛 [DEBUG DAO] materia recebido:', JSON.stringify({
-      MateriaNome: materia.MateriaNome,
-      MateriaIsTecnica: materia.MateriaIsTecnica,
-      MateriaStatus: materia.MateriaStatus,
-      CursoGUID: materia.CursoGUID
-    }, null, 2));
 
     const SQL = `
       UPDATE materia
@@ -145,13 +130,8 @@ export class MateriaDAO {
       materiaGUID,
     ];
 
-    console.log('🐛 [DEBUG DAO] Params para SQL:', params);
-    console.log('🐛 [DEBUG DAO] SQL:', SQL);
-
     const pool = await this.#database.getPool();
     const [resultado] = await pool.execute(SQL, params);
-    
-    console.log('🐛 [DEBUG DAO] affectedRows:', (resultado as { affectedRows: number }).affectedRows);
 
     if ((resultado as { affectedRows: number }).affectedRows > 0) {
       return await this.findById(materiaGUID);
@@ -195,6 +175,7 @@ export class MateriaDAO {
       const materia = new Materia();
       materia.MateriaGUID = row.MateriaGUID;
       materia.EscolaGUID = row.EscolaGUID;
+      materia.CursoGUID = row.CursoGUID;
       materia.MateriaNome = row.MateriaNome;
       materia.MateriaIsTecnica = Boolean(row.MateriaIsTecnica);
       materia.MateriaStatus = row.MateriaStatus;
