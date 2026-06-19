@@ -255,7 +255,20 @@ export default function TurmasPage() {
       alert('Erro ao inativar turma: ' + erro.message);
     }
   };
+  const handleReativar = async (turma: TurmaAPI.Turma, index: number) => {
+    if (!confirm(`Tem certeza que deseja reativar a turma "${turma.TurmaNome}"?`)) {
+      return;
+    }
 
+    try {
+      await TurmaAPI.atualizarTurma(turma.TurmaGUID, { TurmaStatus: 'Ativa' });
+      alert('Turma reativada com sucesso!');
+      carregarDados();
+    } catch (erro: any) {
+      console.error('Erro ao reativar turma:', erro);
+      alert('Erro ao reativar turma: ' + erro.message);
+    }
+  };
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -291,8 +304,34 @@ export default function TurmasPage() {
         colunas={colunas}
         dados={turmas}
         carregando={carregando}
-        onEditar={handleEditar}
-        onExcluir={handleExcluir}
+        acoes={(turma, index) => (
+          <>
+            <button
+              onClick={() => handleEditar(turma)}
+              className={styles.botaoEditar}
+              title="Editar"
+            >
+              ✏️
+            </button>
+            {turma.TurmaStatus === 'Ativa' ? (
+              <button
+                onClick={() => handleExcluir(turma, index)}
+                className={styles.botaoExcluir}
+                title="Inativar"
+              >
+                🗑️
+              </button>
+            ) : (
+              <button
+                onClick={() => handleReativar(turma, index)}
+                className={styles.botaoReativar}
+                title="Reativar"
+              >
+                ✅
+              </button>
+            )}
+          </>
+        )}
         mensagemVazia="Nenhuma turma cadastrada. Clique em 'Nova Turma' ou importe uma planilha."
       />
 

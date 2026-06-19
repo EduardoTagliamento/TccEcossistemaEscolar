@@ -236,6 +236,21 @@ export default function ProfessoresPage() {
     }
   };
 
+  const handleReativar = async (professor: ProfessorAPI.Professor, index: number) => {
+    if (!confirm(`Tem certeza que deseja reativar o professor "${professor.UsuarioNome}"?`)) {
+      return;
+    }
+
+    try {
+      await ProfessorAPI.reativarProfessor(professor.UsuarioCPF);
+      alert('Professor reativado com sucesso!');
+      carregarDados();
+    } catch (erro: any) {
+      console.error('Erro ao reativar professor:', erro);
+      alert('Erro ao reativar professor: ' + erro.message);
+    }
+  };
+
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
     console.log('Dados carregados:', dados);
     setDadosImportados(dados);
@@ -312,8 +327,34 @@ export default function ProfessoresPage() {
         colunas={colunas}
         dados={professores}
         carregando={carregando}
-        onEditar={handleEditar}
-        onExcluir={handleExcluir}
+        acoes={(professor, index) => (
+          <>
+            <button
+              onClick={() => handleEditar(professor)}
+              className={styles.botaoEditar}
+              title="Editar"
+            >
+              ✏️
+            </button>
+            {professor.UsuarioStatus === 'Ativo' ? (
+              <button
+                onClick={() => handleExcluir(professor, index)}
+                className={styles.botaoExcluir}
+                title="Inativar"
+              >
+                🗑️
+              </button>
+            ) : (
+              <button
+                onClick={() => handleReativar(professor, index)}
+                className={styles.botaoReativar}
+                title="Reativar"
+              >
+                ✅
+              </button>
+            )}
+          </>
+        )}
         mensagemVazia="Nenhum professor cadastrado. Clique em 'Novo Professor' ou importe uma planilha."
       />
 
