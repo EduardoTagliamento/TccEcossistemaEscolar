@@ -1,7 +1,9 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';import Link from 'next/link';import styles from '../page.module.css';
+import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import styles from '../page.module.css';
 
 import BaseFormularioCadastro, { CampoFormulario } from '@/components/gestao-dados/BaseFormularioCadastro';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
@@ -58,34 +60,42 @@ export default function MateriasPage() {
   };
 
   // Definir campos do formulário
-  const camposFormulario: CampoFormulario[] = [
-    {
-      id: 'MateriaNome',
-      label: 'Nome da Matéria',
-      tipo: 'text',
-      obrigatorio: true,
-      placeholder: 'Ex: Matemática, Português, Algoritmos'
-    },
-    {
-      id: 'CursoGUID',
-      label: 'Curso (opcional)',
-      tipo: 'select',
-      obrigatorio: false,
-      opcoes: [
-        { valor: '', label: 'Nenhum curso' },
-        ...cursos.map(curso => ({
-          valor: curso.CursoGUID,
-          label: curso.CursoNome
-        }))
-      ]
-    },
-    {
-      id: 'MateriaIsTecnica',
-      label: 'É matéria técnica?',
-      tipo: 'checkbox',
-      obrigatorio: false
+  const camposFormulario: CampoFormulario[] = useMemo(() => {
+    const campos: CampoFormulario[] = [
+      {
+        id: 'MateriaNome',
+        label: 'Nome da Matéria',
+        tipo: 'text',
+        obrigatorio: true,
+        placeholder: 'Ex: Matemática, Português, Algoritmos'
+      },
+      {
+        id: 'MateriaIsTecnica',
+        label: 'É matéria técnica?',
+        tipo: 'checkbox',
+        obrigatorio: false
+      }
+    ];
+
+    // Só mostrar campo de curso se for matéria técnica
+    if (valoresFormulario.MateriaIsTecnica) {
+      campos.push({
+        id: 'CursoGUID',
+        label: 'Curso (opcional)',
+        tipo: 'select',
+        obrigatorio: false,
+        opcoes: [
+          { valor: '', label: 'Nenhum curso' },
+          ...cursos.map(curso => ({
+            valor: curso.CursoGUID,
+            label: curso.CursoNome
+          }))
+        ]
+      });
     }
-  ];
+
+    return campos;
+  }, [cursos, valoresFormulario.MateriaIsTecnica]);
 
   // Definir colunas da tabela
   const colunas: Coluna<MateriaAPI.Materia>[] = [
