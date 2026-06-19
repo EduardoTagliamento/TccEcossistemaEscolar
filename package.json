@@ -11,6 +11,7 @@
     "prebuild": "npm run clean",
     "prod": "npm run build && npm start",
     "cleanup:verification": "tsx backend/scripts/cleanupVerificacaoEmail.ts",
+    "criar-modelos": "node scripts/criar-modelos-excel.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
