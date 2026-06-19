@@ -117,6 +117,7 @@ export class MateriaDAO {
       SET MateriaNome = ?, 
           MateriaIsTecnica = ?, 
           MateriaStatus = ?,
+          CursoGUID = ?,
           MateriaUpdatedAt = CURRENT_TIMESTAMP
       WHERE MateriaGUID = ?
     `;
@@ -124,6 +125,7 @@ export class MateriaDAO {
       materia.MateriaNome,
       materia.MateriaIsTecnica,
       materia.MateriaStatus,
+      materia.CursoGUID,
       materiaGUID,
     ];
 
