@@ -343,9 +343,6 @@ export default class MateriaService {
     }
 
     // 5. Preparar dados para atualização
-    console.log('🐛 [DEBUG] data recebido:', JSON.stringify(data, null, 2));
-    console.log('🐛 [DEBUG] materiaExistente.CursoGUID:', materiaExistente.CursoGUID);
-    
     const materiaAtualizada = new Materia();
     materiaAtualizada.MateriaGUID = guid;
     materiaAtualizada.EscolaGUID = materiaExistente.EscolaGUID;
@@ -359,15 +356,6 @@ export default class MateriaService {
       data.MateriaStatus !== undefined ? data.MateriaStatus : materiaExistente.MateriaStatus;
     materiaAtualizada.CursoGUID =
       data.CursoGUID !== undefined ? data.CursoGUID : materiaExistente.CursoGUID;
-
-    console.log('🐛 [DEBUG] materiaAtualizada.CursoGUID final:', materiaAtualizada.CursoGUID);
-    console.log('🐛 [DEBUG] Objeto completo materiaAtualizada:', JSON.stringify({
-      MateriaGUID: materiaAtualizada.MateriaGUID,
-      MateriaNome: materiaAtualizada.MateriaNome,
-      MateriaIsTecnica: materiaAtualizada.MateriaIsTecnica,
-      MateriaStatus: materiaAtualizada.MateriaStatus,
-      CursoGUID: materiaAtualizada.CursoGUID
-    }, null, 2));
 
     // 6. Atualizar
     const resultado = await this.#materiaDAO.update(guid, materiaAtualizada);

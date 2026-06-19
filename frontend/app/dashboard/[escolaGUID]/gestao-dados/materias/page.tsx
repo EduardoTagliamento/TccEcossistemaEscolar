@@ -49,11 +49,6 @@ export default function MateriasPage() {
         MateriaAPI.listarMaterias({ EscolaGUID: escolaGUID }),
         CursoAPI.listarCursos({ EscolaGUID: escolaGUID })
       ]);
-      
-      console.log('🐛 [DEBUG UI] Matérias carregadas:', resultadoMaterias.materias);
-      console.log('🐛 [DEBUG UI] Cursos carregados:', resultadoCursos.cursos);
-      console.log('🐛 [DEBUG UI] Primeira matéria CursoGUID:', resultadoMaterias.materias[0]?.CursoGUID);
-      
       setMaterias(resultadoMaterias.materias);
       setCursos(resultadoCursos.cursos);
     } catch (erro: any) {
@@ -114,18 +109,11 @@ export default function MateriasPage() {
       label: 'Curso',
       width: '30%',
       render: (valor: any, materia: MateriaAPI.Materia) => {
-        console.log('🐛 [DEBUG UI] Renderizando curso para matéria:', materia.MateriaNome);
-        console.log('🐛 [DEBUG UI] CursoGUID:', valor);
-        console.log('🐛 [DEBUG UI] Tipo de CursoGUID:', typeof valor);
-        console.log('🐛 [DEBUG UI] Lista de cursos disponíveis:', cursos.map(c => ({ guid: c.CursoGUID, nome: c.CursoNome })));
-        
         if (!valor || valor === '') {
           return <span className={styles.textoSecundario}>Sem curso</span>;
         }
         
         const curso = cursos.find(c => c.CursoGUID === valor);
-        console.log('🐛 [DEBUG UI] Curso encontrado:', curso);
-        
         return curso?.CursoNome || <span className={styles.textoSecundario}>Curso não encontrado</span>;
       }
     },
