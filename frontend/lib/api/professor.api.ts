@@ -440,3 +440,22 @@ export async function inativarProfessor(cpf: string, escolaGUID: string): Promis
     throw new Error(error.message || 'Erro ao inativar professor');
   }
 }
+
+/**
+ * Reativar professor
+ * (Atualiza UsuarioStatus para 'Ativo')
+ * 
+ * @param cpf CPF do professor
+ */
+export async function reativarProfessor(cpf: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/usuario/${cpf}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ usuario: { UsuarioStatus: 'Ativo' } }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao reativar professor');
+  }
+}

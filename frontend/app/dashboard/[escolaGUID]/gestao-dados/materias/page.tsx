@@ -237,6 +237,21 @@ export default function MateriasPage() {
     }
   };
 
+  const handleReativar = async (materia: MateriaAPI.Materia, index: number) => {
+    if (!confirm(`Tem certeza que deseja reativar a matéria "${materia.MateriaNome}"?`)) {
+      return;
+    }
+
+    try {
+      await MateriaAPI.atualizarMateria(materia.MateriaGUID, { MateriaStatus: 'Ativa' });
+      alert('Matéria reativada com sucesso!');
+      carregarDados();
+    } catch (erro: any) {
+      console.error('Erro ao reativar matéria:', erro);
+      alert('Erro ao reativar matéria: ' + erro.message);
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -274,8 +289,34 @@ export default function MateriasPage() {
         colunas={colunas}
         dados={materias}
         carregando={carregando}
-        onEditar={handleEditar}
-        onExcluir={handleExcluir}
+        acoes={(materia, index) => (
+          <>
+            <button
+              onClick={() => handleEditar(materia)}
+              className={styles.botaoEditar}
+              title="Editar"
+            >
+              ✏️
+            </button>
+            {materia.MateriaStatus === 'Ativa' ? (
+              <button
+                onClick={() => handleExcluir(materia, index)}
+                className={styles.botaoExcluir}
+                title="Inativar"
+              >
+                🗑️
+              </button>
+            ) : (
+              <button
+                onClick={() => handleReativar(materia, index)}
+                className={styles.botaoReativar}
+                title="Reativar"
+              >
+                ✅
+              </button>
+            )}
+          </>
+        )}
         mensagemVazia="Nenhuma matéria cadastrada. Clique em 'Nova Matéria' ou importe uma planilha."
       />
 

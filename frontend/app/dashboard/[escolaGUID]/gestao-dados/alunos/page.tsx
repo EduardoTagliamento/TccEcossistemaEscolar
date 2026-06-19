@@ -274,7 +274,20 @@ export default function AlunosPage() {
       alert('Erro ao inativar matrícula: ' + erro.message);
     }
   };
+  const handleReativar = async (aluno: AlunoAPI.Aluno, index: number) => {
+    if (!confirm(`Tem certeza que deseja reativar a matrícula de "${aluno.usuario.UsuarioNome}"?`)) {
+      return;
+    }
 
+    try {
+      await AlunoAPI.atualizarMatricula(aluno.matricula.MatriculaGUID, { MatriculaStatus: 'Ativa' });
+      alert('Matrícula reativada com sucesso!');
+      carregarDados();
+    } catch (erro: any) {
+      console.error('Erro ao reativar matrícula:', erro);
+      alert('Erro ao reativar matrícula: ' + erro.message);
+    }
+  };
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -310,8 +323,34 @@ export default function AlunosPage() {
         colunas={colunas}
         dados={alunos}
         carregando={carregando}
-        onEditar={handleEditar}
-        onExcluir={handleExcluir}
+        acoes={(aluno, index) => (
+          <>
+            <button
+              onClick={() => handleEditar(aluno)}
+              className={styles.botaoEditar}
+              title="Editar"
+            >
+              ✏️
+            </button>
+            {aluno.matricula.MatriculaStatus === 'Ativa' ? (
+              <button
+                onClick={() => handleExcluir(aluno, index)}
+                className={styles.botaoExcluir}
+                title="Cancelar Matrícula"
+              >
+                🗑️
+              </button>
+            ) : (
+              <button
+                onClick={() => handleReativar(aluno, index)}
+                className={styles.botaoReativar}
+                title="Reativar Matrícula"
+              >
+                ✅
+              </button>
+            )}
+          </>
+        )}
         mensagemVazia="Nenhum aluno matriculado. Clique em 'Novo Aluno' ou importe uma planilha."
       />
 

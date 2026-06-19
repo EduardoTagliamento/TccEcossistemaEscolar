@@ -178,7 +178,20 @@ export default function CursosPage() {
       alert('Erro ao inativar curso: ' + erro.message);
     }
   };
+  const handleReativar = async (curso: CursoAPI.Curso, index: number) => {
+    if (!confirm(`Tem certeza que deseja reativar o curso "${curso.CursoNome}"?`)) {
+      return;
+    }
 
+    try {
+      await CursoAPI.atualizarCurso(curso.CursoGUID, { CursoStatus: 'Ativo' });
+      alert('Curso reativado com sucesso!');
+      carregarCursos();
+    } catch (erro: any) {
+      console.error('Erro ao reativar curso:', erro);
+      alert('Erro ao reativar curso: ' + erro.message);
+    }
+  };
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -216,8 +229,34 @@ export default function CursosPage() {
         colunas={colunas}
         dados={cursos}
         carregando={carregando}
-        onEditar={handleEditar}
-        onExcluir={handleExcluir}
+        acoes={(curso, index) => (
+          <>
+            <button
+              onClick={() => handleEditar(curso)}
+              className={styles.botaoEditar}
+              title="Editar"
+            >
+              ✏️
+            </button>
+            {curso.CursoStatus === 'Ativo' ? (
+              <button
+                onClick={() => handleExcluir(curso, index)}
+                className={styles.botaoExcluir}
+                title="Inativar"
+              >
+                🗑️
+              </button>
+            ) : (
+              <button
+                onClick={() => handleReativar(curso, index)}
+                className={styles.botaoReativar}
+                title="Reativar"
+              >
+                ✅
+              </button>
+            )}
+          </>
+        )}
         mensagemVazia="Nenhum curso cadastrado. Clique em 'Novo Curso' ou importe uma planilha."
       />
 
