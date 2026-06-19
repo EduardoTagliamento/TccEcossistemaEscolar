@@ -1,7 +1,9 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';import Link from 'next/link';import styles from '../page.module.css';
+import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import styles from '../page.module.css';
 
 import BaseFormularioCadastro, { CampoFormulario } from '@/components/gestao-dados/BaseFormularioCadastro';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
@@ -59,41 +61,49 @@ export default function TurmasPage() {
   };
 
   // Definir campos do formulário
-  const camposFormulario: CampoFormulario[] = [
-    {
-      id: 'TurmaSerie',
-      label: 'Série',
-      tipo: 'text',
-      obrigatorio: true,
-      placeholder: 'Ex: 1º Ano, 2º Ano, 3º Ano'
-    },
-    {
-      id: 'TurmaNome',
-      label: 'Nome da Turma',
-      tipo: 'text',
-      obrigatorio: true,
-      placeholder: 'Ex: A, B, Matutino, Noturno'
-    },
-    {
-      id: 'CursoGUID',
-      label: 'Curso (opcional)',
-      tipo: 'select',
-      obrigatorio: false,
-      opcoes: [
-        { valor: '', label: 'Nenhum curso' },
-        ...cursos.map(curso => ({
-          valor: curso.CursoGUID,
-          label: curso.CursoNome
-        }))
-      ]
-    },
-    {
-      id: 'TurmaIsTecnico',
-      label: 'É turma técnica?',
-      tipo: 'checkbox',
-      obrigatorio: false
+  const camposFormulario: CampoFormulario[] = useMemo(() => {
+    const campos: CampoFormulario[] = [
+      {
+        id: 'TurmaSerie',
+        label: 'Série',
+        tipo: 'text',
+        obrigatorio: true,
+        placeholder: 'Ex: 1º Ano, 2º Ano, 3º Ano'
+      },
+      {
+        id: 'TurmaNome',
+        label: 'Nome da Turma',
+        tipo: 'text',
+        obrigatorio: true,
+        placeholder: 'Ex: A, B, Matutino, Noturno'
+      },
+      {
+        id: 'TurmaIsTecnico',
+        label: 'É turma técnica?',
+        tipo: 'checkbox',
+        obrigatorio: false
+      }
+    ];
+
+    // Só mostrar campo de curso se for turma técnica
+    if (valoresFormulario.TurmaIsTecnico) {
+      campos.push({
+        id: 'CursoGUID',
+        label: 'Curso (opcional)',
+        tipo: 'select',
+        obrigatorio: false,
+        opcoes: [
+          { valor: '', label: 'Nenhum curso' },
+          ...cursos.map(curso => ({
+            valor: curso.CursoGUID,
+            label: curso.CursoNome
+          }))
+        ]
+      });
     }
-  ];
+
+    return campos;
+  }, [cursos, valoresFormulario.TurmaIsTecnico]);
 
   // Definir colunas da tabela
   const colunas: Coluna<TurmaAPI.Turma>[] = [
