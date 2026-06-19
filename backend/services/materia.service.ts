@@ -354,6 +354,8 @@ export default class MateriaService {
         : materiaExistente.MateriaIsTecnica;
     materiaAtualizada.MateriaStatus =
       data.MateriaStatus !== undefined ? data.MateriaStatus : materiaExistente.MateriaStatus;
+    materiaAtualizada.CursoGUID =
+      data.CursoGUID !== undefined ? data.CursoGUID : materiaExistente.CursoGUID;
 
     // 6. Atualizar
     const resultado = await this.#materiaDAO.update(guid, materiaAtualizada);
