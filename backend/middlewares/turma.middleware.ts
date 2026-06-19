@@ -13,6 +13,7 @@ import ErrorResponse from "../utils/ErrorResponse";
 export class TurmaMiddleware {
   /**
    * Valida body para criação de turma (POST)
+   * Aceita tanto cadastro individual quanto em massa
    */
   static validarCriacao = (
     req: Request,
@@ -20,8 +21,18 @@ export class TurmaMiddleware {
     next: NextFunction
   ): void => {
     try {
-      const { turma } = req.body;
+      const { turma, turmas } = req.body;
 
+      // Se for cadastro em massa, pular validação detalhada (controller valida)
+      if (turmas && Array.isArray(turmas)) {
+        if (turmas.length === 0) {
+          throw new ErrorResponse(400, 'Array "turmas" não pode estar vazio');
+        }
+        next();
+        return;
+      }
+
+      // Validação para cadastro individual
       if (!turma || typeof turma !== "object") {
         throw new ErrorResponse(
           400,

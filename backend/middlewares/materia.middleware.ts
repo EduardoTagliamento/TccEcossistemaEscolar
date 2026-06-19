@@ -3,11 +3,25 @@ import ErrorResponse from "../utils/ErrorResponse";
 
 export class MateriaMiddleware {
   // Validar body do POST (criar matéria)
+  // Aceita tanto cadastro individual quanto em massa
   static validarCriacao = (req: Request, res: Response, next: NextFunction) => {
     console.log("🟡 MateriaMiddleware.validarCriacao()");
 
-    const { materia } = req.body;
+    const { materia, materias } = req.body;
 
+    // Se for cadastro em massa, pular validação detalhada (controller valida)
+    if (materias && Array.isArray(materias)) {
+      if (materias.length === 0) {
+        return next(
+          new ErrorResponse(400, "Dados inválidos", {
+            message: 'Array "materias" não pode estar vazio',
+          })
+        );
+      }
+      return next();
+    }
+
+    // Validação para cadastro individual
     if (!materia) {
       return next(
         new ErrorResponse(400, "Dados inválidos", {
