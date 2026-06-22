@@ -6,6 +6,18 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
+function getToken(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem('@baua:token') || '';
+}
+
+function getHeaders(): HeadersInit {
+  const token = getToken();
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
+
 export interface Escola {
   EscolaGUID: string;
   EscolaNome: string;
@@ -21,18 +33,9 @@ export interface Escola {
  * Buscar escola por GUID
  */
 export async function buscarEscola(escolaGUID: string): Promise<{ escola: Escola }> {
-  const token = localStorage.getItem('token');
-  
-  if (!token) {
-    throw new Error('Token não encontrado. Faça login novamente.');
-  }
-
   const response = await fetch(`${API_URL}/api/escola/${escolaGUID}`, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
@@ -50,12 +53,6 @@ export async function buscarEscola(escolaGUID: string): Promise<{ escola: Escola
 export async function listarEscolas(filtros?: {
   EscolaStatus?: string;
 }): Promise<{ escolas: Escola[]; total: number }> {
-  const token = localStorage.getItem('token');
-  
-  if (!token) {
-    throw new Error('Token não encontrado. Faça login novamente.');
-  }
-
   const params = new URLSearchParams();
   if (filtros?.EscolaStatus) {
     params.append('EscolaStatus', filtros.EscolaStatus);
@@ -65,10 +62,7 @@ export async function listarEscolas(filtros?: {
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
+    headers: getHeaders(),
   });
 
   if (!response.ok) {
