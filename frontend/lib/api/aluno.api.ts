@@ -5,7 +5,7 @@
  * o gerenciamento de alunos no frontend.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 // ===== INTERFACES =====
 
@@ -89,7 +89,7 @@ function getAuthToken(): string {
 export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string): Promise<Aluno> {
   try {
     // 1. Criar usuário
-    const responseUsuario = await fetch(`${API_URL}/api/usuario`, {
+    const responseUsuario = await fetch(`${API_URL}/usuario`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string): Pro
     const dataUsuario = await responseUsuario.json();
 
     // 2. Criar matrícula
-    const responseMatricula = await fetch(`${API_URL}/api/matricula`, {
+    const responseMatricula = await fetch(`${API_URL}/matricula`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -159,7 +159,7 @@ export async function criarAlunosEmMassa(
 ): Promise<BatchCreateResponse> {
   try {
     // 1. Criar usuários em massa
-    const responseUsuarios = await fetch(`${API_URL}/api/usuario`, {
+    const responseUsuarios = await fetch(`${API_URL}/usuario`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -193,7 +193,7 @@ export async function criarAlunosEmMassa(
       .filter((r: BatchItemResult) => r.sucesso)
       .map((r: BatchItemResult) => r.item.UsuarioCPF);
 
-    const responseMatriculas = await fetch(`${API_URL}/api/matricula`, {
+    const responseMatriculas = await fetch(`${API_URL}/matricula`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -249,7 +249,7 @@ export async function listarAlunos(filtros: {
     if (filtros.TurmaGUID) queryParams.append('TurmaGUID', filtros.TurmaGUID);
     if (filtros.MatriculaStatus) queryParams.append('MatriculaStatus', filtros.MatriculaStatus);
 
-    const response = await fetch(`${API_URL}/api/matricula?${queryParams}`, {
+    const response = await fetch(`${API_URL}/matricula?${queryParams}`, {
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`
       }
@@ -264,7 +264,7 @@ export async function listarAlunos(filtros: {
 
     // Buscar dados de usuários para cada matrícula
     const alunosPromises = matriculas.map(async (matricula) => {
-      const responseUsuario = await fetch(`${API_URL}/api/usuario/${matricula.UsuarioCPF}`, {
+      const responseUsuario = await fetch(`${API_URL}/usuario/${matricula.UsuarioCPF}`, {
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
         }
@@ -303,7 +303,7 @@ export async function transferirAluno(
   turmaDestinoGUID: string
 ): Promise<{ matriculaAnterior: Matricula; matriculaNova: Matricula }> {
   try {
-    const response = await fetch(`${API_URL}/api/matricula/transferir`, {
+    const response = await fetch(`${API_URL}/matricula/transferir`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -337,7 +337,7 @@ export async function transferirAluno(
  */
 export async function excluirAluno(matriculaGUID: string): Promise<void> {
   try {
-    const response = await fetch(`${API_URL}/api/matricula/${matriculaGUID}`, {
+    const response = await fetch(`${API_URL}/matricula/${matriculaGUID}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`
@@ -365,7 +365,7 @@ export async function atualizarMatricula(
   }
 ): Promise<Matricula> {
   try {
-    const response = await fetch(`${API_URL}/api/matricula/${matriculaGUID}`, {
+    const response = await fetch(`${API_URL}/matricula/${matriculaGUID}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

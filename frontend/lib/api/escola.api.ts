@@ -4,7 +4,7 @@
  * Funções para buscar dados de escola
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 function getToken(): string {
   if (typeof window === 'undefined') return '';
@@ -33,7 +33,7 @@ export interface Escola {
  * Buscar escola por GUID
  */
 export async function buscarEscola(escolaGUID: string): Promise<{ escola: Escola }> {
-  const response = await fetch(`${API_URL}/api/escola/${escolaGUID}`, {
+  const response = await fetch(`${API_URL}/escola/${escolaGUID}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -58,7 +58,7 @@ export async function listarEscolas(filtros?: {
     params.append('EscolaStatus', filtros.EscolaStatus);
   }
 
-  const url = `${API_URL}/api/escola${params.toString() ? `?${params.toString()}` : ''}`;
+  const url = `${API_URL}/escola${params.toString() ? `?${params.toString()}` : ''}`;
 
   const response = await fetch(url, {
     method: 'GET',

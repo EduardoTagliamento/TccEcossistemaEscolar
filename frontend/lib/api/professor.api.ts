@@ -88,7 +88,7 @@ export interface BatchCreateResponse {
 
 // ==================== FUNÇÕES DE API ====================
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 /**
  * Obter token do localStorage
@@ -126,7 +126,7 @@ export async function criarProfessor(
   escolaNome: string
 ): Promise<{ professor: Professor }> {
   // 1. Criar professor (usuário + vínculo)
-  const responseProfessor = await fetch(`${API_URL}/api/professor`, {
+  const responseProfessor = await fetch(`${API_URL}/professor`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
@@ -192,7 +192,7 @@ export async function criarProfessoresEmMassa(
   escolaNome: string
 ): Promise<BatchCreateResponse> {
   // 1. Criar professores (usuários + vínculos)
-  const responseProfessores = await fetch(`${API_URL}/api/professor`, {
+  const responseProfessores = await fetch(`${API_URL}/professor`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
@@ -251,7 +251,7 @@ export async function criarAlocacoesEmMassa(
   alocacoes: AlocacaoCreateDTO[],
   escolaGUID: string
 ): Promise<BatchCreateResponse> {
-  const response = await fetch(`${API_URL}/api/professor/alocacao`, {
+  const response = await fetch(`${API_URL}/professor/alocacao`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({
@@ -280,7 +280,7 @@ export async function listarProfessores(filters: {
   const query = new URLSearchParams();
   if (filters.EscolaGUID) query.append('EscolaGUID', filters.EscolaGUID);
 
-  const response = await fetch(`${API_URL}/api/professor?${query.toString()}`, {
+  const response = await fetch(`${API_URL}/professor?${query.toString()}`, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -309,7 +309,7 @@ export async function buscarAlocacoesProfessor(
   escolaGUID: string
 ): Promise<{ alocacoes: Alocacao[]; total: number }> {
   const response = await fetch(
-    `${API_URL}/api/professor/${cpf}/escolas/${escolaGUID}/alocacoes`,
+    `${API_URL}/professor/${cpf}/escolas/${escolaGUID}/alocacoes`,
     {
       method: 'GET',
       headers: getHeaders(),
@@ -335,7 +335,7 @@ export async function buscarAlocacoesProfessor(
  * @param alocacaoGUID GUID da alocação
  */
 export async function excluirAlocacao(alocacaoGUID: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/professor/alocacao/${alocacaoGUID}`, {
+  const response = await fetch(`${API_URL}/professor/alocacao/${alocacaoGUID}`, {
     method: 'DELETE',
     headers: getHeaders(),
   });
@@ -353,7 +353,7 @@ export async function excluirAlocacao(alocacaoGUID: string): Promise<void> {
  */
 export async function listarMaterias(escolaGUID: string): Promise<Materia[]> {
   const response = await fetch(
-    `${API_URL}/api/materia?EscolaGUID=${escolaGUID}`,
+    `${API_URL}/materia?EscolaGUID=${escolaGUID}`,
     {
       method: 'GET',
       headers: getHeaders(),
@@ -376,7 +376,7 @@ export async function listarMaterias(escolaGUID: string): Promise<Materia[]> {
  */
 export async function listarTurmas(escolaGUID: string): Promise<Turma[]> {
   const response = await fetch(
-    `${API_URL}/api/turma?EscolaGUID=${escolaGUID}`,
+    `${API_URL}/turma?EscolaGUID=${escolaGUID}`,
     {
       method: 'GET',
       headers: getHeaders(),
@@ -407,7 +407,7 @@ export async function atualizarProfessor(
     UsuarioDataNascimento?: string;
   }
 ): Promise<Usuario> {
-  const response = await fetch(`${API_URL}/api/usuario/${cpf}`, {
+  const response = await fetch(`${API_URL}/usuario/${cpf}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ usuario: updates }),
@@ -430,7 +430,7 @@ export async function atualizarProfessor(
  * @param escolaGUID GUID da escola
  */
 export async function inativarProfessor(cpf: string, escolaGUID: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/escolaxusuarioxfuncao/${escolaGUID}/${cpf}/3`, {
+  const response = await fetch(`${API_URL}/escolaxusuarioxfuncao/${escolaGUID}/${cpf}/3`, {
     method: 'DELETE',
     headers: getHeaders(),
   });
@@ -448,7 +448,7 @@ export async function inativarProfessor(cpf: string, escolaGUID: string): Promis
  * @param cpf CPF do professor
  */
 export async function reativarProfessor(cpf: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/usuario/${cpf}`, {
+  const response = await fetch(`${API_URL}/usuario/${cpf}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ usuario: { UsuarioStatus: 'Ativo' } }),
