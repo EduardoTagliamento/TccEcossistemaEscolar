@@ -420,7 +420,8 @@ export async function listarMaterias(escolaGUID: string): Promise<Materia[]> {
   }
 
   const resultado = await response.json();
-  return resultado.data;
+  // Backend retorna { data: { materias: [...], total: N } }
+  return resultado.data?.materias || resultado.data || [];
 }
 
 /**
