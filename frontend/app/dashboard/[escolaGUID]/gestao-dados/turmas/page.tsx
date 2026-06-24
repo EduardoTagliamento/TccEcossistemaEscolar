@@ -232,7 +232,7 @@ export default function TurmasPage() {
         TurmaSerie: linha['Série'] || linha.TurmaSerie || linha.serie || '',
         TurmaNome: linha['Nome da Turma'] || linha.TurmaNome || linha.nome || '',
         CursoNome: linha['Nome do Curso'] || linha.CursoNome || undefined,
-        TurmaIsTecnico: linha['É Técnica?'] === 'Sim' || linha.TurmaIsTecnico === true || false,
+        TurmaIsTecnico: !!(linha['Nome do Curso'] || linha.CursoNome) || linha['É Técnica?'] === 'Sim' || linha.TurmaIsTecnico === true,
         TurmaStatus: 'Ativa'
       }));
 
