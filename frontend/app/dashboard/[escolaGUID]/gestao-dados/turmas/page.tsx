@@ -227,14 +227,19 @@ export default function TurmasPage() {
       setProcessandoBatch(true);
 
       // Converter dados da planilha para DTO
-      const turmasDTO: TurmaAPI.TurmaCreateDTO[] = dadosImportados.dados.map((linha: any) => ({
-        EscolaGUID: escolaGUID,
-        TurmaSerie: linha['Série'] || linha.TurmaSerie || linha.serie || '',
-        TurmaNome: linha['Nome da Turma'] || linha.TurmaNome || linha.nome || '',
-        CursoNome: linha['Nome do Curso'] || linha.CursoNome || undefined,
-        TurmaIsTecnico: !!(linha['Nome do Curso'] || linha.CursoNome) || linha['É Técnica?'] === 'Sim' || linha.TurmaIsTecnico === true,
-        TurmaStatus: 'Ativa'
-      }));
+      const turmasDTO: TurmaAPI.TurmaCreateDTO[] = dadosImportados.dados.map((linha: any) => {
+        const serie = linha['Série'] ?? linha.TurmaSerie ?? linha.serie ?? '';
+        const nome = linha['Nome da Turma'] ?? linha.TurmaNome ?? linha.nome ?? '';
+        const cursoNome = linha['Nome do Curso'] ?? linha.CursoNome ?? undefined;
+        return {
+          EscolaGUID: escolaGUID,
+          TurmaSerie: String(serie).trim(),
+          TurmaNome: String(nome).trim(),
+          CursoNome: cursoNome ? String(cursoNome).trim() : undefined,
+          TurmaIsTecnico: !!cursoNome || linha['É Técnica?'] === 'Sim' || linha.TurmaIsTecnico === true,
+          TurmaStatus: 'Ativa'
+        };
+      });
 
       // Enviar para API
       const resultado = await TurmaAPI.criarTurmasEmMassa(turmasDTO);
