@@ -169,10 +169,21 @@ export default function AlunosPage() {
       setErroFormulario('');
 
       if (alunoEditando) {
-        // Editar aluno (atualizar matrícula)
-        await AlunoAPI.atualizarMatricula(alunoEditando.matricula.MatriculaGUID, {
-          TurmaGUID: valoresFormulario.TurmaGUID
+        // Atualizar dados pessoais do usuário
+        await AlunoAPI.atualizarAluno(alunoEditando.usuario.UsuarioCPF, {
+          UsuarioNome: valoresFormulario.UsuarioNome,
+          UsuarioEmail: valoresFormulario.UsuarioEmail || undefined,
+          UsuarioTelefone: valoresFormulario.UsuarioTelefone || undefined,
+          UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento || undefined,
         });
+
+        // Atualizar turma apenas se mudou
+        if (valoresFormulario.TurmaGUID && valoresFormulario.TurmaGUID !== alunoEditando.matricula.TurmaGUID) {
+          await AlunoAPI.atualizarMatricula(alunoEditando.matricula.MatriculaGUID, {
+            TurmaGUID: valoresFormulario.TurmaGUID
+          });
+        }
+
         alert('Aluno atualizado com sucesso!');
       } else {
         // Criar novo aluno
@@ -214,7 +225,9 @@ export default function AlunosPage() {
       UsuarioNome: aluno.usuario.UsuarioNome,
       UsuarioEmail: aluno.usuario.UsuarioEmail || '',
       UsuarioTelefone: aluno.usuario.UsuarioTelefone || '',
-      UsuarioDataNascimento: aluno.usuario.UsuarioDataNascimento || '',
+      UsuarioDataNascimento: aluno.usuario.UsuarioDataNascimento
+        ? String(aluno.usuario.UsuarioDataNascimento).split('T')[0]
+        : '',
       TurmaGUID: aluno.matricula.TurmaGUID
     });
     setModalAberto(true);
