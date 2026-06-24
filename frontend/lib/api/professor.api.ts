@@ -330,8 +330,62 @@ export async function buscarAlocacoesProfessor(
 }
 
 /**
+ * Listar alocações com filtros opcionais
+ */
+export async function listarAlocacoes(filters: {
+  MateriaGUID?: string;
+  TurmaGUID?: string;
+  UsuarioCPF?: string;
+  AlocacaoStatus?: 'Ativa' | 'Inativa';
+}): Promise<{ alocacoes: Alocacao[]; total: number }> {
+  const query = new URLSearchParams();
+  if (filters.MateriaGUID) query.append('MateriaGUID', filters.MateriaGUID);
+  if (filters.TurmaGUID) query.append('TurmaGUID', filters.TurmaGUID);
+  if (filters.UsuarioCPF) query.append('UsuarioCPF', filters.UsuarioCPF);
+  if (filters.AlocacaoStatus) query.append('AlocacaoStatus', filters.AlocacaoStatus);
+
+  const response = await fetch(`${API_URL}/professor/alocacao?${query.toString()}`, {
+    method: 'GET',
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao listar alocações');
+  }
+
+  const resultado = await response.json();
+  return {
+    alocacoes: resultado.data || [],
+    total: resultado.total || 0,
+  };
+}
+
+/**
+ * Criar alocação individual (professor → matéria → turma)
+ */
+export async function criarAlocacao(
+  alocacao: AlocacaoCreateDTO,
+  escolaGUID: string
+): Promise<Alocacao> {
+  const response = await fetch(`${API_URL}/professor/alocacao`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ alocacao, EscolaGUID: escolaGUID }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao criar alocação');
+  }
+
+  const resultado = await response.json();
+  return resultado.data;
+}
+
+/**
  * Excluir alocação (soft delete)
- * 
+ *
  * @param alocacaoGUID GUID da alocação
  */
 export async function excluirAlocacao(alocacaoGUID: string): Promise<void> {

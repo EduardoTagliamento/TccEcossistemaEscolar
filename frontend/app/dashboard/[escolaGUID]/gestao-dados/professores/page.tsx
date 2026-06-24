@@ -26,6 +26,18 @@ export default function ProfessoresPage() {
   const [processandoBatch, setProcessandoBatch] = useState(false);
   const [resultadoBatch, setResultadoBatch] = useState<ProfessorAPI.BatchCreateResponse | null>(null);
   const [professorEditando, setProfessorEditando] = useState<ProfessorAPI.Professor | null>(null);
+  const [alocacoesProfessor, setAlocacoesProfessor] = useState<ProfessorAPI.Alocacao[]>([]);
+  const [carregandoAlocacoes, setCarregandoAlocacoes] = useState(false);
+  const [novaAlocacaoTurma, setNovaAlocacaoTurma] = useState('');
+  const [novaAlocacaoMateria, setNovaAlocacaoMateria] = useState('');
+  const [salvandoAlocacao, setSalvandoAlocacao] = useState(false);
+  const [erroAlocacao, setErroAlocacao] = useState('');
+  const [avisoConflito, setAvisoConflito] = useState<{
+    professorNome: string;
+    materiaNome: string;
+    turmaNome: string;
+    confirmar: () => void;
+  } | null>(null);
 
   // Estados do formulário
   const [valoresFormulario, setValoresFormulario] = useState<Record<string, any>>({
@@ -118,6 +130,10 @@ export default function ProfessoresPage() {
     }
   ];
 
+  const camposFormularioEfetivos = professorEditando
+    ? camposFormulario.filter(c => c.id !== 'Materias' && c.id !== 'Turmas')
+    : camposFormulario;
+
   // Definir colunas da tabela
   const colunas: Coluna<ProfessorAPI.Professor>[] = [
     {
@@ -207,8 +223,9 @@ export default function ProfessoresPage() {
     }
   };
 
-  const handleEditar = (professor: ProfessorAPI.Professor) => {
+  const handleEditar = async (professor: ProfessorAPI.Professor) => {
     setProfessorEditando(professor);
+    setAlocacoesProfessor([]);
     setValoresFormulario({
       UsuarioCPF: professor.UsuarioCPF,
       UsuarioNome: professor.UsuarioNome,
@@ -219,6 +236,88 @@ export default function ProfessoresPage() {
       Turmas: ''
     });
     setModalAberto(true);
+
+    try {
+      setCarregandoAlocacoes(true);
+      const { alocacoes } = await ProfessorAPI.buscarAlocacoesProfessor(professor.UsuarioCPF, escolaGUID);
+      const ativas = alocacoes.filter(a => a.AlocacaoStatus === 'Ativa');
+      setAlocacoesProfessor(ativas);
+    } catch (erro: any) {
+      console.error('Erro ao buscar alocações:', erro);
+    } finally {
+      setCarregandoAlocacoes(false);
+    }
+  };
+
+  const recarregarAlocacoes = async (cpf: string) => {
+    const { alocacoes } = await ProfessorAPI.buscarAlocacoesProfessor(cpf, escolaGUID);
+    setAlocacoesProfessor(alocacoes.filter(a => a.AlocacaoStatus === 'Ativa'));
+  };
+
+  const handleDesassociarMateria = async (alocacaoGUID: string) => {
+    try {
+      await ProfessorAPI.excluirAlocacao(alocacaoGUID);
+      await recarregarAlocacoes(professorEditando!.UsuarioCPF);
+    } catch (erro: any) {
+      alert('Erro ao desassociar: ' + erro.message);
+    }
+  };
+
+  const executarCriacaoAlocacao = async () => {
+    try {
+      setSalvandoAlocacao(true);
+      setErroAlocacao('');
+      await ProfessorAPI.criarAlocacao(
+        { UsuarioCPF: professorEditando!.UsuarioCPF, MateriaGUID: novaAlocacaoMateria, TurmaGUID: novaAlocacaoTurma, AlocacaoStatus: 'Ativa' },
+        escolaGUID
+      );
+      await recarregarAlocacoes(professorEditando!.UsuarioCPF);
+      setNovaAlocacaoTurma('');
+      setNovaAlocacaoMateria('');
+    } catch (erro: any) {
+      setErroAlocacao(erro.message || 'Erro ao associar');
+    } finally {
+      setSalvandoAlocacao(false);
+    }
+  };
+
+  const handleAssociarMateria = async () => {
+    if (!novaAlocacaoTurma || !novaAlocacaoMateria) {
+      setErroAlocacao('Selecione uma turma e uma matéria.');
+      return;
+    }
+    setErroAlocacao('');
+    setAvisoConflito(null);
+
+    try {
+      setSalvandoAlocacao(true);
+      const { alocacoes: existentes } = await ProfessorAPI.listarAlocacoes({
+        MateriaGUID: novaAlocacaoMateria,
+        TurmaGUID: novaAlocacaoTurma,
+        AlocacaoStatus: 'Ativa',
+      });
+
+      const conflito = existentes.find(a => a.UsuarioCPF !== professorEditando!.UsuarioCPF);
+      if (conflito) {
+        const outroProfessor = professores.find(p => p.UsuarioCPF === conflito.UsuarioCPF);
+        const mat = materias.find(m => m.MateriaGUID === novaAlocacaoMateria);
+        const tur = turmas.find(t => t.TurmaGUID === novaAlocacaoTurma);
+        setSalvandoAlocacao(false);
+        setAvisoConflito({
+          professorNome: outroProfessor?.UsuarioNome ?? conflito.UsuarioCPF,
+          materiaNome: mat?.MateriaNome ?? novaAlocacaoMateria,
+          turmaNome: tur ? `${tur.TurmaSerie} ${tur.TurmaNome}` : novaAlocacaoTurma,
+          confirmar: executarCriacaoAlocacao,
+        });
+        return;
+      }
+    } catch {
+      // se a verificação falhar, tenta criar mesmo assim
+    } finally {
+      setSalvandoAlocacao(false);
+    }
+
+    await executarCriacaoAlocacao();
   };
 
   const handleExcluir = async (professor: ProfessorAPI.Professor, index: number) => {
@@ -364,13 +463,18 @@ export default function ProfessoresPage() {
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <BaseFormularioCadastro
               titulo={professorEditando ? "Editar Professor" : "Novo Professor"}
-              campos={camposFormulario}
+              campos={camposFormularioEfetivos}
               valores={valoresFormulario}
               onChange={(campo, valor) => setValoresFormulario({ ...valoresFormulario, [campo]: valor })}
               onSubmit={handleSubmitFormulario}
               onCancel={() => {
                 setModalAberto(false);
                 setProfessorEditando(null);
+                setAlocacoesProfessor([]);
+                setNovaAlocacaoTurma('');
+                setNovaAlocacaoMateria('');
+                setErroAlocacao('');
+                setAvisoConflito(null);
                 setValoresFormulario({
                   UsuarioCPF: '',
                   UsuarioNome: '',
@@ -385,10 +489,119 @@ export default function ProfessoresPage() {
               erro={erroFormulario}
               botaoTexto={professorEditando ? "Salvar Alterações" : "Criar Professor"}
             />
-            <div className={styles.ajuda}>
-              <p><strong>💡 Dica:</strong> Você pode deixar Matérias e Turmas em branco e adicioná-las depois.</p>
-              <p><strong>📝 Formato:</strong> Separe matérias e turmas por vírgula. Ex: "Matemática, Física"</p>
-            </div>
+            {professorEditando ? (
+              <div className={styles.ajuda}>
+                {carregandoAlocacoes ? (
+                  <p>Carregando alocações...</p>
+                ) : (
+                  <>
+                    <p><strong>🏫 Alocações por turma:</strong></p>
+                    {(() => {
+                      const porTurma = alocacoesProfessor.reduce<Record<string, ProfessorAPI.Alocacao[]>>(
+                        (acc, a) => {
+                          if (!acc[a.TurmaGUID]) acc[a.TurmaGUID] = [];
+                          acc[a.TurmaGUID].push(a);
+                          return acc;
+                        },
+                        {}
+                      );
+                      const entradas = Object.entries(porTurma);
+                      return entradas.length > 0 ? (
+                        <ul style={{ margin: '4px 0 0 0', paddingLeft: 16 }}>
+                          {entradas.map(([turmaGUID, alocacoes]) => {
+                            const t = turmas.find(t => t.TurmaGUID === turmaGUID);
+                            const nomeTurma = t ? `${t.TurmaSerie} ${t.TurmaNome}` : turmaGUID;
+                            return (
+                              <li key={turmaGUID} style={{ marginBottom: 4 }}>
+                                <strong>{nomeTurma}:</strong>{' '}
+                                {alocacoes.map((a, idx) => {
+                                  const m = materias.find(m => m.MateriaGUID === a.MateriaGUID);
+                                  return (
+                                    <span key={a.MatProfTurGUID} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, marginRight: 6 }}>
+                                      {m?.MateriaNome ?? a.MateriaGUID}
+                                      <button
+                                        onClick={() => handleDesassociarMateria(a.MatProfTurGUID)}
+                                        title="Desassociar"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e53e3e', padding: '0 2px', fontSize: 14, lineHeight: 1 }}
+                                      >
+                                        ×
+                                      </button>
+                                      {idx < alocacoes.length - 1 && ','}
+                                    </span>
+                                  );
+                                })}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <p className={styles.textoSecundario}>Nenhuma alocação ativa.</p>
+                      );
+                    })()}
+
+                    <div style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 10 }}>
+                      <p style={{ marginBottom: 6 }}><strong>➕ Nova alocação:</strong></p>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <select
+                          value={novaAlocacaoTurma}
+                          onChange={e => { setNovaAlocacaoTurma(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
+                          style={{ flex: 1, minWidth: 120, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
+                        >
+                          <option value="">Turma...</option>
+                          {turmas.map(t => (
+                            <option key={t.TurmaGUID} value={t.TurmaGUID}>{t.TurmaSerie} {t.TurmaNome}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={novaAlocacaoMateria}
+                          onChange={e => { setNovaAlocacaoMateria(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
+                          style={{ flex: 1, minWidth: 120, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
+                        >
+                          <option value="">Matéria...</option>
+                          {materias.map(m => (
+                            <option key={m.MateriaGUID} value={m.MateriaGUID}>{m.MateriaNome}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={handleAssociarMateria}
+                          disabled={salvandoAlocacao || !novaAlocacaoTurma || !novaAlocacaoMateria}
+                          style={{ padding: '4px 14px', background: '#3182ce', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, opacity: (salvandoAlocacao || !novaAlocacaoTurma || !novaAlocacaoMateria) ? 0.5 : 1 }}
+                        >
+                          {salvandoAlocacao ? '...' : 'Associar'}
+                        </button>
+                      </div>
+                      {erroAlocacao && <p style={{ color: '#e53e3e', fontSize: 12, marginTop: 4 }}>{erroAlocacao}</p>}
+                      {avisoConflito && (
+                        <div style={{ marginTop: 8, padding: 8, background: '#fffbeb', border: '1px solid #fbd38d', borderRadius: 4 }}>
+                          <p style={{ fontSize: 12, marginBottom: 6 }}>
+                            ⚠️ <strong>{avisoConflito.materiaNome}</strong> já é lecionada por <strong>{avisoConflito.professorNome}</strong> em <strong>{avisoConflito.turmaNome}</strong>. Confirmar mesmo assim?
+                          </p>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              onClick={() => { avisoConflito.confirmar(); setAvisoConflito(null); }}
+                              style={{ padding: '3px 10px', background: '#e53e3e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              onClick={() => setAvisoConflito(null)}
+                              style={{ padding: '3px 10px', background: '#e2e8f0', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className={styles.ajuda}>
+                <p><strong>💡 Dica:</strong> Você pode deixar Matérias e Turmas em branco e adicioná-las depois.</p>
+                <p><strong>📝 Formato:</strong> Separe matérias e turmas por vírgula. Ex: "Matemática, Física"</p>
+              </div>
+            )}
           </div>
         </div>
       )}
