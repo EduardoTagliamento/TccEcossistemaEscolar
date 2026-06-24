@@ -355,6 +355,33 @@ export async function excluirAluno(matriculaGUID: string): Promise<void> {
 }
 
 /**
+ * Atualizar dados pessoais do aluno (usuário)
+ */
+export async function atualizarAluno(
+  cpf: string,
+  updates: {
+    UsuarioNome?: string;
+    UsuarioEmail?: string;
+    UsuarioTelefone?: string;
+    UsuarioDataNascimento?: string;
+  }
+): Promise<void> {
+  const response = await fetch(`${API_URL}/usuario/${cpf}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getAuthToken()}`
+    },
+    body: JSON.stringify({ usuario: updates })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao atualizar aluno');
+  }
+}
+
+/**
  * Atualizar matrícula do aluno (ex: trocar turma)
  */
 export async function atualizarMatricula(
