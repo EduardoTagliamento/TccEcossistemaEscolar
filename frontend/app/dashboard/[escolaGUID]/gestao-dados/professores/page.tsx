@@ -265,6 +265,18 @@ export default function ProfessoresPage() {
     }
   };
 
+  const handleDesassociarMateriaTodas = async (materiaGUID: string) => {
+    const alvos = alocacoesProfessor.filter(a => a.MateriaGUID === materiaGUID);
+    const mat = materias.find(m => m.MateriaGUID === materiaGUID);
+    if (!confirm(`Remover "${mat?.MateriaNome ?? materiaGUID}" de todas as turmas deste professor?`)) return;
+    try {
+      await Promise.all(alvos.map(a => ProfessorAPI.excluirAlocacao(a.MatProfTurGUID)));
+      await recarregarAlocacoes(professorEditando!.UsuarioCPF);
+    } catch (erro: any) {
+      alert('Erro ao desassociar matéria: ' + erro.message);
+    }
+  };
+
   const executarCriacaoAlocacao = async () => {
     try {
       setSalvandoAlocacao(true);
@@ -497,7 +509,37 @@ export default function ProfessoresPage() {
                   <p>Carregando alocações...</p>
                 ) : (
                   <>
-                    <p><strong>🏫 Alocações por turma:</strong></p>
+                    <p><strong>📚 Matérias:</strong></p>
+                    {(() => {
+                      const materiasUnicas = [...new Map(
+                        alocacoesProfessor.map(a => [a.MateriaGUID, a])
+                      ).values()];
+                      return materiasUnicas.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '4px 0 8px 0' }}>
+                          {materiasUnicas.map(a => {
+                            const m = materias.find(m => m.MateriaGUID === a.MateriaGUID);
+                            const qtdTurmas = alocacoesProfessor.filter(al => al.MateriaGUID === a.MateriaGUID).length;
+                            return (
+                              <span key={a.MateriaGUID} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ebf4ff', border: '1px solid #bee3f8', borderRadius: 12, padding: '2px 10px', fontSize: 13 }}>
+                                {m?.MateriaNome ?? a.MateriaGUID}
+                                {qtdTurmas > 1 && <span style={{ fontSize: 11, color: '#718096' }}>({qtdTurmas} turmas)</span>}
+                                <button
+                                  onClick={() => handleDesassociarMateriaTodas(a.MateriaGUID)}
+                                  title="Remover de todas as turmas"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e53e3e', padding: '0 2px', fontSize: 15, lineHeight: 1 }}
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className={styles.textoSecundario} style={{ marginBottom: 8 }}>Nenhuma matéria associada.</p>
+                      );
+                    })()}
+
+                    <p style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8 }}><strong>🏫 Alocações por turma:</strong></p>
                     {(() => {
                       const porTurma = alocacoesProfessor.reduce<Record<string, ProfessorAPI.Alocacao[]>>(
                         (acc, a) => {
