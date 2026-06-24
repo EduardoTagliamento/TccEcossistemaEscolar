@@ -231,7 +231,9 @@ export default function ProfessoresPage() {
       UsuarioNome: professor.UsuarioNome,
       UsuarioEmail: professor.UsuarioEmail || '',
       UsuarioTelefone: professor.UsuarioTelefone || '',
-      UsuarioDataNascimento: professor.UsuarioDataNascimento || '',
+      UsuarioDataNascimento: professor.UsuarioDataNascimento
+        ? String(professor.UsuarioDataNascimento).split('T')[0]
+        : '',
       Materias: '',
       Turmas: ''
     });
@@ -558,9 +560,13 @@ export default function ProfessoresPage() {
                           style={{ flex: 1, minWidth: 120, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
                         >
                           <option value="">Matéria...</option>
-                          {materias.map(m => (
-                            <option key={m.MateriaGUID} value={m.MateriaGUID}>{m.MateriaNome}</option>
-                          ))}
+                          {materias
+                            .filter(m => !novaAlocacaoTurma || !alocacoesProfessor.some(
+                              a => a.MateriaGUID === m.MateriaGUID && a.TurmaGUID === novaAlocacaoTurma
+                            ))
+                            .map(m => (
+                              <option key={m.MateriaGUID} value={m.MateriaGUID}>{m.MateriaNome}</option>
+                            ))}
                         </select>
                         <button
                           onClick={handleAssociarMateria}
@@ -570,6 +576,16 @@ export default function ProfessoresPage() {
                           {salvandoAlocacao ? '...' : 'Associar'}
                         </button>
                       </div>
+                      {novaAlocacaoTurma && (() => {
+                        const jaLeciona = alocacoesProfessor
+                          .filter(a => a.TurmaGUID === novaAlocacaoTurma)
+                          .map(a => materias.find(m => m.MateriaGUID === a.MateriaGUID)?.MateriaNome ?? a.MateriaGUID);
+                        return jaLeciona.length > 0 ? (
+                          <p style={{ fontSize: 11, color: '#718096', marginTop: 4 }}>
+                            Já leciona nesta turma: {jaLeciona.join(', ')}
+                          </p>
+                        ) : null;
+                      })()}
                       {erroAlocacao && <p style={{ color: '#e53e3e', fontSize: 12, marginTop: 4 }}>{erroAlocacao}</p>}
                       {avisoConflito && (
                         <div style={{ marginTop: 8, padding: 8, background: '#fffbeb', border: '1px solid #fbd38d', borderRadius: 4 }}>
