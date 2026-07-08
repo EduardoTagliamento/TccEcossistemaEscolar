@@ -7,19 +7,37 @@
 
 import cron from "node-cron";
 import { executarLimpeza } from "../scripts/cleanupVerificacaoEmail";
+import ConversaGrupoService from "./conversa-grupo.service";
+import { ConversaDAO } from "../repositories/conversa.repository";
+import { ConversaGrupoDAO } from "../repositories/conversa-grupo.repository";
+import { MatriculaDAO } from "../repositories/matricula.repository";
+import MysqlDatabase from "../database/MysqlDatabase";
 
 export class CleanupScheduler {
     #tasks: cron.ScheduledTask[] = [];
-    
+    #conversaGrupoService: ConversaGrupoService;
+
+    constructor() {
+        const db = new MysqlDatabase();
+        this.#conversaGrupoService = new ConversaGrupoService(
+            new ConversaDAO(db),
+            new ConversaGrupoDAO(db),
+            new MatriculaDAO(db)
+        );
+    }
+
     /**
      * Inicia todos os agendamentos configurados
      */
     public start(): void {
         console.log("[SCHEDULER] 📅 Iniciando agendamentos de limpeza...");
-        
+
         // Agendar limpeza diária às 3h da manhã (horário de baixo tráfego)
         this.#scheduleVerificationCleanup();
-        
+
+        // Encerrar grupos de tarefa com prazo expirado às 00:05
+        this.#scheduleExpiredTaskGroupsCleanup();
+
         console.log(`[SCHEDULER] ✅ ${this.#tasks.length} agendamentos iniciados com sucesso.`);
     }
     
@@ -75,6 +93,28 @@ export class CleanupScheduler {
         console.log("[SCHEDULER] ✓ Limpeza de verificações agendada: Diariamente às 3h (GMT-3)");
     }
     
+    /**
+     * Encerra grupos de conversa de tarefas com prazo expirado
+     * Execução: Todos os dias às 00:05
+     */
+    #scheduleExpiredTaskGroupsCleanup(): void {
+        const task = cron.schedule(
+            "5 0 * * *",
+            async () => {
+                console.log("\n[SCHEDULER] 💬 Encerrando grupos de tarefas expiradas...");
+                try {
+                    const count = await this.#conversaGrupoService.encerrarGruposTarefasExpiradas();
+                    console.log(`[SCHEDULER] ✅ ${count} grupos de tarefa encerrados\n`);
+                } catch (error) {
+                    console.error("[SCHEDULER] ❌ Erro ao encerrar grupos de tarefa:", error);
+                }
+            },
+            { scheduled: true, timezone: "America/Sao_Paulo" }
+        );
+        this.#tasks.push(task);
+        console.log("[SCHEDULER] ✓ Encerramento de grupos de tarefa: Diariamente às 00:05 (GMT-3)");
+    }
+
     /**
      * Executa limpeza manualmente (para testes)
      */
