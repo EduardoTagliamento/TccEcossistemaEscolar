@@ -335,6 +335,17 @@ export class EscolaxUsuarioxFuncaoDAO {
     return Array.from(escolasMap.values());
   };
 
+  isCoordOuDirecaoEmEscola = async (usuarioCPF: string, escolaGUID: string): Promise<boolean> => {
+    console.log('🟢 EscolaxUsuarioxFuncaoDAO.isCoordOuDirecaoEmEscola()');
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(
+      `SELECT 1 FROM escolaxusuarioxfuncao
+       WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId IN (1, 6) AND Status = 'Ativo' LIMIT 1`,
+      [usuarioCPF, escolaGUID]
+    );
+    return (rows as Array<Record<string, unknown>>).length > 0;
+  };
+
   private mapRowToEntity = (row: EscolaxUsuarioxFuncaoRow): EscolaxUsuarioxFuncao => {
     const relacao = new EscolaxUsuarioxFuncao();
     relacao.EscolaxUsuarioxFuncaoId = row.EscolaxUsuarioxFuncaoId;

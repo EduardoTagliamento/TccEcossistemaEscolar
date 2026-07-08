@@ -5,6 +5,7 @@ import { TarefaAcademicaDAO } from '../repositories/tarefaacademica.repository';
 import { MatriculaDAO } from '../repositories/matricula.repository';
 import { TarefaAcademicaMatriculaDAO } from '../repositories/tarefaacademica-matricula.repository';
 import HistoricoGrupoTarefaService from './historicogrupotarefa.service';
+import ConversaGrupoService from './conversa-grupo.service';
 import ErrorResponse from '../utils/ErrorResponse';
 import MysqlDatabase from '../database/MysqlDatabase';
 import {
@@ -20,6 +21,7 @@ export default class GrupoTarefaService {
   #tarefaMatriculaDAO: TarefaAcademicaMatriculaDAO;
   #historicoService: HistoricoGrupoTarefaService;
   #database: MysqlDatabase;
+  #conversaGrupoService?: ConversaGrupoService;
 
   constructor(
     grupoTarefaDAO: GrupoTarefaDAO,
@@ -28,7 +30,8 @@ export default class GrupoTarefaService {
     matriculaDAO: MatriculaDAO,
     tarefaMatriculaDAO: TarefaAcademicaMatriculaDAO,
     historicoService: HistoricoGrupoTarefaService,
-    database: MysqlDatabase
+    database: MysqlDatabase,
+    conversaGrupoService?: ConversaGrupoService
   ) {
     console.log('⬆️  GrupoTarefaService.constructor()');
     this.#grupoTarefaDAO = grupoTarefaDAO;
@@ -38,6 +41,7 @@ export default class GrupoTarefaService {
     this.#tarefaMatriculaDAO = tarefaMatriculaDAO;
     this.#historicoService = historicoService;
     this.#database = database;
+    this.#conversaGrupoService = conversaGrupoService;
   }
 
   /**
@@ -75,8 +79,15 @@ export default class GrupoTarefaService {
             GrupoNome: undefined  // Será gerado automaticamente no frontend
           };
 
-          await this.#grupoTarefaDAO.create(grupoData);
+          const novoGrupo = await this.#grupoTarefaDAO.create(grupoData);
           gruposCriados++;
+          if (this.#conversaGrupoService) {
+            await this.#conversaGrupoService.criarConversaParaGrupoTarefa(
+              novoGrupo.GrupoTarefaGUID,
+              tarefa.TarefaTitulo,
+              matricula.UsuarioCPF
+            );
+          }
         } catch (error: any) {
           console.error(`Erro ao criar grupo para ${matricula.UsuarioCPF}:`, error.message);
           // Continuar criando outros grupos mesmo se um falhar
@@ -185,8 +196,19 @@ export default class GrupoTarefaService {
         UsuarioCPFLider: membroCPF,
         GrupoNome: undefined
       };
-      
+
       const novoGrupo = await this.#grupoTarefaDAO.create(novoGrupoData);
+
+      // 6a. Hooks de conversa
+      if (this.#conversaGrupoService) {
+        await this.#conversaGrupoService.removerMembroGrupoTarefa(grupoGUID, membroCPF);
+        const tarefa = await this.#tarefaDAO.findById(grupo.TarefaGUID);
+        await this.#conversaGrupoService.criarConversaParaGrupoTarefa(
+          novoGrupo.GrupoTarefaGUID,
+          tarefa?.TarefaTitulo ?? 'Grupo',
+          membroCPF
+        );
+      }
 
       // 7. Registrar no histórico
       await this.#historicoService.registrar({
@@ -263,6 +285,11 @@ export default class GrupoTarefaService {
       await this.#grupoTarefaDAO.update(grupoGUID, {
         UsuarioCPFLider: novoLiderCPF
       });
+
+      // 4d. Sincronizar funcao na conversa do grupo
+      if (this.#conversaGrupoService) {
+        await this.#conversaGrupoService.transferirLiderGrupoTarefa(grupoGUID, liderAtualCPF, novoLiderCPF);
+      }
 
       // 5. Registrar no histórico
       await this.#historicoService.registrar({

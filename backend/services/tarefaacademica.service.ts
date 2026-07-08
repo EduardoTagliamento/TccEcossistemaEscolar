@@ -86,7 +86,6 @@ export default class TarefaAcademicaService {
   #tarefaMatriculaDAO: TarefaAcademicaMatriculaDAO;
   #anexoDAO: AnexoDAO;
   #matriculaDAO: MatriculaDAO;
-
   constructor(
     tarefaDAODependency: TarefaAcademicaDAO,
     tarefaMatriculaDAODependency: TarefaAcademicaMatriculaDAO,
@@ -188,7 +187,7 @@ export default class TarefaAcademicaService {
       }
     }
 
-    // PASSO 4: Retornar DTO completo
+    // PASSO 5: Retornar DTO completo
     const atribuicoesCriadas = await this.#tarefaMatriculaDAO.findByTarefa(tarefaCriada.TarefaGUID);
     return this.toDTO(tarefaCriada, atribuicoesCriadas);
   };

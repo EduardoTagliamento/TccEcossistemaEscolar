@@ -8,6 +8,9 @@ import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuario
 import MysqlDatabase from "../backend/database/MysqlDatabase";
 import { MatriculaMiddleware } from "../backend/middlewares/matricula.middleware";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import ConversaGrupoService from "../backend/services/conversa-grupo.service";
+import { ConversaDAO } from "../backend/repositories/conversa.repository";
+import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
 
 /**
  * Factory para criar router de Matrícula com dependências injetadas
@@ -30,12 +33,18 @@ export function matriculaRouterFactory(): Router {
   const usuarioDAO = new UsuarioDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
 
+  const conversaGrupoService = new ConversaGrupoService(
+    new ConversaDAO(database),
+    new ConversaGrupoDAO(database),
+    matriculaDAO
+  );
   const matriculaService = new MatriculaService(
     matriculaDAO,
     turmaDAO,
     usuarioDAO,
     escolaxUsuarioxFuncaoDAO,
-    database
+    database,
+    conversaGrupoService
   );
 
   const matriculaController = new MatriculaController(matriculaService);
