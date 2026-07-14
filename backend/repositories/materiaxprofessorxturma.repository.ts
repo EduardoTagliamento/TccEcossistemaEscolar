@@ -22,6 +22,7 @@ interface AlocacaoRow extends RowDataPacket {
   TurmaGUID: string;
   UsuarioCPF: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
+  AulasPorSemana: number | null;
   MatProfTurCreatedAt: Date;
   MatProfTurUpdatedAt: Date;
 }
@@ -66,9 +67,10 @@ export class MaterialProfessorTurmaDAO {
         TurmaGUID,
         UsuarioCPF,
         AlocacaoStatus,
+        AulasPorSemana,
         MatProfTurCreatedAt,
         MatProfTurUpdatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -77,6 +79,7 @@ export class MaterialProfessorTurmaDAO {
       alocacao.TurmaGUID,
       alocacao.UsuarioCPF,
       alocacao.AlocacaoStatus,
+      alocacao.AulasPorSemana,
       alocacao.MatProfTurCreatedAt,
       alocacao.MatProfTurUpdatedAt,
     ];
@@ -230,7 +233,7 @@ export class MaterialProfessorTurmaDAO {
    */
   async update(
     guid: string,
-    updates: Partial<Pick<MaterialProfessorTurma, 'AlocacaoStatus'>>
+    updates: Partial<Pick<MaterialProfessorTurma, 'AlocacaoStatus' | 'AulasPorSemana'>>
   ): Promise<MaterialProfessorTurma | null> {
     const fields: string[] = [];
     const params: any[] = [];
@@ -238,6 +241,11 @@ export class MaterialProfessorTurmaDAO {
     if (updates.AlocacaoStatus !== undefined) {
       fields.push('AlocacaoStatus = ?');
       params.push(updates.AlocacaoStatus);
+    }
+
+    if (updates.AulasPorSemana !== undefined) {
+      fields.push('AulasPorSemana = ?');
+      params.push(updates.AulasPorSemana);
     }
 
     // Sempre atualiza UpdatedAt
@@ -322,6 +330,7 @@ export class MaterialProfessorTurmaDAO {
       alocacao.TurmaGUID = row.TurmaGUID;
       alocacao.UsuarioCPF = row.UsuarioCPF;
       alocacao.AlocacaoStatus = row.AlocacaoStatus;
+      alocacao.AulasPorSemana = row.AulasPorSemana;
       alocacao.MatProfTurCreatedAt = row.MatProfTurCreatedAt;
       alocacao.MatProfTurUpdatedAt = row.MatProfTurUpdatedAt;
       return alocacao;

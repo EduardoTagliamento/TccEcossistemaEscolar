@@ -22,6 +22,7 @@ export interface AlocacaoDTO {
   TurmaGUID: string;
   UsuarioCPF: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
+  AulasPorSemana: number | null;
   MatProfTurCreatedAt: Date;
   MatProfTurUpdatedAt: Date;
 }
@@ -33,10 +34,12 @@ export interface AlocacaoCreateDTO {
   TurmaNome?: string; // Novo: aceita nome da turma
   UsuarioCPF: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
+  AulasPorSemana?: number | null; // Override do padrão da matéria, específico desta turma
 }
 
 export interface AlocacaoUpdateDTO {
   AlocacaoStatus?: 'Ativa' | 'Inativa';
+  AulasPorSemana?: number | null;
 }
 
 export interface ProfessorDTO {
@@ -290,6 +293,7 @@ export default class ProfessorService {
     alocacao.TurmaGUID = data.TurmaGUID!;
     alocacao.UsuarioCPF = data.UsuarioCPF;
     alocacao.AlocacaoStatus = data.AlocacaoStatus || 'Ativa';
+    alocacao.AulasPorSemana = data.AulasPorSemana ?? null;
     alocacao.MatProfTurCreatedAt = new Date();
     alocacao.MatProfTurUpdatedAt = new Date();
 
@@ -873,6 +877,7 @@ export default class ProfessorService {
       TurmaGUID: alocacao.TurmaGUID,
       UsuarioCPF: alocacao.UsuarioCPF,
       AlocacaoStatus: alocacao.AlocacaoStatus,
+      AulasPorSemana: alocacao.AulasPorSemana,
       MatProfTurCreatedAt: alocacao.MatProfTurCreatedAt,
       MatProfTurUpdatedAt: alocacao.MatProfTurUpdatedAt,
     };

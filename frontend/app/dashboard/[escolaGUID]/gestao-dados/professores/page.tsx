@@ -30,8 +30,11 @@ export default function ProfessoresPage() {
   const [carregandoAlocacoes, setCarregandoAlocacoes] = useState(false);
   const [novaAlocacaoTurma, setNovaAlocacaoTurma] = useState('');
   const [novaAlocacaoMateria, setNovaAlocacaoMateria] = useState('');
+  const [novaAlocacaoAulasPorSemana, setNovaAlocacaoAulasPorSemana] = useState('');
   const [salvandoAlocacao, setSalvandoAlocacao] = useState(false);
   const [erroAlocacao, setErroAlocacao] = useState('');
+  const [editandoAulasPorSemana, setEditandoAulasPorSemana] = useState<string | null>(null);
+  const [valorAulasPorSemanaEditando, setValorAulasPorSemanaEditando] = useState('');
   const [avisoConflito, setAvisoConflito] = useState<{
     professorNome: string;
     materiaNome: string;
@@ -282,16 +285,35 @@ export default function ProfessoresPage() {
       setSalvandoAlocacao(true);
       setErroAlocacao('');
       await ProfessorAPI.criarAlocacao(
-        { UsuarioCPF: professorEditando!.UsuarioCPF, MateriaGUID: novaAlocacaoMateria, TurmaGUID: novaAlocacaoTurma, AlocacaoStatus: 'Ativa' },
+        {
+          UsuarioCPF: professorEditando!.UsuarioCPF,
+          MateriaGUID: novaAlocacaoMateria,
+          TurmaGUID: novaAlocacaoTurma,
+          AlocacaoStatus: 'Ativa',
+          AulasPorSemana: novaAlocacaoAulasPorSemana ? parseInt(novaAlocacaoAulasPorSemana, 10) : null,
+        },
         escolaGUID
       );
       await recarregarAlocacoes(professorEditando!.UsuarioCPF);
       setNovaAlocacaoTurma('');
       setNovaAlocacaoMateria('');
+      setNovaAlocacaoAulasPorSemana('');
     } catch (erro: any) {
       setErroAlocacao(erro.message || 'Erro ao associar');
     } finally {
       setSalvandoAlocacao(false);
+    }
+  };
+
+  const salvarAulasPorSemana = async (matProfTurGUID: string) => {
+    try {
+      await ProfessorAPI.atualizarAlocacao(matProfTurGUID, {
+        AulasPorSemana: valorAulasPorSemanaEditando ? parseInt(valorAulasPorSemanaEditando, 10) : null,
+      });
+      setEditandoAulasPorSemana(null);
+      await recarregarAlocacoes(professorEditando!.UsuarioCPF);
+    } catch (erro: any) {
+      alert('Erro ao atualizar aulas por semana: ' + erro.message);
     }
   };
 
@@ -560,9 +582,41 @@ export default function ProfessoresPage() {
                                 <strong>{nomeTurma}:</strong>{' '}
                                 {alocacoes.map((a, idx) => {
                                   const m = materias.find(m => m.MateriaGUID === a.MateriaGUID);
+                                  const editandoEsta = editandoAulasPorSemana === a.MatProfTurGUID;
                                   return (
                                     <span key={a.MatProfTurGUID} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, marginRight: 6 }}>
                                       {m?.MateriaNome ?? a.MateriaGUID}
+                                      {editandoEsta ? (
+                                        <>
+                                          <input
+                                            type="number"
+                                            min={1}
+                                            max={20}
+                                            value={valorAulasPorSemanaEditando}
+                                            onChange={e => setValorAulasPorSemanaEditando(e.target.value)}
+                                            placeholder="padrão"
+                                            style={{ width: 48, padding: '1px 4px', fontSize: 11, marginLeft: 4 }}
+                                          />
+                                          <button
+                                            onClick={() => salvarAulasPorSemana(a.MatProfTurGUID)}
+                                            title="Salvar aulas/semana"
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2f855a', fontSize: 12 }}
+                                          >
+                                            ✓
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <span
+                                          onClick={() => {
+                                            setEditandoAulasPorSemana(a.MatProfTurGUID);
+                                            setValorAulasPorSemanaEditando(a.AulasPorSemana?.toString() ?? '');
+                                          }}
+                                          title="Definir aulas/semana nesta turma (em branco = usa o padrão da matéria)"
+                                          style={{ fontSize: 11, color: '#718096', cursor: 'pointer', marginLeft: 2 }}
+                                        >
+                                          ({a.AulasPorSemana ?? 'padrão'}x/sem)
+                                        </span>
+                                      )}
                                       <button
                                         onClick={() => handleDesassociarMateria(a.MatProfTurGUID)}
                                         title="Desassociar"
@@ -610,6 +664,16 @@ export default function ProfessoresPage() {
                               <option key={m.MateriaGUID} value={m.MateriaGUID}>{m.MateriaNome}</option>
                             ))}
                         </select>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={novaAlocacaoAulasPorSemana}
+                          onChange={e => setNovaAlocacaoAulasPorSemana(e.target.value)}
+                          placeholder="Aulas/sem (padrão)"
+                          title="Aulas por semana nesta turma (em branco = usa o padrão da matéria)"
+                          style={{ width: 110, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
+                        />
                         <button
                           onClick={handleAssociarMateria}
                           disabled={salvandoAlocacao || !novaAlocacaoTurma || !novaAlocacaoMateria}
