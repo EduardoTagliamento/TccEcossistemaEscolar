@@ -4,7 +4,7 @@ import styles from './BaseFormularioCadastro.module.css';
 export interface CampoFormulario {
   id: string;
   label: string;
-  tipo: 'text' | 'email' | 'tel' | 'date' | 'select' | 'checkbox' | 'cpf';
+  tipo: 'text' | 'email' | 'tel' | 'date' | 'select' | 'checkbox' | 'cpf' | 'number';
   obrigatorio?: boolean;
   placeholder?: string;
   opcoes?: { valor: string; label: string }[]; // Para campos tipo 'select'

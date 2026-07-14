@@ -31,6 +31,7 @@ export interface Alocacao {
   TurmaGUID: string;
   UsuarioCPF: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
+  AulasPorSemana: number | null;
   MatProfTurCreatedAt: Date;
   MatProfTurUpdatedAt: Date;
 }
@@ -67,6 +68,12 @@ export interface AlocacaoCreateDTO {
   TurmaNome?: string;
   UsuarioCPF: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
+  AulasPorSemana?: number | null;
+}
+
+export interface AlocacaoUpdateDTO {
+  AlocacaoStatus?: 'Ativa' | 'Inativa';
+  AulasPorSemana?: number | null;
 }
 
 export interface BatchItemResult {
@@ -377,6 +384,28 @@ export async function criarAlocacao(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Erro ao criar alocação');
+  }
+
+  const resultado = await response.json();
+  return resultado.data;
+}
+
+/**
+ * Atualizar alocação (status e/ou override de aulas por semana)
+ */
+export async function atualizarAlocacao(
+  alocacaoGUID: string,
+  updates: AlocacaoUpdateDTO
+): Promise<Alocacao> {
+  const response = await fetch(`${API_URL}/professor/alocacao/${alocacaoGUID}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ alocacao: updates }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao atualizar alocação');
   }
 
   const resultado = await response.json();

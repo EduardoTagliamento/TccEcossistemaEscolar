@@ -11,6 +11,7 @@ export default class Materia {
   #CursoGUID: string | null = null;
   #MateriaNome: string | null = null;
   #MateriaIsTecnica: boolean = false;
+  #MateriaAulasPorSemanaPadrao: number | null = null;
   #MateriaStatus: "Ativa" | "Inativa" = "Ativa";
   #MateriaCreatedAt: Date | null = null;
   #MateriaUpdatedAt: Date | null = null;
@@ -114,6 +115,27 @@ export default class Materia {
       throw new Error("MateriaIsTecnica deve ser um booleano.");
     }
     this.#MateriaIsTecnica = value;
+  }
+
+  // ========== MateriaAulasPorSemanaPadrao ==========
+  get MateriaAulasPorSemanaPadrao(): number | null {
+    return this.#MateriaAulasPorSemanaPadrao;
+  }
+
+  set MateriaAulasPorSemanaPadrao(value: number | null) {
+    if (value === null || value === undefined) {
+      this.#MateriaAulasPorSemanaPadrao = null;
+      return;
+    }
+
+    if (typeof value !== "number" || !Number.isInteger(value)) {
+      throw new Error("MateriaAulasPorSemanaPadrao deve ser um número inteiro.");
+    }
+    if (value < 1 || value > 20) {
+      throw new Error("MateriaAulasPorSemanaPadrao deve estar entre 1 e 20.");
+    }
+
+    this.#MateriaAulasPorSemanaPadrao = value;
   }
 
   // ========== MateriaStatus ==========

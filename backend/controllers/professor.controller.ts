@@ -188,6 +188,7 @@ export default class ProfessorController {
           TurmaGUID: alocacao.TurmaGUID,
           UsuarioCPF: alocacao.UsuarioCPF,
           AlocacaoStatus: alocacao.AlocacaoStatus,
+          AulasPorSemana: alocacao.AulasPorSemana,
         };
 
         const alocacaoCriada = await this.#professorService.criarAlocacao(
@@ -315,6 +316,7 @@ export default class ProfessorController {
 
       const updateData: AlocacaoUpdateDTO = {
         AlocacaoStatus: alocacao.AlocacaoStatus,
+        AulasPorSemana: alocacao.AulasPorSemana,
       };
 
       const alocacaoAtualizada = await this.#professorService.atualizarAlocacao(

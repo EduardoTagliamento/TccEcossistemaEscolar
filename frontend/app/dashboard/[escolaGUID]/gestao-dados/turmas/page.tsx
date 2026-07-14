@@ -321,6 +321,13 @@ export default function TurmasPage() {
         carregando={carregando}
         acoes={(turma, index) => (
           <>
+            <Link
+              href={`/dashboard/${escolaGUID}/gestao-dados/turmas/${turma.TurmaGUID}/cronograma`}
+              className={styles.botaoEditar}
+              title="Cronograma"
+            >
+              🗓️
+            </Link>
             <button
               onClick={() => handleEditar(turma)}
               className={styles.botaoEditar}

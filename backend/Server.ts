@@ -9,11 +9,13 @@ import MysqlDatabase from "./database/MysqlDatabase";
 import ErrorResponse from "./utils/ErrorResponse";
 import { SocketServer } from "./websocket/SocketServer";
 import { escolaRouterFactory } from "../routes/escola.routes";
+import { escolaConfiguracaoRouterFactory } from "../routes/escolaconfiguracao.routes";
 import { usuarioRouterFactory } from "../routes/usuario.routes";
 import { escolaxusuarioxfuncaoRouterFactory } from "../routes/escolaxusuarioxfuncao.routes";
 import { materiaRouterFactory } from "../routes/materia.routes";
 import { cursoRouterFactory } from "../routes/curso.routes";
 import { turmaRouterFactory } from "../routes/turma.routes";
+import { horarioTurmaRouterFactory } from "../routes/horarioturma.routes";
 import { matriculaRouterFactory } from "../routes/matricula.routes";
 import { professorRouterFactory } from "../routes/professor.routes";
 import verificacaoEmailRoutes from "../routes/verificacao-email.routes";
@@ -277,6 +279,7 @@ export default class Server {
             anexo: "/api/anexo",
             tarefa: "/api/tarefa",
             escola: "/api/escola",
+            escolaConfiguracao: "/api/escola-configuracao",
             usuario: "/api/usuario",
             escolaxusuarioxfuncao: "/api/escolaxusuarioxfuncao",
             materia: "/api/materia",
@@ -314,6 +317,11 @@ export default class Server {
     this.#app.use("/api/escola", escolaRouter);
     console.log("✅ Rotas de Escola registradas em /api/escola");
 
+    // ⏰ Rotas de Configuração da Escola
+    const escolaConfiguracaoRouter = escolaConfiguracaoRouterFactory();
+    this.#app.use("/api/escola-configuracao", escolaConfiguracaoRouter);
+    console.log("✅ Rotas de Configuração da Escola registradas em /api/escola-configuracao");
+
     // � Rotas de Usuário
     const usuarioRouter = usuarioRouterFactory();
     this.#app.use("/api/usuario", usuarioRouter);
@@ -338,6 +346,11 @@ export default class Server {
     const turmaRouter = turmaRouterFactory();
     this.#app.use("/api/turma", turmaRouter);
     console.log("✅ Rotas de Turma registradas em /api/turma");
+
+    // 🗓️ Rotas de Cronograma da Turma (grade horária)
+    const horarioTurmaRouter = horarioTurmaRouterFactory();
+    this.#app.use("/api/turma", horarioTurmaRouter);
+    console.log("✅ Rotas de Cronograma da Turma registradas em /api/turma/:turmaGUID/cronograma");
 
     // 🎓 Rotas de Matrícula
     const matriculaRouter = matriculaRouterFactory();
