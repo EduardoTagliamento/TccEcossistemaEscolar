@@ -259,7 +259,9 @@ export default function CrudProvaAgendadaPage() {
     return turmaGUID;
   };
 
-  const handleCalcularDatas = async () => {
+  // diasOverride permite passar o dia escolhido sem depender do state (que
+  // ainda não teria sido atualizado se chamado logo após um setResultadosCalculo)
+  const handleCalcularDatas = async (diasOverride?: Record<string, DiaSemana>) => {
     const turmasSelecionadas = obterTurmasSelecionadas();
     if (turmasSelecionadas.length === 0) {
       setErro('Selecione ao menos uma turma antes de calcular as datas.');
@@ -280,7 +282,7 @@ export default function CrudProvaAgendadaPage() {
           TurmaGUID: turmaGUID,
           SemanaBase: semanaBase,
           DeslocamentoMinutos: deslocamentoMinutos || 0,
-          DiaSemana: resultadosCalculo[turmaGUID]?.diaEscolhido,
+          DiaSemana: diasOverride?.[turmaGUID] ?? resultadosCalculo[turmaGUID]?.diaEscolhido,
         }))
       );
 
@@ -310,6 +312,33 @@ export default function CrudProvaAgendadaPage() {
       ...prev,
       [turmaGUID]: { ...prev[turmaGUID], dataManual: valor },
     }));
+  };
+
+  // Aplica a N-ésima ocorrência semanal (1ª, 2ª, 3ª aula...) em todas as
+  // turmas que estejam com conflito ("escolherDia"), de uma vez.
+  const handleAplicarOcorrenciaGlobal = async (indice: number) => {
+    const diasEscolhidos: Record<string, DiaSemana> = {};
+
+    Object.entries(resultadosCalculo).forEach(([turmaGUID, resultado]) => {
+      if (resultado.status === 'escolherDia') {
+        const ocorrencia = resultado.Ocorrencias?.[indice - 1];
+        if (ocorrencia) {
+          diasEscolhidos[turmaGUID] = ocorrencia.DiaSemana;
+        }
+      }
+    });
+
+    if (Object.keys(diasEscolhidos).length === 0) return;
+
+    setResultadosCalculo((prev) => {
+      const novo = { ...prev };
+      Object.entries(diasEscolhidos).forEach(([turmaGUID, dia]) => {
+        novo[turmaGUID] = { ...novo[turmaGUID], diaEscolhido: dia };
+      });
+      return novo;
+    });
+
+    await handleCalcularDatas(diasEscolhidos);
   };
 
   /**
@@ -550,11 +579,154 @@ export default function CrudProvaAgendadaPage() {
           </div>
         )}
 
-        {agendamentoAutomatico && !editingGUID ? (
-          <p className={styles.hint}>
-            As datas serão definidas automaticamente pelo cronograma de cada turma (ver modal de turmas).
-          </p>
-        ) : (
+        {!editingGUID && (
+          <div className={styles.autoAgendamento}>
+            <label className={styles.autoAgendamentoChecagem}>
+              <input
+                type="checkbox"
+                checked={agendamentoAutomatico}
+                onChange={(e) => setAgendamentoAutomatico(e.target.checked)}
+                className={styles.checkbox}
+              />
+              Definir automaticamente pelo cronograma das turmas
+            </label>
+
+            {agendamentoAutomatico && (
+              <>
+                <div className={styles.autoAgendamentoLinha}>
+                  <div className={styles.autoAgendamentoCampo}>
+                    <label>Semana de referência</label>
+                    <input
+                      type="date"
+                      value={semanaBase}
+                      onChange={(e) => setSemanaBase(e.target.value)}
+                    />
+                  </div>
+                  <div className={styles.autoAgendamentoCampo}>
+                    <label>Deslocamento (minutos, +/-)</label>
+                    <input
+                      type="number"
+                      value={deslocamentoMinutos}
+                      onChange={(e) => setDeslocamentoMinutos(parseInt(e.target.value, 10) || 0)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.selectButton}
+                    onClick={() => handleCalcularDatas()}
+                    disabled={calculandoDatas || totalTurmasSelecionadas === 0 || !semanaBase}
+                  >
+                    {calculandoDatas ? 'Calculando...' : 'Calcular Datas'}
+                  </button>
+                </div>
+
+                {totalTurmasSelecionadas === 0 && (
+                  <p className={styles.hint}>Selecione ao menos uma turma acima antes de calcular.</p>
+                )}
+
+                {(() => {
+                  const turmasComEscolha = obterTurmasSelecionadas().filter(
+                    (t) => resultadosCalculo[t]?.status === 'escolherDia'
+                  );
+                  const maxOcorrencias = turmasComEscolha.reduce(
+                    (max, t) => Math.max(max, resultadosCalculo[t]?.Ocorrencias?.length || 0),
+                    0
+                  );
+
+                  if (turmasComEscolha.length === 0) return null;
+
+                  return (
+                    <div className={styles.aplicarGlobal}>
+                      <span>
+                        {turmasComEscolha.length} turma(s) com mais de uma aula por semana. Aplicar a mesma ocorrência em todas:
+                      </span>
+                      <div className={styles.aplicarGlobalBotoes}>
+                        {Array.from({ length: maxOcorrencias }, (_, i) => i + 1).map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            className={styles.selectButton}
+                            onClick={() => handleAplicarOcorrenciaGlobal(n)}
+                          >
+                            {n}ª aula da semana
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className={styles.resultadosCalculo}>
+                  {obterTurmasSelecionadas().map((turmaGUID) => {
+                    const resultado = resultadosCalculo[turmaGUID];
+                    if (!resultado) return null;
+
+                    if (resultado.status === 'ok') {
+                      return (
+                        <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoOk}`}>
+                          <strong>{nomeDaTurma(turmaGUID)}</strong>
+                          <span>
+                            {new Date(resultado.DataCalculada!).toLocaleString('pt-BR')} ({resultado.DiaSemana})
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    if (resultado.status === 'escolherDia') {
+                      return (
+                        <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoAviso}`}>
+                          <strong>{nomeDaTurma(turmaGUID)}</strong>
+                          <span>Esta matéria tem mais de uma aula por semana nesta turma. Escolha qual usar:</span>
+                          <select
+                            value={resultado.diaEscolhido || ''}
+                            onChange={(e) => {
+                              handleEscolherDia(turmaGUID, e.target.value as DiaSemana);
+                            }}
+                          >
+                            <option value="">Selecione o dia...</option>
+                            {resultado.Ocorrencias?.map((o) => (
+                              <option key={o.DiaSemana} value={o.DiaSemana}>
+                                {DIA_SEMANA_LABEL[o.DiaSemana]} {o.HoraInicio}–{o.HoraFim}
+                              </option>
+                            ))}
+                          </select>
+                          {resultado.diaEscolhido && (
+                            <button type="button" className={styles.selectButton} onClick={() => handleCalcularDatas()}>
+                              Recalcular com este dia
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (resultado.status === 'semCronograma') {
+                      return (
+                        <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoAviso}`}>
+                          <strong>{nomeDaTurma(turmaGUID)}</strong>
+                          <span>Esta turma não tem cronograma configurado para esta matéria. Defina a data manualmente:</span>
+                          <input
+                            type="datetime-local"
+                            value={resultado.dataManual || ''}
+                            onChange={(e) => handleDataManual(turmaGUID, e.target.value)}
+                          />
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoErro}`}>
+                        <strong>{nomeDaTurma(turmaGUID)}</strong>
+                        <span>{resultado.mensagem || 'Não foi possível calcular a data.'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {!agendamentoAutomatico && (
           <input
             type="datetime-local"
             value={form.ProvaData}
@@ -612,119 +784,6 @@ export default function CrudProvaAgendadaPage() {
                 <p><strong>Matéria:</strong> {materiaSelecionada.MateriaNome}</p>
               </div>
             )}
-
-            <div className={styles.autoAgendamento}>
-              <label className={styles.autoAgendamentoChecagem}>
-                <input
-                  type="checkbox"
-                  checked={agendamentoAutomatico}
-                  onChange={(e) => setAgendamentoAutomatico(e.target.checked)}
-                  className={styles.checkbox}
-                />
-                Definir automaticamente pelo cronograma das turmas
-              </label>
-
-              {agendamentoAutomatico && (
-                <>
-                  <div className={styles.autoAgendamentoLinha}>
-                    <div className={styles.autoAgendamentoCampo}>
-                      <label>Semana de referência</label>
-                      <input
-                        type="date"
-                        value={semanaBase}
-                        onChange={(e) => setSemanaBase(e.target.value)}
-                      />
-                    </div>
-                    <div className={styles.autoAgendamentoCampo}>
-                      <label>Deslocamento (minutos, +/-)</label>
-                      <input
-                        type="number"
-                        value={deslocamentoMinutos}
-                        onChange={(e) => setDeslocamentoMinutos(parseInt(e.target.value, 10) || 0)}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.selectButton}
-                      onClick={handleCalcularDatas}
-                      disabled={calculandoDatas || totalTurmasSelecionadas === 0 || !semanaBase}
-                    >
-                      {calculandoDatas ? 'Calculando...' : 'Calcular Datas'}
-                    </button>
-                  </div>
-
-                  {totalTurmasSelecionadas === 0 && (
-                    <p className={styles.hint}>Selecione ao menos uma turma abaixo antes de calcular.</p>
-                  )}
-
-                  <div className={styles.resultadosCalculo}>
-                    {obterTurmasSelecionadas().map((turmaGUID) => {
-                      const resultado = resultadosCalculo[turmaGUID];
-                      if (!resultado) return null;
-
-                      if (resultado.status === 'ok') {
-                        return (
-                          <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoOk}`}>
-                            <strong>{nomeDaTurma(turmaGUID)}</strong>
-                            <span>
-                              {new Date(resultado.DataCalculada!).toLocaleString('pt-BR')} ({resultado.DiaSemana})
-                            </span>
-                          </div>
-                        );
-                      }
-
-                      if (resultado.status === 'escolherDia') {
-                        return (
-                          <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoAviso}`}>
-                            <strong>{nomeDaTurma(turmaGUID)}</strong>
-                            <span>Esta matéria tem mais de uma aula por semana nesta turma. Escolha qual usar:</span>
-                            <select
-                              value={resultado.diaEscolhido || ''}
-                              onChange={(e) => {
-                                handleEscolherDia(turmaGUID, e.target.value as DiaSemana);
-                              }}
-                            >
-                              <option value="">Selecione o dia...</option>
-                              {resultado.Ocorrencias?.map((o) => (
-                                <option key={o.DiaSemana} value={o.DiaSemana}>
-                                  {DIA_SEMANA_LABEL[o.DiaSemana]} {o.HoraInicio}–{o.HoraFim}
-                                </option>
-                              ))}
-                            </select>
-                            {resultado.diaEscolhido && (
-                              <button type="button" className={styles.selectButton} onClick={handleCalcularDatas}>
-                                Recalcular com este dia
-                              </button>
-                            )}
-                          </div>
-                        );
-                      }
-
-                      if (resultado.status === 'semCronograma') {
-                        return (
-                          <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoAviso}`}>
-                            <strong>{nomeDaTurma(turmaGUID)}</strong>
-                            <span>Esta turma não tem cronograma configurado para esta matéria. Defina a data manualmente:</span>
-                            <input
-                              type="datetime-local"
-                              value={resultado.dataManual || ''}
-                              onChange={(e) => handleDataManual(turmaGUID, e.target.value)}
-                            />
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoErro}`}>
-                          <strong>{nomeDaTurma(turmaGUID)}</strong>
-                          <span>{resultado.mensagem || 'Não foi possível calcular a data.'}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </div>
 
             <div className={styles.modalBody}>
               {loadingModal ? (

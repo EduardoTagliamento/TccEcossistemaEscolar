@@ -301,6 +301,22 @@
   color: var(--text-primary);
 }
 
+.aplicarGlobal {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(0, 123, 255, 0.08);
+  border: 1px solid rgba(0, 123, 255, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+.aplicarGlobalBotoes {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
 .resultadosCalculo {
   margin-top: 1rem;
   display: flex;
