@@ -70,6 +70,11 @@ export interface IntervaloSimples {
  * um slot (caso comum/recomendado). Um intervalo que corta um slot no meio
  * (config incomum, já avisada no momento do salvamento da configuração) é
  * ignorado aqui — o slot é gerado normalmente por cima dele.
+ *
+ * Se o tempo restante no fim do período (ou entre um intervalo e o fim do
+ * período) for menor que MinutosPorAula, ainda assim gera um último slot
+ * "curto" com o que sobrar, em vez de descartar esse tempo — ex: período
+ * até 12:20, última aula cheia terminando 11:40, gera um slot 11:40–12:20.
  */
 export function calcularSlotsPeriodo(
   periodoInicio: string,
@@ -90,17 +95,18 @@ export function calcularSlotsPeriodo(
   const slots: SlotAula[] = [];
   let cursor = horaParaMinutos(periodoInicio);
 
-  while (cursor + minutosPorAula <= fimMin) {
+  while (cursor < fimMin) {
     if (inicioIntervalos.has(cursor)) {
       cursor = fimPorInicio.get(cursor)!;
       continue;
     }
 
+    const fimSlot = Math.min(cursor + minutosPorAula, fimMin);
     slots.push({
       HoraInicio: minutosParaHora(cursor),
-      HoraFim: minutosParaHora(cursor + minutosPorAula),
+      HoraFim: minutosParaHora(fimSlot),
     });
-    cursor += minutosPorAula;
+    cursor = fimSlot;
   }
 
   return slots;
@@ -109,8 +115,9 @@ export function calcularSlotsPeriodo(
 /**
  * Verifica se o início de um intervalo cai exatamente na borda de uma aula
  * (múltiplo inteiro de MinutosPorAula a partir do início do período). Se não
- * cair, retorna um aviso não-bloqueante descrevendo quantas aulas cabem antes
- * do intervalo (arredondado para a meia-aula mais próxima).
+ * cair, o intervalo começa NO MEIO de uma aula específica — o aviso aponta
+ * qual aula é essa, quanto tempo dela sobra antes do intervalo, e os dois
+ * horários de início que resolveriam o desalinhamento.
  */
 export function calcularAvisoIntervalo(
   periodoInicio: string,
@@ -134,9 +141,21 @@ export function calcularAvisoIntervalo(
     return null;
   }
 
-  const aulasArredondadas = Math.round(aulasAntes * 2) / 2;
+  const numeroAula = Math.floor(aulasAntes) + 1;
+  const inicioAulaMin = inicioPeriodoMin + Math.floor(aulasAntes) * minutosPorAula;
+  const fimAulaMin = inicioAulaMin + minutosPorAula;
+  const minutosAntesDoIntervalo = inicioIntervaloMin - inicioAulaMin;
+  const minutosCortados = fimAulaMin - inicioIntervaloMin;
+
+  const inicioAula = minutosParaHora(inicioAulaMin);
+  const fimAula = minutosParaHora(fimAulaMin);
+
   return {
     intervalo: intervaloInicio,
-    mensagem: `O intervalo das ${intervaloInicio} corta uma aula: cabem ${aulasArredondadas} aula(s) de ${minutosPorAula}min a partir das ${periodoInicio}, antes deste intervalo.`,
+    mensagem:
+      `O intervalo das ${intervaloInicio} cai no meio da ${numeroAula}ª aula (${inicioAula}–${fimAula}): ` +
+      `ela ficaria com só ${minutosAntesDoIntervalo} dos ${minutosPorAula} minutos antes do intervalo ` +
+      `(os outros ${minutosCortados} min seriam cortados). ` +
+      `Para não cortar a aula, ajuste o início do intervalo para ${inicioAula} (antes dela) ou ${fimAula} (depois dela).`,
   };
 }
