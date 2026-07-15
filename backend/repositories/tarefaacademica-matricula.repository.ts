@@ -6,6 +6,7 @@ interface TarefaAcademicaMatriculaRow extends RowDataPacket {
   TarefaMatriculaGUID: string;
   TarefaGUID: string;
   MatriculaGUID: string;
+  TarefaPrazoDataMatricula: Date | null;
   TarefaFeito: boolean | number;
   TarefaRealizacaoData: Date | null;
   CreatedAt: Date;
@@ -37,13 +38,14 @@ export class TarefaAcademicaMatriculaDAO {
 
     const SQL = `
       INSERT INTO tarefaacademica_matricula
-      (TarefaMatriculaGUID, TarefaGUID, MatriculaGUID, TarefaFeito, TarefaRealizacaoData)
-      VALUES (?, ?, ?, ?, ?);
+      (TarefaMatriculaGUID, TarefaGUID, MatriculaGUID, TarefaPrazoDataMatricula, TarefaFeito, TarefaRealizacaoData)
+      VALUES (?, ?, ?, ?, ?, ?);
     `;
     const params = [
       atribuicao.TarefaMatriculaGUID,
       atribuicao.TarefaGUID,
       atribuicao.MatriculaGUID,
+      atribuicao.TarefaPrazoDataMatricula,
       atribuicao.TarefaFeito,
       atribuicao.TarefaRealizacaoData,
     ];
@@ -64,11 +66,11 @@ export class TarefaAcademicaMatriculaDAO {
       return [];
     }
 
-    const valuesPlaceholder = atribuicoes.map(() => "(?, ?, ?, ?, ?)").join(", ");
-    
+    const valuesPlaceholder = atribuicoes.map(() => "(?, ?, ?, ?, ?, ?)").join(", ");
+
     const SQL = `
       INSERT INTO tarefaacademica_matricula
-      (TarefaMatriculaGUID, TarefaGUID, MatriculaGUID, TarefaFeito, TarefaRealizacaoData)
+      (TarefaMatriculaGUID, TarefaGUID, MatriculaGUID, TarefaPrazoDataMatricula, TarefaFeito, TarefaRealizacaoData)
       VALUES ${valuesPlaceholder};
     `;
 
@@ -78,6 +80,7 @@ export class TarefaAcademicaMatriculaDAO {
         atrib.TarefaMatriculaGUID,
         atrib.TarefaGUID,
         atrib.MatriculaGUID,
+        atrib.TarefaPrazoDataMatricula,
         atrib.TarefaFeito,
         atrib.TarefaRealizacaoData
       );
@@ -231,6 +234,7 @@ export class TarefaAcademicaMatriculaDAO {
     atribuicao.TarefaMatriculaGUID = row.TarefaMatriculaGUID;
     atribuicao.TarefaGUID = row.TarefaGUID;
     atribuicao.MatriculaGUID = row.MatriculaGUID;
+    atribuicao.TarefaPrazoDataMatricula = row.TarefaPrazoDataMatricula;
     atribuicao.TarefaFeito = Boolean(row.TarefaFeito);
     atribuicao.TarefaRealizacaoData = row.TarefaRealizacaoData;
     atribuicao.CreatedAt = row.CreatedAt;

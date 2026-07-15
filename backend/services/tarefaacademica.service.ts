@@ -30,6 +30,8 @@ export interface TarefaAcademicaDTO {
 export interface MatriculaAtribuidaDTO {
   TarefaMatriculaGUID: string;
   MatriculaGUID: string;
+  /** Prazo efetivo deste aluno: override (agendamento automático) ou o prazo compartilhado da tarefa */
+  TarefaPrazoData: string;
   TarefaFeito: boolean;
   TarefaRealizacaoData: string | null;
 }
@@ -45,6 +47,8 @@ export interface TarefaAcademicaCreateDTO {
   TarefaCompartilhada?: boolean;
   TarefaMinPessoas?: number | null;
   TarefaMaxPessoas?: number | null;
+  /** Agendamento automático: prazo específico por aluno (MatriculaGUID -> data). Sobrescreve TarefaPrazoData para o aluno correspondente. */
+  DatasPorMatricula?: Record<string, Date>;
 }
 
 // Batch agora é o mesmo que Create (sempre atribui para N alunos)
@@ -136,8 +140,25 @@ export default class TarefaAcademicaService {
       });
     }
 
-    // Validar prazo (não pode ser no passado)
-    const prazo = new Date(data.TarefaPrazoData);
+    // Validar prazos por matrícula (agendamento automático), se fornecidos
+    if (data.DatasPorMatricula) {
+      for (const [matriculaGUID, dataMatricula] of Object.entries(data.DatasPorMatricula)) {
+        const dataConvertida = new Date(dataMatricula);
+        if (isNaN(dataConvertida.getTime()) || dataConvertida < new Date()) {
+          throw new ErrorResponse(400, "Prazo inválido", {
+            message: `O prazo calculado para o aluno ${matriculaGUID} não pode ser no passado.`,
+          });
+        }
+      }
+    }
+
+    // Prazo "base" da tarefa: se houver prazos por matrícula, usa o mais
+    // antigo entre eles como referência compartilhada; senão, usa o prazo
+    // informado manualmente.
+    const prazo = data.DatasPorMatricula && Object.keys(data.DatasPorMatricula).length > 0
+      ? new Date(Math.min(...Object.values(data.DatasPorMatricula).map((d) => new Date(d).getTime())))
+      : new Date(data.TarefaPrazoData);
+
     if (isNaN(prazo.getTime()) || prazo < new Date()) {
       throw new ErrorResponse(400, "Prazo inválido", {
         message: "O prazo da tarefa não pode ser no passado.",
@@ -164,12 +185,15 @@ export default class TarefaAcademicaService {
 
     const tarefaCriada = await this.#tarefaDAO.create(tarefa);
 
-    // PASSO 2: Criar atribuições para cada aluno
+    // PASSO 2: Criar atribuições para cada aluno (com prazo específico quando houver override)
     const atribuicoes: TarefaAcademicaMatricula[] = data.MatriculasGUID.map((matriculaGUID) => {
       const atrib = new TarefaAcademicaMatricula();
       atrib.TarefaMatriculaGUID = uuidv4();
       atrib.TarefaGUID = tarefaCriada.TarefaGUID;
       atrib.MatriculaGUID = matriculaGUID;
+      atrib.TarefaPrazoDataMatricula = data.DatasPorMatricula?.[matriculaGUID]
+        ? new Date(data.DatasPorMatricula[matriculaGUID])
+        : null;
       atrib.TarefaFeito = false;
       atrib.TarefaRealizacaoData = null;
       return atrib;
@@ -390,9 +414,14 @@ export default class TarefaAcademicaService {
       });
     }
 
+    const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
+
     return {
       TarefaMatriculaGUID: atribuicaoAtualizada.TarefaMatriculaGUID,
       MatriculaGUID: atribuicaoAtualizada.MatriculaGUID,
+      TarefaPrazoData: (
+        atribuicaoAtualizada.TarefaPrazoDataMatricula ?? tarefa!.TarefaPrazoData
+      ).toISOString(),
       TarefaFeito: atribuicaoAtualizada.TarefaFeito,
       TarefaRealizacaoData: atribuicaoAtualizada.TarefaRealizacaoData
         ? atribuicaoAtualizada.TarefaRealizacaoData.toISOString()
@@ -492,6 +521,7 @@ export default class TarefaAcademicaService {
       MatriculasAtribuidas: atribuicoes.map((atrib) => ({
         TarefaMatriculaGUID: atrib.TarefaMatriculaGUID,
         MatriculaGUID: atrib.MatriculaGUID,
+        TarefaPrazoData: (atrib.TarefaPrazoDataMatricula ?? tarefa.TarefaPrazoData).toISOString(),
         TarefaFeito: atrib.TarefaFeito,
         TarefaRealizacaoData: atrib.TarefaRealizacaoData
           ? atrib.TarefaRealizacaoData.toISOString()

@@ -16,6 +16,7 @@ import { materiaRouterFactory } from "../routes/materia.routes";
 import { cursoRouterFactory } from "../routes/curso.routes";
 import { turmaRouterFactory } from "../routes/turma.routes";
 import { horarioTurmaRouterFactory } from "../routes/horarioturma.routes";
+import { gradeHorariaRouterFactory } from "../routes/gradehoraria.routes";
 import { matriculaRouterFactory } from "../routes/matricula.routes";
 import { professorRouterFactory } from "../routes/professor.routes";
 import verificacaoEmailRoutes from "../routes/verificacao-email.routes";
@@ -351,6 +352,11 @@ export default class Server {
     const horarioTurmaRouter = horarioTurmaRouterFactory();
     this.#app.use("/api/turma", horarioTurmaRouter);
     console.log("✅ Rotas de Cronograma da Turma registradas em /api/turma/:turmaGUID/cronograma");
+
+    // 🧮 Rotas de Agendamento Automático (grade horária)
+    const gradeHorariaRouter = gradeHorariaRouterFactory();
+    this.#app.use("/api/grade-horaria", gradeHorariaRouter);
+    console.log("✅ Rotas de Agendamento Automático registradas em /api/grade-horaria");
 
     // 🎓 Rotas de Matrícula
     const matriculaRouter = matriculaRouterFactory();

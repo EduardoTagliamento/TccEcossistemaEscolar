@@ -54,6 +54,66 @@ export interface AvisoIntervalo {
   mensagem: string;
 }
 
+const OFFSET_DIA_SEMANA: Record<DiaSemana, number> = {
+  Segunda: 0,
+  Terca: 1,
+  Quarta: 2,
+  Quinta: 3,
+  Sexta: 4,
+  Sabado: 5,
+  Domingo: 6,
+};
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/**
+ * Calcula a data/hora de uma aula a partir de uma data de referência
+ * (qualquer dia dentro da semana desejada), o dia da semana da aula, seu
+ * horário de início e um deslocamento em minutos (pode ser negativo).
+ *
+ * Retorna uma string local ingênua "YYYY-MM-DDTHH:MM:00" (sem timezone) —
+ * o mesmo formato que o restante do sistema usa para horários "GMT-3", de
+ * forma que o valor possa ser passado direto para `new Date(...)` do mesmo
+ * jeito que o fluxo manual (ver frontend/lib/timezone-utils.ts) já faz.
+ *
+ * Toda a aritmética de calendário é feita em UTC deliberadamente — não
+ * para representar um instante UTC, mas para que o cálculo de "qual é a
+ * segunda-feira desta semana" e a virada de dia/mês/ano não dependam do
+ * fuso horário configurado no processo Node.
+ */
+export function calcularDataAulaNaSemana(
+  semanaBaseISO: string,
+  diaSemana: DiaSemana,
+  horaInicio: string,
+  deslocamentoMinutos: number = 0
+): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(semanaBaseISO);
+  if (!match) {
+    throw new Error(`SemanaBase inválida: "${semanaBaseISO}". Use o formato YYYY-MM-DD.`);
+  }
+  const [, anoStr, mesStr, diaStr] = match;
+  const referencia = new Date(Date.UTC(Number(anoStr), Number(mesStr) - 1, Number(diaStr)));
+
+  const diaSemanaJS = referencia.getUTCDay(); // 0=Domingo..6=Sábado
+  const offsetParaSegunda = diaSemanaJS === 0 ? -6 : 1 - diaSemanaJS;
+  referencia.setUTCDate(referencia.getUTCDate() + offsetParaSegunda + OFFSET_DIA_SEMANA[diaSemana]);
+
+  const minutosAula = horaParaMinutos(horaInicio) + deslocamentoMinutos;
+  const diasExtras = Math.floor(minutosAula / 1440);
+  const minutosNoDia = ((minutosAula % 1440) + 1440) % 1440;
+  referencia.setUTCDate(referencia.getUTCDate() + diasExtras);
+
+  const ano = referencia.getUTCFullYear();
+  const mes = referencia.getUTCMonth() + 1;
+  const dia = referencia.getUTCDate();
+  const hora = Math.floor(minutosNoDia / 60);
+  const minuto = minutosNoDia % 60;
+
+  return `${ano}-${pad2(mes)}-${pad2(dia)}T${pad2(hora)}:${pad2(minuto)}:00`;
+}
+
 export interface SlotAula {
   HoraInicio: string;
   HoraFim: string;

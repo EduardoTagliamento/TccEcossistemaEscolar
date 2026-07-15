@@ -46,13 +46,13 @@ export class CalendarioDAO {
         'tarefa' AS TipoAviso,
         t.TarefaGUID AS AvisoId,
         tm.MatriculaGUID AS MatriculaGUID,
-        t.TarefaPrazoData AS DataPrazo,
+        COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS DataPrazo,
         t.TarefaTitulo COLLATE utf8mb4_0900_ai_ci AS Titulo,
         t.TarefaConteudo COLLATE utf8mb4_0900_ai_ci AS Descricao,
         tm.TarefaFeito AS StatusBoolean,
         CASE
           WHEN tm.TarefaFeito = 1 THEN 'Feita'
-          WHEN t.TarefaPrazoData < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR) THEN 'Atrasada'
+          WHEN COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 3 HOUR) THEN 'Atrasada'
           ELSE 'Pendente'
         END COLLATE utf8mb4_0900_ai_ci AS StatusTexto,
         t.TarefaTipoEntrega COLLATE utf8mb4_0900_ai_ci AS TipoEntrega,
@@ -85,8 +85,8 @@ export class CalendarioDAO {
             AND mpt.AlocacaoStatus = 'Ativa'
           )
         )
-        AND (? IS NULL OR t.TarefaPrazoData >= ?)
-        AND (? IS NULL OR t.TarefaPrazoData <= ?)
+        AND (? IS NULL OR COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) >= ?)
+        AND (? IS NULL OR COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) <= ?)
 
       UNION
 
@@ -96,7 +96,7 @@ export class CalendarioDAO {
         'prova' AS TipoAviso,
         p.ProvaAgendadaGUID AS AvisoId,
         NULL AS MatriculaGUID,
-        p.ProvaData AS DataPrazo,
+        COALESCE(pt.ProvaDataTurma, p.ProvaData) AS DataPrazo,
         COALESCE(mat.MateriaNome, 'Prova agendada') COLLATE utf8mb4_0900_ai_ci AS Titulo,
         p.ProvaDescricao COLLATE utf8mb4_0900_ai_ci AS Descricao,
         NULL AS StatusBoolean,
@@ -128,8 +128,8 @@ export class CalendarioDAO {
             AND mpt.AlocacaoStatus = 'Ativa'
           )
         )
-        AND (? IS NULL OR p.ProvaData >= ?)
-        AND (? IS NULL OR p.ProvaData <= ?)
+        AND (? IS NULL OR COALESCE(pt.ProvaDataTurma, p.ProvaData) >= ?)
+        AND (? IS NULL OR COALESCE(pt.ProvaDataTurma, p.ProvaData) <= ?)
       ORDER BY DataPrazo ASC;
     `;
 
