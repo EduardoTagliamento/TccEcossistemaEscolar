@@ -192,6 +192,28 @@ export default class TarefaAcademicaMiddleware {
       }
     }
 
+    // DatasPorMatricula: opcional, objeto { MatriculaGUID: data } (agendamento automático)
+    if (tarefa.DatasPorMatricula !== undefined) {
+      if (typeof tarefa.DatasPorMatricula !== "object" || Array.isArray(tarefa.DatasPorMatricula)) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O campo 'DatasPorMatricula' deve ser um objeto { MatriculaGUID: data }.",
+        });
+      }
+
+      for (const [matriculaGUID, dataMatricula] of Object.entries(tarefa.DatasPorMatricula)) {
+        if (!tarefa.MatriculasGUID.includes(matriculaGUID)) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `A matrícula '${matriculaGUID}' em 'DatasPorMatricula' não está em 'MatriculasGUID'.`,
+          });
+        }
+        if (isNaN(new Date(dataMatricula as string).getTime())) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `A data para a matrícula '${matriculaGUID}' em 'DatasPorMatricula' é inválida.`,
+          });
+        }
+      }
+    }
+
     next();
   };
 

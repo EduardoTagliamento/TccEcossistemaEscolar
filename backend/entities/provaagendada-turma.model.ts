@@ -21,6 +21,7 @@ export default class ProvaAgendadaTurma {
   #ProvaAgendadaTurmaGUID!: string;
   #ProvaAgendadaGUID!: string;
   #TurmaGUID!: string;
+  #ProvaDataTurma: Date | null = null;
   #CreatedAt?: Date;
 
   // ========== Getters e Setters ==========
@@ -72,6 +73,23 @@ export default class ProvaAgendadaTurma {
     this.#TurmaGUID = trimmed;
   }
 
+  get ProvaDataTurma(): Date | null {
+    return this.#ProvaDataTurma;
+  }
+
+  set ProvaDataTurma(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#ProvaDataTurma = null;
+      return;
+    }
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new ErrorResponse(400, "ProvaDataTurma inválida", {
+        message: "ProvaDataTurma deve ser uma data válida",
+      });
+    }
+    this.#ProvaDataTurma = value;
+  }
+
   get CreatedAt(): Date | undefined {
     return this.#CreatedAt;
   }
@@ -113,6 +131,7 @@ export default class ProvaAgendadaTurma {
       ProvaAgendadaTurmaGUID: this.#ProvaAgendadaTurmaGUID,
       ProvaAgendadaGUID: this.#ProvaAgendadaGUID,
       TurmaGUID: this.#TurmaGUID,
+      ProvaDataTurma: this.#ProvaDataTurma?.toISOString() || null,
       CreatedAt: this.#CreatedAt?.toISOString() || null
     };
   }

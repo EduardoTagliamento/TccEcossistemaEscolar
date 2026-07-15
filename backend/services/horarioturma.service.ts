@@ -8,7 +8,7 @@ import { MateriaDAO } from "../repositories/materia.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaConfiguracaoDAO } from "../repositories/escolaconfiguracao.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
-import { DiaSemana } from "../utils/gradeHoraria.util";
+import { DiaSemana, calcularDataAulaNaSemana } from "../utils/gradeHoraria.util";
 
 export interface HorarioTurmaDTO {
   HorarioTurmaGUID: string;
@@ -45,6 +45,31 @@ export interface AlocarSlotDTO {
   DiaSemana: DiaSemana;
   HoraInicio: string;
   HoraFim: string;
+}
+
+export interface EscolhaCalculoDTO {
+  TurmaGUID: string;
+  /** Qualquer data (YYYY-MM-DD) dentro da semana desejada */
+  SemanaBase: string;
+  /** Obrigatório apenas quando a matéria tem mais de uma ocorrência semanal nesta turma */
+  DiaSemana?: DiaSemana;
+  DeslocamentoMinutos?: number;
+}
+
+export interface OcorrenciaCalculoDTO {
+  DiaSemana: DiaSemana;
+  HoraInicio: string;
+  HoraFim: string;
+}
+
+export interface ResultadoCalculoDTO {
+  TurmaGUID: string;
+  status: "ok" | "semCronograma" | "escolherDia" | "erro";
+  DataCalculada?: string;
+  DiaSemana?: DiaSemana;
+  HoraBase?: string;
+  Ocorrencias?: OcorrenciaCalculoDTO[];
+  mensagem?: string;
 }
 
 export default class HorarioTurmaService {
@@ -125,6 +150,100 @@ export default class HorarioTurmaService {
     }
 
     return { TurmaGUID: turmaGUID, Slots: slots, Banco: banco };
+  };
+
+  /**
+   * Calcula, para cada turma escolhida, a data/hora em que uma matéria
+   * ocorre no cronograma daquela turma numa determinada semana (+/-
+   * deslocamento). Usado pelo "definir automaticamente" de Prova/Tarefa.
+   *
+   * Por turma, três desfechos possíveis:
+   * - "semCronograma": a matéria não está alocada no cronograma desta
+   *   turma (turma sem grade, ou matéria não posicionada ainda).
+   * - "escolherDia": a matéria ocorre mais de uma vez por semana nesta
+   *   turma e nenhum DiaSemana foi informado — o chamador deve perguntar
+   *   ao usuário qual ocorrência usar como base.
+   * - "ok": data calculada com sucesso.
+   */
+  calcularDatas = async (
+    materiaGUID: string,
+    escolhas: EscolhaCalculoDTO[]
+  ): Promise<ResultadoCalculoDTO[]> => {
+    console.log("🟣 HorarioTurmaService.calcularDatas()");
+
+    const resultados: ResultadoCalculoDTO[] = [];
+
+    for (const escolha of escolhas) {
+      const turma = await this.#turmaDAO.findById(escolha.TurmaGUID);
+      if (!turma) {
+        resultados.push({
+          TurmaGUID: escolha.TurmaGUID,
+          status: "erro",
+          mensagem: "Turma não encontrada.",
+        });
+        continue;
+      }
+
+      const slotsDetalhados = await this.#horarioTurmaDAO.findDetalhadoByTurma(escolha.TurmaGUID);
+      const ocorrencias = slotsDetalhados.filter((s) => s.MateriaGUID === materiaGUID);
+
+      if (ocorrencias.length === 0) {
+        resultados.push({ TurmaGUID: escolha.TurmaGUID, status: "semCronograma" });
+        continue;
+      }
+
+      let ocorrenciaEscolhida = ocorrencias[0];
+      if (ocorrencias.length > 1) {
+        if (!escolha.DiaSemana) {
+          resultados.push({
+            TurmaGUID: escolha.TurmaGUID,
+            status: "escolherDia",
+            Ocorrencias: ocorrencias.map((o) => ({
+              DiaSemana: o.DiaSemana,
+              HoraInicio: o.HoraInicio,
+              HoraFim: o.HoraFim,
+            })),
+          });
+          continue;
+        }
+
+        const encontrada = ocorrencias.find((o) => o.DiaSemana === escolha.DiaSemana);
+        if (!encontrada) {
+          resultados.push({
+            TurmaGUID: escolha.TurmaGUID,
+            status: "erro",
+            mensagem: `O dia "${escolha.DiaSemana}" não corresponde a nenhuma ocorrência desta matéria nesta turma.`,
+          });
+          continue;
+        }
+        ocorrenciaEscolhida = encontrada;
+      }
+
+      try {
+        const dataCalculada = calcularDataAulaNaSemana(
+          escolha.SemanaBase,
+          ocorrenciaEscolhida.DiaSemana,
+          ocorrenciaEscolhida.HoraInicio,
+          escolha.DeslocamentoMinutos || 0
+        );
+
+        resultados.push({
+          TurmaGUID: escolha.TurmaGUID,
+          status: "ok",
+          DataCalculada: dataCalculada,
+          DiaSemana: ocorrenciaEscolhida.DiaSemana,
+          HoraBase: ocorrenciaEscolhida.HoraInicio,
+        });
+      } catch (error) {
+        resultados.push({
+          TurmaGUID: escolha.TurmaGUID,
+          status: "erro",
+          mensagem: error instanceof Error ? error.message : "Erro ao calcular a data.",
+        });
+      }
+    }
+
+    return resultados;
   };
 
   alocarSlot = async (
