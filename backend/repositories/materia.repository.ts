@@ -32,12 +32,13 @@ export class MateriaDAO {
 
     const SQL = `
       INSERT INTO materia
-      (MateriaGUID, EscolaGUID, MateriaNome, MateriaIsTecnica, MateriaAulasPorSemanaPadrao, MateriaStatus)
-      VALUES (?, ?, ?, ?, ?, ?);
+      (MateriaGUID, EscolaGUID, CursoGUID, MateriaNome, MateriaIsTecnica, MateriaAulasPorSemanaPadrao, MateriaStatus)
+      VALUES (?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       materia.MateriaGUID,
       materia.EscolaGUID,
+      materia.CursoGUID,
       materia.MateriaNome,
       materia.MateriaIsTecnica,
       materia.MateriaAulasPorSemanaPadrao,

@@ -31,6 +31,8 @@ export default function CronogramaTurmaPage() {
   const [cronograma, setCronograma] = useState<HorarioTurmaAPI.CronogramaTurma | null>(null);
   const [celulaSobre, setCelulaSobre] = useState<string | null>(null);
   const [bancoSobre, setBancoSobre] = useState(false);
+  const [mostrarManha, setMostrarManha] = useState(true);
+  const [mostrarTarde, setMostrarTarde] = useState(true);
 
   useEffect(() => {
     if (escolaGUID && turmaGUID) {
@@ -123,7 +125,16 @@ export default function CronogramaTurmaPage() {
     if (!raw) return;
     const payload: DragPayload = JSON.parse(raw);
 
+    // Ao mover uma peça já alocada, o slot antigo é liberado ANTES de tentar
+    // alocar o novo — senão a contagem de aulas/semana ainda inclui a alocação
+    // antiga e bloqueia o próprio reposicionamento com "limite atingido".
+    // Se a nova alocação falhar (ex: conflito de professor), a matéria já
+    // fica livre e volta para o banco, como o esperado.
     try {
+      if (payload.tipo === 'slot' && payload.HorarioTurmaGUID) {
+        await HorarioTurmaAPI.removerSlot(turmaGUID, payload.HorarioTurmaGUID);
+      }
+
       await HorarioTurmaAPI.alocarSlot(turmaGUID, {
         MatProfTurGUID: payload.MatProfTurGUID,
         DiaSemana: dia,
@@ -131,13 +142,10 @@ export default function CronogramaTurmaPage() {
         HoraFim: slot.HoraFim,
       });
 
-      if (payload.tipo === 'slot' && payload.HorarioTurmaGUID) {
-        await HorarioTurmaAPI.removerSlot(turmaGUID, payload.HorarioTurmaGUID);
-      }
-
       await recarregarCronograma();
     } catch (err: any) {
       alert(err.message || 'Não foi possível alocar neste horário');
+      await recarregarCronograma();
     }
   };
 
@@ -284,8 +292,33 @@ export default function CronogramaTurmaPage() {
 
       {config?.Configurada && (
         <>
-          {renderTurno('Manha', 'Manhã')}
-          {renderTurno('Tarde', 'Tarde')}
+          {(linhasPorTurno.Manha.length > 0 || linhasPorTurno.Tarde.length > 0) && (
+            <div className={styles.toggleTurnos}>
+              {linhasPorTurno.Manha.length > 0 && (
+                <label className={styles.toggleItem}>
+                  <input
+                    type="checkbox"
+                    checked={mostrarManha}
+                    onChange={(e) => setMostrarManha(e.target.checked)}
+                  />
+                  Mostrar manhã
+                </label>
+              )}
+              {linhasPorTurno.Tarde.length > 0 && (
+                <label className={styles.toggleItem}>
+                  <input
+                    type="checkbox"
+                    checked={mostrarTarde}
+                    onChange={(e) => setMostrarTarde(e.target.checked)}
+                  />
+                  Mostrar tarde
+                </label>
+              )}
+            </div>
+          )}
+
+          {mostrarManha && renderTurno('Manha', 'Manhã')}
+          {mostrarTarde && renderTurno('Tarde', 'Tarde')}
 
           <div
             className={`${styles.bancoSecao} ${bancoSobre ? styles.arrastandoSobre : ''}`}

@@ -277,13 +277,25 @@ export default class ProfessorService {
     );
 
     if (existente) {
-      throw new ErrorResponse(409, 'Alocação já existe', {
-        message: 'Este professor já está alocado nesta matéria e turma',
-        alocacaoExistente: {
-          MatProfTurGUID: existente.MatProfTurGUID,
-          AlocacaoStatus: existente.AlocacaoStatus,
-        },
+      if (existente.AlocacaoStatus === 'Ativa') {
+        throw new ErrorResponse(409, 'Alocação já existe', {
+          message: 'Este professor já está alocado nesta matéria e turma',
+          alocacaoExistente: {
+            MatProfTurGUID: existente.MatProfTurGUID,
+            AlocacaoStatus: existente.AlocacaoStatus,
+          },
+        });
+      }
+
+      // Existe uma alocação inativa para esta tripla (matéria+turma+professor).
+      // Não dá para criar outra: há uma constraint única no banco. Reativa a
+      // existente em vez de bloquear.
+      const reativada = await this.#alocacaoDAO.update(existente.MatProfTurGUID, {
+        AlocacaoStatus: 'Ativa',
+        AulasPorSemana: data.AulasPorSemana ?? existente.AulasPorSemana,
       });
+
+      return this.toAlocacaoDTO(reativada!);
     }
 
     // 7. Criar alocação
@@ -776,11 +788,27 @@ export default class ProfessorService {
         );
 
         if (existente) {
+          if (existente.AlocacaoStatus === 'Ativa') {
+            resultados.push({
+              item: dados,
+              sucesso: true,
+              mensagem: 'Alocação já existe',
+              dados: this.toAlocacaoDTO(existente),
+              tipo: 'existente'
+            });
+            existentes++;
+            continue;
+          }
+
+          // Inativa: reativar em vez de tentar criar (há constraint única no banco)
+          const reativada = await this.#alocacaoDAO.update(existente.MatProfTurGUID, {
+            AlocacaoStatus: 'Ativa',
+          });
           resultados.push({
             item: dados,
             sucesso: true,
-            mensagem: 'Alocação já existe',
-            dados: this.toAlocacaoDTO(existente),
+            mensagem: 'Alocação reativada com sucesso',
+            dados: this.toAlocacaoDTO(reativada!),
             tipo: 'existente'
           });
           existentes++;
