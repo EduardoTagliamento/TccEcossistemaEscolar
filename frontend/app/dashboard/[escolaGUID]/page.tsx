@@ -198,7 +198,7 @@ export default function DashboardPage() {
           <div className={styles.escolaInfo}>
             {escola?.EscolaLogo ? (
               <img
-                src={`/uploads/logos/${escola.EscolaLogo}`}
+                src={escola.EscolaLogo}
                 alt={escola.EscolaNome}
                 className={styles.escolaLogo}
               />
@@ -260,6 +260,9 @@ export default function DashboardPage() {
                     </Link>
                     <Link href={`/dashboard/${escolaGUID}/crud-provaagendada`} className={styles.quickActionButton}>
                       <FiEdit3 /> Cadastro de Prova Agendada
+                    </Link>
+                    <Link href={`/dashboard/${escolaGUID}/crud-conteudo`} className={styles.quickActionButton}>
+                      <FiBookOpen /> Cadastro de Conteúdo
                     </Link>
                   </>
                 )}

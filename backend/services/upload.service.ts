@@ -1,13 +1,14 @@
 /**
  * 📤 Serviço de Upload
- * 
+ *
  * Gerencia upload de arquivos e atualização de registros no banco.
+ * Os arquivos em si vão para o Cloudflare R2 (ver R2StorageService) — o
+ * campo EscolaLogo guarda a URL pública completa do arquivo no bucket.
  */
 
-import fs from 'fs';
-import path from 'path';
 import { EscolaDAO } from '../repositories/escola.repository';
 import ErrorResponse from '../utils/ErrorResponse';
+import R2StorageService from './r2storage.service';
 
 export default class UploadService {
   #escolaDAO: EscolaDAO;
@@ -19,66 +20,64 @@ export default class UploadService {
 
   /**
    * Processa upload de logo de escola
-   * Atualiza registro da escola com caminho do arquivo
+   * Atualiza registro da escola com a URL pública do arquivo no R2
    */
   async uploadEscolaLogo(
     EscolaGUID: string,
     file: Express.Multer.File
   ): Promise<{
     fileName: string;
-    filePath: string;
     fileUrl: string;
     fileSize: number;
     mimeType: string;
   }> {
+    console.log(`📤 [UploadService] Processando logo da escola ${EscolaGUID}`);
+
+    // 1. Verificar se escola existe
+    const escola = await this.#escolaDAO.findById(EscolaGUID);
+
+    if (!escola) {
+      throw new ErrorResponse(404, 'Escola não encontrada', {
+        message: `Escola com GUID ${EscolaGUID} não existe`,
+      });
+    }
+
     try {
-      console.log(`📤 [UploadService] Processando logo da escola ${EscolaGUID}`);
+      // 2. Enviar novo arquivo para o R2
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 8);
+      const originalName = file.originalname.replace(/\s+/g, '-').toLowerCase();
+      const fileName = `${timestamp}-${randomString}-${originalName}`;
+      const chave = `logos/${EscolaGUID}/${fileName}`;
 
-      // 1. Verificar se escola existe
-      const escola = await this.#escolaDAO.findById(EscolaGUID);
+      const fileUrl = await R2StorageService.upload(chave, file.buffer, file.mimetype);
 
-      if (!escola) {
-        // Se escola não existe, remover arquivo enviado
-        this.deleteFile(file.path);
-        throw new ErrorResponse(404, 'Escola não encontrada', {
-          message: `Escola com GUID ${EscolaGUID} não existe`,
+      // 3. Se escola já tinha logo, remover o arquivo antigo do R2 (não bloqueia o fluxo se falhar)
+      if (escola.EscolaLogo) {
+        R2StorageService.removeByUrl(escola.EscolaLogo).catch((error) => {
+          console.warn('⚠️  [UploadService] Falha ao remover logo antigo do R2:', error.message);
         });
       }
 
-      // 2. Se escola já tem logo, remover arquivo antigo
-      if (escola.EscolaLogo) {
-        const oldLogoPath = path.resolve(process.cwd(), 'uploads', 'logos', escola.EscolaLogo);
-        this.deleteFile(oldLogoPath);
-      }
-
-      // 3. Atualizar registro no banco com nome do arquivo
-      escola.EscolaLogo = file.filename;
+      // 4. Atualizar registro no banco com a URL pública
+      escola.EscolaLogo = fileUrl;
       const updated = await this.#escolaDAO.update(escola);
 
       if (!updated) {
-        // Se falhou ao atualizar, remover arquivo
-        this.deleteFile(file.path);
         throw new ErrorResponse(500, 'Erro ao atualizar escola', {
           message: 'Não foi possível salvar o logo da escola',
         });
       }
 
-      console.log(`✅ [UploadService] Logo salvo com sucesso: ${file.filename}`);
+      console.log(`✅ [UploadService] Logo salvo com sucesso: ${fileUrl}`);
 
-      // 4. Retornar informações do arquivo
       return {
-        fileName: file.filename,
-        filePath: file.path,
-        fileUrl: `/uploads/logos/${file.filename}`,
+        fileName,
+        fileUrl,
         fileSize: file.size,
         mimeType: file.mimetype,
       };
     } catch (error: any) {
-      // Em caso de erro, garantir que o arquivo é removido
-      if (file && file.path) {
-        this.deleteFile(file.path);
-      }
-
       if (error instanceof ErrorResponse) {
         throw error;
       }
@@ -94,9 +93,9 @@ export default class UploadService {
    * Remove logo de escola
    */
   async removeEscolaLogo(EscolaGUID: string): Promise<boolean> {
-    try {
-      console.log(`🗑️  [UploadService] Removendo logo da escola ${EscolaGUID}`);
+    console.log(`🗑️  [UploadService] Removendo logo da escola ${EscolaGUID}`);
 
+    try {
       // 1. Buscar escola
       const escola = await this.#escolaDAO.findById(EscolaGUID);
 
@@ -112,9 +111,8 @@ export default class UploadService {
         });
       }
 
-      // 2. Remover arquivo do disco
-      const logoPath = path.resolve(process.cwd(), 'uploads', 'logos', escola.EscolaLogo);
-      this.deleteFile(logoPath);
+      // 2. Remover arquivo do R2
+      await R2StorageService.removeByUrl(escola.EscolaLogo);
 
       // 3. Atualizar registro no banco
       escola.EscolaLogo = null;
@@ -131,20 +129,6 @@ export default class UploadService {
       throw new ErrorResponse(500, 'Erro ao remover logo', {
         message: 'Falha ao remover arquivo',
       });
-    }
-  }
-
-  /**
-   * Helper para deletar arquivo
-   */
-  private deleteFile(filePath: string): void {
-    try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log(`🗑️  Arquivo removido: ${filePath}`);
-      }
-    } catch (error: any) {
-      console.warn(`⚠️  Não foi possível remover arquivo ${filePath}:`, error.message);
     }
   }
 }

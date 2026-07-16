@@ -17,6 +17,8 @@ import { cursoRouterFactory } from "../routes/curso.routes";
 import { turmaRouterFactory } from "../routes/turma.routes";
 import { horarioTurmaRouterFactory } from "../routes/horarioturma.routes";
 import { gradeHorariaRouterFactory } from "../routes/gradehoraria.routes";
+import { categoriaConteudoRouterFactory } from "../routes/categoriaconteudo.routes";
+import { conteudoRouterFactory } from "../routes/conteudo.routes";
 import { matriculaRouterFactory } from "../routes/matricula.routes";
 import { professorRouterFactory } from "../routes/professor.routes";
 import verificacaoEmailRoutes from "../routes/verificacao-email.routes";
@@ -357,6 +359,16 @@ export default class Server {
     const gradeHorariaRouter = gradeHorariaRouterFactory();
     this.#app.use("/api/grade-horaria", gradeHorariaRouter);
     console.log("✅ Rotas de Agendamento Automático registradas em /api/grade-horaria");
+
+    // 🗂️ Rotas de Categoria de Conteúdo
+    const categoriaConteudoRouter = categoriaConteudoRouterFactory();
+    this.#app.use("/api/categoria-conteudo", categoriaConteudoRouter);
+    console.log("✅ Rotas de Categoria de Conteúdo registradas em /api/categoria-conteudo");
+
+    // 🎬 Rotas de Conteúdo (materiais de aula)
+    const conteudoRouter = conteudoRouterFactory();
+    this.#app.use("/api/conteudo", conteudoRouter);
+    console.log("✅ Rotas de Conteúdo registradas em /api/conteudo");
 
     // 🎓 Rotas de Matrícula
     const matriculaRouter = matriculaRouterFactory();
