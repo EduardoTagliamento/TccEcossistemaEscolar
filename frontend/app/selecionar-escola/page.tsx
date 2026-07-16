@@ -153,7 +153,7 @@ export default function SelecionarEscolaPage() {
               {item.escola.EscolaLogo ? (
                 <div className={styles.logoWrapper}>
                   <img
-                    src={`/uploads/logos/${item.escola.EscolaLogo}`}
+                    src={item.escola.EscolaLogo}
                     alt={`Logo ${item.escola.EscolaNome}`}
                     className={styles.escolaLogo}
                   />

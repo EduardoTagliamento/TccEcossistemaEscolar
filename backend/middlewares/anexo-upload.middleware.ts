@@ -1,25 +1,17 @@
 /**
  * 📤 Middleware de Upload de Anexos
- * 
+ *
  * Configura multer para upload de arquivos diversos (anexos).
  * Valida tipo de arquivo e tamanho máximo.
  * Diferente do upload.middleware.ts (logos), aceita mais tipos e maior tamanho.
+ *
+ * Armazenamento em memória (não em disco): o arquivo é recebido como buffer
+ * e enviado para o Cloudflare R2 pelo AnexoService.
  */
 
 import multer, { FileFilterCallback } from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { v4 as uuidv4 } from 'uuid';
 import { Request } from 'express';
 import ErrorResponse from '../utils/ErrorResponse';
-
-// Diretório de upload para anexos
-const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'anexos');
-
-// Garante que o diretório exista
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
 
 // Tipos MIME permitidos (mais abrangente que logos)
 const ALLOWED_MIME_TYPES = [
@@ -41,20 +33,6 @@ const ALLOWED_MIME_TYPES = [
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 /**
- * Configuração de armazenamento do multer
- */
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const filename = `${uuidv4()}${ext}`;
-    cb(null, filename);
-  }
-});
-
-/**
  * Filtro de tipos permitidos
  */
 const fileFilter = (
@@ -74,10 +52,10 @@ const fileFilter = (
 };
 
 /**
- * Configuração do multer para anexos
+ * Configuração do multer para anexos (buffer em memória)
  */
 export const anexoUploadMiddleware = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
     fileSize: MAX_FILE_SIZE,
