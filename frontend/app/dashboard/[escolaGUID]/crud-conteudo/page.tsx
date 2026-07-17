@@ -44,6 +44,14 @@ export default function CrudConteudoPage() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
+  // Calculado só no cliente (useEffect) — chamar usuarioForaDoBrasil() direto
+  // no corpo do render causa mismatch de hidratação: o timezone do servidor
+  // (SSR) quase nunca bate com o do navegador do usuário.
+  const [mostrarAvisoTimezone, setMostrarAvisoTimezone] = useState(false);
+  useEffect(() => {
+    setMostrarAvisoTimezone(usuarioForaDoBrasil());
+  }, []);
+
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [categorias, setCategorias] = useState<CategoriaConteudoAPI.CategoriaConteudo[]>([]);
   const [conteudos, setConteudos] = useState<ConteudoAPI.Conteudo[]>([]);
@@ -389,7 +397,7 @@ export default function CrudConteudoPage() {
         <Link href={`/dashboard/${escolaGUID}`} className={styles.backLink}>Voltar ao Dashboard</Link>
       </header>
 
-      {usuarioForaDoBrasil() && (
+      {mostrarAvisoTimezone && (
         <div className={styles.hint}>
           🌍 Você está em um fuso horário diferente do Brasil (GMT-3). Datas ajustadas para o seu fuso local.
         </div>

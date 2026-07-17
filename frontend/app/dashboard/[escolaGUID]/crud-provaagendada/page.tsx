@@ -51,6 +51,14 @@ export default function CrudProvaAgendadaPage() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
+  // Calculado só no cliente (useEffect) — chamar usuarioForaDoBrasil() direto
+  // no corpo do render causa mismatch de hidratação: o timezone do servidor
+  // (SSR) quase nunca bate com o do navegador do usuário.
+  const [mostrarAvisoTimezone, setMostrarAvisoTimezone] = useState(false);
+  useEffect(() => {
+    setMostrarAvisoTimezone(usuarioForaDoBrasil());
+  }, []);
+
   const [provas, setProvas] = useState<Prova[]>([]);
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [series, setSeries] = useState<SerieItem[]>([]);
@@ -515,7 +523,7 @@ export default function CrudProvaAgendadaPage() {
       </header>
 
       {/* Aviso de Timezone */}
-      {usuarioForaDoBrasil() && (
+      {mostrarAvisoTimezone && (
         <div className={styles.timezoneAlert}>
           🌍 <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3). 
           As datas e horários exibidos foram ajustados para o seu fuso local.
