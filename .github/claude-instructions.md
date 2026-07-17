@@ -452,6 +452,19 @@ Todo método de toda classe loga `console.log("🔵 EscolaControl.store()")` na 
 
 ---
 
+## Hospedagem — Railway
+
+O projeto é hospedado na plataforma **Railway** (`railway.app`):
+
+- **Backend (API):** serviço Node.js implantado diretamente do repositório GitHub
+- **Banco de dados:** plugin MySQL do Railway (substitui instância local)
+- **Frontend:** serviço Next.js separado no mesmo projeto Railway
+- **Deploy:** automático a cada push na branch `main`
+
+As variáveis de ambiente de produção são configuradas no painel do Railway (não ficam no `.env` commitado).
+
+---
+
 ## Banco de Dados
 
 **Banco:** `tccecossistemaescolar` · MySQL 8  
@@ -461,9 +474,9 @@ Todo método de toda classe loga `console.log("🔵 EscolaControl.store()")` na 
 ### Variáveis de Ambiente
 
 ```env
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=...
+DB_HOST=localhost          # Railway fornece via ${{MySQL.MYSQL_HOST}}
+DB_USER=root               # Railway fornece via ${{MySQL.MYSQL_USER}}
+DB_PASSWORD=...            # Railway fornece via ${{MySQL.MYSQL_PASSWORD}}
 DB_NAME=tccecossistemaescolar
 DB_PORT=3306
 JWT_SECRET=...
