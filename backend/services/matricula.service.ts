@@ -6,6 +6,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.
 import MysqlDatabase from "../database/MysqlDatabase";
 import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
+import ConversaGrupoService from "./conversa-grupo.service";
 
 /**
  * DTOs para transferência de dados
@@ -74,19 +75,22 @@ export default class MatriculaService {
   #usuarioDAO: UsuarioDAO;
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
   #database: MysqlDatabase;
+  #conversaGrupoService?: ConversaGrupoService;
 
   constructor(
     matriculaDAO: MatriculaDAO,
     turmaDAO: TurmaDAO,
     usuarioDAO: UsuarioDAO,
     escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO,
-    database: MysqlDatabase
+    database: MysqlDatabase,
+    conversaGrupoService?: ConversaGrupoService
   ) {
     this.#matriculaDAO = matriculaDAO;
     this.#turmaDAO = turmaDAO;
     this.#usuarioDAO = usuarioDAO;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAO;
     this.#database = database;
+    this.#conversaGrupoService = conversaGrupoService;
   }
 
   /**
@@ -162,6 +166,14 @@ export default class MatriculaService {
 
     // 7. Persistir
     const matriculaCriada = await this.#matriculaDAO.create(matricula);
+
+    // 8. Adicionar ao grupo de conversa da turma
+    if (this.#conversaGrupoService) {
+      await this.#conversaGrupoService.adicionarMembroTurma(
+        matriculaCriada.TurmaGUID,
+        matriculaCriada.UsuarioCPF
+      );
+    }
 
     return this.toDTO(matriculaCriada);
   }
@@ -368,6 +380,19 @@ export default class MatriculaService {
       });
     }
 
+    // 5. Remover do grupo de conversa se saiu da turma
+    const statusSaida: MatriculaDTO['MatriculaStatus'][] = ['Transferida', 'Cancelada', 'Concluida'];
+    if (
+      this.#conversaGrupoService &&
+      data.MatriculaStatus &&
+      statusSaida.includes(data.MatriculaStatus)
+    ) {
+      await this.#conversaGrupoService.removerMembroTurma(
+        matriculaAtualizada.TurmaGUID,
+        matriculaAtualizada.UsuarioCPF
+      );
+    }
+
     return this.toDTO(matriculaAtualizada);
   }
 
@@ -401,6 +426,14 @@ export default class MatriculaService {
       throw new ErrorResponse(500, 'Erro ao cancelar matrícula', {
         message: 'Não foi possível cancelar a matrícula',
       });
+    }
+
+    // 5. Remover do grupo de conversa da turma
+    if (this.#conversaGrupoService) {
+      await this.#conversaGrupoService.removerMembroTurma(
+        matricula.TurmaGUID,
+        matricula.UsuarioCPF
+      );
     }
   }
 

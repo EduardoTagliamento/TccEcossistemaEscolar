@@ -27,14 +27,16 @@ export default class ProvaAgendadaTurmaDAO {
       INSERT INTO provaagendada_turma (
         ProvaAgendadaTurmaGUID,
         ProvaAgendadaGUID,
-        TurmaGUID
-      ) VALUES (?, ?, ?)
+        TurmaGUID,
+        ProvaDataTurma
+      ) VALUES (?, ?, ?, ?)
     `;
 
     const params = [
       atribuicao.ProvaAgendadaTurmaGUID,
       atribuicao.ProvaAgendadaGUID,
-      atribuicao.TurmaGUID
+      atribuicao.TurmaGUID,
+      atribuicao.ProvaDataTurma
     ];
 
     const pool = await this.db.getPool();
@@ -59,14 +61,16 @@ export default class ProvaAgendadaTurmaDAO {
       INSERT INTO provaagendada_turma (
         ProvaAgendadaTurmaGUID,
         ProvaAgendadaGUID,
-        TurmaGUID
+        TurmaGUID,
+        ProvaDataTurma
       ) VALUES ?
     `;
 
     const values = atribuicoes.map(a => [
       a.ProvaAgendadaTurmaGUID,
       a.ProvaAgendadaGUID,
-      a.TurmaGUID
+      a.TurmaGUID,
+      a.ProvaDataTurma
     ]);
 
     const pool = await this.db.getPool();
@@ -162,6 +166,7 @@ export default class ProvaAgendadaTurmaDAO {
     atribuicao.ProvaAgendadaTurmaGUID = row.ProvaAgendadaTurmaGUID;
     atribuicao.ProvaAgendadaGUID = row.ProvaAgendadaGUID;
     atribuicao.TurmaGUID = row.TurmaGUID;
+    atribuicao.ProvaDataTurma = row.ProvaDataTurma ? new Date(row.ProvaDataTurma) : null;
     atribuicao.CreatedAt = row.CreatedAt ? new Date(row.CreatedAt) : undefined;
     return atribuicao;
   }

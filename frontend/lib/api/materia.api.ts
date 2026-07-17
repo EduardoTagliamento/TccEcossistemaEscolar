@@ -33,6 +33,7 @@ export interface Materia {
   CursoGUID: string | null;
   MateriaNome: string;
   MateriaIsTecnica: boolean;
+  MateriaAulasPorSemanaPadrao: number | null;
   MateriaStatus: 'Ativa' | 'Inativa';
   MateriaCreatedAt: Date | string;
   MateriaUpdatedAt: Date | string;
@@ -44,6 +45,7 @@ export interface MateriaCreateDTO {
   CursoNome?: string; // Para resolução nome → GUID
   MateriaNome: string;
   MateriaIsTecnica: boolean;
+  MateriaAulasPorSemanaPadrao?: number | null;
   MateriaStatus?: 'Ativa' | 'Inativa';
 }
 
@@ -171,6 +173,7 @@ export async function atualizarMateria(
     MateriaNome?: string;
     MateriaStatus?: 'Ativa' | 'Inativa';
     MateriaIsTecnica?: boolean;
+    MateriaAulasPorSemanaPadrao?: number | null;
     CursoGUID?: string | null;
   }
 ): Promise<Materia> {

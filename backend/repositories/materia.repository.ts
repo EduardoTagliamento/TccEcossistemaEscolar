@@ -7,6 +7,7 @@ interface MateriaRow {
   CursoGUID: string | null;
   MateriaNome: string;
   MateriaIsTecnica: boolean;
+  MateriaAulasPorSemanaPadrao: number | null;
   MateriaStatus: "Ativa" | "Inativa";
   MateriaCreatedAt: Date;
   MateriaUpdatedAt: Date;
@@ -31,14 +32,16 @@ export class MateriaDAO {
 
     const SQL = `
       INSERT INTO materia
-      (MateriaGUID, EscolaGUID, MateriaNome, MateriaIsTecnica, MateriaStatus)
-      VALUES (?, ?, ?, ?, ?);
+      (MateriaGUID, EscolaGUID, CursoGUID, MateriaNome, MateriaIsTecnica, MateriaAulasPorSemanaPadrao, MateriaStatus)
+      VALUES (?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       materia.MateriaGUID,
       materia.EscolaGUID,
+      materia.CursoGUID,
       materia.MateriaNome,
       materia.MateriaIsTecnica,
+      materia.MateriaAulasPorSemanaPadrao,
       materia.MateriaStatus,
     ];
 
@@ -115,8 +118,9 @@ export class MateriaDAO {
 
     const SQL = `
       UPDATE materia
-      SET MateriaNome = ?, 
-          MateriaIsTecnica = ?, 
+      SET MateriaNome = ?,
+          MateriaIsTecnica = ?,
+          MateriaAulasPorSemanaPadrao = ?,
           MateriaStatus = ?,
           CursoGUID = ?,
           MateriaUpdatedAt = CURRENT_TIMESTAMP
@@ -125,6 +129,7 @@ export class MateriaDAO {
     const params = [
       materia.MateriaNome,
       materia.MateriaIsTecnica,
+      materia.MateriaAulasPorSemanaPadrao,
       materia.MateriaStatus,
       materia.CursoGUID,
       materiaGUID,
@@ -178,6 +183,7 @@ export class MateriaDAO {
       materia.CursoGUID = row.CursoGUID;
       materia.MateriaNome = row.MateriaNome;
       materia.MateriaIsTecnica = Boolean(row.MateriaIsTecnica);
+      materia.MateriaAulasPorSemanaPadrao = row.MateriaAulasPorSemanaPadrao;
       materia.MateriaStatus = row.MateriaStatus;
       materia.MateriaCreatedAt = new Date(row.MateriaCreatedAt);
       materia.MateriaUpdatedAt = new Date(row.MateriaUpdatedAt);

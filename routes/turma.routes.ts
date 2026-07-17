@@ -8,6 +8,10 @@ import { EscolaDAO } from "../backend/repositories/escola.repository";
 import { CursoDAO } from "../backend/repositories/curso.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import ConversaGrupoService from "../backend/services/conversa-grupo.service";
+import { ConversaDAO } from "../backend/repositories/conversa.repository";
+import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
+import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 
 export default class TurmaRoteador {
   #router: Router;
@@ -67,7 +71,12 @@ export const turmaRouterFactory = () => {
   const escolaDAO = new EscolaDAO(database);
   const cursoDAO = new CursoDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
-  const turmaService = new TurmaService(turmaDAO, escolaDAO, cursoDAO, escolaxUsuarioxFuncaoDAO);
+  const conversaGrupoService = new ConversaGrupoService(
+    new ConversaDAO(database),
+    new ConversaGrupoDAO(database),
+    new MatriculaDAO(database)
+  );
+  const turmaService = new TurmaService(turmaDAO, escolaDAO, cursoDAO, escolaxUsuarioxFuncaoDAO, conversaGrupoService);
   const turmaController = new TurmaController(turmaService);
   const roteador = new TurmaRoteador(turmaController);
 

@@ -2,7 +2,7 @@
 -- TABELA: escola
 -- Descrição: Armazena informações das escolas do sistema
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`escola` (
+CREATE TABLE `railway`.`escola` (
   `EscolaGUID` CHAR(36) NOT NULL,
   `EscolaNome` VARCHAR(100) NULL,
   `EscolaCNPJ` VARCHAR(18) NULL UNIQUE,
@@ -35,7 +35,7 @@ ADD INDEX `idx_escola_is_tecnica` (`EscolaIsTecnica`);
 -- Descrição: Armazena informações dos usuários do sistema
 -- Segurança: Senha hasheada com bcrypt (salt rounds: 10)
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`usuario` (
+CREATE TABLE `railway`.`usuario` (
   `UsuarioCPF` VARCHAR(14) NOT NULL,
   `UsuarioEmail` VARCHAR(60) NULL UNIQUE,
   `UsuarioId` VARCHAR(45) NULL,
@@ -60,7 +60,7 @@ CREATE TABLE `tccecossistemaescolar`.`usuario` (
 -- Descrição: Códigos de verificação para validar email do usuário
 -- Uso: Enviado por email durante cadastro/alteração de email
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`verificacao_email` (
+CREATE TABLE `railway`.`verificacao_email` (
   `VerificacaoId` INT NOT NULL AUTO_INCREMENT,
   `UsuarioCPF` VARCHAR(14) NOT NULL,
   `VerificacaoCodigo` VARCHAR(10) NOT NULL,
@@ -72,7 +72,7 @@ CREATE TABLE `tccecossistemaescolar`.`verificacao_email` (
   INDEX `idx_verificacao_codigo` (`VerificacaoCodigo`),
   INDEX `idx_verificacao_expira` (`VerificacaoExpiresAt`),
   CONSTRAINT `FK_Verificacao_Usuario` FOREIGN KEY (`UsuarioCPF`)
-    REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+    REFERENCES `railway`.`usuario` (`UsuarioCPF`)
     ON UPDATE CASCADE
     ON DELETE CASCADE
 );
@@ -81,7 +81,7 @@ CREATE TABLE `tccecossistemaescolar`.`verificacao_email` (
 -- TABELA: funcao
 -- Descrição: Tipos de funções/papéis no sistema
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`funcao` (
+CREATE TABLE `railway`.`funcao` (
   `FuncaoId` INT NOT NULL,
   `FuncaoNome` VARCHAR(30) NOT NULL,
   PRIMARY KEY (`FuncaoId`)
@@ -91,12 +91,13 @@ CREATE TABLE `tccecossistemaescolar`.`funcao` (
 -- INSERÇÃO DE DADOS: funcao
 -- Funções padrão do sistema
 -- =====================================================
-INSERT INTO `tccecossistemaescolar`.`funcao` (`FuncaoId`, `FuncaoNome`) VALUES
+INSERT INTO `railway`.`funcao` (`FuncaoId`, `FuncaoNome`) VALUES
   (1, 'Coordenacao'),
   (2, 'Secretaria'),
   (3, 'Professor'),
   (4, 'Responsavel'),
-  (5, 'Aluno')
+  (5, 'Aluno'),
+  (6, 'Direcao')
 ON DUPLICATE KEY UPDATE
   `FuncaoNome` = VALUES(`FuncaoNome`);
 
@@ -105,7 +106,7 @@ ON DUPLICATE KEY UPDATE
 -- Descrição: Relacionamento N:N:N entre Escola, Usuario e Função
 -- Restrições: Um usuário não pode ter a mesma função 2x na mesma escola
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
+CREATE TABLE `railway`.`escolaxusuarioxfuncao` (
   `EscolaxUsuarioxFuncaoId` INT NOT NULL AUTO_INCREMENT,
   `UsuarioCPF` VARCHAR(14) NOT NULL,
   `EscolaGUID` CHAR(36) NOT NULL,
@@ -123,15 +124,15 @@ CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
   INDEX `idx_euf_status` (`Status`),
   INDEX `idx_euf_data_inicio` (`DataInicio`),
   CONSTRAINT `FK_EUF_Usuario` FOREIGN KEY (`UsuarioCPF`)
-    REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+    REFERENCES `railway`.`usuario` (`UsuarioCPF`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT,
   CONSTRAINT `FK_EUF_Escola` FOREIGN KEY (`EscolaGUID`)
-    REFERENCES `tccecossistemaescolar`.`escola` (`EscolaGUID`)
+    REFERENCES `railway`.`escola` (`EscolaGUID`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT,
   CONSTRAINT `FK_EUF_Funcao` FOREIGN KEY (`FuncaoId`)
-    REFERENCES `tccecossistemaescolar`.`funcao` (`FuncaoId`)
+    REFERENCES `railway`.`funcao` (`FuncaoId`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT
 );
@@ -140,7 +141,7 @@ CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
 -- TABELA: log_acesso (OPCIONAL - FUTURO)
 -- Descrição: Registra acessos e ações dos usuários
 -- =====================================================
--- CREATE TABLE `tccecossistemaescolar`.`log_acesso` (
+-- CREATE TABLE `railway`.`log_acesso` (
 --   `LogId` INT NOT NULL AUTO_INCREMENT,
 --   `UsuarioCPF` VARCHAR(14) NOT NULL,
 --   `LogDataHora` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -151,7 +152,7 @@ CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
 --   INDEX `idx_log_usuario` (`UsuarioCPF`),
 --   INDEX `idx_log_data` (`LogDataHora`),
 --   CONSTRAINT `FK_Log_Usuario` FOREIGN KEY (`UsuarioCPF`)
---     REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+--     REFERENCES `railway`.`usuario` (`UsuarioCPF`)
 --     ON DELETE CASCADE
 -- );
 
@@ -160,7 +161,7 @@ CREATE TABLE `tccecossistemaescolar`.`escolaxusuarioxfuncao` (
 -- Descrição: Disciplinas/Matérias do sistema educacional
 -- Restrições: Nome único por escola
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`materia` (
+CREATE TABLE `railway`.`materia` (
   `MateriaGUID` CHAR(36) NOT NULL,
   `EscolaGUID` CHAR(36) NOT NULL,
   `MateriaNome` VARCHAR(100) NOT NULL,
@@ -175,7 +176,7 @@ CREATE TABLE `tccecossistemaescolar`.`materia` (
   INDEX `idx_materia_tecnica` (`MateriaIsTecnica`),
   INDEX `idx_materia_status` (`MateriaStatus`),
   CONSTRAINT `FK_Materia_Escola` FOREIGN KEY (`EscolaGUID`)
-    REFERENCES `tccecossistemaescolar`.`escola` (`EscolaGUID`)
+    REFERENCES `railway`.`escola` (`EscolaGUID`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT
 );
@@ -185,7 +186,7 @@ CREATE TABLE `tccecossistemaescolar`.`materia` (
 -- Descrição: Cursos técnicos do sistema
 -- Restrições: Apenas em escolas técnicas, nome único por escola
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`curso` (
+CREATE TABLE `railway`.`curso` (
   `CursoGUID` CHAR(36) NOT NULL,
   `EscolaGUID` CHAR(36) NOT NULL,
   `CursoNome` VARCHAR(100) NOT NULL,
@@ -198,7 +199,7 @@ CREATE TABLE `tccecossistemaescolar`.`curso` (
   INDEX `idx_curso_nome` (`CursoNome`),
   INDEX `idx_curso_status` (`CursoStatus`),
   CONSTRAINT `FK_Curso_Escola` FOREIGN KEY (`EscolaGUID`)
-    REFERENCES `tccecossistemaescolar`.`escola` (`EscolaGUID`)
+    REFERENCES `railway`.`escola` (`EscolaGUID`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT
 );
@@ -208,7 +209,7 @@ CREATE TABLE `tccecossistemaescolar`.`curso` (
 -- Descrição: Turmas/Classes do sistema
 -- Restrições: Identificador único (EscolaGUID + TurmaSerie + TurmaNome)
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`turma` (
+CREATE TABLE `railway`.`turma` (
   `TurmaGUID` CHAR(36) NOT NULL,
   `EscolaGUID` CHAR(36) NOT NULL,
   `TurmaSerie` VARCHAR(20) NOT NULL,
@@ -225,11 +226,11 @@ CREATE TABLE `tccecossistemaescolar`.`turma` (
   INDEX `idx_turma_tecnico` (`TurmaIsTecnico`),
   INDEX `idx_turma_status` (`TurmaStatus`),
   CONSTRAINT `FK_Turma_Escola` FOREIGN KEY (`EscolaGUID`)
-    REFERENCES `tccecossistemaescolar`.`escola` (`EscolaGUID`)
+    REFERENCES `railway`.`escola` (`EscolaGUID`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT,
   CONSTRAINT `FK_Turma_Curso` FOREIGN KEY (`CursoGUID`)
-    REFERENCES `tccecossistemaescolar`.`curso` (`CursoGUID`)
+    REFERENCES `railway`.`curso` (`CursoGUID`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT
 );
@@ -239,7 +240,7 @@ CREATE TABLE `tccecossistemaescolar`.`turma` (
 -- Descrição: Matrículas de alunos em turmas
 -- Restrições: Um aluno pode ter apenas 1 matrícula ativa por vez
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`matricula` (
+CREATE TABLE `railway`.`matricula` (
   `MatriculaGUID` VARCHAR(36) NOT NULL,
   `UsuarioCPF` VARCHAR(14) NOT NULL,
   `TurmaGUID` CHAR(36) NOT NULL,
@@ -251,11 +252,11 @@ CREATE TABLE `tccecossistemaescolar`.`matricula` (
   INDEX `idx_matricula_turma` (`TurmaGUID`),
   INDEX `idx_matricula_status` (`MatriculaStatus`),
   CONSTRAINT `FK_Matricula_Usuario` FOREIGN KEY (`UsuarioCPF`)
-    REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+    REFERENCES `railway`.`usuario` (`UsuarioCPF`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT,
   CONSTRAINT `FK_Matricula_Turma` FOREIGN KEY (`TurmaGUID`)
-    REFERENCES `tccecossistemaescolar`.`turma` (`TurmaGUID`)
+    REFERENCES `railway`.`turma` (`TurmaGUID`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT
 );
@@ -265,7 +266,7 @@ CREATE TABLE `tccecossistemaescolar`.`matricula` (
 -- Descrição: Alocações de professores em matérias e turmas (N:N:N)
 -- Restrições: Combinação única (MateriaGUID + TurmaGUID + UsuarioCPF)
 -- =====================================================
-CREATE TABLE `tccecossistemaescolar`.`materiaxprofessorxturma` (
+CREATE TABLE `railway`.`materiaxprofessorxturma` (
   `MatProfTurGUID` CHAR(36) NOT NULL,
   `MateriaGUID` CHAR(36) NOT NULL,
   `TurmaGUID` CHAR(36) NOT NULL,
@@ -280,17 +281,141 @@ CREATE TABLE `tccecossistemaescolar`.`materiaxprofessorxturma` (
   INDEX `idx_mpt_professor` (`UsuarioCPF`),
   INDEX `idx_mpt_status` (`AlocacaoStatus`),
   CONSTRAINT `FK_MPT_Materia` FOREIGN KEY (`MateriaGUID`)
-    REFERENCES `tccecossistemaescolar`.`materia` (`MateriaGUID`)
+    REFERENCES `railway`.`materia` (`MateriaGUID`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT,
   CONSTRAINT `FK_MPT_Turma` FOREIGN KEY (`TurmaGUID`)
-    REFERENCES `tccecossistemaescolar`.`turma` (`TurmaGUID`)
+    REFERENCES `railway`.`turma` (`TurmaGUID`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT,
   CONSTRAINT `FK_MPT_Professor` FOREIGN KEY (`UsuarioCPF`)
-    REFERENCES `tccecossistemaescolar`.`usuario` (`UsuarioCPF`)
+    REFERENCES `railway`.`usuario` (`UsuarioCPF`)
     ON UPDATE CASCADE
     ON DELETE RESTRICT
+);
+
+-- =====================================================
+-- MÓDULO: CHAT / CONVERSAS (WebSocket)
+-- =====================================================
+
+-- TABELA: conversa
+-- Base polimórfica de uma conversa (Individual ou Grupo)
+CREATE TABLE `railway`.`conversa` (
+  `ConversaGUID`      CHAR(36)                     NOT NULL,
+  `ConversaTipo`      ENUM('Individual', 'Grupo')  NOT NULL,
+  `ConversaStatus`    ENUM('Ativa', 'Inativa')     NOT NULL DEFAULT 'Ativa',
+  `ConversaCreatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `ConversaUpdatedAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ConversaGUID`),
+  INDEX `idx_conversa_tipo`   (`ConversaTipo`),
+  INDEX `idx_conversa_status` (`ConversaStatus`)
+);
+
+-- TABELA: conversa_grupo
+-- Dados específicos de conversas em grupo
+-- ConversaGrupoRefGUID aponta para TurmaGUID ou TarefaGUID
+CREATE TABLE `railway`.`conversa_grupo` (
+  `ConversaGUID`          CHAR(36)                NOT NULL,
+  `ConversaGrupoNome`     VARCHAR(100)            NOT NULL,
+  `ConversaGrupoTipo`     ENUM('Turma', 'Tarefa') NOT NULL,
+  `ConversaGrupoRefGUID`  CHAR(36)                NOT NULL,
+  PRIMARY KEY (`ConversaGUID`),
+  INDEX `idx_cg_ref` (`ConversaGrupoRefGUID`),
+  CONSTRAINT `FK_ConversaGrupo_Conversa`
+    FOREIGN KEY (`ConversaGUID`) REFERENCES `railway`.`conversa` (`ConversaGUID`)
+    ON DELETE CASCADE
+);
+
+-- TABELA: conversa_individual
+-- Terreno preparado para conversas 1:1 (não usado nesta fase)
+CREATE TABLE `railway`.`conversa_individual` (
+  `ConversaGUID`        CHAR(36)     NOT NULL,
+  `ConversaIndUsr1CPF`  VARCHAR(14)  NOT NULL,
+  `ConversaIndUsr2CPF`  VARCHAR(14)  NOT NULL,
+  PRIMARY KEY (`ConversaGUID`),
+  UNIQUE KEY `UK_ConversaInd_Usuarios` (`ConversaIndUsr1CPF`, `ConversaIndUsr2CPF`),
+  CONSTRAINT `FK_ConversaInd_Conversa`
+    FOREIGN KEY (`ConversaGUID`) REFERENCES `railway`.`conversa` (`ConversaGUID`)
+    ON DELETE CASCADE,
+  CONSTRAINT `FK_ConversaInd_Usr1`
+    FOREIGN KEY (`ConversaIndUsr1CPF`) REFERENCES `railway`.`usuario` (`UsuarioCPF`),
+  CONSTRAINT `FK_ConversaInd_Usr2`
+    FOREIGN KEY (`ConversaIndUsr2CPF`) REFERENCES `railway`.`usuario` (`UsuarioCPF`)
+);
+
+-- TABELA: conversa_grupo_membro
+-- Membros de um grupo — soft remove via MembroStatus
+-- MembroFuncao preparado para roles futuras (Lider/Membro)
+CREATE TABLE `railway`.`conversa_grupo_membro` (
+  `ConversaGUID`      CHAR(36)                   NOT NULL,
+  `MembroUsuarioCPF`  VARCHAR(14)                NOT NULL,
+  `MembroFuncao`      ENUM('Membro', 'Lider')    NOT NULL DEFAULT 'Membro',
+  `MembroStatus`      ENUM('Ativo', 'Inativo')   NOT NULL DEFAULT 'Ativo',
+  `MembroEntradaAt`   TIMESTAMP                  NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `MembroSaidaAt`     TIMESTAMP                  NULL,
+  PRIMARY KEY (`ConversaGUID`, `MembroUsuarioCPF`),
+  INDEX `idx_cgm_usuario` (`MembroUsuarioCPF`),
+  INDEX `idx_cgm_status`  (`MembroStatus`),
+  CONSTRAINT `FK_ConversaGrupoMembro_Conversa`
+    FOREIGN KEY (`ConversaGUID`) REFERENCES `railway`.`conversa` (`ConversaGUID`)
+    ON DELETE CASCADE,
+  CONSTRAINT `FK_ConversaGrupoMembro_Usuario`
+    FOREIGN KEY (`MembroUsuarioCPF`) REFERENCES `railway`.`usuario` (`UsuarioCPF`)
+);
+
+-- TABELA: mensagem
+-- Mensagens de qualquer tipo de conversa — soft delete via MensagemDeletedAt
+CREATE TABLE `railway`.`mensagem` (
+  `MensagemGUID`          CHAR(36)                             NOT NULL,
+  `ConversaGUID`          CHAR(36)                             NOT NULL,
+  `MensagemRemetenteCPF`  VARCHAR(14)                          NOT NULL,
+  `MensagemConteudo`      TEXT                                 NOT NULL,
+  `MensagemTipo`          ENUM('Texto', 'Arquivo', 'Imagem')   NOT NULL DEFAULT 'Texto',
+  `MensagemCreatedAt`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `MensagemDeletedAt`     TIMESTAMP NULL,
+  PRIMARY KEY (`MensagemGUID`),
+  INDEX `idx_mensagem_conversa`  (`ConversaGUID`),
+  INDEX `idx_mensagem_remetente` (`MensagemRemetenteCPF`),
+  INDEX `idx_mensagem_created`   (`MensagemCreatedAt`),
+  CONSTRAINT `FK_Mensagem_Conversa`
+    FOREIGN KEY (`ConversaGUID`) REFERENCES `railway`.`conversa` (`ConversaGUID`),
+  CONSTRAINT `FK_Mensagem_Remetente`
+    FOREIGN KEY (`MensagemRemetenteCPF`) REFERENCES `railway`.`usuario` (`UsuarioCPF`)
+);
+
+-- TABELA: mensagem_leitura
+-- Rastreia leitura por usuário (grupos têm múltiplos leitores)
+CREATE TABLE `railway`.`mensagem_leitura` (
+  `MensagemGUID`   CHAR(36)    NOT NULL,
+  `UsuarioCPF`     VARCHAR(14) NOT NULL,
+  `MensagemLidaAt` TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`MensagemGUID`, `UsuarioCPF`),
+  CONSTRAINT `FK_MensagemLeitura_Mensagem`
+    FOREIGN KEY (`MensagemGUID`) REFERENCES `railway`.`mensagem` (`MensagemGUID`)
+    ON DELETE CASCADE,
+  CONSTRAINT `FK_MensagemLeitura_Usuario`
+    FOREIGN KEY (`UsuarioCPF`) REFERENCES `railway`.`usuario` (`UsuarioCPF`)
+);
+
+-- TABELA: mensagem_fixada
+-- Mensagens fixadas em qualquer tipo de conversa
+-- Individual: qualquer participante pode fixar/desafixar
+-- Grupo: apenas Lider/Representante/Vice-Representante pode fixar/desafixar
+CREATE TABLE `railway`.`mensagem_fixada` (
+  `MensagemGUID`  CHAR(36)     NOT NULL,
+  `ConversaGUID`  CHAR(36)     NOT NULL,
+  `FixadaPorCPF`  VARCHAR(14)  NOT NULL,
+  `FixadaAt`      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`MensagemGUID`),
+  INDEX `idx_mf_conversa` (`ConversaGUID`),
+  CONSTRAINT `FK_MensagemFixada_Mensagem`
+    FOREIGN KEY (`MensagemGUID`) REFERENCES `railway`.`mensagem` (`MensagemGUID`)
+    ON DELETE CASCADE,
+  CONSTRAINT `FK_MensagemFixada_Conversa`
+    FOREIGN KEY (`ConversaGUID`) REFERENCES `railway`.`conversa` (`ConversaGUID`)
+    ON DELETE CASCADE,
+  CONSTRAINT `FK_MensagemFixada_Usuario`
+    FOREIGN KEY (`FixadaPorCPF`) REFERENCES `railway`.`usuario` (`UsuarioCPF`)
 );
 
 -- =====================================================
@@ -313,6 +438,15 @@ CREATE TABLE `tccecossistemaescolar`.`materiaxprofessorxturma` (
 -- 11. Turma: TurmaIsTecnico=true requer CursoGUID (obrigatório)
 -- 12. Matrícula: MatriculaGUID aceita RA customizado (1-36 chars) ou UUID
 -- 13. Matrícula: Um aluno só pode ter 1 matrícula com status 'Ativa' por vez
+
+-- =====================================================
+-- PHASE 3: Permissões em grupos de conversa
+-- =====================================================
+-- ALTER TABLE conversa_grupo_membro MODIFY COLUMN MembroFuncao
+--   ENUM('Membro', 'Lider', 'Representante', 'Vice-Representante') NOT NULL DEFAULT 'Membro';
+-- ALTER TABLE mensagem ADD COLUMN MensagemEditadaAt TIMESTAMP NULL DEFAULT NULL AFTER MensagemCreatedAt;
+-- INSERT INTO funcao (FuncaoId, FuncaoNome) VALUES (6, 'Direcao') ON DUPLICATE KEY UPDATE FuncaoNome = VALUES(FuncaoNome);
+-- Ver migration: 2026-07-08-conversa-permissoes.sql
 -- 14. Professor: Não é entidade separada, é Usuario com FuncaoId=3
 -- 15. Alocação: Junction table (Professor + Matéria + Turma) com UNIQUE constraint
 -- 16. Soft Delete: Status 'Inativa'/'Cancelada' preserva histórico acadêmico

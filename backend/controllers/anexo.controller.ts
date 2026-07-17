@@ -92,21 +92,17 @@ export default class AnexoControl {
 
   /**
    * GET /api/anexo/:AnexoGUID/download
-   * Download do arquivo
+   * Download do arquivo (redireciona para a URL pública no R2 — o objeto já
+   * foi enviado com ContentDisposition "attachment", então o navegador
+   * baixa com o nome original em vez de abrir inline)
    */
   download = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 AnexoControl.download()");
     try {
       const { AnexoGUID } = request.params;
-      const { caminho, nomeOriginal } = await this.#anexoService.downloadAnexo(AnexoGUID);
+      const { caminho } = await this.#anexoService.downloadAnexo(AnexoGUID);
 
-      // Enviar arquivo para download
-      response.download(caminho, nomeOriginal, (err) => {
-        if (err) {
-          console.error("❌ Erro ao enviar arquivo:", err);
-          next(err);
-        }
-      });
+      response.redirect(caminho);
     } catch (error) {
       next(error);
     }

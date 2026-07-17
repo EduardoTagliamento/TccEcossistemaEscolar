@@ -104,6 +104,32 @@ export default class ProvaAgendadaMiddleware {
       }
     }
 
+    if (prova.DatasPorTurma !== undefined) {
+      if (typeof prova.DatasPorTurma !== "object" || Array.isArray(prova.DatasPorTurma)) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "O campo 'DatasPorTurma' deve ser um objeto { TurmaGUID: data }.",
+        });
+      }
+
+      for (const [turmaGUID, dataTurma] of Object.entries(prova.DatasPorTurma)) {
+        if (!GUID_REGEX.test(turmaGUID)) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `A chave '${turmaGUID}' em 'DatasPorTurma' não é um UUID de turma válido.`,
+          });
+        }
+        if (!prova.TurmasGUID.includes(turmaGUID)) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `A turma '${turmaGUID}' em 'DatasPorTurma' não está em 'TurmasGUID'.`,
+          });
+        }
+        if (isNaN(new Date(dataTurma as string).getTime())) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `A data para a turma '${turmaGUID}' em 'DatasPorTurma' é inválida.`,
+          });
+        }
+      }
+    }
+
     if (prova.anexosDescricao !== undefined) {
       if (!Array.isArray(prova.anexosDescricao)) {
         throw new ErrorResponse(400, "Erro na validação de dados", {

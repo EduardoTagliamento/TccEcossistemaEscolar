@@ -24,6 +24,7 @@ export default class MaterialProfessorTurma {
   #TurmaGUID!: string;
   #UsuarioCPF!: string;
   #AlocacaoStatus!: 'Ativa' | 'Inativa';
+  #AulasPorSemana: number | null = null;
   #MatProfTurCreatedAt!: Date;
   #MatProfTurUpdatedAt!: Date;
 
@@ -47,6 +48,10 @@ export default class MaterialProfessorTurma {
 
   get AlocacaoStatus(): 'Ativa' | 'Inativa' {
     return this.#AlocacaoStatus;
+  }
+
+  get AulasPorSemana(): number | null {
+    return this.#AulasPorSemana;
   }
 
   get MatProfTurCreatedAt(): Date {
@@ -91,6 +96,17 @@ export default class MaterialProfessorTurma {
     this.#AlocacaoStatus = value;
   }
 
+  set AulasPorSemana(value: number | null) {
+    if (value === null || value === undefined) {
+      this.#AulasPorSemana = null;
+      return;
+    }
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 20) {
+      throw new Error('AulasPorSemana deve ser um número inteiro entre 1 e 20');
+    }
+    this.#AulasPorSemana = value;
+  }
+
   set MatProfTurCreatedAt(value: Date) {
     if (!(value instanceof Date) || isNaN(value.getTime())) {
       throw new Error('MatProfTurCreatedAt deve ser uma data válida');
@@ -130,6 +146,7 @@ export default class MaterialProfessorTurma {
       TurmaGUID: this.#TurmaGUID,
       UsuarioCPF: this.#UsuarioCPF,
       AlocacaoStatus: this.#AlocacaoStatus,
+      AulasPorSemana: this.#AulasPorSemana,
       MatProfTurCreatedAt: this.#MatProfTurCreatedAt,
       MatProfTurUpdatedAt: this.#MatProfTurUpdatedAt,
     };
@@ -145,6 +162,7 @@ export default class MaterialProfessorTurma {
     alocacao.TurmaGUID = data.TurmaGUID;
     alocacao.UsuarioCPF = data.UsuarioCPF;
     alocacao.AlocacaoStatus = data.AlocacaoStatus;
+    alocacao.AulasPorSemana = data.AulasPorSemana ?? null;
     alocacao.MatProfTurCreatedAt = data.MatProfTurCreatedAt;
     alocacao.MatProfTurUpdatedAt = data.MatProfTurUpdatedAt;
     return alocacao;

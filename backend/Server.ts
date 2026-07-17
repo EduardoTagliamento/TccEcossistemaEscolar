@@ -3,15 +3,22 @@ import cors from "cors";
 import path from "path";
 import { exec } from "child_process";
 import fs from "fs";
+import http from "http";
 import next from "next";
 import MysqlDatabase from "./database/MysqlDatabase";
 import ErrorResponse from "./utils/ErrorResponse";
+import { SocketServer } from "./websocket/SocketServer";
 import { escolaRouterFactory } from "../routes/escola.routes";
+import { escolaConfiguracaoRouterFactory } from "../routes/escolaconfiguracao.routes";
 import { usuarioRouterFactory } from "../routes/usuario.routes";
 import { escolaxusuarioxfuncaoRouterFactory } from "../routes/escolaxusuarioxfuncao.routes";
 import { materiaRouterFactory } from "../routes/materia.routes";
 import { cursoRouterFactory } from "../routes/curso.routes";
 import { turmaRouterFactory } from "../routes/turma.routes";
+import { horarioTurmaRouterFactory } from "../routes/horarioturma.routes";
+import { gradeHorariaRouterFactory } from "../routes/gradehoraria.routes";
+import { categoriaConteudoRouterFactory } from "../routes/categoriaconteudo.routes";
+import { conteudoRouterFactory } from "../routes/conteudo.routes";
 import { matriculaRouterFactory } from "../routes/matricula.routes";
 import { professorRouterFactory } from "../routes/professor.routes";
 import verificacaoEmailRoutes from "../routes/verificacao-email.routes";
@@ -26,6 +33,7 @@ import { eventoRoutes } from "../routes/evento.routes";
 import { anotacaoRouterFactory } from "../routes/anotacao.routes";
 import { grupoTarefaRoutes } from "../routes/grupotarefa.routes";
 import { conviteGrupoTarefaRoutes } from "../routes/convitegrupotarefa.routes";
+import { conversaRouterFactory } from "../routes/conversa.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { pool } from "./database/mysql";
 
@@ -46,6 +54,7 @@ import { pool } from "./database/mysql";
 export default class Server {
   #porta: number;
   #app: Application;
+  #httpServer: http.Server;
   #database: MysqlDatabase;
   #scheduler: CleanupScheduler;
   #nextHandler: ((req: Request, res: Response) => Promise<void>) | null;
@@ -55,6 +64,7 @@ export default class Server {
     console.log("⬆️  Server.constructor()");
     this.#porta = porta ?? 3000;
     this.#app = express();
+    this.#httpServer = http.createServer(this.#app);
     this.#database = new MysqlDatabase();
     this.#scheduler = new CleanupScheduler();
     this.#nextHandler = null;
@@ -96,6 +106,9 @@ export default class Server {
       this.startScheduledTasks();
 
       this.setupErrorMiddleware();
+
+      // 🔹 Inicializar WebSocket (Socket.io) no mesmo servidor HTTP
+      SocketServer.init(this.#httpServer);
 
       console.log("✅ Servidor inicializado com sucesso");
     } catch (error) {
@@ -269,6 +282,7 @@ export default class Server {
             anexo: "/api/anexo",
             tarefa: "/api/tarefa",
             escola: "/api/escola",
+            escolaConfiguracao: "/api/escola-configuracao",
             usuario: "/api/usuario",
             escolaxusuarioxfuncao: "/api/escolaxusuarioxfuncao",
             materia: "/api/materia",
@@ -306,6 +320,11 @@ export default class Server {
     this.#app.use("/api/escola", escolaRouter);
     console.log("✅ Rotas de Escola registradas em /api/escola");
 
+    // ⏰ Rotas de Configuração da Escola
+    const escolaConfiguracaoRouter = escolaConfiguracaoRouterFactory();
+    this.#app.use("/api/escola-configuracao", escolaConfiguracaoRouter);
+    console.log("✅ Rotas de Configuração da Escola registradas em /api/escola-configuracao");
+
     // � Rotas de Usuário
     const usuarioRouter = usuarioRouterFactory();
     this.#app.use("/api/usuario", usuarioRouter);
@@ -330,6 +349,26 @@ export default class Server {
     const turmaRouter = turmaRouterFactory();
     this.#app.use("/api/turma", turmaRouter);
     console.log("✅ Rotas de Turma registradas em /api/turma");
+
+    // 🗓️ Rotas de Cronograma da Turma (grade horária)
+    const horarioTurmaRouter = horarioTurmaRouterFactory();
+    this.#app.use("/api/turma", horarioTurmaRouter);
+    console.log("✅ Rotas de Cronograma da Turma registradas em /api/turma/:turmaGUID/cronograma");
+
+    // 🧮 Rotas de Agendamento Automático (grade horária)
+    const gradeHorariaRouter = gradeHorariaRouterFactory();
+    this.#app.use("/api/grade-horaria", gradeHorariaRouter);
+    console.log("✅ Rotas de Agendamento Automático registradas em /api/grade-horaria");
+
+    // 🗂️ Rotas de Categoria de Conteúdo
+    const categoriaConteudoRouter = categoriaConteudoRouterFactory();
+    this.#app.use("/api/categoria-conteudo", categoriaConteudoRouter);
+    console.log("✅ Rotas de Categoria de Conteúdo registradas em /api/categoria-conteudo");
+
+    // 🎬 Rotas de Conteúdo (materiais de aula)
+    const conteudoRouter = conteudoRouterFactory();
+    this.#app.use("/api/conteudo", conteudoRouter);
+    console.log("✅ Rotas de Conteúdo registradas em /api/conteudo");
 
     // 🎓 Rotas de Matrícula
     const matriculaRouter = matriculaRouterFactory();
@@ -389,6 +428,11 @@ export default class Server {
     // 💌 Rotas de Convite Grupo Tarefa
     this.#app.use("/api/convitegrupotarefa", conviteGrupoTarefaRoutes());
     console.log("✅ Rotas de Convite Grupo Tarefa registradas em /api/convitegrupotarefa");
+
+    // 💬 Rotas de Conversa (Chat)
+    const conversaRouter = conversaRouterFactory();
+    this.#app.use("/api/conversa", conversaRouter);
+    console.log("✅ Rotas de Conversa registradas em /api/conversa");
 
     // 🏆 Rotas da Copa do Mundo 2026 (Sistema Isolado)
     const { copaRoutes } = require("../routes/copa/index");
@@ -617,7 +661,7 @@ export default class Server {
    * Abre automaticamente o frontend no navegador padrão.
    */
   run = (): void => {
-    this.#app.listen(this.#porta, () => {
+    this.#httpServer.listen(this.#porta, () => {
       const frontendUrl = `http://localhost:${this.#porta}`;
       
       console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

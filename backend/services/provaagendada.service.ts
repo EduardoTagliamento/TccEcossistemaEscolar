@@ -20,6 +20,8 @@ export interface ProvaAgendadaDTO {
   ProvaDescricao: string | null;
   ProvaStatus: "Agendada" | "Realizada" | "Cancelada";
   TurmasAtribuidas: string[]; // Array de TurmaGUID
+  /** Data específica por turma (agendamento automático); só contém entradas para turmas com override. */
+  DatasPorTurma: Record<string, string>;
   CreatedAt: string | null;
   UpdatedAt: string | null;
 }
@@ -30,6 +32,8 @@ export interface ProvaAgendadaCreateDTO {
   ProvaData: Date;
   ProvaDescricao?: string;
   anexosDescricao?: string[];
+  /** Agendamento automático: data específica por turma (TurmaGUID -> data). Sobrescreve ProvaData para a turma correspondente. */
+  DatasPorTurma?: Record<string, Date>;
 }
 
 export interface ProvaAgendadaUpdateDTO {
@@ -113,8 +117,26 @@ export default class ProvaAgendadaService {
       });
     }
 
-    const dataProva = new Date(data.ProvaData);
     const agoraComTolerancia = new Date(Date.now() - DATA_VALIDACAO_TOLERANCIA_MS);
+
+    // Validar datas por turma (agendamento automático), se fornecidas
+    if (data.DatasPorTurma) {
+      for (const [turmaGUID, dataTurma] of Object.entries(data.DatasPorTurma)) {
+        const dataConvertida = new Date(dataTurma);
+        if (isNaN(dataConvertida.getTime()) || dataConvertida < agoraComTolerancia) {
+          throw new ErrorResponse(400, "Data da prova inválida", {
+            message: `A data calculada para a turma ${turmaGUID} não pode ser no passado.`,
+          });
+        }
+      }
+    }
+
+    // Data "base" da prova: se houver datas por turma, usa a mais antiga entre
+    // elas como referência compartilhada; senão, usa a data informada manualmente.
+    const dataProva = data.DatasPorTurma && Object.keys(data.DatasPorTurma).length > 0
+      ? new Date(Math.min(...Object.values(data.DatasPorTurma).map((d) => new Date(d).getTime())))
+      : new Date(data.ProvaData);
+
     if (isNaN(dataProva.getTime()) || dataProva < agoraComTolerancia) {
       throw new ErrorResponse(400, "Data da prova inválida", {
         message: "A data da prova não pode ser no passado.",
@@ -131,13 +153,16 @@ export default class ProvaAgendadaService {
 
     const provaCriada = await this.#provaDAO.create(prova);
 
-    // 2. Criar atribuições para N turmas
+    // 2. Criar atribuições para N turmas (com data específica quando houver override)
     const atribuicoes: ProvaAgendadaTurma[] = [];
     for (const turmaGUID of data.TurmasGUID) {
       const atribuicao = new ProvaAgendadaTurma();
       atribuicao.ProvaAgendadaTurmaGUID = uuidv4();
       atribuicao.ProvaAgendadaGUID = provaCriada.ProvaAgendadaGUID;
       atribuicao.TurmaGUID = turmaGUID;
+      atribuicao.ProvaDataTurma = data.DatasPorTurma?.[turmaGUID]
+        ? new Date(data.DatasPorTurma[turmaGUID])
+        : null;
       atribuicoes.push(atribuicao);
     }
 
@@ -153,7 +178,7 @@ export default class ProvaAgendadaService {
       }
     }
 
-    return this.toDTO(provaCriada, data.TurmasGUID);
+    return this.toDTO(provaCriada, atribuicoes);
   };
 
   /**
@@ -168,8 +193,7 @@ export default class ProvaAgendadaService {
     const provasComTurmas = await Promise.all(
       provas.map(async (prova) => {
         const atribuicoes = await this.#provaTurmaDAO.findByProva(prova.ProvaAgendadaGUID);
-        const turmasGUID = atribuicoes.map(a => a.TurmaGUID);
-        return this.toDTO(prova, turmasGUID);
+        return this.toDTO(prova, atribuicoes);
       })
     );
 
@@ -191,9 +215,8 @@ export default class ProvaAgendadaService {
     }
 
     const atribuicoes = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
-    const turmasGUID = atribuicoes.map(a => a.TurmaGUID);
 
-    return this.toDTO(prova, turmasGUID);
+    return this.toDTO(prova, atribuicoes);
   };
 
   /**
@@ -245,9 +268,8 @@ export default class ProvaAgendadaService {
 
     // Buscar turmas atribuídas
     const atribuicoes = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
-    const turmasGUID = atribuicoes.map(a => a.TurmaGUID);
 
-    return this.toDTO(provaAtualizada, turmasGUID);
+    return this.toDTO(provaAtualizada, atribuicoes);
   };
 
   /**
@@ -276,14 +298,22 @@ export default class ProvaAgendadaService {
   /**
    * Converte ProvaAgendada (classe) para ProvaAgendadaDTO (interface JSON)
    */
-  private toDTO(prova: ProvaAgendada, turmasGUID: string[]): ProvaAgendadaDTO {
+  private toDTO(prova: ProvaAgendada, atribuicoes: ProvaAgendadaTurma[]): ProvaAgendadaDTO {
+    const datasPorTurma: Record<string, string> = {};
+    atribuicoes.forEach((a) => {
+      if (a.ProvaDataTurma) {
+        datasPorTurma[a.TurmaGUID] = a.ProvaDataTurma.toISOString();
+      }
+    });
+
     return {
       ProvaAgendadaGUID: prova.ProvaAgendadaGUID,
       MateriaGUID: prova.MateriaGUID,
       ProvaData: prova.ProvaData.toISOString(),
       ProvaDescricao: prova.ProvaDescricao,
       ProvaStatus: prova.ProvaStatus,
-      TurmasAtribuidas: turmasGUID,
+      TurmasAtribuidas: atribuicoes.map((a) => a.TurmaGUID),
+      DatasPorTurma: datasPorTurma,
       CreatedAt: prova.CreatedAt ? prova.CreatedAt.toISOString() : null,
       UpdatedAt: prova.UpdatedAt ? prova.UpdatedAt.toISOString() : null,
     };
