@@ -5,6 +5,7 @@ import { CursoDAO } from "../repositories/curso.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
+import ConversaGrupoService from "./conversa-grupo.service";
 
 /**
  * DTOs para transferência de dados
@@ -74,17 +75,20 @@ export default class TurmaService {
   #escolaDAO: EscolaDAO;
   #cursoDAO: CursoDAO;
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #conversaGrupoService?: ConversaGrupoService;
 
   constructor(
     turmaDAO: TurmaDAO,
     escolaDAO: EscolaDAO,
     cursoDAO: CursoDAO,
-    escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO
+    escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO,
+    conversaGrupoService?: ConversaGrupoService
   ) {
     this.#turmaDAO = turmaDAO;
     this.#escolaDAO = escolaDAO;
     this.#cursoDAO = cursoDAO;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAO;
+    this.#conversaGrupoService = conversaGrupoService;
   }
 
   /**
@@ -180,6 +184,14 @@ export default class TurmaService {
 
     // 8. Persistir
     const turmaCriada = await this.#turmaDAO.create(turma);
+
+    // 9. Criar grupo de conversa para a turma (não bloqueia se falhar)
+    if (this.#conversaGrupoService) {
+      await this.#conversaGrupoService.criarGrupoTurma(
+        turmaCriada.TurmaGUID,
+        turmaCriada.TurmaNome
+      );
+    }
 
     return this.toDTO(turmaCriada);
   }
@@ -467,6 +479,19 @@ export default class TurmaService {
       });
     }
 
+    // 9. Hooks de chat
+    if (this.#conversaGrupoService) {
+      const nomeAnterior = turmaExistente.TurmaNome;
+      const nomeAtual = turmaAtualizada.TurmaNome;
+      if (nomeAtual !== nomeAnterior) {
+        await this.#conversaGrupoService.sincronizarNomeGrupoTurma(turmaGUID, nomeAtual);
+      }
+      const statusAtual = turmaAtualizada.TurmaStatus;
+      if (statusAtual === 'Inativa' || statusAtual === 'Encerrada') {
+        await this.#conversaGrupoService.encerrarGrupoTurma(turmaGUID);
+      }
+    }
+
     return this.toDTO(turmaAtualizada);
   }
 
@@ -492,6 +517,11 @@ export default class TurmaService {
       throw new ErrorResponse(500, 'Erro ao excluir turma', {
         message: 'Não foi possível excluir a turma',
       });
+    }
+
+    // 4. Encerrar grupo de conversa da turma
+    if (this.#conversaGrupoService) {
+      await this.#conversaGrupoService.encerrarGrupoTurma(turmaGUID);
     }
   }
 

@@ -45,6 +45,14 @@ export default class TarefaAcademicaControl {
       const { tarefa } = request.body;
       const usuarioCPF = request.user?.UsuarioCPF;
 
+      const datasPorMatricula: Record<string, Date> | undefined = tarefa.DatasPorMatricula
+        ? Object.fromEntries(
+            Object.entries(tarefa.DatasPorMatricula as Record<string, string>).map(
+              ([matriculaGUID, data]) => [matriculaGUID, new Date(data)]
+            )
+          )
+        : undefined;
+
       const createData: TarefaAcademicaCreateDTO = {
         MatriculasGUID: tarefa.MatriculasGUID,
         matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
@@ -56,6 +64,7 @@ export default class TarefaAcademicaControl {
         TarefaCompartilhada: tarefa.TarefaCompartilhada || false,
         TarefaMinPessoas: tarefa.TarefaMinPessoas,
         TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
+        DatasPorMatricula: datasPorMatricula,
       };
 
       const tarefaCriada = await this.#tarefaService.criarTarefa(createData, usuarioCPF);

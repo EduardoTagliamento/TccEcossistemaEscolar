@@ -154,6 +154,17 @@ export class ProfessorMiddleware {
         throw new ErrorResponse(400, 'AlocacaoStatus deve ser "Ativa" ou "Inativa"');
       }
 
+      // AulasPorSemana: opcional, override do padrão da matéria para esta turma
+      if (
+        alocacao.AulasPorSemana !== undefined &&
+        alocacao.AulasPorSemana !== null
+      ) {
+        const aulas = alocacao.AulasPorSemana;
+        if (typeof aulas !== "number" || !Number.isInteger(aulas) || aulas < 1 || aulas > 20) {
+          throw new ErrorResponse(400, "AulasPorSemana deve ser um número inteiro entre 1 e 20");
+        }
+      }
+
       next();
     } catch (error) {
       if (error instanceof ErrorResponse) {
@@ -189,19 +200,28 @@ export class ProfessorMiddleware {
       }
 
       // Pelo menos um campo deve ser fornecido
-      if (!alocacao.AlocacaoStatus) {
+      if (alocacao.AlocacaoStatus === undefined && alocacao.AulasPorSemana === undefined) {
         throw new ErrorResponse(
           400,
           "É necessário fornecer ao menos um campo para atualização"
         );
       }
 
-      // AlocacaoStatus: enum
+      // AlocacaoStatus: enum (opcional)
       if (
+        alocacao.AlocacaoStatus !== undefined &&
         alocacao.AlocacaoStatus !== "Ativa" &&
         alocacao.AlocacaoStatus !== "Inativa"
       ) {
         throw new ErrorResponse(400, 'AlocacaoStatus deve ser "Ativa" ou "Inativa"');
+      }
+
+      // AulasPorSemana: opcional (null explícito remove o override)
+      if (alocacao.AulasPorSemana !== undefined && alocacao.AulasPorSemana !== null) {
+        const aulas = alocacao.AulasPorSemana;
+        if (typeof aulas !== "number" || !Number.isInteger(aulas) || aulas < 1 || aulas > 20) {
+          throw new ErrorResponse(400, "AulasPorSemana deve ser um número inteiro entre 1 e 20");
+        }
       }
 
       next();

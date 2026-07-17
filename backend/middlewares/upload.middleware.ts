@@ -1,23 +1,17 @@
 /**
  * 📤 Middleware de Upload de Arquivos
- * 
+ *
  * Configura multer para upload de imagens (logos de escolas).
  * Valida tipo de arquivo e tamanho máximo.
+ *
+ * Armazenamento em memória (não em disco): o arquivo é recebido como buffer
+ * e enviado para o Cloudflare R2 pelo UploadService — o disco local do
+ * processo é efêmero (ex: Railway apaga tudo a cada redeploy/restart).
  */
 
 import multer, { FileFilterCallback } from 'multer';
-import fs from 'fs';
-import path from 'path';
 import { Request } from 'express';
 import ErrorResponse from '../utils/ErrorResponse';
-
-// Diretório onde as imagens serão salvas
-const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'logos');
-
-// Garante que o diretório exista em qualquer ambiente (local, docker, produção).
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
 
 // Tipos MIME permitidos
 const ALLOWED_MIME_TYPES = [
@@ -28,24 +22,6 @@ const ALLOWED_MIME_TYPES = [
 
 // Tamanho máximo: 1MB
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB em bytes
-
-/**
- * Configuração de armazenamento do multer
- */
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (_req, file, cb) => {
-    // Gerar nome único: timestamp-random-originalname
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 8);
-    const originalName = file.originalname.replace(/\s+/g, '-').toLowerCase();
-    const fileName = `${timestamp}-${randomString}-${originalName}`;
-    
-    cb(null, fileName);
-  },
-});
 
 /**
  * Filtro para validar tipo de arquivo
@@ -63,10 +39,10 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCall
 };
 
 /**
- * Configuração do multer
+ * Configuração do multer (buffer em memória, sem tocar o disco)
  */
 export const uploadMiddleware = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
     fileSize: MAX_FILE_SIZE,
@@ -82,7 +58,7 @@ export const validateFilePresence = (req: Request, res: any, next: any) => {
       message: 'Você deve enviar um arquivo de imagem',
     }));
   }
-  
+
   next();
 };
 
@@ -97,12 +73,12 @@ export const handleMulterError = (err: any, _req: Request, _res: any, next: any)
         maxSize: `${MAX_FILE_SIZE / (1024 * 1024)}MB`,
       }));
     }
-    
+
     return next(new ErrorResponse(400, 'Erro no upload', {
       message: err.message,
       code: err.code,
     }));
   }
-  
+
   next(err);
 };

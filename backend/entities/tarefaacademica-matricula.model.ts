@@ -22,6 +22,7 @@ export default class TarefaAcademicaMatricula {
   #TarefaMatriculaGUID!: string;
   #TarefaGUID!: string;
   #MatriculaGUID!: string;
+  #TarefaPrazoDataMatricula: Date | null = null;
   #TarefaFeito!: boolean;
   #TarefaRealizacaoData!: Date | null;
   #CreatedAt?: Date;
@@ -73,6 +74,23 @@ export default class TarefaAcademicaMatricula {
       });
     }
     this.#MatriculaGUID = trimmed;
+  }
+
+  get TarefaPrazoDataMatricula(): Date | null {
+    return this.#TarefaPrazoDataMatricula;
+  }
+
+  set TarefaPrazoDataMatricula(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#TarefaPrazoDataMatricula = null;
+      return;
+    }
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new ErrorResponse(400, "TarefaPrazoDataMatricula inválida", {
+        message: "TarefaPrazoDataMatricula deve ser uma data válida",
+      });
+    }
+    this.#TarefaPrazoDataMatricula = value;
   }
 
   get TarefaFeito(): boolean {
@@ -146,6 +164,7 @@ export default class TarefaAcademicaMatricula {
       TarefaMatriculaGUID: this.#TarefaMatriculaGUID,
       TarefaGUID: this.#TarefaGUID,
       MatriculaGUID: this.#MatriculaGUID,
+      TarefaPrazoDataMatricula: this.#TarefaPrazoDataMatricula?.toISOString() || null,
       TarefaFeito: this.#TarefaFeito,
       TarefaRealizacaoData: this.#TarefaRealizacaoData?.toISOString() || null,
       CreatedAt: this.#CreatedAt?.toISOString() || null,

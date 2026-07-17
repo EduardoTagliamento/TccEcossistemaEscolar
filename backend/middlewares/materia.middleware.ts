@@ -90,6 +90,21 @@ export class MateriaMiddleware {
       }
     }
 
+    // Validar MateriaAulasPorSemanaPadrao (opcional)
+    if (
+      materia.MateriaAulasPorSemanaPadrao !== undefined &&
+      materia.MateriaAulasPorSemanaPadrao !== null
+    ) {
+      const aulas = materia.MateriaAulasPorSemanaPadrao;
+      if (typeof aulas !== "number" || !Number.isInteger(aulas) || aulas < 1 || aulas > 20) {
+        return next(
+          new ErrorResponse(400, "MateriaAulasPorSemanaPadrao inválido", {
+            message: "MateriaAulasPorSemanaPadrao deve ser um número inteiro entre 1 e 20",
+          })
+        );
+      }
+    }
+
     next();
   };
 
@@ -145,6 +160,21 @@ export class MateriaMiddleware {
         return next(
           new ErrorResponse(400, "MateriaStatus inválido", {
             message: "MateriaStatus deve ser 'Ativa' ou 'Inativa'",
+          })
+        );
+      }
+    }
+
+    // MateriaAulasPorSemanaPadrao (opcional, mas se fornecido deve ser válido)
+    if (
+      materia.MateriaAulasPorSemanaPadrao !== undefined &&
+      materia.MateriaAulasPorSemanaPadrao !== null
+    ) {
+      const aulas = materia.MateriaAulasPorSemanaPadrao;
+      if (typeof aulas !== "number" || !Number.isInteger(aulas) || aulas < 1 || aulas > 20) {
+        return next(
+          new ErrorResponse(400, "MateriaAulasPorSemanaPadrao inválido", {
+            message: "MateriaAulasPorSemanaPadrao deve ser um número inteiro entre 1 e 20",
           })
         );
       }

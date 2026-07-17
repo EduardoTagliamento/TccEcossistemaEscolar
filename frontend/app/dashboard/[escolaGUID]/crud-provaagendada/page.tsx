@@ -1,10 +1,12 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
+import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
+import { DiaSemana, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
 import styles from './page.module.css';
 
 interface Prova {
@@ -14,6 +16,11 @@ interface Prova {
   ProvaDescricao: string | null;
   ProvaStatus: 'Agendada' | 'Realizada' | 'Cancelada';
   TurmasAtribuidas: string[];
+}
+
+interface ResultadoCalculoUI extends GradeHorariaAPI.ResultadoCalculo {
+  diaEscolhido?: DiaSemana;
+  dataManual?: string; // valor de <input type="datetime-local"> (timezone do navegador)
 }
 
 interface MateriaOption {
@@ -44,6 +51,14 @@ export default function CrudProvaAgendadaPage() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
+  // Calculado só no cliente (useEffect) — chamar usuarioForaDoBrasil() direto
+  // no corpo do render causa mismatch de hidratação: o timezone do servidor
+  // (SSR) quase nunca bate com o do navegador do usuário.
+  const [mostrarAvisoTimezone, setMostrarAvisoTimezone] = useState(false);
+  useEffect(() => {
+    setMostrarAvisoTimezone(usuarioForaDoBrasil());
+  }, []);
+
   const [provas, setProvas] = useState<Prova[]>([]);
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [series, setSeries] = useState<SerieItem[]>([]);
@@ -53,6 +68,11 @@ export default function CrudProvaAgendadaPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
+  const [agendamentoAutomatico, setAgendamentoAutomatico] = useState(false);
+  const [semanaBase, setSemanaBase] = useState('');
+  const [deslocamentoMinutos, setDeslocamentoMinutos] = useState(0);
+  const [calculandoDatas, setCalculandoDatas] = useState(false);
+  const [resultadosCalculo, setResultadosCalculo] = useState<Record<string, ResultadoCalculoUI>>({});
   const [form, setForm] = useState({
     MateriaGUID: '',
     MatProfTurGUID: '', // Para buscar turmas
@@ -93,12 +113,14 @@ export default function CrudProvaAgendadaPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message || 'Erro ao carregar matérias');
-      const materiasData = data?.data || [];
-      
+      const materiasData: MateriaOption[] = data?.data || [];
+
       setMaterias(materiasData);
 
-      // Auto-preencher se tiver apenas uma matéria
-      if (materiasData.length === 1) {
+      // O backend retorna uma linha por (matéria, turma); auto-preencher só
+      // quando o professor leciona uma ÚNICA matéria (não uma única linha).
+      const guidsUnicos = new Set(materiasData.map((m) => m.MateriaGUID));
+      if (guidsUnicos.size === 1) {
         setForm(prev => ({
           ...prev,
           MateriaGUID: materiasData[0].MateriaGUID,
@@ -109,6 +131,18 @@ export default function CrudProvaAgendadaPage() {
       setErro(err?.message || 'Falha ao carregar matérias');
     }
   };
+
+  // O endpoint /api/professor/materias devolve uma linha por (matéria, turma).
+  // Para o seletor, cada matéria deve aparecer só uma vez.
+  const materiasUnicas = useMemo(() => {
+    const mapa = new Map<string, MateriaOption>();
+    materias.forEach((m) => {
+      if (!mapa.has(m.MateriaGUID)) {
+        mapa.set(m.MateriaGUID, m);
+      }
+    });
+    return Array.from(mapa.values());
+  }, [materias]);
 
   const carregarProvas = async () => {
     setLoading(true);
@@ -136,6 +170,7 @@ export default function CrudProvaAgendadaPage() {
     setModalAberto(true);
     setLoadingModal(true);
     setErro(null);
+    setResultadosCalculo({});
 
     try {
       const url = `/api/professor/turmas-alunos?MatProfTurGUID=${form.MatProfTurGUID}`;
@@ -224,6 +259,96 @@ export default function CrudProvaAgendadaPage() {
     return turmasGUID;
   };
 
+  const nomeDaTurma = (turmaGUID: string): string => {
+    for (const serie of series) {
+      const turma = serie.turmas.find((t) => t.TurmaGUID === turmaGUID);
+      if (turma) return `${serie.TurmaSerie}º ${turma.TurmaNome}`;
+    }
+    return turmaGUID;
+  };
+
+  // diasOverride permite passar o dia escolhido sem depender do state (que
+  // ainda não teria sido atualizado se chamado logo após um setResultadosCalculo)
+  const handleCalcularDatas = async (diasOverride?: Record<string, DiaSemana>) => {
+    const turmasSelecionadas = obterTurmasSelecionadas();
+    if (turmasSelecionadas.length === 0) {
+      setErro('Selecione ao menos uma turma antes de calcular as datas.');
+      return;
+    }
+    if (!semanaBase) {
+      setErro('Informe a semana de referência.');
+      return;
+    }
+
+    setErro(null);
+    setCalculandoDatas(true);
+
+    try {
+      const resultados = await GradeHorariaAPI.calcularDatas(
+        form.MateriaGUID,
+        turmasSelecionadas.map((turmaGUID) => ({
+          TurmaGUID: turmaGUID,
+          SemanaBase: semanaBase,
+          DeslocamentoMinutos: deslocamentoMinutos || 0,
+          DiaSemana: diasOverride?.[turmaGUID] ?? resultadosCalculo[turmaGUID]?.diaEscolhido,
+        }))
+      );
+
+      setResultadosCalculo((prev) => {
+        const novo = { ...prev };
+        resultados.forEach((r) => {
+          novo[r.TurmaGUID] = { ...novo[r.TurmaGUID], ...r };
+        });
+        return novo;
+      });
+    } catch (err: any) {
+      setErro(err?.message || 'Falha ao calcular as datas automaticamente');
+    } finally {
+      setCalculandoDatas(false);
+    }
+  };
+
+  const handleEscolherDia = (turmaGUID: string, dia: DiaSemana) => {
+    setResultadosCalculo((prev) => ({
+      ...prev,
+      [turmaGUID]: { ...prev[turmaGUID], diaEscolhido: dia },
+    }));
+  };
+
+  const handleDataManual = (turmaGUID: string, valor: string) => {
+    setResultadosCalculo((prev) => ({
+      ...prev,
+      [turmaGUID]: { ...prev[turmaGUID], dataManual: valor },
+    }));
+  };
+
+  // Aplica a N-ésima ocorrência semanal (1ª, 2ª, 3ª aula...) em todas as
+  // turmas que estejam com conflito ("escolherDia"), de uma vez.
+  const handleAplicarOcorrenciaGlobal = async (indice: number) => {
+    const diasEscolhidos: Record<string, DiaSemana> = {};
+
+    Object.entries(resultadosCalculo).forEach(([turmaGUID, resultado]) => {
+      if (resultado.status === 'escolherDia') {
+        const ocorrencia = resultado.Ocorrencias?.[indice - 1];
+        if (ocorrencia) {
+          diasEscolhidos[turmaGUID] = ocorrencia.DiaSemana;
+        }
+      }
+    });
+
+    if (Object.keys(diasEscolhidos).length === 0) return;
+
+    setResultadosCalculo((prev) => {
+      const novo = { ...prev };
+      Object.entries(diasEscolhidos).forEach(([turmaGUID, dia]) => {
+        novo[turmaGUID] = { ...novo[turmaGUID], diaEscolhido: dia };
+      });
+      return novo;
+    });
+
+    await handleCalcularDatas(diasEscolhidos);
+  };
+
   /**
    * Obtém a data de hoje às 23:59 no formato datetime-local
    */
@@ -239,13 +364,17 @@ export default function CrudProvaAgendadaPage() {
   const limparFormulario = () => {
     setEditingGUID(null);
     setForm({
-      MateriaGUID: materias.length === 1 ? materias[0].MateriaGUID : '',
-      MatProfTurGUID: materias.length === 1 ? materias[0].MatProfTurGUID : '',
+      MateriaGUID: materiasUnicas.length === 1 ? materiasUnicas[0].MateriaGUID : '',
+      MatProfTurGUID: materiasUnicas.length === 1 ? materiasUnicas[0].MatProfTurGUID : '',
       ProvaData: obterDataPadraoFimDoDia(),
       ProvaDescricao: '',
       ProvaStatus: 'Agendada',
     });
     setSeries([]);
+    setAgendamentoAutomatico(false);
+    setResultadosCalculo({});
+    setSemanaBase('');
+    setDeslocamentoMinutos(0);
   };
 
   const onSubmit = async (event: FormEvent) => {
@@ -291,12 +420,42 @@ export default function CrudProvaAgendadaPage() {
         throw new Error('Selecione pelo menos uma turma');
       }
 
+      let datasPorTurma: Record<string, string> | undefined;
+      let provaDataParaEnvio = form.ProvaData ? converterParaBrasil(form.ProvaData) : '';
+
+      if (agendamentoAutomatico) {
+        datasPorTurma = {};
+        for (const turmaGUID of turmasSelecionadas) {
+          const resultado = resultadosCalculo[turmaGUID];
+
+          if (!resultado) {
+            throw new Error('Clique em "Calcular Datas" antes de salvar.');
+          }
+
+          if (resultado.status === 'ok' && resultado.DataCalculada) {
+            datasPorTurma[turmaGUID] = resultado.DataCalculada;
+          } else if (resultado.status === 'semCronograma') {
+            if (!resultado.dataManual) {
+              throw new Error('Uma das turmas selecionadas não tem cronograma configurado — defina a data manualmente para ela.');
+            }
+            datasPorTurma[turmaGUID] = converterParaBrasil(resultado.dataManual);
+          } else if (resultado.status === 'escolherDia') {
+            throw new Error('Escolha o dia da semana para a(s) turma(s) com mais de uma aula por semana antes de salvar.');
+          } else {
+            throw new Error(resultado.mensagem || 'Não foi possível calcular a data para uma das turmas selecionadas.');
+          }
+        }
+
+        provaDataParaEnvio = Object.values(datasPorTurma)[0] || provaDataParaEnvio;
+      }
+
       const payload = {
         prova: {
           TurmasGUID: turmasSelecionadas,
           MateriaGUID: form.MateriaGUID,
-          ProvaData: converterParaBrasil(form.ProvaData), // Converte do timezone do usuário para GMT-3
+          ProvaData: provaDataParaEnvio, // Já em GMT-3 (manual: convertido do navegador; automático: calculado no servidor)
           ProvaDescricao: form.ProvaDescricao || undefined,
+          DatasPorTurma: datasPorTurma,
         },
       };
 
@@ -364,7 +523,7 @@ export default function CrudProvaAgendadaPage() {
       </header>
 
       {/* Aviso de Timezone */}
-      {usuarioForaDoBrasil() && (
+      {mostrarAvisoTimezone && (
         <div className={styles.timezoneAlert}>
           🌍 <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3). 
           As datas e horários exibidos foram ajustados para o seu fuso local.
@@ -375,11 +534,11 @@ export default function CrudProvaAgendadaPage() {
         {/* Campo de Matéria */}
         <div className={styles.formGroup}>
           <label>Matéria *</label>
-          {materias.length === 0 ? (
+          {materiasUnicas.length === 0 ? (
             <p className={styles.info}>Carregando matérias...</p>
-          ) : materias.length === 1 ? (
+          ) : materiasUnicas.length === 1 ? (
             <input
-              value={`${materias[0].MateriaNome} - ${materias[0].TurmaSerie}º ${materias[0].TurmaNome}`}
+              value={materiasUnicas[0].MateriaNome}
               disabled
               className={styles.inputDisabled}
             />
@@ -387,7 +546,7 @@ export default function CrudProvaAgendadaPage() {
             <select
               value={form.MateriaGUID}
               onChange={(e) => {
-                const materiaSelecionada = materias.find(m => m.MateriaGUID === e.target.value);
+                const materiaSelecionada = materiasUnicas.find(m => m.MateriaGUID === e.target.value);
                 setForm(prev => ({
                   ...prev,
                   MateriaGUID: e.target.value,
@@ -399,9 +558,9 @@ export default function CrudProvaAgendadaPage() {
               disabled={!!editingGUID}
             >
               <option value="">Selecione uma matéria</option>
-              {materias.map(materia => (
-                <option key={materia.MatProfTurGUID} value={materia.MateriaGUID}>
-                  {materia.MateriaNome} - {materia.TurmaSerie}º {materia.TurmaNome}
+              {materiasUnicas.map(materia => (
+                <option key={materia.MateriaGUID} value={materia.MateriaGUID}>
+                  {materia.MateriaNome}
                 </option>
               ))}
             </select>
@@ -428,12 +587,161 @@ export default function CrudProvaAgendadaPage() {
           </div>
         )}
 
-        <input
-          type="datetime-local"
-          value={form.ProvaData}
-          onChange={(e) => setForm((prev) => ({ ...prev, ProvaData: e.target.value }))}
-          required
-        />
+        {!editingGUID && (
+          <div className={styles.autoAgendamento}>
+            <label className={styles.autoAgendamentoChecagem}>
+              <input
+                type="checkbox"
+                checked={agendamentoAutomatico}
+                onChange={(e) => setAgendamentoAutomatico(e.target.checked)}
+                className={styles.checkbox}
+              />
+              Definir automaticamente pelo cronograma das turmas
+            </label>
+
+            {agendamentoAutomatico && (
+              <>
+                <div className={styles.autoAgendamentoLinha}>
+                  <div className={styles.autoAgendamentoCampo}>
+                    <label>Semana de referência</label>
+                    <input
+                      type="date"
+                      value={semanaBase}
+                      onChange={(e) => setSemanaBase(e.target.value)}
+                    />
+                  </div>
+                  <div className={styles.autoAgendamentoCampo}>
+                    <label>Deslocamento (minutos, +/-)</label>
+                    <input
+                      type="number"
+                      value={deslocamentoMinutos}
+                      onChange={(e) => setDeslocamentoMinutos(parseInt(e.target.value, 10) || 0)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.selectButton}
+                    onClick={() => handleCalcularDatas()}
+                    disabled={calculandoDatas || totalTurmasSelecionadas === 0 || !semanaBase}
+                  >
+                    {calculandoDatas ? 'Calculando...' : 'Calcular Datas'}
+                  </button>
+                </div>
+
+                {totalTurmasSelecionadas === 0 && (
+                  <p className={styles.hint}>Selecione ao menos uma turma acima antes de calcular.</p>
+                )}
+
+                {(() => {
+                  const turmasComEscolha = obterTurmasSelecionadas().filter(
+                    (t) => resultadosCalculo[t]?.status === 'escolherDia'
+                  );
+                  const maxOcorrencias = turmasComEscolha.reduce(
+                    (max, t) => Math.max(max, resultadosCalculo[t]?.Ocorrencias?.length || 0),
+                    0
+                  );
+
+                  if (turmasComEscolha.length === 0) return null;
+
+                  return (
+                    <div className={styles.aplicarGlobal}>
+                      <span>
+                        {turmasComEscolha.length} turma(s) com mais de uma aula por semana. Aplicar a mesma ocorrência em todas:
+                      </span>
+                      <div className={styles.aplicarGlobalBotoes}>
+                        {Array.from({ length: maxOcorrencias }, (_, i) => i + 1).map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            className={styles.selectButton}
+                            onClick={() => handleAplicarOcorrenciaGlobal(n)}
+                          >
+                            {n}ª aula da semana
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className={styles.resultadosCalculo}>
+                  {obterTurmasSelecionadas().map((turmaGUID) => {
+                    const resultado = resultadosCalculo[turmaGUID];
+                    if (!resultado) return null;
+
+                    if (resultado.status === 'ok') {
+                      return (
+                        <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoOk}`}>
+                          <strong>{nomeDaTurma(turmaGUID)}</strong>
+                          <span>
+                            {new Date(resultado.DataCalculada!).toLocaleString('pt-BR')} ({resultado.DiaSemana})
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    if (resultado.status === 'escolherDia') {
+                      return (
+                        <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoAviso}`}>
+                          <strong>{nomeDaTurma(turmaGUID)}</strong>
+                          <span>Esta matéria tem mais de uma aula por semana nesta turma. Escolha qual usar:</span>
+                          <select
+                            value={resultado.diaEscolhido || ''}
+                            onChange={(e) => {
+                              handleEscolherDia(turmaGUID, e.target.value as DiaSemana);
+                            }}
+                          >
+                            <option value="">Selecione o dia...</option>
+                            {resultado.Ocorrencias?.map((o) => (
+                              <option key={o.DiaSemana} value={o.DiaSemana}>
+                                {DIA_SEMANA_LABEL[o.DiaSemana]} {o.HoraInicio}–{o.HoraFim}
+                              </option>
+                            ))}
+                          </select>
+                          {resultado.diaEscolhido && (
+                            <button type="button" className={styles.selectButton} onClick={() => handleCalcularDatas()}>
+                              Recalcular com este dia
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (resultado.status === 'semCronograma') {
+                      return (
+                        <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoAviso}`}>
+                          <strong>{nomeDaTurma(turmaGUID)}</strong>
+                          <span>Esta turma não tem cronograma configurado para esta matéria. Defina a data manualmente:</span>
+                          <input
+                            type="datetime-local"
+                            value={resultado.dataManual || ''}
+                            onChange={(e) => handleDataManual(turmaGUID, e.target.value)}
+                          />
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={turmaGUID} className={`${styles.resultadoTurma} ${styles.resultadoErro}`}>
+                        <strong>{nomeDaTurma(turmaGUID)}</strong>
+                        <span>{resultado.mensagem || 'Não foi possível calcular a data.'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {!agendamentoAutomatico && (
+          <input
+            type="datetime-local"
+            value={form.ProvaData}
+            onChange={(e) => setForm((prev) => ({ ...prev, ProvaData: e.target.value }))}
+            required
+          />
+        )}
         <textarea
           placeholder="Descrição"
           value={form.ProvaDescricao}
@@ -482,7 +790,6 @@ export default function CrudProvaAgendadaPage() {
             {materiaSelecionada && (
               <div className={styles.modalInfo}>
                 <p><strong>Matéria:</strong> {materiaSelecionada.MateriaNome}</p>
-                <p><strong>Turma:</strong> {materiaSelecionada.TurmaSerie}º {materiaSelecionada.TurmaNome}</p>
               </div>
             )}
 

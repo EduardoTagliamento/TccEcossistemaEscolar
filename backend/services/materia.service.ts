@@ -12,6 +12,7 @@ export interface MateriaDTO {
   CursoGUID: string | null;
   MateriaNome: string;
   MateriaIsTecnica: boolean;
+  MateriaAulasPorSemanaPadrao: number | null;
   MateriaStatus: "Ativa" | "Inativa";
   MateriaCreatedAt: string;
   MateriaUpdatedAt: string;
@@ -23,12 +24,14 @@ export interface MateriaCreateDTO {
   CursoNome?: string; // Para resolução nome → GUID
   MateriaNome: string;
   MateriaIsTecnica: boolean;
+  MateriaAulasPorSemanaPadrao?: number | null;
   MateriaStatus?: "Ativa" | "Inativa";
 }
 
 export interface MateriaUpdateDTO {
   MateriaNome?: string;
   MateriaIsTecnica?: boolean;
+  MateriaAulasPorSemanaPadrao?: number | null;
   MateriaStatus?: "Ativa" | "Inativa";
   CursoGUID?: string | null;
 }
@@ -123,6 +126,7 @@ export default class MateriaService {
     materia.CursoGUID = cursoGUID;
     materia.MateriaNome = data.MateriaNome.trim();
     materia.MateriaIsTecnica = data.MateriaIsTecnica;
+    materia.MateriaAulasPorSemanaPadrao = data.MateriaAulasPorSemanaPadrao ?? null;
     materia.MateriaStatus = data.MateriaStatus || "Ativa";
     materia.MateriaCreatedAt = new Date();
     materia.MateriaUpdatedAt = new Date();
@@ -242,6 +246,7 @@ export default class MateriaService {
         materia.CursoGUID = cursoGUID;
         materia.MateriaNome = nomeNormalizado;
         materia.MateriaIsTecnica = materiaDados.MateriaIsTecnica;
+        materia.MateriaAulasPorSemanaPadrao = materiaDados.MateriaAulasPorSemanaPadrao ?? null;
         materia.MateriaStatus = materiaDados.MateriaStatus || 'Ativa';
         materia.MateriaCreatedAt = new Date();
         materia.MateriaUpdatedAt = new Date();
@@ -352,6 +357,10 @@ export default class MateriaService {
       data.MateriaIsTecnica !== undefined
         ? data.MateriaIsTecnica
         : materiaExistente.MateriaIsTecnica;
+    materiaAtualizada.MateriaAulasPorSemanaPadrao =
+      data.MateriaAulasPorSemanaPadrao !== undefined
+        ? data.MateriaAulasPorSemanaPadrao
+        : materiaExistente.MateriaAulasPorSemanaPadrao;
     materiaAtualizada.MateriaStatus =
       data.MateriaStatus !== undefined ? data.MateriaStatus : materiaExistente.MateriaStatus;
     materiaAtualizada.CursoGUID =
@@ -428,6 +437,7 @@ export default class MateriaService {
       CursoGUID: materia.CursoGUID,
       MateriaNome: materia.MateriaNome || "",
       MateriaIsTecnica: materia.MateriaIsTecnica,
+      MateriaAulasPorSemanaPadrao: materia.MateriaAulasPorSemanaPadrao,
       MateriaStatus: materia.MateriaStatus,
       MateriaCreatedAt: materia.MateriaCreatedAt
         ? materia.MateriaCreatedAt.toISOString()

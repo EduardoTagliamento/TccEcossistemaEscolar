@@ -1,10 +1,10 @@
 import { v4 as uuidv4 } from "uuid";
-import fs from "fs";
 import path from "path";
 import ErrorResponse from "../utils/ErrorResponse";
 import Anexo from "../entities/anexo.model";
 import { AnexoDAO, AnexoFilters } from "../repositories/anexo.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
+import R2StorageService from "./r2storage.service";
 
 export interface AnexoDTO {
   AnexoGUID: string;
@@ -34,8 +34,6 @@ export default class AnexoService {
     console.log("🟣 AnexoService.uploadAnexo()");
 
     if (!usuarioCPF) {
-      // Deletar arquivo físico se validação falhar
-      this.deletePhysicalFile(file.path);
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para fazer upload de anexo.",
       });
@@ -44,19 +42,25 @@ export default class AnexoService {
     // Validar se escola existe
     const escola = await this.#escolaDAO.findById(EscolaGUID);
     if (!escola) {
-      // Deletar arquivo físico se escola não existir
-      this.deletePhysicalFile(file.path);
       throw new ErrorResponse(404, "Escola não encontrada", {
         message: `Não existe escola com id ${EscolaGUID}`,
       });
     }
 
+    // Enviar arquivo para o R2
+    const anexoGUID = uuidv4();
+    const ext = path.extname(file.originalname);
+    const chave = `anexos/${EscolaGUID}/${anexoGUID}${ext}`;
+    const contentDisposition = `attachment; filename="${encodeURIComponent(file.originalname)}"`;
+
+    const fileUrl = await R2StorageService.upload(chave, file.buffer, file.mimetype, contentDisposition);
+
     // Criar registro do anexo
     const anexo = new Anexo();
-    anexo.AnexoGUID = uuidv4();
+    anexo.AnexoGUID = anexoGUID;
     anexo.UsuarioCPF = this.normalizeCPF(usuarioCPF);
     anexo.EscolaGUID = EscolaGUID;
-    anexo.AnexoCaminho = `/uploads/anexos/${path.basename(file.path)}`;
+    anexo.AnexoCaminho = fileUrl;
     anexo.AnexoNomeOriginal = file.originalname;
     anexo.AnexoTamanho = file.size;
 
@@ -96,16 +100,11 @@ export default class AnexoService {
     // TODO: Validar permissão de leitura
     // await this.validarPermissaoLeitura(usuarioCPF, anexo);
 
-    // Validar se arquivo físico existe
-    const caminhoCompleto = path.resolve(process.cwd(), anexo.AnexoCaminho.substring(1));
-    if (!fs.existsSync(caminhoCompleto)) {
-      throw new ErrorResponse(404, "Arquivo físico não encontrado", {
-        message: `O arquivo ${anexo.AnexoNomeOriginal} não está mais disponível no servidor.`,
-      });
-    }
-
+    // AnexoCaminho já é a URL pública completa no R2 (o objeto foi
+    // enviado com ContentDisposition "attachment", então o navegador
+    // baixa com o nome original mesmo sem passar pelo nosso servidor).
     return {
-      caminho: caminhoCompleto,
+      caminho: anexo.AnexoCaminho,
       nomeOriginal: anexo.AnexoNomeOriginal || "arquivo",
     };
   };
@@ -134,9 +133,10 @@ export default class AnexoService {
     const deletado = await this.#anexoDAO.delete(AnexoGUID);
 
     if (deletado) {
-      // Deletar arquivo físico
-      const caminhoCompleto = path.resolve(process.cwd(), anexo.AnexoCaminho.substring(1));
-      this.deletePhysicalFile(caminhoCompleto);
+      // Deletar arquivo do R2 (não bloqueia a resposta se falhar)
+      R2StorageService.removeByUrl(anexo.AnexoCaminho).catch((error) => {
+        console.warn(`⚠️  Não foi possível remover anexo do R2: ${anexo.AnexoCaminho}`, error.message);
+      });
     }
 
     return deletado;
@@ -181,20 +181,6 @@ export default class AnexoService {
     }
 
     return normalized;
-  }
-
-  /**
-   * Deleta arquivo físico do sistema de arquivos
-   */
-  private deletePhysicalFile(caminho: string): void {
-    try {
-      if (fs.existsSync(caminho)) {
-        fs.unlinkSync(caminho);
-        console.log(`📁 Arquivo deletado: ${caminho}`);
-      }
-    } catch (error) {
-      console.error(`❌ Erro ao deletar arquivo: ${caminho}`, error);
-    }
   }
 
   /**

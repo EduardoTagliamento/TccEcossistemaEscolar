@@ -32,6 +32,7 @@ export default function MateriasPage() {
     EscolaGUID: escolaGUID,
     MateriaNome: '',
     MateriaIsTecnica: false,
+    MateriaAulasPorSemanaPadrao: '',
     CursoGUID: ''
   });
   const [salvandoFormulario, setSalvandoFormulario] = useState(false);
@@ -74,6 +75,13 @@ export default function MateriasPage() {
         label: 'É matéria técnica?',
         tipo: 'checkbox',
         obrigatorio: false
+      },
+      {
+        id: 'MateriaAulasPorSemanaPadrao',
+        label: 'Aulas por semana (padrão)',
+        tipo: 'number',
+        obrigatorio: false,
+        placeholder: 'Ex: 4 (pode ser sobrescrito por turma na alocação do professor)'
       }
     ];
 
@@ -128,6 +136,12 @@ export default function MateriasPage() {
       )
     },
     {
+      id: 'MateriaAulasPorSemanaPadrao',
+      label: 'Aulas/semana',
+      width: '10%',
+      render: (valor: any) => valor ?? <span className={styles.textoSecundario}>—</span>
+    },
+    {
       id: 'MateriaStatus',
       label: 'Status',
       width: '15%',
@@ -151,11 +165,16 @@ export default function MateriasPage() {
       setSalvandoFormulario(true);
       setErroFormulario('');
 
+      const aulasPorSemanaPadrao = valoresFormulario.MateriaAulasPorSemanaPadrao
+        ? parseInt(valoresFormulario.MateriaAulasPorSemanaPadrao, 10)
+        : null;
+
       if (materiaEditando) {
         // Editar matéria existente
         await MateriaAPI.atualizarMateria(materiaEditando.MateriaGUID, {
           MateriaNome: valoresFormulario.MateriaNome,
           MateriaIsTecnica: valoresFormulario.MateriaIsTecnica,
+          MateriaAulasPorSemanaPadrao: aulasPorSemanaPadrao,
           CursoGUID: valoresFormulario.CursoGUID || null
         });
         alert('Matéria atualizada com sucesso!');
@@ -165,6 +184,7 @@ export default function MateriasPage() {
           EscolaGUID: escolaGUID,
           MateriaNome: valoresFormulario.MateriaNome,
           MateriaIsTecnica: valoresFormulario.MateriaIsTecnica,
+          MateriaAulasPorSemanaPadrao: aulasPorSemanaPadrao,
           MateriaStatus: 'Ativa',
           CursoGUID: valoresFormulario.CursoGUID || null
         });
@@ -177,6 +197,7 @@ export default function MateriasPage() {
         EscolaGUID: escolaGUID,
         MateriaNome: '',
         MateriaIsTecnica: false,
+        MateriaAulasPorSemanaPadrao: '',
         CursoGUID: ''
       });
       carregarDados();
@@ -195,6 +216,7 @@ export default function MateriasPage() {
       EscolaGUID: escolaGUID,
       MateriaNome: materia.MateriaNome,
       MateriaIsTecnica: materia.MateriaIsTecnica,
+      MateriaAulasPorSemanaPadrao: materia.MateriaAulasPorSemanaPadrao ?? '',
       CursoGUID: materia.CursoGUID || ''
     });
     setModalAberto(true);
@@ -350,6 +372,7 @@ export default function MateriasPage() {
                   EscolaGUID: escolaGUID,
                   MateriaNome: '',
                   MateriaIsTecnica: false,
+                  MateriaAulasPorSemanaPadrao: '',
                   CursoGUID: ''
                 });
               }}
