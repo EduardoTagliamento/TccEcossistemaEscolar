@@ -36,15 +36,27 @@ export function registerConversaHandlers(
   });
 
   // send_mensagem: persiste e faz broadcast para a room
+  // MensagemTipo é opcional (default 'Texto') — para anexo ('Arquivo'/'Imagem'),
+  // o cliente já fez upload via POST /api/upload/mensagem/:conversaGUID e manda
+  // a URL retornada como MensagemConteudo.
   socket.on(
     'send_mensagem',
-    async ({ ConversaGUID, MensagemConteudo }: { ConversaGUID: string; MensagemConteudo: string }) => {
+    async ({
+      ConversaGUID,
+      MensagemConteudo,
+      MensagemTipo,
+    }: {
+      ConversaGUID: string;
+      MensagemConteudo: string;
+      MensagemTipo?: 'Texto' | 'Arquivo' | 'Imagem';
+    }) => {
       console.log(`🔵 [WS] send_mensagem: ${usuario.UsuarioCPF} → ${ConversaGUID}`);
       try {
         const mensagem = await mensagemService.enviar(
           ConversaGUID,
           usuario.UsuarioCPF,
-          MensagemConteudo
+          MensagemConteudo,
+          MensagemTipo || 'Texto'
         );
         io.to(ConversaGUID).emit('nova_mensagem', mensagem);
       } catch (err: any) {

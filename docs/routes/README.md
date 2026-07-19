@@ -430,6 +430,62 @@ Documentação completa da API de publicação de material de aula (vídeo/áudi
 - ✅ Professor precisa lecionar em todas as turmas selecionadas
 - ✅ Exclusão restrita ao autor; arquivos removidos do R2 de forma assíncrona
 
+### ✅ Projeto (Project)
+**Arquivo:** [projeto-api.md](projeto-api.md)
+
+Documentação completa da API do módulo Projetos (atividade-mãe criada por Professor/Direção, direcionada a turmas específicas ou à escola inteira) incluindo:
+- **POST** `/api/projeto` - Criar projeto (Professor/Direção)
+- **GET** `/api/projeto` - Listar projetos visíveis ao usuário
+- **GET** `/api/projeto/:projetoGUID` - Buscar projeto por ID
+- **PATCH** `/api/projeto/:projetoGUID` - Atualizar projeto (só criador)
+- **PATCH** `/api/projeto/:projetoGUID/encerrar` - Encerrar projeto (só criador)
+
+**Regras de Negócio Implementadas:**
+- ✅ Criação restrita a Professor (FuncaoId=3) ou Direção (FuncaoId=6) da escola
+- ✅ Público-alvo: escola inteira ou turmas específicas (`projetoturma`)
+- ✅ Listagem depende do papel (criador vê os próprios; aluno vê os elegíveis)
+- ✅ Sem exclusão física — só encerramento
+- ✅ Notificação `projeto_criado` por fan-out (escola ou turmas-alvo)
+
+### ✅ Grupo de Projeto (Project Group)
+**Arquivo:** [grupoprojeto-api.md](grupoprojeto-api.md)
+
+Documentação completa da API de grupos formados dentro de um Projeto (grupos podem reunir alunos de turmas diferentes, diferente de Grupo de Tarefa) incluindo:
+- **POST** `/api/grupoprojeto` - Aluno cria grupo (líder = ele mesmo)
+- **GET** `/api/grupoprojeto/projeto/:projetoGUID` - Listar grupos de um projeto
+- **GET** `/api/grupoprojeto/:grupoGUID` - Buscar grupo (com membros)
+- **PATCH** `/api/grupoprojeto/:grupoGUID` - Atualizar nome/proposta/visibilidade (líder)
+- **PATCH** `/api/grupoprojeto/:grupoGUID/pontuacao` - Atribuir pontuação (criador do projeto)
+- **POST** `/api/grupoprojeto/:grupoGUID/entrar` - Entrar diretamente (grupo Aberto)
+- **DELETE** `/api/grupoprojeto/:grupoGUID/sair` - Sair do próprio grupo
+- **POST** `/api/grupoprojeto/:grupoGUID/membros` - Adicionar membro direto (criador do projeto)
+- **DELETE** `/api/grupoprojeto/:grupoGUID/membros/:cpf` - Expulsar membro (líder ou criador do projeto)
+- **PATCH** `/api/grupoprojeto/:grupoGUID/transferir-lider` - Transferir liderança
+
+**Regras de Negócio Implementadas:**
+- ✅ Nenhum grupo é criado automaticamente — aluno cria o próprio grupo com proposta
+- ✅ Grupo `Aberto` (entrada livre) ou `Fechado` (só convite/solicitação)
+- ✅ Criador do projeto tem autoridade extra: adicionar/expulsar membros (inclusive o líder) e pontuar
+- ✅ Expulsão do líder promove o membro mais antigo, ou dissolve o grupo
+- ✅ Limite de vagas validado em todo ponto de entrada
+- ✅ Visualização pública dentro do projeto (não restrita a membros)
+
+### ✅ Convite de Grupo de Projeto (Project Group Invite)
+**Arquivo:** [convitegrupoprojeto-api.md](convitegrupoprojeto-api.md)
+
+Documentação completa da API de convites (líder → aluno) e solicitações (aluno → grupo) para entrada em grupos de projeto fechados incluindo:
+- **POST** `/api/convitegrupoprojeto/:grupoGUID/convites` - Líder envia convite
+- **POST** `/api/convitegrupoprojeto/:grupoGUID/solicitacoes` - Aluno solicita entrada
+- **GET** `/api/convitegrupoprojeto/pendentes` - Listar convites/solicitações pendentes
+- **PATCH** `/api/convitegrupoprojeto/:conviteGUID/aceitar` - Aceitar
+- **PATCH** `/api/convitegrupoprojeto/:conviteGUID/recusar` - Recusar
+
+**Regras de Negócio Implementadas:**
+- ✅ Convite aceito/recusado pelo convidado; solicitação aceita/recusada pelo líder
+- ✅ Limite de vagas validado no envio **e** na aceitação (diferente do TODO de Tarefa Compartilhada)
+- ✅ Elegibilidade revalidada antes de criar convite/solicitação
+- ✅ Sem duplicidade pendente; 1 participação por aluno por projeto
+
 ### ℹ️ Escolas do Usuário
 **Arquivo:** [usuario-escolas-api.md](usuario-escolas-api.md)
 

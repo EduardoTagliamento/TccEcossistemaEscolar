@@ -347,6 +347,22 @@ export class EscolaxUsuarioxFuncaoDAO {
   };
 
   /**
+   * Verifica se o usuário é Professor (FuncaoId=3) ou Direção (FuncaoId=6)
+   * ativo na escola. Usado pelo módulo de Projetos — só Professor/Direção
+   * podem criar um Projeto (ver docs/PLANO_IMPLEMENTACAO_PROJETOS.md, Seção 1).
+   */
+  isProfessorOuDirecaoEmEscola = async (usuarioCPF: string, escolaGUID: string): Promise<boolean> => {
+    console.log('🟢 EscolaxUsuarioxFuncaoDAO.isProfessorOuDirecaoEmEscola()');
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(
+      `SELECT 1 FROM escolaxusuarioxfuncao
+       WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId IN (3, 6) AND Status = 'Ativo' LIMIT 1`,
+      [usuarioCPF, escolaGUID]
+    );
+    return (rows as Array<Record<string, unknown>>).length > 0;
+  };
+
+  /**
    * Busca UsuarioCPF de todos os usuários ativos de uma escola que tenham
    * pelo menos uma das funções informadas. Usado pelo fan-out de notificações
    * (ex.: novo evento na escola → todos os Alunos e Professores).

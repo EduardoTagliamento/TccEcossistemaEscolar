@@ -25,6 +25,7 @@ export interface MensagemFixadaRow extends RowDataPacket {
   MensagemConteudo: string;
   MensagemRemetenteCPF: string;
   MensagemCreatedAt: Date;
+  MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
 }
 
 export class MensagemDAO {
@@ -107,11 +108,12 @@ export class MensagemDAO {
     MensagemRemetenteCPF: string;
     RemetenteNome: string;
     MensagemCreatedAt: string;
+    MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
   } | null> {
     console.log('🟢 MensagemDAO.findUltimaMensagem()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
-      `SELECT m.MensagemConteudo, m.MensagemRemetenteCPF, m.MensagemCreatedAt, u.UsuarioNome AS RemetenteNome
+      `SELECT m.MensagemConteudo, m.MensagemRemetenteCPF, m.MensagemCreatedAt, m.MensagemTipo, u.UsuarioNome AS RemetenteNome
        FROM mensagem m
        INNER JOIN usuario u ON u.UsuarioCPF = m.MensagemRemetenteCPF
        WHERE m.ConversaGUID = ? AND m.MensagemDeletedAt IS NULL
@@ -127,6 +129,7 @@ export class MensagemDAO {
       MensagemRemetenteCPF: r.MensagemRemetenteCPF,
       RemetenteNome: r.RemetenteNome,
       MensagemCreatedAt: (r.MensagemCreatedAt as Date).toISOString(),
+      MensagemTipo: r.MensagemTipo,
     };
   }
 
@@ -233,7 +236,8 @@ export class MensagemDAO {
          mf.FixadaAt,
          m.MensagemConteudo,
          m.MensagemRemetenteCPF,
-         m.MensagemCreatedAt
+         m.MensagemCreatedAt,
+         m.MensagemTipo
        FROM mensagem_fixada mf
        INNER JOIN mensagem m ON m.MensagemGUID = mf.MensagemGUID
        WHERE mf.ConversaGUID = ?
