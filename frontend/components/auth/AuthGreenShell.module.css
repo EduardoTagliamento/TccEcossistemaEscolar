@@ -1,0 +1,118 @@
+/* ============================================================
+   AuthGreenShell — fundo verde cheio com cartão branco central,
+   usado em /selecionar-escola e /criar-escola. Fiel ao bloco
+   "ESCOLHA DE ESCOLA" de "Login Escola.dc.html" (mcp claude-design,
+   project ccdadcfa-a641-4e2d-b42d-428a0e133f63) e à tela "Escolha"
+   de ui_kits/auth/AuthFlow.jsx (project 689c269f-...-c38839).
+   Mesmo bloco de tokens de AuthBrandShell.module.css, escopado
+   em .shell (nunca no :root).
+   ============================================================ */
+
+.shell {
+  --green-50: #E7F9F0;
+  --green-100: #C5F0DC;
+  --green-200: #97E6C2;
+  --green-300: #5FD8A2;
+  --green-400: #2ECC8B;
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --green-800: #0B6440;
+  --green-900: #0A4E33;
+
+  --blue-50: #EAF0FE;
+  --blue-100: #CBDAFB;
+  --blue-400: #5B7DF0;
+  --blue-500: #2F5BEA;
+  --blue-600: #244AC9;
+  --blue-700: #1C3AA0;
+
+  --gold-50: #FFF7E0;
+  --gold-100: #FFEBB0;
+  --gold-400: #FFD24D;
+  --gold-500: #FFC02E;
+  --gold-600: #E0A200;
+
+  --ink-900: #0F1D17;
+  --ink-800: #1E2C25;
+  --ink-700: #33443B;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --slate-300: #B7C1BA;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --surface-card: #FFFFFF;
+  --mint-wash: #E9F7F0;
+
+  --success-500: #17A65C;
+  --success-50: #E5F6EC;
+  --warning-500: #F5A524;
+  --warning-50: #FEF3E2;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-2xl: 32px;
+  --radius-pill: 9999px;
+
+  --shadow-xs: 0 1px 2px rgba(15, 29, 23, 0.05);
+  --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+  --shadow-md: 0 8px 20px -8px rgba(15, 29, 23, 0.14);
+  --shadow-lg: 0 18px 40px -16px rgba(15, 29, 23, 0.2);
+  --shadow-xl: 0 30px 60px -24px rgba(15, 29, 23, 0.26);
+  --shadow-primary: 0 12px 26px -10px rgba(23, 192, 119, 0.55);
+  --shadow-focus: 0 0 0 3px rgba(23, 192, 119, 0.28);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--green-500), var(--green-700));
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell :global(*) {
+  box-sizing: border-box;
+}
+
+.gridBg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 74px 74px;
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  background: var(--surface-card);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  padding: 40px;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 24px;
+    border-radius: var(--radius-xl);
+  }
+}

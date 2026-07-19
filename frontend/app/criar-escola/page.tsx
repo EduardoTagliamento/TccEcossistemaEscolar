@@ -2,12 +2,41 @@
 
 import { useState, FormEvent, useEffect, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { Poppins, Figtree, Baloo_2, JetBrains_Mono } from 'next/font/google';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { validarEmail } from '@/lib/validators/email';
 import ColorPicker from '@/components/ColorPicker';
-import { FiUpload, FiX, FiArrowLeft } from 'react-icons/fi';
+import AuthGreenShell from '@/components/auth/AuthGreenShell';
+import AuthInput from '@/components/auth/AuthInput';
+import AuthButton from '@/components/auth/AuthButton';
+import AuthIcon from '@/components/auth/AuthIcon';
+import BauaLogo from '@/components/auth/BauaLogo';
 import styles from './page.module.css';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+});
+const figtree = Figtree({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body',
+  display: 'swap',
+});
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-wordmark',
+  display: 'swap',
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 export default function CriarEscolaPage() {
   const router = useRouter();
@@ -15,10 +44,13 @@ export default function CriarEscolaPage() {
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  const [cor1, setCor1] = useState('#1cc47b'); // Verde-água Bauá
-  const [cor2, setCor2] = useState('#FFFFFF'); // Branco
-  const [cor3, setCor3] = useState('#000000'); // Preto
-  const [cor4, setCor4] = useState('#FFD700'); // Dourado
+  // Paleta padrão alinhada aos tokens de marca do Bauá Design System
+  // (--green-500, branco, --ink-900, --gold-500) em vez dos valores
+  // aproximados anteriores.
+  const [cor1, setCor1] = useState('#17C077'); // Primária escura (--green-500)
+  const [cor2, setCor2] = useState('#FFFFFF'); // Primária clara
+  const [cor3, setCor3] = useState('#0F1D17'); // Secundária escura (--ink-900)
+  const [cor4, setCor4] = useState('#FFC02E'); // Secundária clara / destaque (--gold-500)
   const [isTecnica, setIsTecnica] = useState(false); // Escola técnica
 
   const [logo, setLogo] = useState<File | null>(null);
@@ -35,7 +67,7 @@ export default function CriarEscolaPage() {
 
   const handleLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    
+
     if (!file) return;
 
     // Validar tipo
@@ -51,14 +83,14 @@ export default function CriarEscolaPage() {
     }
 
     setLogo(file);
-    
+
     // Criar preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setLogoPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-    
+
     setError('');
   };
 
@@ -91,7 +123,7 @@ export default function CriarEscolaPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           EscolaNome: nome.trim(),
@@ -121,7 +153,7 @@ export default function CriarEscolaPage() {
         const uploadResponse = await fetch(`/api/upload/logo/${escolaGUID}`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: formData,
         });
@@ -141,7 +173,7 @@ export default function CriarEscolaPage() {
           await fetch(`/api/escola/${escolaGUIDCriada}`, {
             method: 'DELETE',
             headers: {
-              'Authorization': `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             },
           });
         } catch (_rollbackError) {
@@ -155,108 +187,76 @@ export default function CriarEscolaPage() {
     }
   };
 
+  const fontVars = `${poppins.variable} ${figtree.variable} ${baloo2.variable} ${jetbrainsMono.variable}`;
+
   if (authLoading) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.spinner}></div>
-        <p>Carregando...</p>
-      </div>
+      <AuthGreenShell className={fontVars} maxWidth={420}>
+        <div className={styles.loadingState}>
+          <BauaLogo size={28} />
+          <div className={styles.spinner} />
+          <p>Carregando...</p>
+        </div>
+      </AuthGreenShell>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.formSection}>
-        <div className={styles.header}>
-          <Link href="/selecionar-escola" className={styles.backButton}>
-            <FiArrowLeft /> Voltar
-          </Link>
-          <h1 className={styles.title}>Criar Nova Escola</h1>
-          <p className={styles.subtitle}>Configure sua instituição de ensino</p>
-        </div>
+    <AuthGreenShell className={fontVars} maxWidth={780}>
+      <div className={styles.headerRow}>
+        <button
+          type="button"
+          onClick={() => router.push('/selecionar-escola')}
+          className={styles.backButton}
+          aria-label="Voltar para suas escolas"
+        >
+          <AuthIcon name="chevron-left" size={18} />
+        </button>
+        <h1 className={styles.title}>Nova escola</h1>
+      </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+      <form onSubmit={handleSubmit} className={styles.layout}>
+        <div className={styles.formCol}>
           {error && (
-            <div className={styles.errorMessage}>
-              {error}
+            <div className={styles.errorBanner} role="alert">
+              <AuthIcon name="alert-triangle" size={16} />
+              <span>{error}</span>
             </div>
           )}
 
-          <div className={styles.formGroup}>
-            <label htmlFor="nome" className={styles.label}>
-              Nome da Escola *
-            </label>
-            <input
-              id="nome"
-              type="text"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: Colégio Bauá"
-              className={styles.input}
-              disabled={isLoading}
-              required
-            />
-          </div>
+          <AuthInput
+            label="Nome da escola"
+            placeholder="Ex.: Colégio Bauá"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            disabled={isLoading}
+            required
+          />
 
-          <div className={styles.formGroup}>
-            <label htmlFor="email" className={styles.label}>
-              Email da Escola *
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="contato@escola.com"
-              className={styles.input}
-              disabled={isLoading}
-              required
-            />
-          </div>
+          <AuthInput
+            label="E-mail institucional"
+            leadingIcon="mail"
+            type="email"
+            placeholder="contato@escola.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isLoading}
+            required
+          />
 
-          <div className={styles.divider}>
-            <span>Personalização Visual</span>
-          </div>
-
-          <div className={styles.colorsSection}>
-            <h3>Cores do Tema</h3>
-            <p className={styles.hint}>
-              Escolha 4 cores que representam sua instituição. Essas cores serão usadas em toda a interface.
-            </p>
-            
-            <div className={styles.colorsGrid}>
-              <ColorPicker
-                label="Cor Principal"
-                color={cor1}
-                onChange={setCor1}
-                disabled={isLoading}
-              />
-              <ColorPicker
-                label="Cor Secundária"
-                color={cor2}
-                onChange={setCor2}
-                disabled={isLoading}
-              />
-              <ColorPicker
-                label="Cor Terciária"
-                color={cor3}
-                onChange={setCor3}
-                disabled={isLoading}
-              />
-              <ColorPicker
-                label="Cor de Destaque"
-                color={cor4}
-                onChange={setCor4}
-                disabled={isLoading}
-              />
+          <div className={styles.paletteSection}>
+            <span className={styles.sectionLabel}>Paleta da escola</span>
+            <p className={styles.sectionHint}>Essas 4 cores definem o tema visual da instituição.</p>
+            <div className={styles.paletteRow}>
+              <ColorPicker label="Primária escura" color={cor1} onChange={setCor1} disabled={isLoading} />
+              <ColorPicker label="Primária clara" color={cor2} onChange={setCor2} disabled={isLoading} />
+              <ColorPicker label="Secundária escura" color={cor3} onChange={setCor3} disabled={isLoading} />
+              <ColorPicker label="Secundária clara" color={cor4} onChange={setCor4} disabled={isLoading} />
             </div>
           </div>
 
           <div className={styles.logoSection}>
-            <h3>Logo da Escola</h3>
-            <p className={styles.hint}>
-              Envie o logo da sua escola (PNG ou JPG, máximo 1MB)
-            </p>
+            <span className={styles.sectionLabel}>Logo da escola</span>
 
             {!logoPreview ? (
               <label className={styles.uploadArea}>
@@ -267,99 +267,68 @@ export default function CriarEscolaPage() {
                   className={styles.fileInput}
                   disabled={isLoading}
                 />
-                <FiUpload className={styles.uploadIcon} />
-                <span>Clique para selecionar uma imagem</span>
-                <span className={styles.uploadHint}>PNG ou JPG • Máximo 1MB</span>
+                <AuthIcon name="upload" size={22} />
+                <span className={styles.uploadText}>Clique para selecionar uma imagem</span>
+                <span className={styles.uploadHint}>PNG ou JPG · Máximo 1MB</span>
               </label>
             ) : (
-              <div className={styles.logoPreviewContainer}>
-                <img src={logoPreview} alt="Preview do logo" className={styles.logoPreview} />
+              <div className={styles.logoPreviewRow}>
+                <img src={logoPreview} alt="Preview do logo" className={styles.logoPreviewImg} />
                 <button
                   type="button"
                   onClick={removerLogo}
                   className={styles.removeLogoButton}
                   disabled={isLoading}
                 >
-                  <FiX /> Remover
+                  <AuthIcon name="x" size={14} /> Remover
                 </button>
               </div>
             )}
           </div>
 
-          <div className={styles.checkboxSection}>
-            <label className={styles.checkboxLabel}>
+          <label className={styles.checkboxRow}>
+            <span className={styles.checkbox} data-checked={isTecnica}>
               <input
                 type="checkbox"
                 checked={isTecnica}
                 onChange={(e) => setIsTecnica(e.target.checked)}
                 disabled={isLoading}
-                className={styles.checkbox}
+                className={styles.checkboxInput}
               />
-              <span>Escola Técnica</span>
-            </label>
-            <p className={styles.checkboxHint}>
-              Marque esta opção se sua instituição oferece cursos técnicos profissionalizantes.
-            </p>
-          </div>
+              {isTecnica && <AuthIcon name="check" size={13} className={styles.checkboxIcon} />}
+            </span>
+            <span className={styles.checkboxText}>
+              <strong>Escola Técnica</strong>
+              <span>Marque se a instituição oferece cursos técnicos profissionalizantes.</span>
+            </span>
+          </label>
 
-          <button
-            type="submit"
-            className={styles.submitButton}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Criando escola...' : 'Criar Escola'}
-          </button>
-        </form>
-      </div>
-
-      <div className={styles.previewSection}>
-        <div className={styles.previewHeader}>
-          <h2>Pré-visualização</h2>
-          <p>Veja como ficará o tema da sua escola</p>
+          <AuthButton type="submit" variant="primary" size="lg" block disabled={isLoading}>
+            {isLoading ? 'Criando escola...' : 'Criar escola'}
+          </AuthButton>
         </div>
 
-        <div 
-          className={styles.preview}
-          style={{
-            '--preview-cor-1': cor1,
-            '--preview-cor-2': cor2,
-            '--preview-cor-3': cor3,
-            '--preview-cor-4': cor4,
-          } as React.CSSProperties}
-        >
-          <div className={styles.previewHeader2}>
-            {logoPreview ? (
-              <img src={logoPreview} alt="Logo" className={styles.previewLogo} />
-            ) : (
-              <div className={styles.previewIcon}>
-                {nome.charAt(0).toUpperCase() || 'E'}
-              </div>
-            )}
-            <h3>{nome || 'Nome da Escola'}</h3>
-          </div>
-
+        <div className={styles.previewCol}>
+          <span className={styles.previewEyebrow}>Prévia</span>
           <div className={styles.previewCard}>
-            <h4>Card de Exemplo</h4>
-            <p>Este é um exemplo de como os cards aparecerão com as cores escolhidas.</p>
-            <button className={styles.previewButton}>Botão Principal</button>
-          </div>
-
-          <div className={styles.previewPalette}>
-            <div className={styles.paletteColor} style={{ backgroundColor: cor1 }}>
-              <span>Cor 1</span>
+            <div className={styles.previewHeader} style={{ background: cor1 }}>
+              {logoPreview ? (
+                <img src={logoPreview} alt="" className={styles.previewLogoImg} />
+              ) : (
+                <span className={styles.previewAvatar}>{nome.charAt(0).toUpperCase() || 'E'}</span>
+              )}
+              <strong className={styles.previewSchoolName}>{nome || 'Nome da Escola'}</strong>
             </div>
-            <div className={styles.paletteColor} style={{ backgroundColor: cor2 }}>
-              <span>Cor 2</span>
-            </div>
-            <div className={styles.paletteColor} style={{ backgroundColor: cor3 }}>
-              <span>Cor 3</span>
-            </div>
-            <div className={styles.paletteColor} style={{ backgroundColor: cor4 }}>
-              <span>Cor 4</span>
+            <div className={styles.previewBody}>
+              <div className={styles.previewBar} style={{ background: cor2 }} />
+              <div className={styles.previewBarTrack} />
+              <span className={styles.previewBadge} style={{ background: cor4, color: cor3 }}>
+                Destaque
+              </span>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </form>
+    </AuthGreenShell>
   );
 }

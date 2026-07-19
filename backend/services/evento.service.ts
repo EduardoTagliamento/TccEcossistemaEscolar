@@ -17,6 +17,10 @@ import { EventoDAO, EventoFilters } from "../repositories/evento.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import ErrorResponse from "../utils/ErrorResponse";
+import { getNotificacaoService } from "./notificacao.service";
+
+/** Coordenacao, Secretaria, Professor, Aluno, Direcao — ver docs/PLANO_IMPLEMENTACAO_NOTIFICACOES.md, seção 2.6 */
+const FUNCOES_EVENTO_CRIADO = [1, 2, 3, 5, 6];
 
 /**
  * DTOs
@@ -105,8 +109,32 @@ export default class EventoService {
     // 6. Salvar no banco
     const created = await this.#eventoDAO.create(evento);
 
+    // 7. Notificar Alunos, Professores e gestão da escola (tipo `evento_criado`)
+    this.#notificarEventoCriado(created).catch((error) => {
+      console.error("🔴 EventoService.#notificarEventoCriado() falhou:", error);
+    });
+
     return this.#toDTO(created);
   }
+
+  #notificarEventoCriado = async (evento: Evento): Promise<void> => {
+    const destinatarios = await this.#escolaxUsuarioxFuncaoDAO.findUsuariosAtivosByEscolaEFuncoes(
+      evento.EscolaGUID,
+      FUNCOES_EVENTO_CRIADO
+    );
+    if (destinatarios.length === 0) return;
+
+    await getNotificacaoService().disparar({
+      tipoSlug: "evento_criado",
+      destinatarios,
+      escolaGUID: evento.EscolaGUID,
+      titulo: `Novo evento: ${evento.EventoTitulo}`,
+      conteudo: evento.EventoDescricao,
+      entidadeTipo: "evento",
+      entidadeGUID: evento.EventoGUID,
+      link: `/dashboard/${evento.EscolaGUID}/calendario`,
+    });
+  };
 
   /**
    * INDEX - Listar eventos com filtros

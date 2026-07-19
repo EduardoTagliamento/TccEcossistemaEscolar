@@ -17,6 +17,9 @@ import { TurmaDAO } from "../repositories/turma.repository";
 import { CategoriaConteudoDAO } from "../repositories/categoriaconteudo.repository";
 import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
 import R2StorageService from "./r2storage.service";
+import { RowDataPacket } from "mysql2";
+import { pool } from "../database/mysql";
+import { getNotificacaoService } from "./notificacao.service";
 
 export interface ConteudoTurmaDTO {
   TurmaGUID: string;
@@ -142,12 +145,16 @@ export default class ConteudoService {
     }
 
     // Validar que o professor leciona essa matéria em TODAS as turmas escolhidas
+    let escolaGUID: string | null = null;
     for (const turmaGUID of data.TurmasGUID) {
       const turma = await this.#turmaDAO.findById(turmaGUID);
       if (!turma) {
         throw new ErrorResponse(404, "Turma não encontrada", {
           message: `Não existe turma com id ${turmaGUID}`,
         });
+      }
+      if (!escolaGUID) {
+        escolaGUID = turma.EscolaGUID;
       }
 
       const alocacao = await this.#matProfTurDAO.findByMateriaTurmaProfessor(
@@ -216,7 +223,34 @@ export default class ConteudoService {
       await this.criarPaginado(conteudo.ConteudoGUID, arquivos.arquivosPaginado || []);
     }
 
+    if (escolaGUID) {
+      this.#notificarMateriaPostada(conteudo, data.TurmasGUID, escolaGUID).catch((error) => {
+        console.error("🔴 ConteudoService.#notificarMateriaPostada() falhou:", error);
+      });
+    }
+
     return this.buscarConteudo(conteudo.ConteudoGUID);
+  };
+
+  /** Notifica os alunos matriculados nas turmas atribuídas (tipo `materia_postada`) */
+  #notificarMateriaPostada = async (conteudo: Conteudo, turmasGUID: string[], escolaGUID: string): Promise<void> => {
+    const placeholders = turmasGUID.map(() => "?").join(", ");
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT DISTINCT UsuarioCPF FROM matricula WHERE TurmaGUID IN (${placeholders}) AND MatriculaStatus = 'Ativa'`,
+      turmasGUID
+    );
+    const destinatarios = (rows as any[]).map((r) => r.UsuarioCPF);
+    if (destinatarios.length === 0) return;
+
+    await getNotificacaoService().disparar({
+      tipoSlug: "materia_postada",
+      destinatarios,
+      escolaGUID,
+      titulo: `Novo material: ${conteudo.ConteudoTitulo}`,
+      conteudo: conteudo.ConteudoDescricao,
+      entidadeTipo: "conteudo",
+      entidadeGUID: conteudo.ConteudoGUID,
+    });
   };
 
   private criarCronometrado = async (

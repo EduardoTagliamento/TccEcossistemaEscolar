@@ -2,6 +2,9 @@ import { ConversaGrupoDAO } from '../repositories/conversa-grupo.repository';
 import { TurmaDAO } from '../repositories/turma.repository';
 import { EscolaxUsuarioxFuncaoDAO } from '../repositories/escolaxusuarioxfuncao.repository';
 import ErrorResponse from '../utils/ErrorResponse';
+import { RowDataPacket } from 'mysql2';
+import { pool } from '../database/mysql';
+import { getNotificacaoService } from './notificacao.service';
 
 export default class ConversaPermissaoService {
   #conversaGrupoDAO: ConversaGrupoDAO;
@@ -76,6 +79,10 @@ export default class ConversaPermissaoService {
       UsuarioCPF: alvoCPF,
       NovaFuncao: 'Representante',
     });
+
+    this.#notificarPromocao(conversaGUID, alvoCPF, 'promovido_representante', 'Você foi promovido a representante da turma').catch((error) => {
+      console.error('🔴 ConversaPermissaoService.#notificarPromocao() falhou:', error);
+    });
   }
 
   // Turma only: Coordenação/Direção remove o Representante
@@ -122,6 +129,10 @@ export default class ConversaPermissaoService {
       UsuarioCPF: alvoCPF,
       NovaFuncao: 'Vice-Representante',
     });
+
+    this.#notificarPromocao(conversaGUID, alvoCPF, 'promovido_vice_representante', 'Você foi promovido a vice-representante').catch((error) => {
+      console.error('🔴 ConversaPermissaoService.#notificarPromocao() falhou:', error);
+    });
   }
 
   // Turma: Representante remove; Tarefa: Lider remove
@@ -142,5 +153,33 @@ export default class ConversaPermissaoService {
       UsuarioCPF: alvoCPF,
       NovaFuncao: 'Membro',
     });
+
+    this.#notificarPromocao(conversaGUID, alvoCPF, 'removido_vice_representante', 'Você foi removido do cargo de vice-representante').catch((error) => {
+      console.error('🔴 ConversaPermissaoService.#notificarPromocao() falhou:', error);
+    });
   }
+
+  /** Resolve o EscolaGUID de um grupo (Turma direto, Tarefa via grupotarefa) e dispara a notificação de mudança de papel */
+  #notificarPromocao = async (conversaGUID: string, alvoCPF: string, tipoSlug: string, titulo: string): Promise<void> => {
+    const grupo = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
+    if (!grupo) return;
+
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      grupo.ConversaGrupoTipo === 'Turma'
+        ? `SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1`
+        : `SELECT t.EscolaGUID FROM grupotarefa gt INNER JOIN turma t ON t.TurmaGUID = gt.TurmaGUID WHERE gt.GrupoTarefaGUID = ? LIMIT 1`,
+      [grupo.ConversaGrupoRefGUID]
+    );
+    const escolaGUID = (rows[0] as any)?.EscolaGUID;
+    if (!escolaGUID) return;
+
+    await getNotificacaoService().disparar({
+      tipoSlug,
+      destinatarios: [alvoCPF],
+      escolaGUID,
+      titulo,
+      entidadeTipo: 'conversagrupo',
+      entidadeGUID: conversaGUID,
+    });
+  };
 }

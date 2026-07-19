@@ -1,265 +1,101 @@
-.container {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #1cc47b 0%, #169162 100%);
-  padding: var(--spacing-lg);
-}
+/* ============================================================
+   /cadastro — fiel ao bloco "isCadastro" de "Login Escola.dc.html",
+   com o conjunto de campos ampliado (Nome/Sobrenome/CPF/Telefone/
+   E-mail/Senha/Confirmar senha) organizado em grade 2 colunas,
+   como em ui_kits/auth/AuthFlow.jsx -> Cadastro() (mesma ordem de
+   campos: Nome | Sobrenome, CPF | Telefone, E-mail, Senha | Confirmar).
+   Cores/radius/shadow vêm de AuthBrandShell (herdados via cascata).
+   ============================================================ */
 
-.cadastroCard {
-  background-color: var(--bg-primary);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
-  width: 100%;
-  max-width: 600px;
-  padding: var(--spacing-2xl);
-  animation: slideUp var(--transition-normal);
-  max-height: 95vh;
-  overflow-y: auto;
-}
-
-.header {
-  text-align: center;
-  margin-bottom: var(--spacing-xl);
-}
-
-.logo {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-primary);
-  margin: 0;
+.title {
+  font-family: var(--font-display), 'Poppins', system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--ink-900);
+  margin: 28px 0 4px;
 }
 
 .subtitle {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin-top: var(--spacing-xs);
+  font-size: 15px;
+  color: var(--slate-500);
+  margin: 0 0 24px;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: 14px;
 }
 
-.title {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-  margin-bottom: var(--spacing-sm);
-  text-align: center;
-}
-
-.errorMessage {
-  padding: var(--spacing-md);
-  background-color: rgba(244, 67, 54, 0.1);
-  border: 1px solid var(--color-error);
-  border-radius: var(--radius-md);
-  color: var(--color-error);
-  font-size: var(--font-size-sm);
-  text-align: center;
-  animation: slideDown var(--transition-fast);
-}
-
-.row {
+.grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
+  gap: 14px;
 }
 
-.formGroup {
+.spanFull {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 480px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.errorBanner {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
-  display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-.validIcon {
-  color: var(--color-success);
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--font-size-md);
-}
-
-.invalidIcon {
-  color: var(--color-error);
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--font-size-md);
-}
-
-.forcaSenha {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  text-transform: uppercase;
-}
-
-.forcaSenha.fraca {
-  background-color: rgba(244, 67, 54, 0.1);
-  color: var(--color-error);
-}
-
-.forcaSenha.média {
-  background-color: rgba(255, 152, 0, 0.1);
-  color: var(--color-warning);
-}
-
-.forcaSenha.forte {
-  background-color: rgba(76, 175, 80, 0.1);
-  color: var(--color-success);
-}
-
-.input {
-  width: 100%;
-  padding: var(--spacing-md);
-  font-size: var(--font-size-md);
-  border: 2px solid var(--border-color);
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--danger-50);
+  border: 1px solid var(--danger-500);
   border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
+  color: var(--danger-500);
+  font-size: 0.875rem;
 }
 
-.input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 206, 209, 0.1);
-  outline: none;
+.strengthBadge {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  text-transform: capitalize;
 }
 
-.input:disabled {
-  background-color: var(--bg-secondary);
-  cursor: not-allowed;
-  opacity: 0.7;
+.strengthFraca {
+  background: var(--danger-50);
+  color: var(--danger-500);
 }
 
-.passwordWrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
+.strengthMedia {
+  background: var(--warning-50);
+  color: var(--warning-500);
 }
 
-.passwordWrapper .input {
-  padding-right: calc(var(--spacing-md) + 40px);
-}
-
-.eyeButton {
-  position: absolute;
-  right: var(--spacing-md);
-  background: none;
-  border: none;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  padding: var(--spacing-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-lg);
-  transition: color var(--transition-fast);
-}
-
-.eyeButton:hover:not(:disabled) {
-  color: var(--color-primary);
-}
-
-.eyeButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.senhaRequisitos {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.requisito {
-  font-size: var(--font-size-xs);
-  color: var(--color-error);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
+.strengthForte {
+  background: var(--success-50);
+  color: var(--success-500);
 }
 
 .submitButton {
-  width: 100%;
-  padding: var(--spacing-md);
-  background-color: var(--color-primary);
-  color: var(--text-on-primary);
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-md);
-  margin-top: var(--spacing-md);
+  margin-top: 4px;
 }
 
-.submitButton:hover:not(:disabled) {
-  background-color: var(--color-primary-dark);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-
-.submitButton:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.submitButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.footer {
-  margin-top: var(--spacing-md);
+.footerText {
+  font-size: 14px;
+  color: var(--slate-500);
   text-align: center;
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+  margin-top: 20px;
 }
 
-.link {
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+.footerLink {
+  font-weight: 700;
+  color: var(--green-700);
   text-decoration: none;
-  transition: color var(--transition-fast);
 }
 
-.link:hover {
-  color: var(--color-primary-dark);
+.footerLink:hover {
   text-decoration: underline;
-}
-
-/* Responsividade */
-@media (max-width: 640px) {
-  .container {
-    padding: var(--spacing-md);
-  }
-
-  .cadastroCard {
-    padding: var(--spacing-lg);
-  }
-
-  .row {
-    grid-template-columns: 1fr;
-  }
-
-  .logo {
-    font-size: var(--font-size-2xl);
-  }
-
-  .title {
-    font-size: var(--font-size-xl);
-  }
 }

@@ -3,9 +3,31 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { FiPlus, FiLogOut } from 'react-icons/fi';
+import AuthGreenShell from '@/components/auth/AuthGreenShell';
+import AuthIcon from '@/components/auth/AuthIcon';
+import BauaLogo from '@/components/auth/BauaLogo';
 import styles from './page.module.css';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+});
+const figtree = Figtree({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body',
+  display: 'swap',
+});
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-wordmark',
+  display: 'swap',
+});
 
 interface Funcao {
   EscolaxUsuarioxFuncaoId: number;
@@ -57,7 +79,7 @@ export default function SelecionarEscolaPage() {
     try {
       const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -85,155 +107,96 @@ export default function SelecionarEscolaPage() {
   const selecionarEscola = (escolaGUID: string) => {
     // Salvar escola selecionada no localStorage
     localStorage.setItem('@baua:escolaSelecionada', escolaGUID);
-    
+
     // Redirecionar para dashboard
     router.push(`/dashboard/${escolaGUID}`);
   };
 
+  const fontVars = `${poppins.variable} ${figtree.variable} ${baloo2.variable}`;
+
   if (authLoading || isLoading) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.spinner}></div>
-        <p>Carregando suas escolas...</p>
-      </div>
+      <AuthGreenShell className={fontVars} maxWidth={420}>
+        <div className={styles.loadingState}>
+          <BauaLogo size={28} />
+          <div className={styles.spinner} />
+          <p>Carregando suas escolas...</p>
+        </div>
+      </AuthGreenShell>
     );
   }
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.headerContent}>
-          <div className={styles.userInfo}>
-            <div className={styles.avatar}>
-              {usuario?.UsuarioNome?.charAt(0).toUpperCase()}
-            </div>
-            <div className={styles.userDetails}>
-              <h2>{usuario?.UsuarioNome} {usuario?.UsuarioSobrenome}</h2>
-              <p>{usuario?.UsuarioEmail}</p>
-            </div>
-          </div>
-          <button onClick={handleLogout} className={styles.logoutButton}>
-            <FiLogOut /> Sair
+    <AuthGreenShell className={fontVars} maxWidth={680}>
+      <div className={styles.topRow}>
+        <BauaLogo size={26} />
+        <div className={styles.userChip}>
+          {usuario && <span className={styles.userName}>{usuario.UsuarioNome}</span>}
+          <button onClick={handleLogout} className={styles.logoutLink}>
+            <AuthIcon name="log-out" size={14} /> Sair
           </button>
         </div>
-      </header>
+      </div>
 
-      <main className={styles.main}>
-        <div className={styles.titleSection}>
-          <h1>Minhas Escolas</h1>
-          <p>Selecione uma escola para acessar o dashboard</p>
+      <h1 className={styles.title}>Suas escolas</h1>
+      <p className={styles.subtitle}>Escolha uma escola para continuar.</p>
+
+      {error && (
+        <div className={styles.errorBanner} role="alert">
+          <AuthIcon name="alert-triangle" size={16} />
+          <span>{error}</span>
         </div>
+      )}
 
-        {error && (
-          <div className={styles.errorMessage}>
-            {error}
+      {escolas.length === 0 && !error ? (
+        <div className={styles.emptyState}>
+          <div className={styles.emptyIcon}>
+            <AuthIcon name="plus" size={28} />
           </div>
-        )}
-
-        <div className={styles.escolasGrid}>
-          {/* Card para criar nova escola */}
-          <Link href="/criar-escola" className={styles.criarEscolaCard}>
-            <div className={styles.iconWrapper}>
-              <FiPlus />
-            </div>
-            <h3>Criar Nova Escola</h3>
-            <p>Configure uma nova instituição de ensino</p>
+          <h2>Você ainda não está vinculado a nenhuma escola</h2>
+          <p>Crie sua primeira escola para começar a usar o Bauá</p>
+          <Link href="/criar-escola" className={styles.emptyCta}>
+            <AuthIcon name="plus" size={18} /> Criar Primeira Escola
           </Link>
-
-          {/* Cards das escolas existentes */}
-          {escolas.map((item) => (
-            <button
-              key={item.escola.EscolaGUID}
-              className={styles.escolaCard}
-              onClick={() => selecionarEscola(item.escola.EscolaGUID)}
-              style={{
-                borderColor: item.escola.EscolaCor1 || 'var(--color-primary)',
-              }}
-            >
-              {item.escola.EscolaLogo ? (
-                <div className={styles.logoWrapper}>
-                  <img
-                    src={item.escola.EscolaLogo}
-                    alt={`Logo ${item.escola.EscolaNome}`}
-                    className={styles.escolaLogo}
-                  />
-                </div>
-              ) : (
-                <div 
-                  className={styles.escolaIcon}
-                  style={{
-                    backgroundColor: item.escola.EscolaCor1 || 'var(--color-primary)',
-                    color: item.escola.EscolaCor2 || '#FFFFFF',
-                  }}
-                >
-                  {item.escola.EscolaNome.charAt(0).toUpperCase()}
-                </div>
-              )}
-              
-              <div className={styles.escolaInfo}>
-                <h3>{item.escola.EscolaNome}</h3>
-                <p className={styles.escolaEmail}>{item.escola.EscolaEmail}</p>
-                
-                {item.funcoes.length > 0 && (
-                  <div className={styles.funcoes}>
-                    {item.funcoes.map((funcao) => (
-                      <span key={funcao.EscolaxUsuarioxFuncaoId} className={styles.funcaoBadge}>
-                        {funcao.FuncaoNome}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Paleta de cores */}
-              {(item.escola.EscolaCor1 || item.escola.EscolaCor2 || 
-                item.escola.EscolaCor3 || item.escola.EscolaCor4) && (
-                <div className={styles.corePalette}>
-                  {item.escola.EscolaCor1 && (
-                    <div 
-                      className={styles.colorDot}
-                      style={{ backgroundColor: item.escola.EscolaCor1 }}
-                      title={item.escola.EscolaCor1}
-                    />
-                  )}
-                  {item.escola.EscolaCor2 && (
-                    <div 
-                      className={styles.colorDot}
-                      style={{ backgroundColor: item.escola.EscolaCor2 }}
-                      title={item.escola.EscolaCor2}
-                    />
-                  )}
-                  {item.escola.EscolaCor3 && (
-                    <div 
-                      className={styles.colorDot}
-                      style={{ backgroundColor: item.escola.EscolaCor3 }}
-                      title={item.escola.EscolaCor3}
-                    />
-                  )}
-                  {item.escola.EscolaCor4 && (
-                    <div 
-                      className={styles.colorDot}
-                      style={{ backgroundColor: item.escola.EscolaCor4 }}
-                      title={item.escola.EscolaCor4}
-                    />
-                  )}
-                </div>
-              )}
-            </button>
-          ))}
         </div>
+      ) : (
+        <div className={styles.grid}>
+          {escolas.map((item) => {
+            const cor1 = item.escola.EscolaCor1 || undefined;
+            const cor2 = item.escola.EscolaCor2 || '#FFFFFF';
+            const inicial = item.escola.EscolaNome.charAt(0).toUpperCase();
+            const papel = item.funcoes[0]?.FuncaoNome;
 
-        {escolas.length === 0 && !error && (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>🏫</div>
-            <h2>Você ainda não está vinculado a nenhuma escola</h2>
-            <p>Crie sua primeira escola para começar a usar o Bauá</p>
-            <Link href="/criar-escola" className={styles.criarEscolaButton}>
-              <FiPlus /> Criar Primeira Escola
-            </Link>
-          </div>
-        )}
-      </main>
-    </div>
+            return (
+              <button
+                key={item.escola.EscolaGUID}
+                className={styles.escolaCard}
+                onClick={() => selecionarEscola(item.escola.EscolaGUID)}
+              >
+                {item.escola.EscolaLogo ? (
+                  <img src={item.escola.EscolaLogo} alt="" className={styles.escolaLogoImg} />
+                ) : (
+                  <span
+                    className={styles.escolaAvatar}
+                    style={{ background: cor1 || 'var(--green-500)', color: cor2 }}
+                  >
+                    {inicial}
+                  </span>
+                )}
+                <span className={styles.escolaInfo}>
+                  <span className={styles.escolaName}>{item.escola.EscolaNome}</span>
+                  {papel && <span className={styles.escolaRole}>{papel}</span>}
+                </span>
+                <AuthIcon name="chevron-right" size={18} className={styles.escolaChevron} />
+              </button>
+            );
+          })}
+
+          <Link href="/criar-escola" className={styles.createCard}>
+            <AuthIcon name="plus" size={20} /> Criar nova escola
+          </Link>
+        </div>
+      )}
+    </AuthGreenShell>
   );
 }

@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import { RowDataPacket } from "mysql2";
 import TarefaAcademica from "../entities/tarefaacademica.model";
 import TarefaAcademicaMatricula from "../entities/tarefaacademica-matricula.model";
 import { TarefaAcademicaDAO, TarefaAcademicaFilters } from "../repositories/tarefaacademica.repository";
@@ -6,6 +7,8 @@ import { TarefaAcademicaMatriculaDAO } from "../repositories/tarefaacademica-mat
 import { AnexoDAO } from "../repositories/anexo.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
 import ErrorResponse from "../utils/ErrorResponse";
+import { pool } from "../database/mysql";
+import { getNotificacaoService } from "./notificacao.service";
 
 /**
  * DTOs - Estruturas normalizadas (1 tarefa → N alunos)
@@ -213,7 +216,48 @@ export default class TarefaAcademicaService {
 
     // PASSO 5: Retornar DTO completo
     const atribuicoesCriadas = await this.#tarefaMatriculaDAO.findByTarefa(tarefaCriada.TarefaGUID);
+
+    // PASSO 6: Notificar alunos (tarefa_postada) — não bloqueia a resposta
+    this.#notificarTarefaPostada(tarefaCriada, matriculasExistentes).catch((error) => {
+      console.error("🔴 TarefaAcademicaService.#notificarTarefaPostada() falhou:", error);
+    });
+
     return this.toDTO(tarefaCriada, atribuicoesCriadas);
+  };
+
+  /**
+   * Notifica os alunos atribuídos sobre a nova tarefa (tipo `tarefa_postada`).
+   * Quando a tarefa é compartilhada, o texto já menciona isso — não existe
+   * um tipo `grupo_novo` separado (ver docs/PLANO_IMPLEMENTACAO_NOTIFICACOES.md, seção 4.4).
+   */
+  #notificarTarefaPostada = async (
+    tarefa: TarefaAcademica,
+    matriculas: Array<{ UsuarioCPF: string; TurmaGUID: string } | null>
+  ): Promise<void> => {
+    const primeiraMatricula = matriculas.find((m) => m !== null);
+    if (!primeiraMatricula) return;
+
+    const [turmaRows] = await pool.execute<RowDataPacket[]>(
+      "SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1",
+      [primeiraMatricula.TurmaGUID]
+    );
+    const escolaGUID = (turmaRows[0] as any)?.EscolaGUID;
+    if (!escolaGUID) return;
+
+    const destinatarios = matriculas.filter((m): m is { UsuarioCPF: string; TurmaGUID: string } => m !== null).map((m) => m.UsuarioCPF);
+
+    await getNotificacaoService().disparar({
+      tipoSlug: "tarefa_postada",
+      destinatarios,
+      escolaGUID,
+      titulo: tarefa.TarefaCompartilhada
+        ? `Nova tarefa compartilhada: ${tarefa.TarefaTitulo}`
+        : `Nova tarefa: ${tarefa.TarefaTitulo}`,
+      conteudo: tarefa.TarefaConteudo,
+      entidadeTipo: "tarefa",
+      entidadeGUID: tarefa.TarefaGUID,
+      link: `/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`,
+    });
   };
 
   /**
@@ -349,7 +393,41 @@ export default class TarefaAcademicaService {
 
     const atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
 
+    const prazoMudou = data.TarefaPrazoData !== undefined && tarefa.TarefaPrazoData.getTime() !== tarefaAtualizada.TarefaPrazoData.getTime();
+    if (prazoMudou) {
+      this.#notificarPrazoAlterado(tarefaAtualizada, atribuicoes).catch((error) => {
+        console.error("🔴 TarefaAcademicaService.#notificarPrazoAlterado() falhou:", error);
+      });
+    }
+
     return this.toDTO(tarefaAtualizada, atribuicoes);
+  };
+
+  /** Notifica os alunos atribuídos quando o prazo da tarefa é reagendado (tipo `tarefa_prazo_alterado`) */
+  #notificarPrazoAlterado = async (
+    tarefa: TarefaAcademica,
+    atribuicoes: Array<{ MatriculaGUID: string }>
+  ): Promise<void> => {
+    const matriculas = await Promise.all(atribuicoes.map((a) => this.#matriculaDAO.findById(a.MatriculaGUID)));
+    const validas = matriculas.filter((m): m is NonNullable<typeof m> => m !== null);
+    if (validas.length === 0) return;
+
+    const [turmaRows] = await pool.execute<RowDataPacket[]>(
+      "SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1",
+      [validas[0].TurmaGUID]
+    );
+    const escolaGUID = (turmaRows[0] as any)?.EscolaGUID;
+    if (!escolaGUID) return;
+
+    await getNotificacaoService().disparar({
+      tipoSlug: "tarefa_prazo_alterado",
+      destinatarios: validas.map((m) => m.UsuarioCPF),
+      escolaGUID,
+      titulo: `O prazo da tarefa "${tarefa.TarefaTitulo}" foi alterado`,
+      entidadeTipo: "tarefa",
+      entidadeGUID: tarefa.TarefaGUID,
+      link: `/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`,
+    });
   };
 
   excluirTarefa = async (TarefaGUID: string, usuarioCPF?: string): Promise<boolean> => {
@@ -416,6 +494,12 @@ export default class TarefaAcademicaService {
 
     const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
 
+    if (TarefaFeito && tarefa) {
+      this.#notificarTarefaRespostaRecebida(tarefa, usuarioCPF).catch((error) => {
+        console.error("🔴 TarefaAcademicaService.#notificarTarefaRespostaRecebida() falhou:", error);
+      });
+    }
+
     return {
       TarefaMatriculaGUID: atribuicaoAtualizada.TarefaMatriculaGUID,
       MatriculaGUID: atribuicaoAtualizada.MatriculaGUID,
@@ -427,6 +511,39 @@ export default class TarefaAcademicaService {
         ? atribuicaoAtualizada.TarefaRealizacaoData.toISOString()
         : null,
     };
+  };
+
+  /**
+   * Notifica o professor responsável (via matXprofXturxescGUID) que um aluno
+   * entregou/marcou a tarefa como feita (tipo `tarefa_resposta_recebida`).
+   */
+  #notificarTarefaRespostaRecebida = async (tarefa: TarefaAcademica, alunoCPF: string): Promise<void> => {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT mpt.UsuarioCPF AS ProfessorCPF, t.EscolaGUID
+       FROM materiaxprofessorxturma mpt
+       INNER JOIN turma t ON t.TurmaGUID = mpt.TurmaGUID
+       WHERE mpt.MatProfTurGUID = ?
+       LIMIT 1`,
+      [tarefa.matXprofXturxescGUID]
+    );
+    const info = rows[0] as any;
+    if (!info?.ProfessorCPF || !info?.EscolaGUID) return;
+
+    const [alunoRows] = await pool.execute<RowDataPacket[]>(
+      "SELECT UsuarioNome FROM usuario WHERE UsuarioCPF = ? LIMIT 1",
+      [alunoCPF]
+    );
+    const alunoNome = (alunoRows[0] as any)?.UsuarioNome ?? "Um aluno";
+
+    await getNotificacaoService().disparar({
+      tipoSlug: "tarefa_resposta_recebida",
+      destinatarios: [info.ProfessorCPF],
+      escolaGUID: info.EscolaGUID,
+      titulo: `${alunoNome} enviou a resposta da tarefa "${tarefa.TarefaTitulo}"`,
+      entidadeTipo: "tarefa",
+      entidadeGUID: tarefa.TarefaGUID,
+      link: `/dashboard/${info.EscolaGUID}/tarefas/${tarefa.TarefaGUID}`,
+    });
   };
 
   enviarAnexoEntrega = async (
@@ -465,6 +582,10 @@ export default class TarefaAcademicaService {
     }
 
     await this.#tarefaDAO.vincularAnexo(TarefaGUID, AnexoGUID, "resposta");
+
+    this.#notificarTarefaRespostaRecebida(tarefa, usuarioCPF).catch((error) => {
+      console.error("🔴 TarefaAcademicaService.#notificarTarefaRespostaRecebida() falhou:", error);
+    });
   };
 
   removerAnexo = async (

@@ -4,6 +4,9 @@ import { UsuarioXGrupoTarefaDAO } from '../repositories/usuarioxgrupotarefa.repo
 import HistoricoGrupoTarefaService from './historicogrupotarefa.service';
 import ErrorResponse from '../utils/ErrorResponse';
 import MysqlDatabase from '../database/MysqlDatabase';
+import { RowDataPacket } from 'mysql2';
+import { pool } from '../database/mysql';
+import { getNotificacaoService } from './notificacao.service';
 import {
   ConviteGrupoTarefa,
   ConviteGrupoTarefaCreateDTO,
@@ -81,8 +84,41 @@ export default class ConviteGrupoTarefaService {
 
     const convite = await this.#conviteDAO.create(conviteData);
 
+    this.#notificarConviteGrupo(grupo.TurmaGUID, grupo.TarefaGUID, liderCPF, convidadoCPF).catch((error) => {
+      console.error('🔴 ConviteGrupoTarefaService.#notificarConviteGrupo() falhou:', error);
+    });
+
     return convite;
   }
+
+  /** Notifica o convidado (tipo `convite_grupo`) — só quando é um convite de fato, não solicitação */
+  #notificarConviteGrupo = async (
+    turmaGUID: string,
+    tarefaGUID: string,
+    liderCPF: string,
+    convidadoCPF: string
+  ): Promise<void> => {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT t.EscolaGUID, ta.TarefaTitulo, u.UsuarioNome AS LiderNome
+       FROM turma t
+       INNER JOIN tarefaacademica ta ON ta.TarefaGUID = ?
+       INNER JOIN usuario u ON u.UsuarioCPF = ?
+       WHERE t.TurmaGUID = ?
+       LIMIT 1`,
+      [tarefaGUID, liderCPF, turmaGUID]
+    );
+    const info = rows[0] as any;
+    if (!info?.EscolaGUID) return;
+
+    await getNotificacaoService().disparar({
+      tipoSlug: 'convite_grupo',
+      destinatarios: [convidadoCPF],
+      escolaGUID: info.EscolaGUID,
+      titulo: `${info.LiderNome} te convidou para o grupo da tarefa "${info.TarefaTitulo}"`,
+      entidadeTipo: 'tarefa',
+      entidadeGUID: tarefaGUID,
+    });
+  };
 
   /**
    * ALUNO SOLICITA ENTRADA em grupo

@@ -3,7 +3,37 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Poppins, Figtree, Baloo_2, JetBrains_Mono } from 'next/font/google';
+import AuthBrandShell from '@/components/auth/AuthBrandShell';
+import AuthButton from '@/components/auth/AuthButton';
+import AuthIcon from '@/components/auth/AuthIcon';
+import BauaLogo from '@/components/auth/BauaLogo';
 import styles from './page.module.css';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+});
+const figtree = Figtree({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body',
+  display: 'swap',
+});
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-wordmark',
+  display: 'swap',
+});
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 export default function VerificarEmailPage() {
   const router = useRouter();
@@ -103,7 +133,7 @@ export default function VerificarEmailPage() {
       }
 
       setSuccess('Email verificado com sucesso!');
-      
+
       // Redirecionar para login após 2 segundos
       setTimeout(() => {
         router.push('/login');
@@ -130,82 +160,72 @@ export default function VerificarEmailPage() {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.card}>
-        <div className={styles.header}>
-          <div className={styles.icon}>✉️</div>
-          <h1 className={styles.logo}>Bauá</h1>
-          <p className={styles.subtitle}>Verificação de Email</p>
+    <AuthBrandShell
+      className={`${poppins.variable} ${figtree.variable} ${baloo2.variable} ${jetbrainsMono.variable}`}
+      formMaxWidth={400}
+    >
+      <div className={styles.header}>
+        <BauaLogo size={30} />
+        <div className={styles.iconBadge}>
+          <AuthIcon name="mail" size={24} />
         </div>
-
-        <div className={styles.content}>
-          <h2 className={styles.title}>Verifique seu email</h2>
-          <p className={styles.description}>
-            Enviamos um código de 6 dígitos para:
-          </p>
-          <p className={styles.email}>{email}</p>
-
-          <form onSubmit={handleSubmit} className={styles.form}>
-            {error && (
-              <div className={styles.errorMessage}>
-                {error}
-              </div>
-            )}
-
-            {success && (
-              <div className={styles.successMessage}>
-                {success}
-              </div>
-            )}
-
-            <div className={styles.formGroup}>
-              <label htmlFor="codigo" className={styles.label}>
-                Código de Verificação
-              </label>
-              <input
-                id="codigo"
-                type="text"
-                value={codigo}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '');
-                  if (value.length <= 6) {
-                    setCodigo(value);
-                  }
-                }}
-                placeholder="000000"
-                className={styles.codigoInput}
-                maxLength={6}
-                disabled={isLoading}
-                autoComplete="off"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              className={styles.submitButton}
-              disabled={isLoading || codigo.length !== 6}
-            >
-              {isLoading ? 'Verificando...' : 'Verificar Código'}
-            </button>
-          </form>
-
-          <div className={styles.footer}>
-            <p>Não recebeu o código?</p>
-            <button
-              onClick={handleResend}
-              className={styles.resendButton}
-              disabled={isResending}
-            >
-              {isResending ? 'Reenviando...' : 'Reenviar código'}
-            </button>
-
-            <Link href="/login" className={styles.link}>
-              Voltar para o login
-            </Link>
-          </div>
-        </div>
+        <h1 className={styles.title}>Verifique seu e-mail</h1>
+        <p className={styles.subtitle}>Enviamos um código de 6 dígitos para</p>
+        <p className={styles.emailChip}>{email}</p>
       </div>
-    </div>
+
+      <form onSubmit={handleSubmit} className={styles.form}>
+        {error && (
+          <div className={styles.errorBanner} role="alert">
+            <AuthIcon name="alert-triangle" size={16} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className={styles.successBanner} role="status">
+            <AuthIcon name="check-circle" size={16} />
+            <span>{success}</span>
+          </div>
+        )}
+
+        <label htmlFor="codigo" className={styles.srOnly}>
+          Código de verificação
+        </label>
+        <input
+          id="codigo"
+          type="text"
+          inputMode="numeric"
+          value={codigo}
+          onChange={(e) => {
+            const value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 6) {
+              setCodigo(value);
+            }
+          }}
+          placeholder="000000"
+          className={styles.codeInput}
+          maxLength={6}
+          disabled={isLoading}
+          autoComplete="off"
+          required
+        />
+
+        <AuthButton type="submit" variant="primary" size="lg" block disabled={isLoading || codigo.length !== 6}>
+          {isLoading ? 'Verificando...' : 'Verificar código'}
+        </AuthButton>
+      </form>
+
+      <div className={styles.footer}>
+        <p className={styles.footerHint}>Não recebeu o código?</p>
+        <button onClick={handleResend} className={styles.resendButton} disabled={isResending}>
+          {isResending ? 'Reenviando...' : 'Reenviar código'}
+        </button>
+
+        <Link href="/login" className={styles.backLink}>
+          <AuthIcon name="chevron-left" size={14} /> Voltar para o login
+        </Link>
+      </div>
+    </AuthBrandShell>
   );
 }

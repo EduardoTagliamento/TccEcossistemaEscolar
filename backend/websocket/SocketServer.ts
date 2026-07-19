@@ -47,6 +47,14 @@ export class SocketServer {
       const nome = socket.data.usuario?.UsuarioNome ?? 'desconhecido';
       console.log(`🔌 [WS] Conectado: ${nome} (${socket.id})`);
 
+      // Room pessoal do usuário — permite ao NotificacaoService emitir
+      // 'notificacao:nova' em tempo real sem o cliente precisar entrar
+      // manualmente em nenhuma room (ver NotificacaoService.#emitirTempoReal).
+      const usuarioCPF = socket.data.usuario?.UsuarioCPF;
+      if (usuarioCPF) {
+        socket.join(`usuario:${usuarioCPF}`);
+      }
+
       registerConversaHandlers(io, socket, { conversaDAO, mensagemService });
 
       socket.on('disconnect', () => {

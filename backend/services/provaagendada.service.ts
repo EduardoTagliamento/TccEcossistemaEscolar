@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import { RowDataPacket } from "mysql2";
 import ProvaAgendada from "../entities/provaagendada.model";
 import ProvaAgendadaTurma from "../entities/provaagendada-turma.model";
 import { ProvaAgendadaDAO, ProvaAgendadaFilters } from "../repositories/provaagendada.repository";
@@ -7,6 +8,8 @@ import { AnexoDAO } from "../repositories/anexo.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
 import ErrorResponse from "../utils/ErrorResponse";
+import { pool } from "../database/mysql";
+import { getNotificacaoService } from "./notificacao.service";
 
 const DATA_VALIDACAO_TOLERANCIA_MS = 60 * 1000;
 
@@ -101,12 +104,16 @@ export default class ProvaAgendadaService {
     }
 
     // Validar todas as turmas existem
+    let escolaGUID: string | null = null;
     for (const turmaGUID of data.TurmasGUID) {
       const turma = await this.#turmaDAO.findById(turmaGUID);
       if (!turma) {
         throw new ErrorResponse(404, "Turma não encontrada", {
           message: `Não existe turma com id ${turmaGUID}`,
         });
+      }
+      if (!escolaGUID) {
+        escolaGUID = turma.EscolaGUID;
       }
     }
 
@@ -178,7 +185,35 @@ export default class ProvaAgendadaService {
       }
     }
 
+    if (escolaGUID) {
+      this.#notificarProvaPostada(provaCriada, data.TurmasGUID, escolaGUID).catch((error) => {
+        console.error("🔴 ProvaAgendadaService.#notificarProvaPostada() falhou:", error);
+      });
+    }
+
     return this.toDTO(provaCriada, atribuicoes);
+  };
+
+  /** Notifica os alunos matriculados nas turmas atribuídas (tipo `prova_postada`) */
+  #notificarProvaPostada = async (prova: ProvaAgendada, turmasGUID: string[], escolaGUID: string): Promise<void> => {
+    const placeholders = turmasGUID.map(() => "?").join(", ");
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT DISTINCT UsuarioCPF FROM matricula WHERE TurmaGUID IN (${placeholders}) AND MatriculaStatus = 'Ativa'`,
+      turmasGUID
+    );
+    const destinatarios = (rows as any[]).map((r) => r.UsuarioCPF);
+    if (destinatarios.length === 0) return;
+
+    await getNotificacaoService().disparar({
+      tipoSlug: "prova_postada",
+      destinatarios,
+      escolaGUID,
+      titulo: "Nova prova agendada",
+      conteudo: prova.ProvaDescricao,
+      entidadeTipo: "prova",
+      entidadeGUID: prova.ProvaAgendadaGUID,
+      link: `/dashboard/${escolaGUID}/calendario`,
+    });
   };
 
   /**

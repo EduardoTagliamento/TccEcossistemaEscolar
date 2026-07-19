@@ -1,10 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
+import { RowDataPacket } from 'mysql2';
 import Mensagem from '../entities/mensagem.model';
 import { MensagemDAO } from '../repositories/mensagem.repository';
 import { ConversaGrupoDAO } from '../repositories/conversa-grupo.repository';
 import { ConversaDAO } from '../repositories/conversa.repository';
 import { MensagemFixadaDTO } from './conversa.service';
 import ErrorResponse from '../utils/ErrorResponse';
+import { pool } from '../database/mysql';
+import { getNotificacaoService } from './notificacao.service';
 
 export interface MensagemDTO {
   MensagemGUID: string;
@@ -63,8 +66,60 @@ export default class MensagemService {
     mensagem.MensagemCreatedAt = new Date();
 
     await this.#mensagemDAO.create(mensagem);
+
+    if (conversa.ConversaTipo === 'Grupo') {
+      this.#notificarMensagemGrupo(conversaGUID, remetenteCPF).catch((error) => {
+        console.error('🔴 MensagemService.#notificarMensagemGrupo() falhou:', error);
+      });
+    }
+    // ConversaTipo 'Individual': conversa_individual não carrega EscolaGUID
+    // (nem um vínculo de escola compartilhado resolvível) — notificação
+    // in-app do tipo `mensagem_individual` fica pendente até esse gap de
+    // schema ser resolvido (ver docs/PLANO_IMPLEMENTACAO_NOTIFICACOES.md, seção 2.6).
+
     return this.#toDTO(mensagem);
   }
+
+  /** Notifica os demais membros ativos do grupo (tipo `mensagem_grupo`) */
+  #notificarMensagemGrupo = async (conversaGUID: string, remetenteCPF: string): Promise<void> => {
+    const [grupoRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT ConversaGrupoTipo, ConversaGrupoRefGUID, ConversaGrupoNome FROM conversa_grupo WHERE ConversaGUID = ? LIMIT 1`,
+      [conversaGUID]
+    );
+    const grupo = grupoRows[0] as any;
+    if (!grupo) return;
+
+    const [escolaRows] = await pool.execute<RowDataPacket[]>(
+      grupo.ConversaGrupoTipo === 'Turma'
+        ? `SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1`
+        : `SELECT t.EscolaGUID FROM grupotarefa gt INNER JOIN turma t ON t.TurmaGUID = gt.TurmaGUID WHERE gt.GrupoTarefaGUID = ? LIMIT 1`,
+      [grupo.ConversaGrupoRefGUID]
+    );
+    const escolaGUID = (escolaRows[0] as any)?.EscolaGUID;
+    if (!escolaGUID) return;
+
+    const [membrosRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT MembroUsuarioCPF FROM conversa_grupo_membro WHERE ConversaGUID = ? AND MembroStatus = 'Ativo' AND MembroUsuarioCPF != ?`,
+      [conversaGUID, remetenteCPF]
+    );
+    const destinatarios = (membrosRows as any[]).map((r) => r.MembroUsuarioCPF);
+    if (destinatarios.length === 0) return;
+
+    const [remetenteRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT UsuarioNome FROM usuario WHERE UsuarioCPF = ? LIMIT 1`,
+      [remetenteCPF]
+    );
+    const remetenteNome = (remetenteRows[0] as any)?.UsuarioNome ?? 'Alguém';
+
+    await getNotificacaoService().disparar({
+      tipoSlug: 'mensagem_grupo',
+      destinatarios,
+      escolaGUID,
+      titulo: `Nova mensagem de ${remetenteNome} no grupo ${grupo.ConversaGrupoNome}`,
+      entidadeTipo: 'conversagrupo',
+      entidadeGUID: conversaGUID,
+    });
+  };
 
   async listarHistorico(
     conversaGUID: string,

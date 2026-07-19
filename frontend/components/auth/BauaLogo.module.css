@@ -1,0 +1,24 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.bird {
+  display: inline-block;
+  flex-shrink: 0;
+  -webkit-mask-image: url('/assets/baua_fundo.png');
+  mask-image: url('/assets/baua_fundo.png');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.wordmark {
+  font-family: var(--font-wordmark), 'Baloo 2', system-ui, sans-serif;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}

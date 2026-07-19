@@ -346,6 +346,36 @@ export class EscolaxUsuarioxFuncaoDAO {
     return (rows as Array<Record<string, unknown>>).length > 0;
   };
 
+  /**
+   * Busca UsuarioCPF de todos os usuários ativos de uma escola que tenham
+   * pelo menos uma das funções informadas. Usado pelo fan-out de notificações
+   * (ex.: novo evento na escola → todos os Alunos e Professores).
+   */
+  findUsuariosAtivosByEscolaEFuncoes = async (
+    EscolaGUID: string,
+    FuncaoIds: number[]
+  ): Promise<string[]> => {
+    console.log("Repository: EscolaxUsuarioxFuncaoDAO.findUsuariosAtivosByEscolaEFuncoes()");
+
+    if (FuncaoIds.length === 0) {
+      return [];
+    }
+
+    const placeholders = FuncaoIds.map(() => "?").join(", ");
+    const SQL = `
+      SELECT DISTINCT euf.UsuarioCPF
+      FROM escolaxusuarioxfuncao euf
+      WHERE euf.EscolaGUID = ?
+        AND euf.Status = 'Ativo'
+        AND euf.FuncaoId IN (${placeholders});
+    `;
+
+    const pool = await this.#database.getPool();
+    const [linhas] = await pool.execute(SQL, [EscolaGUID, ...FuncaoIds]);
+
+    return (linhas as Array<{ UsuarioCPF: string }>).map((row) => row.UsuarioCPF);
+  };
+
   private mapRowToEntity = (row: EscolaxUsuarioxFuncaoRow): EscolaxUsuarioxFuncao => {
     const relacao = new EscolaxUsuarioxFuncao();
     relacao.EscolaxUsuarioxFuncaoId = row.EscolaxUsuarioxFuncaoId;

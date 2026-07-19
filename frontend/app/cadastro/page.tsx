@@ -3,12 +3,42 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FiEye, FiEyeOff, FiCheck, FiX } from 'react-icons/fi';
+import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
 import { validarCPF, formatarCPF, limparCPF } from '@/lib/validators/cpf';
 import { validarEmail, normalizarEmail } from '@/lib/validators/email';
 import { validarTelefone, formatarTelefone, limparTelefone } from '@/lib/validators/telefone';
 import { validarSenha, verificarForcaSenha } from '@/lib/validators/senha';
+import AuthBrandShell from '@/components/auth/AuthBrandShell';
+import AuthInput from '@/components/auth/AuthInput';
+import AuthButton from '@/components/auth/AuthButton';
+import AuthIcon from '@/components/auth/AuthIcon';
+import BauaLogo from '@/components/auth/BauaLogo';
 import styles from './page.module.css';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+});
+const figtree = Figtree({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body',
+  display: 'swap',
+});
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-wordmark',
+  display: 'swap',
+});
+
+const STRENGTH_CLASS: Record<string, string> = {
+  fraca: 'strengthFraca',
+  média: 'strengthMedia',
+  forte: 'strengthForte',
+};
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -20,9 +50,7 @@ export default function CadastroPage() {
   const [sobrenome, setSobrenome] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -116,218 +144,131 @@ export default function CadastroPage() {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.cadastroCard}>
-        <div className={styles.header}>
-          <h1 className={styles.logo}>Bauá</h1>
-          <p className={styles.subtitle}>Ecossistema Educacional</p>
-        </div>
+    <AuthBrandShell
+      className={`${poppins.variable} ${figtree.variable} ${baloo2.variable}`}
+      formMaxWidth={560}
+    >
+      <BauaLogo size={30} />
+      <h1 className={styles.title}>Criar sua conta</h1>
+      <p className={styles.subtitle}>Leva menos de um minuto para começar.</p>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <h2 className={styles.title}>Criar Conta</h2>
-
-          {error && (
-            <div className={styles.errorMessage}>
-              {error}
-            </div>
-          )}
-
-          <div className={styles.row}>
-            <div className={styles.formGroup}>
-              <label htmlFor="nome" className={styles.label}>
-                Nome *
-              </label>
-              <input
-                id="nome"
-                type="text"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Digite seu nome"
-                className={styles.input}
-                autoComplete="given-name"
-                disabled={isLoading}
-                required
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label htmlFor="sobrenome" className={styles.label}>
-                Sobrenome *
-              </label>
-              <input
-                id="sobrenome"
-                type="text"
-                value={sobrenome}
-                onChange={(e) => setSobrenome(e.target.value)}
-                placeholder="Digite seu sobrenome"
-                className={styles.input}
-                autoComplete="family-name"
-                disabled={isLoading}
-                required
-              />
-            </div>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        {error && (
+          <div className={styles.errorBanner} role="alert">
+            <AuthIcon name="alert-triangle" size={16} />
+            <span>{error}</span>
           </div>
+        )}
 
-          <div className={styles.formGroup}>
-            <label htmlFor="cpf" className={styles.label}>
-              CPF *
-              {cpf.length > 0 && (
-                <span className={cpfValido ? styles.validIcon : styles.invalidIcon}>
-                  {cpfValido ? <FiCheck /> : <FiX />}
-                </span>
-              )}
-            </label>
-            <input
-              id="cpf"
-              type="text"
-              value={cpf}
-              onChange={(e) => handleCpfChange(e.target.value)}
-              placeholder="000.000.000-00"
-              className={styles.input}
-              maxLength={14}
-              disabled={isLoading}
-              required
-            />
-          </div>
+        <div className={styles.grid}>
+          <AuthInput
+            label="Nome"
+            placeholder="Seu nome"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            autoComplete="given-name"
+            disabled={isLoading}
+            required
+          />
+          <AuthInput
+            label="Sobrenome"
+            placeholder="Seu sobrenome"
+            value={sobrenome}
+            onChange={(e) => setSobrenome(e.target.value)}
+            autoComplete="family-name"
+            disabled={isLoading}
+            required
+          />
 
-          <div className={styles.formGroup}>
-            <label htmlFor="email" className={styles.label}>
-              Email *
-              {email.length > 0 && (
-                <span className={emailValido ? styles.validIcon : styles.invalidIcon}>
-                  {emailValido ? <FiCheck /> : <FiX />}
-                </span>
-              )}
-            </label>
-            <input
-              id="email"
+          <AuthInput
+            label="CPF"
+            placeholder="000.000.000-00"
+            value={cpf}
+            onChange={(e) => handleCpfChange(e.target.value)}
+            maxLength={14}
+            disabled={isLoading}
+            valid={cpf.length > 0 && cpfValido}
+            invalid={cpf.length > 0 && !cpfValido}
+            required
+          />
+          <AuthInput
+            label="Telefone"
+            placeholder="(00) 00000-0000"
+            value={telefone}
+            onChange={(e) => handleTelefoneChange(e.target.value)}
+            maxLength={15}
+            autoComplete="tel"
+            disabled={isLoading}
+            valid={telefone.length > 0 && telefoneValido}
+            invalid={telefone.length > 0 && !telefoneValido}
+            required
+          />
+
+          <div className={styles.spanFull}>
+            <AuthInput
+              label="E-mail"
+              leadingIcon="mail"
               type="email"
+              placeholder="voce@escola.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
-              className={styles.input}
               autoComplete="email"
               disabled={isLoading}
+              valid={email.length > 0 && emailValido}
+              invalid={email.length > 0 && !emailValido}
               required
             />
           </div>
 
-          <div className={styles.formGroup}>
-            <label htmlFor="telefone" className={styles.label}>
-              Telefone *
-              {telefone.length > 0 && (
-                <span className={telefoneValido ? styles.validIcon : styles.invalidIcon}>
-                  {telefoneValido ? <FiCheck /> : <FiX />}
-                </span>
-              )}
-            </label>
-            <input
-              id="telefone"
-              type="tel"
-              value={telefone}
-              onChange={(e) => handleTelefoneChange(e.target.value)}
-              placeholder="(00) 00000-0000"
-              className={styles.input}
-              maxLength={15}
-              autoComplete="tel"
-              disabled={isLoading}
-              required
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="senha" className={styles.label}>
-              Senha *
-              {forcaSenha && (
-                <span className={`${styles.forcaSenha} ${styles[forcaSenha]}`}>
-                  {forcaSenha.charAt(0).toUpperCase() + forcaSenha.slice(1)}
-                </span>
-              )}
-            </label>
-            <div className={styles.passwordWrapper}>
-              <input
-                id="senha"
-                type={showPassword ? 'text' : 'password'}
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="Digite sua senha"
-                className={styles.input}
-                autoComplete="new-password"
-                disabled={isLoading}
-                required
-              />
-              <button
-                type="button"
-                className={styles.eyeButton}
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                disabled={isLoading}
-              >
-                {showPassword ? <FiEyeOff /> : <FiEye />}
-              </button>
-            </div>
-            {senha.length > 0 && !senhaValidacao.valida && (
-              <ul className={styles.senhaRequisitos}>
-                {senhaValidacao.erros.map((erro, index) => (
-                  <li key={index} className={styles.requisito}>
-                    <FiX /> {erro}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="confirmarSenha" className={styles.label}>
-              Confirmar Senha *
-              {confirmarSenha.length > 0 && (
-                <span className={senhasFazMatch ? styles.validIcon : styles.invalidIcon}>
-                  {senhasFazMatch ? <FiCheck /> : <FiX />}
-                </span>
-              )}
-            </label>
-            <div className={styles.passwordWrapper}>
-              <input
-                id="confirmarSenha"
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmarSenha}
-                onChange={(e) => setConfirmarSenha(e.target.value)}
-                placeholder="Confirme sua senha"
-                className={styles.input}
-                autoComplete="new-password"
-                disabled={isLoading}
-                required
-              />
-              <button
-                type="button"
-                className={styles.eyeButton}
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                aria-label={showConfirmPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                disabled={isLoading}
-              >
-                {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className={styles.submitButton}
+          <AuthInput
+            label="Senha"
+            passwordToggle
+            placeholder="Crie uma senha"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            autoComplete="new-password"
             disabled={isLoading}
-          >
-            {isLoading ? 'Criando conta...' : 'Criar Conta'}
-          </button>
+            hint={senha.length === 0 ? 'Mínimo 6 caracteres, 1 número e 1 símbolo' : undefined}
+            error={senha.length > 0 && !senhaValidacao.valida ? senhaValidacao.erros.join(' · ') : undefined}
+            required
+          />
+          <AuthInput
+            label="Confirmar senha"
+            passwordToggle
+            placeholder="Repita a senha"
+            value={confirmarSenha}
+            onChange={(e) => setConfirmarSenha(e.target.value)}
+            autoComplete="new-password"
+            disabled={isLoading}
+            error={confirmarSenha.length > 0 && !senhasFazMatch ? 'As senhas não coincidem' : undefined}
+            required
+          />
+        </div>
 
-          <div className={styles.footer}>
-            <p>
-              Já tem uma conta?{' '}
-              <Link href="/login" className={styles.link}>
-                Fazer login
-              </Link>
-            </p>
-          </div>
-        </form>
-      </div>
-    </div>
+        {forcaSenha && (
+          <span className={`${styles.strengthBadge} ${styles[STRENGTH_CLASS[forcaSenha]]}`}>
+            Força da senha: {forcaSenha}
+          </span>
+        )}
+
+        <AuthButton
+          type="submit"
+          variant="primary"
+          size="lg"
+          block
+          disabled={isLoading}
+          className={styles.submitButton}
+        >
+          {isLoading ? 'Criando conta...' : 'Criar conta'}
+        </AuthButton>
+      </form>
+
+      <p className={styles.footerText}>
+        Já tem uma conta?{' '}
+        <Link href="/login" className={styles.footerLink}>
+          Entrar
+        </Link>
+      </p>
+    </AuthBrandShell>
   );
 }
