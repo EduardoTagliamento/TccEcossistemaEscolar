@@ -444,10 +444,6 @@ Documentação do endpoint para listar escolas vinculadas a um usuário:
 
 ---
 
-## 🔜 APIs em Desenvolvimento / Não Documentadas
-
-- **Copa do Mundo 2026** (`/api/album`, `/album` legado — `routes/copa/*.routes.ts`) - Módulo isolado (álbum de figurinhas). Ainda registrado em `backend/Server.ts`, mas as migrations SQL (`backend/database/migrations/copa/`) e todo o frontend (`frontend/app/album/**`, `frontend/components/copa/**`) foram removidos (não commitados) na sessão em que este levantamento foi feito — indício de que o módulo está sendo descontinuado. Não documentado aqui até confirmação; ver observação no histórico do projeto.
-
 > Nota: **Aluno** e **Atividade** não são módulos separados — "Aluno" é um `Usuario` com `FuncaoId=5` + uma `Matricula` (ver [matricula-api.md](matricula-api.md) e [usuario-api.md](usuario-api.md)), e "Atividade" é coberta por [tarefaacademica-api.md](tarefaacademica-api.md) e [provaagendada-api.md](provaagendada-api.md). **Auth** já está documentado em [auth-api.md](auth-api.md).
 
 ---
