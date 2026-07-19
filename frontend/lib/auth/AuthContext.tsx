@@ -8,6 +8,7 @@ interface Usuario {
   UsuarioSobrenome: string;
   UsuarioEmail: string;
   UsuarioTelefone: string;
+  UsuarioFotoUrl?: string | null;
   UsuarioStatus: 'Ativo' | 'Inativo' | 'Pendente';
 }
 

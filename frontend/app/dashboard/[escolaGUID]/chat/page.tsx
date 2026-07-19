@@ -534,9 +534,6 @@ export default function ChatPage() {
   return (
     <div className={styles.container}>
       <header className={styles.pageHeader}>
-        <Link href={`/dashboard/${escolaGUID}`} className={styles.voltarLink}>
-          <Icon name="chevron-left" size={18} /> Voltar ao Dashboard
-        </Link>
         <h1 className={styles.pageTitle}>Conversas</h1>
         {!conectado && <span className={styles.statusOffline}>Reconectando ao chat…</span>}
       </header>

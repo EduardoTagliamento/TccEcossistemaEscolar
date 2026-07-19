@@ -7,15 +7,18 @@
  */
 
 import { EscolaDAO } from '../repositories/escola.repository';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import ErrorResponse from '../utils/ErrorResponse';
 import R2StorageService from './r2storage.service';
 
 export default class UploadService {
   #escolaDAO: EscolaDAO;
+  #usuarioDAO?: UsuarioDAO;
 
-  constructor(escolaDAO: EscolaDAO) {
+  constructor(escolaDAO: EscolaDAO, usuarioDAO?: UsuarioDAO) {
     console.log('⬆️  UploadService.constructor()');
     this.#escolaDAO = escolaDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
 
   /**
@@ -142,6 +145,108 @@ export default class UploadService {
         message: 'Falha ao salvar anexo',
       });
     }
+  }
+
+  /**
+   * Processa upload de foto de perfil de usuário (painel "Configuração do
+   * usuário" — dropdown do avatar no dashboard). Mesmo padrão/limites do
+   * logo de escola (1MB, PNG/JPG/JPEG via `uploadMiddleware`).
+   */
+  async uploadFotoUsuario(
+    UsuarioCPF: string,
+    file: Express.Multer.File
+  ): Promise<{
+    fileName: string;
+    fileUrl: string;
+    fileSize: number;
+    mimeType: string;
+  }> {
+    console.log(`📤 [UploadService] Processando foto do usuário ${UsuarioCPF}`);
+
+    if (!this.#usuarioDAO) {
+      throw new ErrorResponse(500, 'Upload de foto de usuário não configurado');
+    }
+
+    const usuario = await this.#usuarioDAO.findById(UsuarioCPF);
+    if (!usuario) {
+      throw new ErrorResponse(404, 'Usuário não encontrado', {
+        message: `Usuário com CPF ${UsuarioCPF} não existe`,
+      });
+    }
+
+    try {
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 8);
+      const originalName = file.originalname.replace(/\s+/g, '-').toLowerCase();
+      const fileName = `${timestamp}-${randomString}-${originalName}`;
+      const chave = `fotos-usuario/${UsuarioCPF}/${fileName}`;
+
+      const fileUrl = await R2StorageService.upload(chave, file.buffer, file.mimetype);
+
+      if (usuario.UsuarioFotoUrl) {
+        R2StorageService.removeByUrl(usuario.UsuarioFotoUrl).catch((error) => {
+          console.warn('⚠️  [UploadService] Falha ao remover foto antiga do R2:', error.message);
+        });
+      }
+
+      usuario.UsuarioFotoUrl = fileUrl;
+      const updated = await this.#usuarioDAO.update(usuario);
+      if (!updated) {
+        throw new ErrorResponse(500, 'Erro ao atualizar usuário', {
+          message: 'Não foi possível salvar a foto do usuário',
+        });
+      }
+
+      console.log(`✅ [UploadService] Foto de usuário salva com sucesso: ${fileUrl}`);
+
+      return {
+        fileName,
+        fileUrl,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+      };
+    } catch (error: any) {
+      if (error instanceof ErrorResponse) {
+        throw error;
+      }
+
+      console.error('❌ [UploadService] Erro ao processar foto de usuário:', error);
+      throw new ErrorResponse(500, 'Erro ao processar upload', {
+        message: 'Falha ao salvar arquivo',
+      });
+    }
+  }
+
+  /**
+   * Remove foto de perfil de usuário
+   */
+  async removeFotoUsuario(UsuarioCPF: string): Promise<boolean> {
+    console.log(`🗑️  [UploadService] Removendo foto do usuário ${UsuarioCPF}`);
+
+    if (!this.#usuarioDAO) {
+      throw new ErrorResponse(500, 'Upload de foto de usuário não configurado');
+    }
+
+    const usuario = await this.#usuarioDAO.findById(UsuarioCPF);
+    if (!usuario) {
+      throw new ErrorResponse(404, 'Usuário não encontrado', {
+        message: `Usuário com CPF ${UsuarioCPF} não existe`,
+      });
+    }
+
+    if (!usuario.UsuarioFotoUrl) {
+      throw new ErrorResponse(400, 'Usuário não possui foto', {
+        message: 'Não há foto para remover',
+      });
+    }
+
+    await R2StorageService.removeByUrl(usuario.UsuarioFotoUrl);
+
+    usuario.UsuarioFotoUrl = null;
+    const updated = await this.#usuarioDAO.update(usuario);
+
+    console.log('✅ [UploadService] Foto de usuário removida com sucesso');
+    return updated;
   }
 
   /**

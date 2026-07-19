@@ -4,6 +4,7 @@ import Usuario from "../entities/usuario.model";
 interface UsuarioRow {
   UsuarioCPF: string;
   UsuarioEmail: string | null;
+  UsuarioFotoUrl: string | null;
   UsuarioId: string | null;
   UsuarioTelefone: string | null;
   UsuarioNome: string;
@@ -73,12 +74,13 @@ export class UsuarioDAO {
 
     const SQL = `
       UPDATE usuario
-      SET UsuarioEmail = ?, UsuarioId = ?, UsuarioTelefone = ?, UsuarioNome = ?, UsuarioSenha = ?,
+      SET UsuarioEmail = ?, UsuarioFotoUrl = ?, UsuarioId = ?, UsuarioTelefone = ?, UsuarioNome = ?, UsuarioSenha = ?,
           UsuarioEmailVerificado = ?, UsuarioDataNascimento = ?, UsuarioStatus = ?
       WHERE UsuarioCPF = ? AND UsuarioDeletedAt IS NULL;
     `;
     const params = [
       usuario.UsuarioEmail,
+      usuario.UsuarioFotoUrl,
       usuario.UsuarioId,
       usuario.UsuarioTelefone,
       usuario.UsuarioNome,
@@ -231,6 +233,7 @@ export class UsuarioDAO {
     const usuario = new Usuario();
     usuario.UsuarioCPF = row.UsuarioCPF;
     usuario.UsuarioEmail = row.UsuarioEmail;
+    usuario.UsuarioFotoUrl = row.UsuarioFotoUrl;
     usuario.UsuarioId = row.UsuarioId;
     usuario.UsuarioTelefone = row.UsuarioTelefone;
     usuario.UsuarioNome = row.UsuarioNome;

@@ -1,0 +1,481 @@
+/* ============================================================
+   Navbar persistente do dashboard — Bauá
+   Tokens copiados literalmente do Bauá Design System (mcp claude-design,
+   project 689c269f-be3b-4445-98c6-69b779c38839), mesmo padrão escopado
+   localmente já usado no restante do dashboard.
+   ============================================================ */
+
+.navbar {
+  --green-50: #E7F9F0;
+  --green-100: #C5F0DC;
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --gold-50: #FFF7E0;
+  --gold-600: #E0A200;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+  --shadow-md: 0 8px 20px -8px rgba(15, 29, 23, 0.14);
+  --shadow-lg: 0 18px 40px -16px rgba(15, 29, 23, 0.2);
+
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--white);
+  border-bottom: 1px solid var(--line-200);
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+}
+
+.navbar :global(*) {
+  box-sizing: border-box;
+}
+
+.navbarInner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5, 1.25rem);
+  height: 68px;
+  padding: 0 1.5rem;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.brand:hover {
+  text-decoration: none;
+}
+
+.brandLogo,
+.brandLogoFallback {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.brandLogoFallback {
+  background: var(--color-primary, var(--green-500));
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 800;
+  font-size: 19px;
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.brandName {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.brandPowered {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--slate-400);
+  margin-top: 1px;
+}
+
+.brandWordmark {
+  font-family: var(--font-wordmark), 'Baloo 2', sans-serif;
+  font-weight: 800;
+  color: var(--green-600);
+  font-size: 12px;
+}
+
+.moduleNav {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.moduleNav::-webkit-scrollbar {
+  display: none;
+}
+
+.moduleItem {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--slate-500);
+  font-family: var(--font-body), 'Figtree', sans-serif;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.moduleItem:hover {
+  color: var(--green-600);
+  text-decoration: none;
+}
+
+.moduleItemActive {
+  color: var(--green-600);
+  font-weight: 700;
+}
+
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.iconButton {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--green-50);
+  color: var(--green-700);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.iconButton:hover {
+  background: var(--green-100);
+  text-decoration: none;
+}
+
+.notifDot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger-500);
+  border: 2px solid var(--white);
+}
+
+.navDivider {
+  width: 1px;
+  height: 28px;
+  background: var(--line-200);
+}
+
+/* ---------- Sino de notificações ---------- */
+.notifWrap {
+  position: relative;
+}
+
+.notifDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 320px;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line-100);
+  box-shadow: var(--shadow-lg);
+  z-index: 60;
+}
+
+.notifDropdownHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line-100);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink-900);
+}
+
+.notifDropdownHeader button {
+  border: none;
+  background: transparent;
+  color: var(--green-600);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.notifList {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notifEstadoVazio {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--slate-500);
+  font-size: 13px;
+}
+
+.notifItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid var(--line-100);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.notifItem:hover {
+  background: var(--surface-50);
+}
+
+.notifItemNaoLido {
+  background: var(--green-50);
+}
+
+.notifPonto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green-500);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.notifItemConteudo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notifItemTitulo {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.notifItemTexto {
+  font-size: 12px;
+  color: var(--slate-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.notifItemData {
+  font-size: 10.5px;
+  color: var(--slate-400);
+}
+
+.notifVerTodas {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  border-top: 1px solid var(--line-100);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--green-600);
+  text-decoration: none;
+}
+
+.notifVerTodas:hover {
+  background: var(--surface-50);
+  text-decoration: none;
+}
+
+/* ---------- Avatar / painel de configuração do usuário ---------- */
+.userMenuWrap {
+  position: relative;
+}
+
+.userTrigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  color: var(--slate-500);
+}
+
+.avatar,
+.avatarFoto {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+}
+
+.avatar {
+  background: var(--color-primary, var(--green-500));
+  color: #fff;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.userDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 224px;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line-100);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 60;
+}
+
+.userDropdownHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 10px;
+}
+
+.userDropdownInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.userDropdownName {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userDropdownEmail {
+  font-size: 12px;
+  color: var(--slate-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: var(--line-100);
+  margin: 2px 0;
+}
+
+.menuItem,
+.menuItemDanger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  font-family: var(--font-body), 'Figtree', sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+
+.menuItem {
+  color: var(--slate-600);
+}
+
+.menuItem:hover {
+  background: var(--surface-50);
+  color: var(--slate-600);
+  text-decoration: none;
+}
+
+.menuItemDanger {
+  color: var(--danger-500);
+}
+
+.menuItemDanger:hover {
+  background: var(--danger-50);
+}
+
+/* ============================================================
+   RESPONSIVIDADE
+   ============================================================ */
+@media (max-width: 900px) {
+  .moduleItem span {
+    display: none;
+  }
+
+  .brandPowered {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .navbarInner {
+    padding: 0 1rem;
+    gap: 0.75rem;
+  }
+
+  .notifDropdown,
+  .userDropdown {
+    width: calc(100vw - 32px);
+    right: -8px;
+  }
+}

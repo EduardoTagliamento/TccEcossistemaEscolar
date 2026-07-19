@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { usuarioForaDoBrasil } from '@/lib/timezone-utils';
@@ -476,7 +475,6 @@ export default function CalendarioAlunoPage() {
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>Calendário de Avisos</h1>
-        <Link href={`/dashboard/${escolaGUID}`} className={styles.backLink}>Voltar ao Dashboard</Link>
       </header>
 
       {/* Aviso de Timezone */}

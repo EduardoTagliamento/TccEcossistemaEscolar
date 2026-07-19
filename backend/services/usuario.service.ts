@@ -8,6 +8,7 @@ import { EmailAlunoService } from "./email-aluno.service";
 export interface UsuarioDTO {
   UsuarioCPF: string;
   UsuarioEmail: string | null;
+  UsuarioFotoUrl: string | null;
   UsuarioId: string | null;
   UsuarioTelefone: string | null;
   UsuarioNome: string;
@@ -174,6 +175,45 @@ export default class UsuarioService {
     return this.toDTO(existente);
   };
 
+  /**
+   * Troca a senha do usuário — exige a senha atual (bcrypt.compare) antes de
+   * gravar o hash da nova. Usada pelo painel de "Configuração do usuário"
+   * (dropdown do avatar no dashboard).
+   */
+  trocarSenha = async (UsuarioCPF: string, senhaAtual: string, novaSenha: string): Promise<void> => {
+    console.log("🟣 UsuarioService.trocarSenha()");
+
+    const existente = await this.#usuarioDAO.findById(UsuarioCPF);
+    if (!existente) {
+      throw new ErrorResponse(404, "Usuário não encontrado", {
+        message: `Não existe usuário com CPF ${UsuarioCPF}`,
+      });
+    }
+
+    const senhaCorreta = await bcrypt.compare(senhaAtual, existente.UsuarioSenha);
+    if (!senhaCorreta) {
+      throw new ErrorResponse(400, "Senha atual incorreta", {
+        message: "A senha atual informada não confere.",
+      });
+    }
+
+    if (typeof novaSenha !== "string" || novaSenha.length < 6) {
+      throw new ErrorResponse(400, "Nova senha inválida", {
+        message: "A nova senha deve ter pelo menos 6 caracteres.",
+      });
+    }
+
+    const novaSenhaHash = await bcrypt.hash(novaSenha, this.SALT_ROUNDS);
+    existente.UsuarioSenha = novaSenhaHash;
+
+    const atualizado = await this.#usuarioDAO.update(existente);
+    if (!atualizado) {
+      throw new ErrorResponse(500, "Erro ao trocar senha", {
+        message: "Não foi possível atualizar a senha no banco de dados",
+      });
+    }
+  };
+
   deleteUsuario = async (UsuarioCPF: string): Promise<boolean> => {
     console.log("🟣 UsuarioService.deleteUsuario()");
 
@@ -201,6 +241,7 @@ export default class UsuarioService {
     return {
       UsuarioCPF: usuario.UsuarioCPF,
       UsuarioEmail: usuario.UsuarioEmail,
+      UsuarioFotoUrl: usuario.UsuarioFotoUrl,
       UsuarioId: usuario.UsuarioId,
       UsuarioTelefone: usuario.UsuarioTelefone,
       UsuarioNome: usuario.UsuarioNome,

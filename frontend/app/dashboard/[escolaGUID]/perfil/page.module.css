@@ -1,0 +1,242 @@
+/* Tokens do Bauá Design System (mcp claude-design, project
+   689c269f-be3b-4445-98c6-69b779c38839) escopados localmente, mesmo padrão
+   já usado no restante do dashboard. */
+.container {
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --green-50: #E7F9F0;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+  --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+
+  min-height: 100vh;
+  background: var(--surface-50);
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-600);
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+.pageWrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pageTitle {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.pageSubtitulo {
+  color: var(--slate-500);
+  font-size: 0.9375rem;
+  margin: -0.75rem 0 0;
+}
+
+.card {
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+}
+
+.cardTitulo {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0 0 1rem;
+}
+
+.fotoRow {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.fotoButton {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fotoButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.fotoImg {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.fotoFallback {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary, var(--green-500));
+  color: #fff;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.inputOculto {
+  display: none;
+}
+
+.fotoAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fotoDica {
+  width: 100%;
+  font-size: 0.75rem;
+  color: var(--slate-400);
+}
+
+.botaoSecundario {
+  border: 1.5px solid var(--line-200);
+  background: var(--white);
+  color: var(--slate-600);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.botaoSecundario:hover:not(:disabled) {
+  border-color: var(--green-500);
+  color: var(--green-700);
+}
+
+.botaoRemover {
+  border: none;
+  background: transparent;
+  color: var(--danger-500);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 8px 4px;
+}
+
+.botaoRemover:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--slate-500);
+}
+
+.label input {
+  font-family: var(--font-body), 'Figtree', sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--ink-900);
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  outline: none;
+}
+
+.label input:focus {
+  border-color: var(--green-500);
+}
+
+.erro {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--danger-500);
+  background: var(--danger-50);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin: 0;
+}
+
+.sucesso {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--green-700);
+  background: var(--green-50);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin: 0;
+}
+
+.botaoPrimario {
+  align-self: flex-start;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--green-500);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.botaoPrimario:hover:not(:disabled) {
+  background: var(--green-600);
+}
+
+.botaoPrimario:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .pageWrap {
+    padding: 1.5rem 1rem 2.5rem;
+  }
+
+  .fotoRow {
+    flex-wrap: wrap;
+  }
+}
