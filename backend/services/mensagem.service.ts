@@ -43,7 +43,8 @@ export default class MensagemService {
   async enviar(
     conversaGUID: string,
     remetenteCPF: string,
-    conteudo: string
+    conteudo: string,
+    tipo: 'Texto' | 'Arquivo' | 'Imagem' = 'Texto'
   ): Promise<MensagemDTO> {
     console.log('🟣 MensagemService.enviar()');
 
@@ -57,12 +58,20 @@ export default class MensagemService {
       throw new ErrorResponse(403, 'Você não faz parte desta conversa');
     }
 
+    if (!['Texto', 'Arquivo', 'Imagem'].includes(tipo)) {
+      throw new ErrorResponse(400, 'MensagemTipo deve ser "Texto", "Arquivo" ou "Imagem"');
+    }
+
+    // Para 'Arquivo'/'Imagem', `conteudo` é a URL pública do anexo (já enviado
+    // ao R2 via POST /api/upload/mensagem/:conversaGUID antes deste evento WS)
+    // — reaproveita a mesma coluna MensagemConteudo (TEXT, até 4000 chars),
+    // sem precisar de migration nova.
     const mensagem = new Mensagem();
     mensagem.MensagemGUID = uuidv4();
     mensagem.ConversaGUID = conversaGUID;
     mensagem.MensagemRemetenteCPF = remetenteCPF;
     mensagem.MensagemConteudo = conteudo;
-    mensagem.MensagemTipo = 'Texto';
+    mensagem.MensagemTipo = tipo;
     mensagem.MensagemCreatedAt = new Date();
 
     await this.#mensagemDAO.create(mensagem);
@@ -260,6 +269,7 @@ export default class MensagemService {
       MensagemConteudo: mensagem.MensagemConteudo,
       MensagemRemetenteCPF: mensagem.MensagemRemetenteCPF,
       MensagemCreatedAt: mensagem.MensagemCreatedAt.toISOString(),
+      MensagemTipo: mensagem.MensagemTipo,
       FixadaPorCPF: usuarioCPF,
       FixadaAt: FixadaAt.toISOString(),
     };
@@ -317,6 +327,7 @@ export default class MensagemService {
       MensagemConteudo: f.MensagemConteudo,
       MensagemRemetenteCPF: f.MensagemRemetenteCPF,
       MensagemCreatedAt: (f.MensagemCreatedAt as Date).toISOString(),
+      MensagemTipo: f.MensagemTipo,
       FixadaPorCPF: f.FixadaPorCPF,
       FixadaAt: (f.FixadaAt as Date).toISOString(),
     }));

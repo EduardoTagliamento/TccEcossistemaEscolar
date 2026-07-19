@@ -49,6 +49,37 @@ export default class UploadController {
   };
 
   /**
+   * POST /api/upload/mensagem/:conversaGUID
+   * Upload de anexo (imagem ou arquivo) de mensagem de chat.
+   * Não cria a Mensagem em si — só envia o arquivo pro R2 e devolve a URL;
+   * o cliente usa essa URL como conteúdo ao emitir `send_mensagem` via WS.
+   */
+  uploadMensagemAnexo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      console.log('📥 [UploadController] POST /api/upload/mensagem/:conversaGUID');
+
+      const conversaGUID = req.params.conversaGUID;
+      const file = req.file;
+
+      if (!file) {
+        throw new ErrorResponse(400, 'Arquivo não enviado', {
+          message: 'Nenhum arquivo foi enviado na requisição',
+        });
+      }
+
+      const result = await this.#uploadService.uploadMensagemAnexo(conversaGUID, file);
+
+      res.status(200).json({
+        success: true,
+        message: 'Anexo enviado com sucesso',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * DELETE /api/upload/logo/:EscolaGUID
    * Remove logo de escola
    */

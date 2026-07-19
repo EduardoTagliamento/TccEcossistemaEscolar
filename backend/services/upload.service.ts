@@ -90,6 +90,61 @@ export default class UploadService {
   }
 
   /**
+   * Processa upload de anexo de mensagem (Chat / módulo Conversa).
+   * Diferente do logo, não atualiza nenhum registro no banco — a criação da
+   * `Mensagem` em si acontece via WebSocket (`send_mensagem`), depois que o
+   * cliente já tem a URL retornada aqui. Ver `MensagemService.enviar()`.
+   */
+  async uploadMensagemAnexo(
+    ConversaGUID: string,
+    file: Express.Multer.File
+  ): Promise<{
+    fileName: string;
+    fileUrl: string;
+    fileSize: number;
+    mimeType: string;
+    mensagemTipo: 'Imagem' | 'Arquivo';
+  }> {
+    console.log(`📤 [UploadService] Processando anexo de mensagem da conversa ${ConversaGUID}`);
+
+    try {
+      const timestamp = Date.now();
+      const randomString = Math.random().toString(36).substring(2, 8);
+      const originalName = file.originalname.replace(/\s+/g, '-').toLowerCase();
+      const fileName = `${timestamp}-${randomString}-${originalName}`;
+      const chave = `mensagens/${ConversaGUID}/${fileName}`;
+
+      const fileUrl = await R2StorageService.upload(
+        chave,
+        file.buffer,
+        file.mimetype,
+        `inline; filename="${originalName}"`
+      );
+
+      const mensagemTipo: 'Imagem' | 'Arquivo' = file.mimetype.startsWith('image/') ? 'Imagem' : 'Arquivo';
+
+      console.log(`✅ [UploadService] Anexo de mensagem salvo com sucesso: ${fileUrl}`);
+
+      return {
+        fileName: originalName,
+        fileUrl,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        mensagemTipo,
+      };
+    } catch (error: any) {
+      if (error instanceof ErrorResponse) {
+        throw error;
+      }
+
+      console.error('❌ [UploadService] Erro ao processar anexo de mensagem:', error);
+      throw new ErrorResponse(500, 'Erro ao processar upload', {
+        message: 'Falha ao salvar anexo',
+      });
+    }
+  }
+
+  /**
    * Remove logo de escola
    */
   async removeEscolaLogo(EscolaGUID: string): Promise<boolean> {

@@ -33,6 +33,9 @@ import { eventoRoutes } from "../routes/evento.routes";
 import { anotacaoRouterFactory } from "../routes/anotacao.routes";
 import { grupoTarefaRoutes } from "../routes/grupotarefa.routes";
 import { conviteGrupoTarefaRoutes } from "../routes/convitegrupotarefa.routes";
+import { projetoRoutes } from "../routes/projeto.routes";
+import { grupoProjetoRoutes } from "../routes/grupoprojeto.routes";
+import { conviteGrupoProjetoRoutes } from "../routes/convitegrupoprojeto.routes";
 import { conversaRouterFactory } from "../routes/conversa.routes";
 import { notificacaoRoutes } from "../routes/notificacao.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
@@ -433,6 +436,18 @@ export default class Server {
     // 💌 Rotas de Convite Grupo Tarefa
     this.#app.use("/api/convitegrupotarefa", conviteGrupoTarefaRoutes());
     console.log("✅ Rotas de Convite Grupo Tarefa registradas em /api/convitegrupotarefa");
+
+    // 🚀 Rotas de Projeto
+    this.#app.use("/api/projeto", projetoRoutes());
+    console.log("✅ Rotas de Projeto registradas em /api/projeto");
+
+    // 👥 Rotas de Grupo Projeto
+    this.#app.use("/api/grupoprojeto", grupoProjetoRoutes());
+    console.log("✅ Rotas de Grupo Projeto registradas em /api/grupoprojeto");
+
+    // 💌 Rotas de Convite Grupo Projeto
+    this.#app.use("/api/convitegrupoprojeto", conviteGrupoProjetoRoutes());
+    console.log("✅ Rotas de Convite Grupo Projeto registradas em /api/convitegrupoprojeto");
 
     // 💬 Rotas de Conversa (Chat)
     const conversaRouter = conversaRouterFactory();

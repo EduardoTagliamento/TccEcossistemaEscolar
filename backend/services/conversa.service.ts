@@ -10,6 +10,7 @@ export interface MensagemFixadaDTO {
   MensagemConteudo: string;
   MensagemRemetenteCPF: string;
   MensagemCreatedAt: string;
+  MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
   FixadaPorCPF: string;
   FixadaAt: string;
 }
@@ -30,6 +31,7 @@ export interface ConversaListItemDTO {
     MensagemRemetenteCPF: string;
     RemetenteNome: string;
     MensagemCreatedAt: string;
+    MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
   } | null;
   NaoLidas: number;
 }
@@ -139,6 +141,7 @@ export default class ConversaService {
       MensagemConteudo: f.MensagemConteudo,
       MensagemRemetenteCPF: f.MensagemRemetenteCPF,
       MensagemCreatedAt: (f.MensagemCreatedAt as Date).toISOString(),
+      MensagemTipo: f.MensagemTipo,
       FixadaPorCPF: f.FixadaPorCPF,
       FixadaAt: (f.FixadaAt as Date).toISOString(),
     }));

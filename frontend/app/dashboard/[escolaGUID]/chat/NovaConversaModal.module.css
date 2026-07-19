@@ -1,0 +1,204 @@
+/* Tokens do Bauá Design System (mcp claude-design, project
+   689c269f-be3b-4445-98c6-69b779c38839) escopados localmente, mesmo padrão
+   de frontend/app/dashboard/[escolaGUID]/page.module.css. */
+.overlay {
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --shadow-xl: 0 30px 60px -24px rgba(15, 29, 23, 0.26);
+
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 29, 23, 0.42);
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+}
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: 1.5rem;
+  font-family: var(--font-body), 'Figtree', system-ui, sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.header h3 {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.closeButton {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--surface-50);
+  color: var(--slate-500);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.closeButton:hover {
+  background: var(--line-100);
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 44px;
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-md);
+  color: var(--slate-400);
+  margin-bottom: 0.75rem;
+}
+
+.searchWrap input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-body), 'Figtree', sans-serif;
+  font-size: 0.9375rem;
+  color: var(--ink-900);
+}
+
+.searchWrap input::placeholder {
+  color: var(--slate-400);
+}
+
+.erro {
+  background: var(--danger-50);
+  color: var(--danger-500);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.lista {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.estadoVazio {
+  text-align: center;
+  color: var(--slate-500);
+  font-size: 0.875rem;
+  padding: 2rem 1rem;
+  margin: 0;
+}
+
+.pessoaItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body), 'Figtree', sans-serif;
+}
+
+.pessoaItem:hover:not(:disabled) {
+  background: var(--surface-50);
+}
+
+.pessoaItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--green-50, #E7F9F0);
+  color: var(--green-700);
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 0.8125rem;
+}
+
+.pessoaInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.pessoaNome {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--ink-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pessoaPapel {
+  font-size: 0.75rem;
+  color: var(--slate-500);
+}
+
+.spinnerPequeno {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--line-200);
+  border-top-color: var(--green-500);
+  border-radius: 50%;
+  animation: girar 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
