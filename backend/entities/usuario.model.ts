@@ -11,6 +11,7 @@ import { normalizeCPF } from "../utils/helpers/cpf.helper";
 export default class Usuario {
   #UsuarioCPF!: string;
   #UsuarioEmail: string | null = null;
+  #UsuarioFotoUrl: string | null = null;
   #UsuarioId: string | null = null;
   #UsuarioTelefone: string | null = null;
   #UsuarioNome!: string;
@@ -64,6 +65,28 @@ export default class Usuario {
     }
 
     this.#UsuarioEmail = email;
+  }
+
+  // ========== Foto de perfil (URL pública no R2) ==========
+  get UsuarioFotoUrl(): string | null {
+    return this.#UsuarioFotoUrl;
+  }
+
+  set UsuarioFotoUrl(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#UsuarioFotoUrl = null;
+      return;
+    }
+
+    if (typeof value !== "string") {
+      throw new Error("UsuarioFotoUrl deve ser uma string.");
+    }
+
+    if (value.length > 500) {
+      throw new Error("UsuarioFotoUrl deve ter no máximo 500 caracteres.");
+    }
+
+    this.#UsuarioFotoUrl = value;
   }
 
   // ========== Id ==========

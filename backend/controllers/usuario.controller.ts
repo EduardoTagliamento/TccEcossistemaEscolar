@@ -93,6 +93,33 @@ export default class UsuarioControl {
     }
   };
 
+  updateSenha = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("🔵 UsuarioControl.updateSenha()");
+    try {
+      const { UsuarioCPF } = request.params;
+      const { SenhaAtual, NovaSenha } = request.body;
+
+      // Self-service: só o próprio usuário autenticado pode trocar a própria senha.
+      if (request.user?.UsuarioCPF !== UsuarioCPF) {
+        response.status(403).json({
+          success: false,
+          message: "Você só pode alterar a própria senha",
+        });
+        return;
+      }
+
+      await this.#usuarioService.trocarSenha(UsuarioCPF, SenhaAtual, NovaSenha);
+
+      response.status(200).json({
+        success: true,
+        message: "Senha alterada com sucesso",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   destroy = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 UsuarioControl.destroy()");
     try {

@@ -5,6 +5,7 @@ import UsuarioMiddleware from "../backend/middlewares/usuario.middleware";
 import UsuarioService from "../backend/services/usuario.service";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import EscolaxUsuarioxFuncaoControl from "../backend/controllers/escolaxusuarioxfuncao.controller";
+import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class UsuarioRoteador {
   #router: Router;
@@ -40,6 +41,15 @@ export default class UsuarioRoteador {
       this.#usuarioMiddleware.validateCpfParam,
       this.#usuarioMiddleware.validateUpdateBody,
       this.#usuarioControle.update
+    );
+
+    // PATCH /api/usuario/:UsuarioCPF/senha - Trocar a própria senha (exige autenticação)
+    this.#router.patch(
+      "/:UsuarioCPF/senha",
+      AuthMiddleware.authenticate,
+      this.#usuarioMiddleware.validateCpfParam,
+      this.#usuarioMiddleware.validateSenhaBody,
+      this.#usuarioControle.updateSenha
     );
 
     // DELETE /api/usuario/:UsuarioCPF - Deletar usuário

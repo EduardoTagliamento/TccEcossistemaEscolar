@@ -80,6 +80,56 @@ export default class UploadController {
   };
 
   /**
+   * POST /api/upload/foto-usuario/:UsuarioCPF
+   * Upload de foto de perfil do usuário
+   */
+  uploadFotoUsuario = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      console.log('📥 [UploadController] POST /api/upload/foto-usuario/:UsuarioCPF');
+
+      const UsuarioCPF = req.params.UsuarioCPF;
+      const file = req.file;
+
+      if (!file) {
+        throw new ErrorResponse(400, 'Arquivo não enviado', {
+          message: 'Nenhum arquivo foi enviado na requisição',
+        });
+      }
+
+      const result = await this.#uploadService.uploadFotoUsuario(UsuarioCPF, file);
+
+      res.status(200).json({
+        success: true,
+        message: 'Foto de perfil enviada com sucesso',
+        data: { foto: result },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /api/upload/foto-usuario/:UsuarioCPF
+   * Remove foto de perfil do usuário
+   */
+  deleteFotoUsuario = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      console.log('📥 [UploadController] DELETE /api/upload/foto-usuario/:UsuarioCPF');
+
+      const UsuarioCPF = req.params.UsuarioCPF;
+      const removed = await this.#uploadService.removeFotoUsuario(UsuarioCPF);
+
+      res.status(200).json({
+        success: true,
+        message: 'Foto de perfil removida com sucesso',
+        data: { removed },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * DELETE /api/upload/logo/:EscolaGUID
    * Remove logo de escola
    */

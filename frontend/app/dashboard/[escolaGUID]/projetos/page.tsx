@@ -88,9 +88,6 @@ export default function ProjetosPage() {
               + Criar Projeto
             </Link>
           )}
-          <Link href={`/dashboard/${escolaGUID}`} className={styles.backLink}>
-            ← Voltar ao Dashboard
-          </Link>
         </div>
       </header>
 

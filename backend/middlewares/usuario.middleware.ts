@@ -24,6 +24,25 @@ export default class UsuarioMiddleware {
     next();
   };
 
+  validateSenhaBody = (request: Request, _response: Response, next: NextFunction) => {
+    console.log("🔷 UsuarioMiddleware.validateSenhaBody()");
+    const { SenhaAtual, NovaSenha } = request.body || {};
+
+    if (!SenhaAtual || typeof SenhaAtual !== "string") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'SenhaAtual' é obrigatório!",
+      });
+    }
+
+    if (!NovaSenha || typeof NovaSenha !== "string" || NovaSenha.length < 6) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'NovaSenha' é obrigatório e deve ter pelo menos 6 caracteres.",
+      });
+    }
+
+    next();
+  };
+
   validateCpfParam = (request: Request, _response: Response, next: NextFunction) => {
     console.log("🔷 UsuarioMiddleware.validateCpfParam()");
     const { UsuarioCPF } = request.params;

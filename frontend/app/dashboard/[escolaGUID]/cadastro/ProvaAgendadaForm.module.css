@@ -1,21 +1,5 @@
 .container {
-  min-height: 100vh;
-  padding: var(--spacing-xl);
-  background-color: var(--bg-secondary);
   color: var(--text-primary);
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-xl);
-}
-
-.backLink {
-  text-decoration: none;
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
 }
 
 .timezoneAlert {

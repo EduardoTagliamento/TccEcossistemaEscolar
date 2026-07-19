@@ -8,6 +8,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import MysqlDatabase from '../backend/database/MysqlDatabase';
 import { EscolaDAO } from '../backend/repositories/escola.repository';
 import { ConversaDAO } from '../backend/repositories/conversa.repository';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import UploadService from '../backend/services/upload.service';
 import UploadController from '../backend/controllers/upload.controller';
 import {
@@ -24,7 +25,8 @@ import ErrorResponse from '../backend/utils/ErrorResponse';
 const database = new MysqlDatabase();
 const escolaDAO = new EscolaDAO(database);
 const conversaDAO = new ConversaDAO(database);
-const uploadService = new UploadService(escolaDAO);
+const usuarioDAO = new UsuarioDAO(database);
+const uploadService = new UploadService(escolaDAO, usuarioDAO);
 const uploadController = new UploadController(uploadService);
 
 // Criar router
@@ -94,6 +96,48 @@ uploadRoutes.post(
   handleMulterErrorMensagem,
   validateFilePresence,
   uploadController.uploadMensagemAnexo
+);
+
+/**
+ * Self-service: só o próprio usuário autenticado pode alterar a própria foto.
+ */
+function verificarProprioUsuario(req: Request, res: Response, next: NextFunction): void {
+  const UsuarioCPF = req.params.UsuarioCPF;
+  if (req.user?.UsuarioCPF !== UsuarioCPF) {
+    next(new ErrorResponse(403, 'Você só pode alterar a própria foto de perfil'));
+    return;
+  }
+  next();
+}
+
+/**
+ * @route POST /api/upload/foto-usuario/:UsuarioCPF
+ * @description Upload de foto de perfil do usuário (max 1MB, imagens PNG/JPG/JPEG — mesmo limite do logo)
+ * @access Private (requer autenticação + ser o próprio usuário)
+ * @formData foto: File (campo multipart/form-data)
+ * @returns { fileName, fileUrl, fileSize, mimeType }
+ */
+uploadRoutes.post(
+  '/foto-usuario/:UsuarioCPF',
+  AuthMiddleware.authenticate,
+  verificarProprioUsuario,
+  uploadMiddleware.single('foto'),
+  handleMulterError,
+  validateFilePresence,
+  uploadController.uploadFotoUsuario
+);
+
+/**
+ * @route DELETE /api/upload/foto-usuario/:UsuarioCPF
+ * @description Remove foto de perfil do usuário
+ * @access Private (requer autenticação + ser o próprio usuário)
+ * @returns { removed: boolean }
+ */
+uploadRoutes.delete(
+  '/foto-usuario/:UsuarioCPF',
+  AuthMiddleware.authenticate,
+  verificarProprioUsuario,
+  uploadController.deleteFotoUsuario
 );
 
 export default uploadRoutes;

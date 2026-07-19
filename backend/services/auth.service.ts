@@ -22,6 +22,7 @@ interface LoginResponse {
     UsuarioEmail: string;
     UsuarioEmailVerificado: boolean;
     UsuarioTelefone: string | null;
+    UsuarioFotoUrl: string | null;
   };
 }
 
@@ -151,6 +152,7 @@ export default class AuthService {
           UsuarioEmail: usuario.UsuarioEmail || '',
           UsuarioEmailVerificado: usuario.UsuarioEmailVerificado,
           UsuarioTelefone: usuario.UsuarioTelefone,
+          UsuarioFotoUrl: usuario.UsuarioFotoUrl,
         },
       };
     } catch (error: any) {
@@ -195,6 +197,7 @@ export default class AuthService {
         UsuarioEmail: usuario.UsuarioEmail || '',
         UsuarioEmailVerificado: usuario.UsuarioEmailVerificado,
         UsuarioTelefone: usuario.UsuarioTelefone,
+        UsuarioFotoUrl: usuario.UsuarioFotoUrl,
       };
     } catch (error: any) {
       if (error instanceof ErrorResponse) {

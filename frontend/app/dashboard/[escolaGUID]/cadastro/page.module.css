@@ -1,0 +1,76 @@
+/* Tokens do Bauá Design System (mcp claude-design, project
+   689c269f-be3b-4445-98c6-69b779c38839) escopados localmente, mesmo padrão
+   já usado no restante do dashboard. Os formulários das abas (TarefaForm,
+   ProvaAgendadaForm, ConteudoForm) continuam usando as CSS Variables
+   genéricas herdadas de frontend/styles/globals.css — preservadas como
+   estavam nas telas originais (crud-tarefa/crud-provaagendada/crud-conteudo),
+   já que esta tarefa é consolidar a navegação, não redesenhar os formulários. */
+.container {
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --ink-900: #0F1D17;
+  --slate-500: #647268;
+  --line-200: #E2EAE5;
+  --surface-50: #F5F9F6;
+  --radius-pill: 9999px;
+
+  min-height: 100vh;
+  background: var(--surface-50);
+}
+
+.pageWrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.pageTitle {
+  font-family: var(--font-display), 'Poppins', system-ui, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.pageSubtitulo {
+  color: var(--slate-500);
+  font-family: var(--font-body), 'Figtree', system-ui, sans-serif;
+  font-size: 0.9375rem;
+  margin: 0.25rem 0 1.5rem;
+}
+
+.abas {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.aba,
+.abaAtiva {
+  border: 1.5px solid var(--line-200);
+  background: #fff;
+  color: var(--slate-500);
+  font-family: var(--font-body), 'Figtree', system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 9px 18px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.abaAtiva {
+  background: var(--green-500);
+  border-color: var(--green-500);
+  color: #fff;
+}
+
+.aba:hover {
+  border-color: var(--green-500);
+  color: var(--green-600);
+}
+
+.abaConteudo {
+  display: flex;
+  flex-direction: column;
+}
