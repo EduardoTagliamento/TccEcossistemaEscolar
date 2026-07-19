@@ -117,20 +117,24 @@ Documentação completa da API de gerenciamento de matrículas incluindo:
 **Arquivo:** [professor-api.md](professor-api.md)
 
 Documentação completa da API de gerenciamento de professores e alocações incluindo:
+- **POST** `/api/professor` - Criar professores em massa (usuário novo + vínculo, ou só vínculo)
 - **GET** `/api/professor` - Listar professores de uma escola
 - **GET** `/api/professor/:cpf/escolas/:escolaGUID/alocacoes` - Buscar alocações do professor
-- **POST** `/api/professor/alocacao` - Criar alocação (Professor + Matéria + Turma)
+- **POST** `/api/professor/alocacao` - Criar alocação individual ou em massa (Professor + Matéria + Turma)
 - **GET** `/api/professor/alocacao` - Listar alocações (com filtros)
 - **GET** `/api/professor/alocacao/:guid` - Buscar alocação por ID
-- **PUT** `/api/professor/alocacao/:guid` - Atualizar alocação
+- **PUT** `/api/professor/alocacao/:guid` - Atualizar alocação (status e/ou aulas por semana)
 - **DELETE** `/api/professor/alocacao/:guid` - Remover alocação (soft delete)
+- **GET** `/api/professor/materias` - Matérias/turmas do professor autenticado
+- **GET** `/api/professor/turmas-alunos` - Turmas e alunos de uma alocação do professor autenticado
 
 **Regras de Negócio Implementadas:**
 - ✅ Professor = Usuario com FuncaoId=3 (não é entidade separada)
-- ✅ Alocação única (UNIQUE: MateriaGUID + TurmaGUID + UsuarioCPF)
+- ✅ Alocação única (UNIQUE: MateriaGUID + TurmaGUID + UsuarioCPF), com reativação automática se estava Inativa
 - ✅ Matéria e Turma mesma escola
 - ✅ Professor deve ser ativo na escola
-- ✅ Junction table N:N:N (Professor + Matéria + Turma)
+- ✅ Junction table N:N:N (Professor + Matéria + Turma), com `AulasPorSemana` opcional por alocação
+- ✅ Criação em massa de professores (usuário + senha temporária + e-mail de boas-vindas) e de alocações (por nome ou GUID)
 - ✅ Permissões de escrita (Coordenação/Direção)
 
 ### ✅ Anexo (Attachment)
@@ -174,24 +178,69 @@ Documentação completa da API de gerenciamento de provas agendadas incluindo:
 ### ✅ Tarefa Acadêmica (Academic Task)
 **Arquivo:** [tarefaacademica-api.md](tarefaacademica-api.md)
 
-Documentação completa da API de gerenciamento de tarefas acadêmicas incluindo:
-- **POST** `/api/tarefa` - Criar tarefa acadêmica
+Documentação completa da API de gerenciamento de tarefas acadêmicas (modelo normalizado: 1 tarefa → N alunos) incluindo:
+- **POST** `/api/tarefa` - Criar tarefa e atribuir a uma ou mais matrículas
+- **POST** `/api/tarefa/batch` - Alias de criação (mesmo body/validação de `POST /api/tarefa`)
 - **GET** `/api/tarefa` - Listar tarefas (com filtros)
 - **GET** `/api/tarefa/:TarefaGUID` - Buscar tarefa por ID
-- **PUT** `/api/tarefa/:TarefaGUID` - Atualizar tarefa
+- **PUT** `/api/tarefa/:TarefaGUID` - Atualizar dados compartilhados da tarefa
+- **PATCH** `/api/tarefa/:TarefaGUID/marcar-feito` - Aluno marca/desmarca sua atribuição como feita
 - **DELETE** `/api/tarefa/:TarefaGUID` - Excluir tarefa
-- **POST** `/api/tarefa/:TarefaGUID/anexo-entrega` - Vincular anexo de entrega
-- **DELETE** `/api/tarefa/:TarefaGUID/anexo-entrega/:AnexoGUID` - Remover anexo
+- **POST** `/api/tarefa/:TarefaGUID/anexo-entrega` - Vincular anexo de entrega do aluno
+- **DELETE** `/api/tarefa/:TarefaGUID/anexo-entrega/:AnexoGUID` - Remover anexo de entrega
+- **GET** `/api/tarefa/:TarefaGUID/anexos` - Listar anexos de material de apoio
+- **POST** `/api/tarefa/:TarefaGUID/anexos` - Vincular anexo de material de apoio
 
 **Regras de Negócio Implementadas:**
-- ✅ Prazo não pode ser no passado
+- ✅ 1 tarefa (dados compartilhados) → N atribuições por matrícula (`tarefaacademica_matricula`)
+- ✅ Prazo não pode ser no passado (padrão e por matrícula via `DatasPorMatricula`)
+- ✅ Tarefas compartilhadas/em grupo (`TarefaCompartilhada` + `TarefaMinPessoas`/`TarefaMaxPessoas`), integradas com Grupo de Tarefa
 - ✅ Tipo de entrega: digital ou física
-- ✅ Status de conclusão (TarefaFeito: true/false)
+- ✅ Status de conclusão por aluno (TarefaFeito: true/false), individual via `PATCH .../marcar-feito`
 - ✅ Data de realização automática ao marcar como feito
 - ✅ Vinculação com matrícula (aluno) e matéria-professor-turma
-- ✅ Anexos de entrega gerenciados (vincular/desvincular)
-- ✅ Permissões diferenciadas (Professor: full / Aluno: marcar feito)
+- ✅ Dois tipos de anexo: material de apoio (professor) e entrega (aluno)
 - ✅ Autenticação JWT obrigatória
+
+### ✅ Escola Configuração (School Schedule Settings)
+**Arquivo:** [escolaconfiguracao-api.md](escolaconfiguracao-api.md)
+
+Documentação completa da API de configuração de horário letivo da escola (base do cronograma de turma) incluindo:
+- **GET** `/api/escola-configuracao/:escolaGUID` - Obter configuração (ou rascunho padrão)
+- **GET** `/api/escola-configuracao/:escolaGUID/slots` - Slots de aula calculados
+- **PUT** `/api/escola-configuracao/:escolaGUID` - Salvar configuração (upsert)
+
+**Regras de Negócio Implementadas:**
+- ✅ 1 configuração por escola, com intervalos fixos ou variados por dia
+- ✅ Validação de consistência de períodos manhã/tarde
+- ✅ Avisos não bloqueantes de aula cortada por intervalo desalinhado
+- ✅ Permissões de escrita (Coordenação/Direção); leitura livre
+
+### ✅ Cronograma da Turma (Class Schedule)
+**Arquivo:** [cronograma-turma-api.md](cronograma-turma-api.md)
+
+Documentação completa da API de montagem do cronograma semanal de uma turma incluindo:
+- **GET** `/api/turma/:turmaGUID/cronograma` - Obter cronograma (slots + banco de aulas pendentes)
+- **POST** `/api/turma/:turmaGUID/cronograma/slot` - Alocar uma aula em dia/horário
+- **DELETE** `/api/turma/:turmaGUID/cronograma/slot/:horarioTurmaGUID` - Remover aula do cronograma
+
+**Regras de Negócio Implementadas:**
+- ✅ Depende da configuração de horário letivo da escola
+- ✅ Respeita limite de aulas semanais por alocação
+- ✅ Impede conflito de horário do mesmo professor entre turmas
+- ✅ Permissões de escrita (Coordenação/Direção); leitura livre
+
+### ✅ Grade Horária (Automatic Scheduling)
+**Arquivo:** [grade-horaria-api.md](grade-horaria-api.md)
+
+Documentação completa da API de cálculo automático de data/hora de aula, usada para agendar Prova/Tarefa na próxima aula da turma:
+- **POST** `/api/grade-horaria/calcular-datas` - Calcular datas para N turmas de uma vez
+
+**Regras de Negócio Implementadas:**
+- ✅ Reaproveita o cronograma da turma (`horarioturma`) já montado
+- ✅ Suporta desambiguação quando a matéria ocorre mais de uma vez por semana (`status: "escolherDia"`)
+- ✅ Deslocamento em minutos configurável por escolha
+- ✅ Falhas por turma não bloqueiam o cálculo das demais (sempre 200, status por item)
 
 ### ✅ Upload (File Upload)
 **Arquivo:** [upload-api.md](upload-api.md)
@@ -211,6 +260,176 @@ Documentação completa da API de gerenciamento de upload de arquivos incluindo:
 - ✅ Permissões (Coordenação/Secretaria/Direção)
 - ✅ Autenticação JWT obrigatória
 
+### ✅ Notificação (Notifications)
+**Arquivo:** [notificacao-api.md](notificacao-api.md)
+
+Documentação completa do sistema de notificações (feed in-app, catálogo de tipos e preferências de canal) incluindo:
+- **GET** `/api/notificacao` - Listar notificações do usuário
+- **GET** `/api/notificacao/contador` - Contar não lidas
+- **PATCH** `/api/notificacao/:NotificacaoGUID/lida` - Marcar uma como lida
+- **PATCH** `/api/notificacao/lidas` - Marcar todas como lidas
+- **GET** `/api/notificacao/tipos` - Catálogo de tipos
+- **GET** `/api/notificacao/preferencias` - Preferências efetivas do usuário
+- **PUT** `/api/notificacao/preferencias/:NotificacaoTipoId` - Atualizar preferência
+
+**Regras de Negócio Implementadas:**
+- ✅ Avisos (evento) e Lembretes (cron diário) — 20 tipos no catálogo
+- ✅ Preferência de e-mail/whatsapp por tipo, global por usuário
+- ✅ Feed in-app sempre populado, independente das preferências de canal
+- ✅ Envio de e-mail via Resend; WhatsApp com canal pronto (stub) aguardando Evolution API
+- ✅ Tempo real via WebSocket (`notificacao:nova`, room pessoal por usuário)
+- ✅ Idempotência de lembretes (anti-duplicidade por dia)
+- ✅ Autenticação JWT obrigatória
+
+### ✅ Calendário (Aggregated Calendar)
+**Arquivo:** [calendario-api.md](calendario-api.md)
+
+Documentação completa da API somente leitura que agrega Tarefas e Provas Agendadas em uma linha do tempo por escola:
+- **GET** `/api/calendario` - Listar avisos (tarefas + provas) do usuário, com filtros de período/tipo
+- **GET** `/api/calendario/dia/:data` - Detalhes de um dia específico
+
+**Regras de Negócio Implementadas:**
+- ✅ Visibilidade por matrícula (aluno) ou alocação ativa (professor)
+- ✅ Vínculo ativo com a escola obrigatório
+- ✅ `StatusTexto` calculado (Feita/Atrasada/Pendente) no SQL
+- ✅ Somente leitura — não persiste nada
+
+### ✅ Pendência (Administrative Reminder)
+**Arquivo:** [pendencia-api.md](pendencia-api.md)
+
+Documentação completa da API de lembretes/avisos administrativos direcionados a um único usuário incluindo:
+- **POST** `/api/pendencia` - Criar pendência
+- **GET** `/api/pendencia` - Listar pendências (com filtros)
+- **GET** `/api/pendencia/contador/pendentes` - Contar pendências não concluídas
+- **GET** `/api/pendencia/contador/atrasadas` - Contar pendências atrasadas
+- **GET** `/api/pendencia/:PendenciaGUID` - Buscar pendência por ID
+- **PUT** `/api/pendencia/:PendenciaGUID` - Atualizar pendência
+- **DELETE** `/api/pendencia/:PendenciaGUID` - Excluir pendência (hard delete)
+- **PATCH** `/api/pendencia/:PendenciaGUID/feito` - Destinatário marca como feita
+- **GET** `/api/pendencia/:PendenciaGUID/anexos` - Listar anexos
+- **POST** `/api/pendencia/:PendenciaGUID/anexos` - Vincular anexo
+
+**Regras de Negócio Implementadas:**
+- ✅ Destinatário único por pendência
+- ✅ Criação/edição/exclusão restrita a Coordenação/Secretaria/Direção
+- ✅ Marcar como feito exclusivo do destinatário
+- ✅ Prazo sempre futuro na criação e atualização
+
+### ✅ Evento (School Event)
+**Arquivo:** [evento-api.md](evento-api.md)
+
+Documentação completa da API de eventos escolares (avisos amplos por escola, sem destinatário individual) incluindo:
+- **POST** `/api/evento` - Criar evento
+- **GET** `/api/evento` - Listar eventos (com filtros)
+- **GET** `/api/evento/:EventoGUID` - Buscar evento por ID
+- **PUT** `/api/evento/:EventoGUID` - Atualizar evento
+- **DELETE** `/api/evento/:EventoGUID` - Cancelar evento (soft delete)
+- **GET** `/api/evento/:EventoGUID/anexos` - Listar anexos
+- **POST** `/api/evento/:EventoGUID/anexos` - Vincular anexo
+
+**Regras de Negócio Implementadas:**
+- ✅ Evento por escola, visível a todos os vinculados
+- ✅ Status: Agendado/Realizado/Cancelado (soft delete)
+- ✅ Data sempre futura na criação/atualização
+- ✅ Permissões de escrita (Coordenação/Secretaria/Direção)
+
+### ✅ Anotação (Personal Note)
+**Arquivo:** [anotacao-api.md](anotacao-api.md)
+
+Documentação completa da API de anotações pessoais do usuário (uso privado, tipo agenda) incluindo:
+- **POST** `/api/anotacao` - Criar anotação
+- **GET** `/api/anotacao` - Listar anotações (filtros e intervalo de datas)
+- **GET** `/api/anotacao/estatisticas` - Total/feitas/pendentes
+- **GET** `/api/anotacao/:guid` - Buscar anotação por ID
+- **PUT** `/api/anotacao/:guid` - Atualizar anotação
+- **PATCH** `/api/anotacao/:guid/toggle` - Alternar status de feito
+- **DELETE** `/api/anotacao/:guid` - Excluir anotação (hard delete)
+
+**Regras de Negócio Implementadas:**
+- ✅ Anotação é sempre pessoal (dono definido pelo token, nunca pelo body)
+- ✅ Somente o dono acessa/edita/exclui
+- ✅ Toggle inverte o status atual (não aceita valor explícito)
+
+### ✅ Grupo de Tarefa (Task Group)
+**Arquivo:** [grupotarefa-api.md](grupotarefa-api.md)
+
+Documentação completa da API de grupos formados dentro de uma tarefa compartilhada incluindo:
+- **GET** `/api/grupotarefa/:tarefaGUID` - Listar grupos de uma tarefa
+- **GET** `/api/grupotarefa/grupo/:grupoGUID` - Buscar grupo (com membros)
+- **PATCH** `/api/grupotarefa/:grupoGUID/nome` - Renomear grupo (líder)
+- **DELETE** `/api/grupotarefa/:grupoGUID/membros/:cpf` - Expulsar membro (líder)
+- **PATCH** `/api/grupotarefa/:grupoGUID/transferir-lider` - Transferir liderança
+
+**Regras de Negócio Implementadas:**
+- ✅ 1 grupo individual por aluno criado automaticamente ao atribuir tarefa compartilhada
+- ✅ Expulsão gera novo grupo individual para o membro expulso
+- ✅ Transferência de liderança transacional
+- ✅ Integração com Conversa (grupo de chat espelhado)
+
+### ✅ Convite de Grupo de Tarefa (Task Group Invite)
+**Arquivo:** [convitegrupotarefa-api.md](convitegrupotarefa-api.md)
+
+Documentação completa da API de convites (líder → aluno) e solicitações (aluno → grupo) para entrada em grupos de tarefa incluindo:
+- **POST** `/api/convitegrupotarefa/:grupoGUID/convites` - Líder envia convite
+- **POST** `/api/convitegrupotarefa/:grupoGUID/solicitacoes` - Aluno solicita entrada
+- **GET** `/api/convitegrupotarefa/pendentes` - Listar convites/solicitações pendentes
+- **PATCH** `/api/convitegrupotarefa/:conviteGUID/aceitar` - Aceitar
+- **PATCH** `/api/convitegrupotarefa/:conviteGUID/recusar` - Recusar
+
+**Regras de Negócio Implementadas:**
+- ✅ Convite aceito/recusado pelo convidado; solicitação aceita/recusada pelo líder
+- ✅ Sem duplicidade de convite/solicitação pendente
+- ✅ Aceitar é transacional (move o usuário para o grupo + histórico)
+
+### ✅ Conversa / Mensagens (Chat)
+**Arquivo:** [conversa-api.md](conversa-api.md)
+
+Documentação completa da API de conversas individuais e em grupo (Turma/Tarefa) incluindo:
+- **POST** `/api/conversa/individual` - Iniciar/recuperar conversa 1:1 (idempotente)
+- **GET** `/api/conversa` - Listar conversas do usuário
+- **GET** `/api/conversa/:guid` - Detalhes + últimas mensagens + fixadas
+- **GET** `/api/conversa/:guid/mensagem` - Histórico paginado
+- **GET** `/api/conversa/:guid/fixadas` - Mensagens fixadas
+- **POST**/**DELETE** `/api/conversa/:guid/mensagem/:msgGuid/fixar` - Fixar/desafixar mensagem
+- **DELETE**/**PATCH** `/api/conversa/:guid/mensagem/:msgGuid` - Deletar/editar mensagem
+- **PUT**/**DELETE** `/api/conversa/:guid/permissao/representante` - Gerenciar Representante (Turma)
+- **PUT**/**DELETE** `/api/conversa/:guid/permissao/vice-representante[/:cpf]` - Gerenciar Vice-Representante
+
+**Regras de Negócio Implementadas:**
+- ✅ Conversa individual idempotente e normalizada por par de CPFs
+- ✅ Papéis de moderação diferem por tipo de grupo (Líder em Tarefa; Representante/Vice em Turma)
+- ✅ Soft delete e edição de mensagens; fixar/desafixar com papel exigido em grupo
+- ✅ Envio de mensagem em tempo real via WebSocket (fora desta API REST)
+
+### ✅ Categoria de Conteúdo (Content Category)
+**Arquivo:** [categoriaconteudo-api.md](categoriaconteudo-api.md)
+
+Documentação completa da API de categorias pessoais de organização de conteúdo de aula incluindo:
+- **POST** `/api/categoria-conteudo` - Criar categoria
+- **GET** `/api/categoria-conteudo` - Listar categorias (com filtros)
+- **PUT** `/api/categoria-conteudo/:guid` - Atualizar categoria
+- **DELETE** `/api/categoria-conteudo/:guid` - Excluir categoria
+
+**Regras de Negócio Implementadas:**
+- ✅ Categoria pessoal por professor + matéria (nome único na combinação)
+- ✅ Editar/excluir restrito ao criador
+- ✅ Excluir categoria não exclui conteúdos (`SET NULL`)
+
+### ✅ Conteúdo de Aula (Class Content)
+**Arquivo:** [conteudo-api.md](conteudo-api.md)
+
+Documentação completa da API de publicação de material de aula (vídeo/áudio, texto rico ou arquivo paginado) incluindo:
+- **POST** `/api/conteudo` - Criar conteúdo (multipart/form-data, upload para Cloudflare R2)
+- **GET** `/api/conteudo` - Listar conteúdos (com filtros)
+- **GET** `/api/conteudo/:guid` - Buscar conteúdo por ID
+- **DELETE** `/api/conteudo/:guid` - Excluir conteúdo
+
+**Regras de Negócio Implementadas:**
+- ✅ Modelo "1 conteúdo → N turmas", com data de publicação compartilhada e override por turma
+- ✅ Três tipos com subtabela própria: cronometrado (upload/link), texto (HTML sanitizado), paginado (arquivos ordenados)
+- ✅ Professor precisa lecionar em todas as turmas selecionadas
+- ✅ Exclusão restrita ao autor; arquivos removidos do R2 de forma assíncrona
+
 ### ℹ️ Escolas do Usuário
 **Arquivo:** [usuario-escolas-api.md](usuario-escolas-api.md)
 
@@ -225,11 +444,11 @@ Documentação do endpoint para listar escolas vinculadas a um usuário:
 
 ---
 
-## 🔜 APIs em Desenvolvimento
+## 🔜 APIs em Desenvolvimento / Não Documentadas
 
-- **Aluno** - Gerenciamento de alunos
-- **Atividade** - Gerenciamento de atividades/tarefas
-- **Auth** - Autenticação JWT
+- **Copa do Mundo 2026** (`/api/album`, `/album` legado — `routes/copa/*.routes.ts`) - Módulo isolado (álbum de figurinhas). Ainda registrado em `backend/Server.ts`, mas as migrations SQL (`backend/database/migrations/copa/`) e todo o frontend (`frontend/app/album/**`, `frontend/components/copa/**`) foram removidos (não commitados) na sessão em que este levantamento foi feito — indício de que o módulo está sendo descontinuado. Não documentado aqui até confirmação; ver observação no histórico do projeto.
+
+> Nota: **Aluno** e **Atividade** não são módulos separados — "Aluno" é um `Usuario` com `FuncaoId=5` + uma `Matricula` (ver [matricula-api.md](matricula-api.md) e [usuario-api.md](usuario-api.md)), e "Atividade" é coberta por [tarefaacademica-api.md](tarefaacademica-api.md) e [provaagendada-api.md](provaagendada-api.md). **Auth** já está documentado em [auth-api.md](auth-api.md).
 
 ---
 

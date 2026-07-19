@@ -1,67 +1,70 @@
-.container {
+/* Amostra de cor compacta usada em /criar-escola.
+   Tokens herdados via cascata do DOM (AuthGreenShell é sempre o
+   ancestral desta página). */
+
+.swatchField {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.label {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--text-primary);
-}
-
-.pickerWrapper {
-  display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 6px;
 }
 
-.colorInput {
-  width: 64px;
-  height: 48px;
-  border: 2px solid var(--border-color);
+.swatch {
+  position: relative;
+  display: block;
+  width: 46px;
+  height: 46px;
   border-radius: var(--radius-md);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
   cursor: pointer;
-  transition: border-color var(--transition-fast);
-  padding: 0;
+  transition: box-shadow 0.15s ease;
 }
 
-.colorInput:hover:not(:disabled) {
-  border-color: var(--color-primary);
-}
-
-.colorInput:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.colorPreview {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-md);
-  border: 2px solid var(--border-color);
+.swatch:hover {
   box-shadow: var(--shadow-sm);
 }
 
-.hexInput {
-  flex: 1;
-  padding: var(--spacing-md);
-  font-size: var(--font-size-md);
-  font-family: var(--font-mono);
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-  text-transform: uppercase;
+.colorInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
-.hexInput:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 206, 209, 0.1);
+.swatchLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate-500);
+  text-align: center;
+  max-width: 76px;
+}
+
+.hexInput {
+  width: 76px;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 5px 6px;
+  font-size: 11px;
+  font-family: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace;
+  text-transform: uppercase;
+  color: var(--ink-900);
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-sm);
   outline: none;
 }
 
+.hexInput:focus {
+  border-color: var(--green-500);
+  box-shadow: var(--shadow-focus);
+}
+
 .hexInput:disabled {
-  background-color: var(--bg-secondary);
+  opacity: 0.6;
   cursor: not-allowed;
-  opacity: 0.7;
 }

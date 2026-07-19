@@ -7,6 +7,7 @@ import MysqlDatabase from "../database/MysqlDatabase";
 import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
 import ConversaGrupoService from "./conversa-grupo.service";
+import { getNotificacaoService } from "./notificacao.service";
 
 /**
  * DTOs para transferência de dados
@@ -174,6 +175,18 @@ export default class MatriculaService {
         matriculaCriada.UsuarioCPF
       );
     }
+
+    // 9. Notificar o aluno (tipo `matricula_nova_turma`) — não bloqueia a resposta
+    getNotificacaoService().disparar({
+      tipoSlug: "matricula_nova_turma",
+      destinatarios: [matriculaCriada.UsuarioCPF],
+      escolaGUID: turma.EscolaGUID,
+      titulo: `Você foi matriculado na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
+      entidadeTipo: "turma",
+      entidadeGUID: turma.TurmaGUID,
+    }).catch((error) => {
+      console.error("🔴 MatriculaService.criarMatricula() - notificação falhou:", error);
+    });
 
     return this.toDTO(matriculaCriada);
   }

@@ -3,9 +3,35 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import AuthBrandShell from '@/components/auth/AuthBrandShell';
+import AuthInput from '@/components/auth/AuthInput';
+import AuthButton from '@/components/auth/AuthButton';
+import AuthIcon from '@/components/auth/AuthIcon';
+import BauaLogo from '@/components/auth/BauaLogo';
 import styles from './page.module.css';
+
+// Tipografia da marca Bauá (tokens/fonts.css do design system):
+// Poppins -> display/headings · Figtree -> corpo/UI · Baloo 2 -> wordmark "bauá"
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+});
+const figtree = Figtree({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-body',
+  display: 'swap',
+});
+const baloo2 = Baloo_2({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-wordmark',
+  display: 'swap',
+});
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,7 +39,6 @@ export default function LoginPage() {
 
   const [identifier, setIdentifier] = useState('');
   const [senha, setSenha] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   // Detectar tipo de identificador
@@ -98,7 +123,7 @@ export default function LoginPage() {
 
     try {
       await login(identifier, senha);
-      
+
       // Redirecionar para dashboard ou seleção de escola
       router.push('/selecionar-escola');
     } catch (err: any) {
@@ -107,104 +132,65 @@ export default function LoginPage() {
   };
 
   const identifierType = detectIdentifierType(identifier);
-  const placeholderText = 
-    identifierType === 'email' ? 'Email' :
-    identifierType === 'CPF' ? 'CPF' :
-    identifierType === 'telefone' ? 'Telefone' :
-    'CPF, Email ou Telefone';
 
   return (
-    <div className={styles.container}>
-      <div className={styles.loginCard}>
-        <div className={styles.header}>
-          <h1 className={styles.logo}>Bauá</h1>
-          <p className={styles.subtitle}>Ecossistema Educacional</p>
-        </div>
+    <AuthBrandShell
+      className={`${poppins.variable} ${figtree.variable} ${baloo2.variable}`}
+      formMaxWidth={400}
+    >
+      <BauaLogo size={30} />
+      <h1 className={styles.title}>Acessar a plataforma</h1>
+      <p className={styles.subtitle}>Entre com sua conta Bauá para continuar.</p>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <h2 className={styles.title}>Entrar</h2>
-
-          {error && (
-            <div className={styles.errorMessage}>
-              {error}
-            </div>
-          )}
-
-          <div className={styles.formGroup}>
-            <label htmlFor="identifier" className={styles.label}>
-              {placeholderText}
-            </label>
-            <input
-              id="identifier"
-              type="text"
-              value={identifier}
-              onChange={(e) => handleIdentifierChange(e.target.value)}
-              placeholder="Digite seu CPF, email ou telefone"
-              className={styles.input}
-              autoComplete="username"
-              disabled={isLoading}
-            />
-            {identifier && (
-              <span className={styles.hint}>
-                Detectado como: {identifierType}
-              </span>
-            )}
+      <form onSubmit={handleSubmit} className={styles.form}>
+        {error && (
+          <div className={styles.errorBanner} role="alert">
+            <AuthIcon name="alert-triangle" size={16} />
+            <span>{error}</span>
           </div>
+        )}
 
-          <div className={styles.formGroup}>
-            <label htmlFor="senha" className={styles.label}>
-              Senha
-            </label>
-            <div className={styles.passwordWrapper}>
-              <input
-                id="senha"
-                type={showPassword ? 'text' : 'password'}
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="Digite sua senha"
-                className={styles.input}
-                autoComplete="current-password"
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                className={styles.eyeButton}
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                disabled={isLoading}
-              >
-                {showPassword ? <FiEyeOff /> : <FiEye />}
-              </button>
-            </div>
-          </div>
+        <AuthInput
+          label="CPF, e-mail ou telefone"
+          leadingIcon="user"
+          placeholder="voce@escola.com"
+          value={identifier}
+          onChange={(e) => handleIdentifierChange(e.target.value)}
+          autoComplete="username"
+          disabled={isLoading}
+          hint={identifier ? `Detectado como: ${identifierType}` : undefined}
+        />
 
-          <button
-            type="button"
-            className={styles.forgotPassword}
-            onClick={() => alert('Funcionalidade em desenvolvimento')}
-            disabled={isLoading}
-          >
-            Esqueci minha senha
-          </button>
+        <AuthInput
+          label="Senha"
+          passwordToggle
+          placeholder="••••••••"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          autoComplete="current-password"
+          disabled={isLoading}
+        />
 
-          <button
-            type="submit"
-            className={styles.submitButton}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Entrando...' : 'Entrar'}
-          </button>
+        <button
+          type="button"
+          className={styles.forgotLink}
+          onClick={() => alert('Funcionalidade em desenvolvimento')}
+          disabled={isLoading}
+        >
+          Esqueci minha senha
+        </button>
 
-          <div className={styles.footer}>
-            <p>
-              Não tem cadastro?{' '}
-              <Link href="/cadastro" className={styles.link}>
-                Criar conta
-              </Link>
-            </p>
-          </div>
-        </form>
-      </div>
-    </div>
+        <AuthButton type="submit" variant="primary" size="lg" block disabled={isLoading}>
+          {isLoading ? 'Entrando...' : 'Entrar'}
+        </AuthButton>
+      </form>
+
+      <p className={styles.footerText}>
+        Não tem uma conta?{' '}
+        <Link href="/cadastro" className={styles.footerLink}>
+          Cadastre-se
+        </Link>
+      </p>
+    </AuthBrandShell>
   );
 }

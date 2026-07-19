@@ -34,7 +34,9 @@ import { anotacaoRouterFactory } from "../routes/anotacao.routes";
 import { grupoTarefaRoutes } from "../routes/grupotarefa.routes";
 import { conviteGrupoTarefaRoutes } from "../routes/convitegrupotarefa.routes";
 import { conversaRouterFactory } from "../routes/conversa.routes";
+import { notificacaoRoutes } from "../routes/notificacao.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
+import { NotificacaoScheduler } from "./services/notificacao.scheduler";
 import { pool } from "./database/mysql";
 
 /**
@@ -57,6 +59,7 @@ export default class Server {
   #httpServer: http.Server;
   #database: MysqlDatabase;
   #scheduler: CleanupScheduler;
+  #notificacaoScheduler: NotificacaoScheduler;
   #nextHandler: ((req: Request, res: Response) => Promise<void>) | null;
   #isFrontendUnified: boolean;
 
@@ -67,6 +70,7 @@ export default class Server {
     this.#httpServer = http.createServer(this.#app);
     this.#database = new MysqlDatabase();
     this.#scheduler = new CleanupScheduler();
+    this.#notificacaoScheduler = new NotificacaoScheduler();
     this.#nextHandler = null;
     this.#isFrontendUnified = false;
   }
@@ -291,6 +295,7 @@ export default class Server {
             matricula: "/api/matricula",
             professor: "/api/professor",
             verificacaoEmail: "/api/verificacao-email",
+            notificacao: "/api/notificacao",
           },
           frontendMainPagePath: "/ (Next.js app/page.tsx)",
         },
@@ -433,6 +438,10 @@ export default class Server {
     const conversaRouter = conversaRouterFactory();
     this.#app.use("/api/conversa", conversaRouter);
     console.log("✅ Rotas de Conversa registradas em /api/conversa");
+
+    // 🔔 Rotas de Notificação
+    this.#app.use("/api/notificacao", notificacaoRoutes());
+    console.log("✅ Rotas de Notificação registradas em /api/notificacao");
 
     // 🏆 Rotas da Copa do Mundo 2026 (Sistema Isolado)
     const { copaRoutes } = require("../routes/copa/index");
@@ -612,10 +621,13 @@ export default class Server {
     try {
       this.#scheduler.start();
       console.log(`✅ Agendamentos iniciados: ${this.#scheduler.getActiveTasksCount()} tarefas ativas`);
-      
+
+      this.#notificacaoScheduler.start();
+      console.log(`✅ Lembretes de notificação iniciados: ${this.#notificacaoScheduler.getActiveTasksCount()} tarefas ativas`);
+
       // Configurar graceful shutdown para parar agendamentos
       this.setupGracefulShutdown();
-      
+
     } catch (error) {
       console.error("❌ Erro ao iniciar agendamentos:", error);
       throw error;
@@ -635,7 +647,8 @@ export default class Server {
         // Parar agendamentos
         console.log("   🔹 Parando agendamentos...");
         this.#scheduler.stop();
-        
+        this.#notificacaoScheduler.stop();
+
         // Fechar conexões com banco
         console.log("   🔹 Fechando conexões com banco...");
         await pool.end();

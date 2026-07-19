@@ -8,6 +8,9 @@ import HistoricoGrupoTarefaService from './historicogrupotarefa.service';
 import ConversaGrupoService from './conversa-grupo.service';
 import ErrorResponse from '../utils/ErrorResponse';
 import MysqlDatabase from '../database/MysqlDatabase';
+import { RowDataPacket } from 'mysql2';
+import { pool as mysqlPool } from '../database/mysql';
+import { getNotificacaoService } from './notificacao.service';
 import {
   GrupoTarefaComMembrosDTO,
   GrupoTarefaCreateDTO
@@ -223,6 +226,10 @@ export default class GrupoTarefaService {
 
       await connection.commit();
 
+      this.#notificarRemovidoGrupo(grupo.TurmaGUID, grupo.TarefaGUID, membroCPF).catch((error) => {
+        console.error('🔴 GrupoTarefaService.#notificarRemovidoGrupo() falhou:', error);
+      });
+
       return {
         mensagem: 'Membro expulso com sucesso',
         novoGrupoGUID: novoGrupo.GrupoTarefaGUID
@@ -235,6 +242,29 @@ export default class GrupoTarefaService {
       connection.release();
     }
   }
+
+  /** Notifica o membro removido (tipo `removido_grupo`) */
+  #notificarRemovidoGrupo = async (turmaGUID: string, tarefaGUID: string, membroCPF: string): Promise<void> => {
+    const [rows] = await mysqlPool.execute<RowDataPacket[]>(
+      `SELECT t.EscolaGUID, ta.TarefaTitulo
+       FROM turma t
+       INNER JOIN tarefaacademica ta ON ta.TarefaGUID = ?
+       WHERE t.TurmaGUID = ?
+       LIMIT 1`,
+      [tarefaGUID, turmaGUID]
+    );
+    const info = rows[0] as any;
+    if (!info?.EscolaGUID) return;
+
+    await getNotificacaoService().disparar({
+      tipoSlug: 'removido_grupo',
+      destinatarios: [membroCPF],
+      escolaGUID: info.EscolaGUID,
+      titulo: `Você foi removido do grupo da tarefa "${info.TarefaTitulo}"`,
+      entidadeTipo: 'tarefa',
+      entidadeGUID: tarefaGUID,
+    });
+  };
 
   /**
    * TRANSFERIR LIDERANÇA

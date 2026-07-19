@@ -19,6 +19,7 @@ import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import ErrorResponse from "../utils/ErrorResponse";
+import { getNotificacaoService } from "./notificacao.service";
 
 /**
  * DTOs
@@ -134,6 +135,19 @@ export default class PendenciaService {
 
     // 8. Salvar no banco
     const created = await this.#pendenciaDAO.create(pendencia);
+
+    // 9. Notificar destinatário (tipo `pendencia_criada`) — não bloqueia a resposta
+    getNotificacaoService().disparar({
+      tipoSlug: "pendencia_criada",
+      destinatarios: [created.UsuarioCPF],
+      escolaGUID: created.EscolaGUID,
+      titulo: `Nova pendência: ${created.PendenciaTitulo}`,
+      conteudo: created.PendenciaConteudo,
+      entidadeTipo: "pendencia",
+      entidadeGUID: created.PendenciaGUID,
+    }).catch((error) => {
+      console.error("🔴 PendenciaService.store() - notificação falhou:", error);
+    });
 
     return this.#toDTO(created);
   }
