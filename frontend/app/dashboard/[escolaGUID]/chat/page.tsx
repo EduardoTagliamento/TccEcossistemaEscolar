@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSocket } from '@/lib/socket/SocketContext';
+import { useChatUI } from '@/lib/chat/ChatUIContext';
 import * as ConversaAPI from '@/lib/api/conversa.api';
 import * as UploadAPI from '@/lib/api/upload.api';
 import { Icon } from './icons';
@@ -101,6 +102,7 @@ export default function ChatPage() {
   const escolaGUID = (params?.escolaGUID as string) || '';
   const { usuario } = useAuth();
   const { socket, conectado } = useSocket();
+  const { conversaAbertaGUID, definirConversaAberta } = useChatUI();
 
   const [conversas, setConversas] = useState<ConversaAPI.ConversaListItem[]>([]);
   const [carregandoConversas, setCarregandoConversas] = useState(true);
@@ -109,7 +111,14 @@ export default function ChatPage() {
   const [buscaConversas, setBuscaConversas] = useState('');
   const [modalNovaConversaAberto, setModalNovaConversaAberto] = useState(false);
 
-  const [conversaAtivaGUID, setConversaAtivaGUID] = useState<string | null>(null);
+  // Estado inicial lido do ChatUIContext: se o usuário chegou aqui clicando
+  // em "Expandir" na bolha flutuante minimizada (MinimizedChatBubble), a
+  // tela já abre direto na conversa que estava minimizada.
+  const [conversaAtivaGUID, setConversaAtivaGUIDState] = useState<string | null>(() => conversaAbertaGUID);
+  const setConversaAtivaGUID = (guid: string | null) => {
+    setConversaAtivaGUIDState(guid);
+    definirConversaAberta(guid);
+  };
   const [conversaAtiva, setConversaAtiva] = useState<ConversaAPI.ConversaDetalhe | null>(null);
   const [mensagens, setMensagens] = useState<ConversaAPI.Mensagem[]>([]);
   const [carregandoMensagens, setCarregandoMensagens] = useState(false);

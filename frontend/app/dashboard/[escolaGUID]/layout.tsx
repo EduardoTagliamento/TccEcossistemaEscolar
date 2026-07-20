@@ -1,6 +1,8 @@
 import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
 import { SocketProvider } from '@/lib/socket/SocketContext';
+import { ChatUIProvider } from '@/lib/chat/ChatUIContext';
 import DashboardNavbar from './_components/DashboardNavbar';
+import MinimizedChatBubble from './_components/MinimizedChatBubble';
 
 /**
  * Layout compartilhado por todas as rotas de `/dashboard/[escolaGUID]/**`.
@@ -11,6 +13,12 @@ import DashboardNavbar from './_components/DashboardNavbar';
  * - Inicializa a conexão WebSocket (Socket.io) uma única vez em nível de
  *   layout — não por página — para que o módulo de Chat (e, futuramente,
  *   Notificações em tempo real) reaproveitem a mesma conexão.
+ * - `ChatUIProvider` + `MinimizedChatBubble`: quando o usuário sai da tela
+ *   cheia de chat com uma conversa aberta, uma bolha flutuante minimizada
+ *   (estilo Instagram Web) continua mostrando essa conversa por cima de
+ *   qualquer outra página do dashboard — ver
+ *   frontend/lib/chat/ChatUIContext.tsx e
+ *   _components/MinimizedChatBubble.tsx.
  * - Carrega a tipografia da marca Bauá (Poppins/Figtree/Baloo 2) como CSS
  *   Variables no wrapper, disponíveis pra qualquer página filha que
  *   referencie `var(--font-display)`/`var(--font-body)`/`var(--font-wordmark)`.
@@ -39,10 +47,13 @@ const baloo2 = Baloo_2({
 export default function DashboardEscolaLayout({ children }: { children: React.ReactNode }) {
   return (
     <SocketProvider>
-      <div className={`${poppins.variable} ${figtree.variable} ${baloo2.variable}`}>
-        <DashboardNavbar />
-        {children}
-      </div>
+      <ChatUIProvider>
+        <div className={`${poppins.variable} ${figtree.variable} ${baloo2.variable}`}>
+          <DashboardNavbar />
+          {children}
+          <MinimizedChatBubble />
+        </div>
+      </ChatUIProvider>
     </SocketProvider>
   );
 }
