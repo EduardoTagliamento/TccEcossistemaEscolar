@@ -82,6 +82,14 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Post-its (8 ao todo, vários pouco legíveis mesmo na leitura direta do PDF):** reorganizar conteúdo central; dúvida sobre o que exibir no topo; histórico de comunicados recentes; ícones de acesso rápido às matérias; botões de funcionamento/pendências dos professores; identidade visual de entidades (turmas/matérias).
 - **Código real:** `frontend/app/dashboard/[escolaGUID]/page.tsx` + `page.module.css` existem (é a página raiz do dashboard, correta em uso das CSS Variables). Não foi possível confirmar em detalhe todos os 8 pontos sem abrir o arquivo por completo — recomenda-se revisão dedicada, é o item mais aberto do board.
 
+**✅ Status atualizado (2026-07-19):** dashboard reconstruído ponta a ponta nesta sessão, endereçando a maior parte dos post-its:
+- Rebuild visual contra o design system Bauá real (`Dashboard Escola.dc.html` + tokens do projeto `689c269f`) — cores/tipografia/espaçamento deixaram de usar CSS Variables genéricas.
+- **Navbar deixou de existir só na home** — foi extraída para `frontend/app/dashboard/[escolaGUID]/_components/DashboardNavbar.tsx` e montada em `layout.tsx`, então agora é persistente em toda navegação dentro de `/dashboard/[escolaGUID]/**` (era um pedido direto do usuário, fora do board original, mas resolve na prática o problema de "reorganizar conteúdo central" ao dar navegação consistente).
+- Conteúdo central da home trocado: os cards de estatística placeholder (`Usuários: --`, `Atividades: --`, `Sistema: Ativo`) e o aviso "Dashboard em desenvolvimento" foram **removidos**; no lugar entraram 3 blocos com dado real — Histórico de Pendências (`GET /api/pendencia`), Tarefas a se esgotar (aluno, ordenadas por prazo) e Avisos gerais (`GET /api/notificacao`, categoria `Aviso`) — isso é o mais próximo que se chegou do post-it "histórico de comunicados recentes" sem inventar um módulo novo.
+- Sino de notificações trocou de navegação de página inteira para um dropdown inline (fetch das notificações recentes + "ver todas").
+- ⚠️ **Divergência encontrada:** `frontend/refs/Dashboard_ref.png` (imagem de referência anexada ao repo) é um mockup de um produto não relacionado ("Ferretto", plataforma de vestibular) — não bate em nada com o design system Bauá real. Foi tratada como não aplicável e ignorada nesta reconstrução; vale confirmar se é o arquivo errado antes de usá-la de novo como referência.
+- Pendente: os post-its "ícones de acesso rápido às matérias" e "identidade visual de entidades (turmas/matérias)" dependem do módulo de Matérias (seção 9), que segue não iniciado.
+
 ---
 
 ## 4. Cadastro de Conteúdo Acadêmico (pág. 3)
@@ -103,6 +111,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Board:** Backend ✅ | Frontend ⬜
 - **Post-its:** permitir anexo de conteúdo de aula; opção de anexo automático do professor; suportar duas opções de anexo (arquivo e link YouTube/MP4).
 - **Código real:** `frontend/app/dashboard/[escolaGUID]/crud-conteudo/page.tsx` — 757 linhas. Backend: `backend/controllers/conteudo.controller.ts` + `backend/middlewares/conteudo-upload.middleware.ts` (já existe upload de anexo). **Falta confirmar** se a opção "link do YouTube/MP4" (alternativa ao upload de arquivo) já está implementada no formulário — não verificado em detalhe nesta passada.
+
+**✅ Status atualizado (2026-07-19):** as 3 telas acima (Tarefa/Prova/Conteúdo) foram **condensadas numa tela só**, a pedido direto do usuário: `frontend/app/dashboard/[escolaGUID]/cadastro/page.tsx`, com seletor de abas e a lógica de cada formulário extraída para `TarefaForm.tsx`/`ProvaAgendadaForm.tsx`/`ConteudoForm.tsx` na mesma pasta (lógica de validação/API praticamente inalterada, só desacoplada de "página inteira" para "conteúdo de aba"). As rotas antigas (`/crud-tarefa`, `/crud-provaagendada`, `/crud-conteudo`) agora são redirects simples para `/cadastro?aba=...`. Item da navbar "Cadastro" (visível só para Professor) leva direto pra essa tela nova.
 
 ---
 
@@ -161,6 +171,9 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Código real:** aqui a marcação ⬜ do board **bate com o código** — não existe nenhuma pasta `chat`/`conversa` sob `frontend/app/dashboard/[escolaGUID]/`. O backend, por outro lado, é sólido: `backend/controllers/conversa.controller.ts` (203 linhas), `backend/websocket/conversa.handler.ts` + `backend/websocket/SocketServer.ts` (infraestrutura de tempo real já existe), `routes/conversa.routes.ts`.
 - **Conclusão:** este é o módulo onde o gap frontend é real e total — vale priorizar, já que o backend (incluindo WebSocket) está pronto e sem uso.
 
+**✅ Status atualizado (2026-07-19):** frontend implementado nesta sessão — `frontend/app/dashboard/[escolaGUID]/chat/page.tsx` (lista de conversas + painel de mensagens), conexão WebSocket única e compartilhada (`frontend/lib/socket/SocketContext.tsx`, montada no `layout.tsx`), `socket.io-client` instalado. Cobre: lista com prévia/não-lidas, histórico paginado, envio em tempo real, digitando, fixar/desafixar/editar/apagar mensagem, iniciar conversa individual, e **upload de imagem/arquivo em anexo** (endpoint novo `POST /api/upload/mensagem/:conversaGUID`, 10MB, imagens + documentos comuns). Layout inspirado no design system atual (`689c269f`), não há tela dedicada de chat no design system oficial — confirmado por busca direta nos dois projetos Bauá.
+- **Pendente (ver checklist no fim do documento):** reações a mensagens (decidido que entra no escopo, mas não implementado — só a bolha de mensagem foi construída, sem funcionalidade de reagir); gestão de Representante/Vice-Representante (kick/promover) na "lista no grupo" pedida pelo post-it — os endpoints já existem (`docs/routes/conversa-api.md`), mas não há UI; recibo de leitura visual (evento `mensagem_lida` existe, não é consumido no frontend).
+
 ---
 
 ## 8. Secretaria (pág. 7)
@@ -187,6 +200,9 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Post-its:** cobrir tudo que o usuário recebe (avisos, tarefas, provas, mensagens); sistema de filtro; envio por e-mail e WhatsApp.
 - **Código real:** confirmado — nenhuma rota, controller ou entidade de notificação no backend. Item genuinamente não iniciado nas duas pontas, como o board indica.
 
+**⚠️ Correção (2026-07-19):** essa leitura ficou desatualizada — hoje **backend e frontend de Notificações já existem e funcionam**: `backend/services/notificacao.service.ts`, catálogo de tipos + preferências por usuário, envio de e-mail via Resend, canal WhatsApp com interface pronta mas sem provedor conectado ainda (decisão do usuário: fica fora de escopo por ora), WebSocket `notificacao:nova` na room pessoal do usuário, e as telas `frontend/app/dashboard/[escolaGUID]/notificacoes/page.tsx` + `.../notificacoes/configuracoes/page.tsx`. Nesta sessão o sino da navbar também passou a abrir um dropdown com as notificações recentes (em vez de navegar pra página cheia).
+- **Pendente:** toast em tempo real ouvindo `notificacao:nova` (decisão confirmada: deve aparecer em todas as telas do dashboard) — ainda não implementado, o dropdown hoje só busca a lista ao abrir, não reage a eventos WS em tempo real; paginação/retenção do feed — sem decisão fechada ainda.
+
 ---
 
 ## 9. Matérias (pág. 8)
@@ -197,6 +213,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Board:** Backend ⬜ | Frontend ⬜ (nas 4)
 - **Post-its relevantes:** card por matéria + filtro + clique leva à tela específica; conteúdos organizados por data; aluno revisa notas da prova e recebe **recomendações de estudo geradas por IA**; professor pode anexar vídeo-resumo; aluno pode anexar tarefa quando entrega for digital; descrição da tarefa em destaque no topo.
 - **Código real:** existe `backend/controllers/materia.controller.ts` + `routes/materia.routes.ts`, mas é um CRUD básico de matéria (usado como cadastro/lookup em `gestao-dados/materias`), **não** as telas específicas de matéria descritas aqui (feed do professor, visão do aluno, notas, recomendação por IA). A pasta `backend/ai/` existe mas contém apenas `README.txt` — nenhuma lógica de recomendação por IA implementada ainda. O board está correto: este módulo é pendente ponta a ponta, e é o único que menciona uma feature de IA ainda não iniciada.
+
+**Status (2026-07-19):** segue 100% não iniciado. Usuário decidiu adiar deliberadamente ("veremos futuramente sobre IA") tanto a fonte de dado de entrada da recomendação quanto a escolha de provedor — não é uma pendência esquecida, é adiamento consciente. As demais partes do módulo (tela geral, tela específica, notas de prova, entrega digital de tarefa) não têm decisão de adiamento — seguem simplesmente não implementadas.
 
 ---
 
@@ -224,6 +242,9 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Post-its:** alterar informação cadastral; alterar foto; "modo daltônico?" (paleta acessível).
 - **Código real:** confirmado ausente — não há rota/controller de "configuração de usuário" nem tela dedicada (diferente da configuração de *escola*, ver abaixo). Board correto.
 
+**✅ Status atualizado (2026-07-19):** implementado parcialmente. Nova tela `frontend/app/dashboard/[escolaGUID]/perfil/page.tsx`, acessível pelo dropdown do avatar (item "Meu Perfil") — cobre dado cadastral (nome/e-mail/telefone via `PUT /api/usuario/:UsuarioCPF`), upload de foto (`POST/DELETE /api/upload/foto-usuario/:UsuarioCPF`, novo, mesmos limites do logo de escola — 1MB, PNG/JPG/JPEG) e troca de senha (`PATCH /api/usuario/:UsuarioCPF/senha`, novo, bcrypt). Coluna nova `usuario.UsuarioFotoUrl` — migration escrita mas **ainda não executada contra o banco real** (ver checklist).
+- **Pendente:** "modo daltônico"/paleta acessível — decisão já confirmada (persistência multi-dispositivo, cobrindo tipos específicos: protanopia/deuteranopia/tritanopia), mas nada implementado ainda.
+
 ### Configuração da escola
 - **Board:** Backend 🔁 | Frontend ⬜
 - **Post-its:** só acesso direção/coordenação; informar cronograma das turmas; alterar informações da escola; avaliar restringir customização de cor ao representante legal da escola.
@@ -247,9 +268,16 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Post-its:** professor cria a ideia do projeto e a mecânica de pontuação; alunos criam grupos com suas "propostas"; grupo pode ser aberto ao público ou fechado por convite; avaliar se professor também pode adicionar/remover integrantes de grupos já formados.
 - **Código real:** confirmado — nenhuma entidade, controller ou rota com "projeto"/"hackathon" no backend. Nada em frontend também. Board correto, módulo 100% não iniciado.
 
+**✅ Status atualizado (2026-07-19):** implementado ponta a ponta nesta sessão via spec-first (`docs/PLANO_IMPLEMENTACAO_PROJETOS.md`, com decisões de negócio confirmadas pelo usuário na Seção 1). Diferente de Tarefa Compartilhada, os grupos de projeto podem reunir alunos de turmas diferentes da escola, e nada é criado automaticamente — o aluno cria seu próprio grupo com uma proposta.
+- **Backend:** 6 tabelas novas (`projeto`, `projetoturma`, `grupoprojeto`, `usuarioxgrupoprojeto`, `convitegrupoprojeto`, `historicogrupoprojeto` — migration `2026-07-19-add-projetos.sql`, **ainda não executada contra o banco real**, ver checklist), 3 módulos completos (`Projeto`/`GrupoProjeto`/`ConviteGrupoProjeto`, DAO→Service→Controller→Middleware→Routes), notificações novas (`projeto_criado`, `convite_grupo_projeto`, `solicitacao_grupo_projeto`, `removido_grupo_projeto`, `projeto_pontuacao_atribuida`), documentação Swagger-like em `docs/routes/{projeto,grupoprojeto,convitegrupoprojeto}-api.md`.
+- **Frontend:** `frontend/app/dashboard/[escolaGUID]/projetos` (lista), `crud-projeto` (criação, Professor/Direção), `projetos/[projetoGUID]` (detalhe + grupos), `projetos/[projetoGUID]/grupos/[grupoGUID]` (detalhe do grupo).
+- **Regras confirmadas:** criador pode ser Professor OU Direção (extensão do usuário sobre o post-it original, que só citava professor); criador do projeto também pode adicionar/remover membros de qualquer grupo (não só o líder aluno); grupo `Fechado` aceita convite do líder E solicitação do aluno; só o criador do projeto atribui pontuação; mecânica de pontuação é texto livre + nota numérica manual (sem critérios estruturados por ora).
+
 ---
 
 ## Resumo — onde o board e o código concordam vs. divergem
+
+**Estado original (2026-07-17), antes do trabalho desta sessão:**
 
 | Concordam (⬜ = realmente não existe) | Divergem (⬜ no board, mas já existe código real) |
 |---|---|
@@ -262,4 +290,57 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 | Projetos/Hackathon (ponta a ponta) | — |
 | Registro de Auditoria (mais perto de ⬜ do que de 🔁) | — |
 
-**Recomendação prática:** ao planejar o próximo sprint de frontend, tratar a coluna da esquerda como "criar do zero" e a da direita como "revisar/ajustar contra os post-its" — são esforços de tamanho muito diferentes, e o board sozinho não deixa essa distinção clara.
+**Recomendação prática (válida na época):** tratar a coluna da esquerda como "criar do zero" e a da direita como "revisar/ajustar contra os post-its" — são esforços de tamanho muito diferentes, e o board sozinho não deixa essa distinção clara.
+
+---
+
+## Checklist — Pendências restantes (atualizado em 2026-07-19)
+
+Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat completo (texto + anexo), dashboard reconstruído contra o design system real, navbar tornada persistente em todo o dashboard, telas de cadastro de Tarefa/Prova/Conteúdo condensadas numa só, tela de configuração do usuário nova, sino de notificações virou dropdown. Detalhes em cada seção acima. Itens marcados `[x]` foram concluídos nesta sessão; `[ ]` seguem em aberto.
+
+### Migrations escritas, faltando rodar contra o banco real
+- [ ] `backend/database/migrations/2026-07-19-add-projetos.sql` — 6 tabelas do módulo Projetos + seeds de notificação (sandbox de desenvolvimento não teve acesso à rede do banco Railway)
+- [ ] `backend/database/migrations/2026-07-19-add-usuario-foto-e-senha.sql` — coluna `usuario.UsuarioFotoUrl`
+
+### Chat
+- [x] Lista de conversas, painel de mensagens, tempo real via WebSocket, anexos de imagem/arquivo
+- [ ] Reações a mensagens (decidido que entra no escopo — não implementado ainda)
+- [ ] Gestão de Representante/Vice-Representante (kick/promover) na tela de grupo — endpoints já existem, falta UI
+- [ ] Recibo de leitura visual (`mensagem_lida`) — evento existe, não é consumido no frontend
+- [ ] Bolha de chat minimizada ao navegar pra fora da tela de chat (estilo Instagram Web) — em andamento
+
+### Notificações
+- [x] Dropdown no sino da navbar (lista recente + link "ver todas")
+- [ ] Toast em tempo real ouvindo `notificacao:nova` via WebSocket, em todas as telas (decisão já confirmada, falta implementar)
+- [ ] Canal WhatsApp — decidido fora de escopo por ora (Evolution API, trabalho futuro)
+- [ ] Paginação/retenção do feed — sem decisão fechada
+
+### Secretaria
+- [ ] Tela de cadastro de eventos (backend já pronto)
+- [ ] Tela de cadastro/gestão de pendências (backend já pronto)
+- [ ] Registro de Auditoria — nenhum código (nem backend nem frontend); decisões de escopo já confirmadas com o usuário (auditar todo CRUD, visível a Direção/Coordenação/Secretaria, retenção diferenciada por sensibilidade, sem diff antes/depois)
+
+### Matérias
+- [ ] As 4 telas (geral, específica, prova-visão-aluno, tarefa-visão-aluno) — nada implementado
+- [ ] Lançamento de nota de prova (pré-requisito de dado, tabela `prova_nota` proposta mas não criada)
+- [ ] Recomendação por IA — adiada deliberadamente pelo usuário ("veremos futuramente")
+- [ ] Entrega digital de tarefa pelo aluno — confirmado que é escopo de Matérias, não implementado
+
+### Configuração do usuário
+- [x] Dado cadastral (nome/e-mail/telefone), foto de perfil, troca de senha — tela `/perfil`, acessível pelo dropdown do avatar
+- [ ] Modo daltônico / paleta acessível (decisão: multi-dispositivo, tipos protanopia/deuteranopia/tritanopia) — não implementado
+
+### Configuração da escola
+- [ ] Alterar informações gerais da escola (nome/e-mail/logo fora do cronograma)
+- [ ] Restringir customização de cor ao representante legal
+
+### Auth / institucional (Login, Cadastro, Saiba mais, Landing page)
+- [ ] Migrar cores fixas (`#1cc47b`/`#169162`/`#ebebeb`) para CSS Variables do design system em `login`, `cadastro`, `saiba-mais`, `criar-escola`
+- [ ] Reposicionamento conforme post-its (imagem à esquerda, formulário à direita, espelhado em login/cadastro)
+- [ ] Revisão de copy/persuasão da landing page (confiança, argumentos de venda, FAQ) — decisão de conteúdo, não de layout
+
+### Outros
+- [ ] `frontend/refs/Dashboard_ref.png` parece pertencer a um projeto não relacionado ("Ferretto") — confirmar se é o arquivo errado antes de usar como referência de novo
+- [ ] Módulo em standby (pág. 11 do board) — sem informação suficiente no PDF original; só a equipe consegue esclarecer o que essa página reservava
+- [ ] Filtro de pesquisa na listagem de Gestão de Dados (post-it da seção 6)
+- [ ] Confirmar se cards da home de Gestão de Dados já são dinâmicos (post-it da seção 6, não verificado)
