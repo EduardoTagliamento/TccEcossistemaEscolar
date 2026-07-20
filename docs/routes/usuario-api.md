@@ -18,6 +18,7 @@
     - [List Users](#list-users)
     - [Get User by CPF](#get-user-by-cpf)
     - [Update User](#update-user)
+    - [Change Password](#change-password)
     - [Delete User](#delete-user)
 - [Data Models](#data-models)
 - [Business Rules](#business-rules)
@@ -455,6 +456,106 @@ curl -X PUT http://localhost:3000/api/usuario/123.456.789-00 \
 
 ---
 
+#### Change Password
+
+Troca a própria senha. Diferente dos demais endpoints deste arquivo, **exige autenticação JWT** e valida a senha atual antes de trocar (self-service: só o próprio usuário autenticado pode trocar a própria senha).
+
+> ⚠️ Endpoint adicionado depois da escrita original deste documento — ver `routes/usuario.routes.ts` e `backend/controllers/usuario.controller.ts` (`updateSenha`).
+
+**Endpoint:** `PATCH /api/usuario/:UsuarioCPF/senha`
+
+**Headers:**
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**URL Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `UsuarioCPF` | string | ✅ Yes | CPF único do usuário (deve ser o próprio autenticado) |
+
+**Request Body:**
+```json
+{
+  "SenhaAtual": "senhaAntiga123",
+  "NovaSenha": "senhaNova456"
+}
+```
+
+**Request Parameters:**
+
+| Field | Type | Required | Description | Validation |
+|-------|------|----------|-------------|------------|
+| `SenhaAtual` | string | ✅ Yes | Senha atual em texto plano, validada via `bcrypt.compare` | Não vazia |
+| `NovaSenha` | string | ✅ Yes | Nova senha em texto plano | Mínimo 6 caracteres |
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Senha alterada com sucesso",
+  "data": null
+}
+```
+
+**Error Responses:**
+
+**400 Bad Request** - Corpo inválido (`backend/middlewares/usuario.middleware.ts`, `validateSenhaBody`)
+```json
+{
+  "success": false,
+  "message": "Erro na validação de dados",
+  "details": {
+    "message": "O campo 'NovaSenha' é obrigatório e deve ter pelo menos 6 caracteres."
+  }
+}
+```
+
+**400 Bad Request** - Senha atual incorreta
+```json
+{
+  "success": false,
+  "message": "Senha atual incorreta",
+  "details": {
+    "message": "A senha atual informada não confere."
+  }
+}
+```
+
+**403 Forbidden** - Tentativa de trocar senha de outro usuário
+```json
+{
+  "success": false,
+  "message": "Você só pode alterar a própria senha"
+}
+```
+
+**404 Not Found** - Usuário não encontrado
+```json
+{
+  "success": false,
+  "message": "Usuário não encontrado",
+  "details": {
+    "message": "Não existe usuário com CPF 123.456.789-00"
+  }
+}
+```
+
+**cURL Example:**
+```bash
+curl -X PATCH http://localhost:3000/api/usuario/123.456.789-00/senha \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "SenhaAtual": "senhaAntiga123",
+    "NovaSenha": "senhaNova456"
+  }'
+```
+
+---
+
 #### Delete User
 
 Remove um usuário do sistema permanentemente.
@@ -631,9 +732,9 @@ CREATE TABLE usuario (
    - ❌ Rejeita se email já pertencer a outro usuário
 
 3. **Password Update**
-   - ✅ Se nova senha for enviada, é re-hasheada
-   - ✅ Senha antiga não é validada (sem autenticação nesta versão)
+   - ✅ Se nova senha for enviada via `PUT /api/usuario/:UsuarioCPF`, é re-hasheada sem validar a senha antiga (rota sem autenticação nesta versão — uso administrativo)
    - ✅ Se senha não for enviada, mantém hash atual
+   - ⚠️ Existe também `PATCH /api/usuario/:UsuarioCPF/senha` (ver [Change Password](#change-password)), que **exige autenticação e valida a senha atual** — fluxo de troca de senha self-service, distinto da atualização administrativa via `PUT`
 
 #### Query Rules
 

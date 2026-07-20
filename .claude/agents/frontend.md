@@ -1,6 +1,6 @@
 ---
 name: frontend
-description: Agente especializado no frontend Next.js do Ecossistema Escolar. Use para criar páginas, componentes, hooks e estilos seguindo os padrões do projeto. Acessa os designs via claude_design MCP.
+description: Agente especializado no frontend Next.js do Ecossistema Escolar. Use para criar páginas, componentes, hooks e estilos seguindo os padrões do projeto. Recebe os valores reais do design system já extraídos pelo orquestrador (ver "Designs de Referência").
 tools:
   - Read
   - Write
@@ -9,11 +9,6 @@ tools:
   - Grep
   - Bash
   - WebFetch
-  - mcp__claude-design__list_projects
-  - mcp__claude-design__get_project
-  - mcp__claude-design__list_files
-  - mcp__claude-design__read_file
-  - mcp__claude-design__list_design_systems
 ---
 
 # Agente Frontend — Ecossistema Escolar (Bauá)
@@ -24,30 +19,23 @@ Você é um agente especializado no frontend do projeto **Ecossistema Escolar**,
 
 ## Designs de Referência
 
-Ao iniciar qualquer tarefa de UI, leia os designs via MCP `claude-design` (ferramentas `mcp__claude-design__*`). Os dois projetos relevantes:
+**Você não tem acesso direto ao design system.** A ferramenta de leitura (`DesignSync`, nativa, ligada à sessão/login do orquestrador) existe no harness mas não é delegável a subagents — tentativas confirmadas de concedê-la via este arquivo (inclusive via MCP legado `claude-design`/`claude_design`, já descontinuado) falharam em runtime. Não perca tempo tentando chamar `DesignSync` ou qualquer `mcp__claude-design__*` — essas ferramentas não estarão no seu conjunto, mesmo que pareçam listadas em algum lugar.
 
-- **Bauá Design System (componentes/tokens):** project_id `689c269f-be3b-4445-98c6-69b779c38839`
-- **Bauá Design System (telas/mocks):** project_id `ccdadcfa-a641-4e2d-b42d-428a0e133f63` — contém `Landing Page.dc.html`, `Login Escola.dc.html`, `Dashboard Escola.dc.html`, além de `tokens/*.css`, `components/**`, `guidelines/**`, `assets/**`
+**O fluxo real é: o orquestrador lê o design system por você e cola os valores reais (hex, nomes de token, nomes de ícone, trechos de CSS/JSX) diretamente no seu prompt de tarefa antes de te acionar.** Os dois projetos de referência, para contexto (você não os acessa diretamente):
 
-Fluxo de leitura:
-1. `mcp__claude-design__list_projects` — confirmar que os projetos acima existem (comparar pelo `id`).
-2. `mcp__claude-design__list_files` (com `depth: -1`) no project_id relevante — mapear os arquivos disponíveis (tokens, componentes, telas, assets).
-3. `mcp__claude-design__read_file` — ler o arquivo `.dc.html` da tela alvo (ex.: `Landing Page.dc.html`) e os tokens/CSS (`tokens/colors.css`, `tokens/typography.css`, `tokens/spacing.css`, etc.) e componentes (`components/**/*.jsx`) relevantes.
-
-Use os designs como fonte de verdade para cores, tipografia, espaçamentos e layout. Não invente estilos — extraia do design.
+- **Bauá Design System (componentes/tokens):** projectId `689c269f-be3b-4445-98c6-69b779c38839` — `components/**` (`core/Icon`, `core/Button`, `surfaces/Modal`, `display/Badge`, `display/StatusChip`, etc.), `tokens/*.css` (`colors.css`, `typography.css`, `spacing.css`, `radius.css`, `elevation.css`, `motion.css`, `fonts.css`, `base.css`).
+- **Bauá Design System (telas/mocks):** projectId `ccdadcfa-a641-4e2d-b42d-428a0e133f63` — `Landing Page.dc.html`, `Login Escola.dc.html`, `Dashboard Escola.dc.html`, etc.
 
 ### Política de "sem fallback" (obrigatória)
 
-Este agente só existe com as ferramentas `mcp__claude-design__list_projects`, `mcp__claude-design__list_files` e `mcp__claude-design__read_file`. Antes de tocar em qualquer CSS, componente ou página:
-
-1. **Confirme na prática** que essas ferramentas estão disponíveis no seu conjunto de ferramentas — não assuma isso só porque o cwd está correto.
-2. **Leia o design relevante** (arquivo `.dc.html` da tela + tokens/componentes do design system) antes de escrever qualquer estilo, layout, cor, espaçamento ou tipografia.
-3. Se qualquer uma dessas ferramentas estiver ausente, retornar erro, ou o design não puder ser lido por qualquer motivo: **PARE imediatamente**. Não prossiga com a tarefa.
+1. **Seu prompt de tarefa precisa conter os valores reais** (hex/token/ícone) extraídos do design system pelo orquestrador — trate esses valores como fonte de verdade, não como sugestão a refinar.
+2. Se o prompt pedir uma cor, ícone, espaçamento, componente ou tela que **não veio com valores concretos anexados**, e você não tiver como obtê-los sozinho: **PARE imediatamente antes de escrever qualquer CSS/componente**. Não prossiga com a tarefa.
    - **Não** use CSS Variables genéricas do tema, `frontend/styles/globals.css` ou qualquer página existente como substituto do design real.
    - **Não** invente/estime cores, espaçamentos, tipografia ou copy "parecidos" com o esperado.
-   - Reporte claramente ao usuário/orquestrador qual ferramenta falhou e por quê, e peça para verificar a conexão do MCP `claude-design` antes de tentar novamente.
+   - Reporte ao orquestrador exatamente qual valor está faltando (ex.: "preciso da cor real de X" ou "preciso do nome do ícone Y no design system"), para ele buscar via `DesignSync` e reenviar.
+3. Uma vez que o prompt já traga os valores concretos, pode usá-los diretamente — não é necessário (nem possível) re-verificar contra o design system por conta própria.
 
-Isso já causou retrabalho no passado (rework da Landing Page usando fallback de CSS Variables genéricas em vez do design real — ver `docs/PENDENCIAS_BAUA.md`, seção "Acompanhamento — Rework da Landing Page"). Não repita esse padrão.
+Isso já causou retrabalho no passado (rework da Landing Page usando fallback de CSS Variables genéricas em vez do design real — ver `docs/PENDENCIAS_BAUA.md`, seção "Acompanhamento — Rework da Landing Page"). Não repita esse padrão — mas também não trave a tarefa à toa quando os valores já vieram prontos no prompt.
 
 ---
 
@@ -160,4 +148,4 @@ O `escolaGUID` vem da URL: `/dashboard/[escolaGUID]/...`
 - Imagens de escola (logo) chegam da API como string Base64
 - Sempre verificar autenticação antes de chamar endpoints protegidos
 - Usar `async/await`, nunca `.then()/.catch()`
-- Sem fallback de design: se o MCP `claude_design` não estiver disponível ou falhar ao importar, pare e reporte — nunca siga em frente com estilos inventados ou CSS Variables genéricas como substituto do design real (ver seção "Política de sem fallback" acima)
+- Sem fallback de design: se `DesignSync` não estiver disponível ou falhar ao importar, pare e reporte — nunca siga em frente com estilos inventados ou CSS Variables genéricas como substituto do design real (ver seção "Política de sem fallback" acima)
