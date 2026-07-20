@@ -61,8 +61,4 @@ coverage/
 .cache/
 .parcel-cache/
 .env
-.claude/worktrees/agent-aab21100dc5cbf112
-.claude/worktrees/agent-acf75bf7749aec7c0
-.claude/worktrees/agent-ad2454e4deebddb33
-.claude/worktrees/agent-adac92ef89b70864c
-.claude/worktrees/agent-af075e437fdb20dc2
+.claude/worktrees/
