@@ -1,6 +1,8 @@
 import ErrorResponse from "../utils/ErrorResponse";
 import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import { UsuarioxEscolaAcessoDAO } from "../repositories/usuarioxescolaacesso.repository";
+import { getAuditoriaService } from "./auditoria.service";
 
 export interface EscolaxUsuarioxFuncaoDTO {
   EscolaxUsuarioxFuncaoId: number;
@@ -13,6 +15,7 @@ export interface EscolaxUsuarioxFuncaoDTO {
   Status: string; // "Ativo" | "Inativo" | "Finalizado"
   CreatedAt: string; // ISO timestamp
   UpdatedAt: string; // ISO timestamp
+  UltimoAcessoEm: string | null; // ISO timestamp — só populado quando filtrado por EscolaGUID
 }
 
 interface FindFiltersDTO {
@@ -23,14 +26,17 @@ interface FindFiltersDTO {
 
 export default class EscolaxUsuarioxFuncaoService {
   #relacaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #acessoDAO: UsuarioxEscolaAcessoDAO;
 
-  constructor(relacaoDAODependency: EscolaxUsuarioxFuncaoDAO) {
+  constructor(relacaoDAODependency: EscolaxUsuarioxFuncaoDAO, acessoDAODependency: UsuarioxEscolaAcessoDAO) {
     console.log("Service: EscolaxUsuarioxFuncaoService.constructor()");
     this.#relacaoDAO = relacaoDAODependency;
+    this.#acessoDAO = acessoDAODependency;
   }
 
   createRelacao = async (
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    usuarioCPFAtor?: string
   ): Promise<EscolaxUsuarioxFuncaoDTO> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.createRelacao()");
 
@@ -65,13 +71,33 @@ export default class EscolaxUsuarioxFuncaoService {
       });
     }
 
+    if (usuarioCPFAtor) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: created.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPFAtor,
+        AcaoTipo: "Create",
+        EntidadeTipo: "escolaxusuarioxfuncao",
+        EntidadeGUID: String(created.EscolaxUsuarioxFuncaoId),
+        EntidadeDescricao: `Vínculo de ${created.UsuarioCPF} como função ${created.FuncaoId} na escola`,
+        CategoriaAuditoriaId: 3,
+      });
+    }
+
     return this.toDTO(created);
   };
 
   findAll = async (filters?: FindFiltersDTO): Promise<EscolaxUsuarioxFuncaoDTO[]> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.findAll()");
     const relacoes = await this.#relacaoDAO.findAll(filters);
-    return relacoes.map((item) => this.toDTO(item));
+
+    // UltimoAcessoEm só faz sentido quando a consulta já está escopada a
+    // uma escola (GET /api/escolaxusuarioxfuncao?EscolaGUID=) — é aí que a
+    // escola quer ver quem está de fato usando o sistema.
+    const acessoMap = filters?.EscolaGUID
+      ? await this.#acessoDAO.findByEscola(filters.EscolaGUID)
+      : new Map<string, Date>();
+
+    return relacoes.map((item) => this.toDTO(item, acessoMap.get(item.UsuarioCPF) ?? null));
   };
 
   findById = async (EscolaxUsuarioxFuncaoId: number): Promise<EscolaxUsuarioxFuncaoDTO> => {
@@ -89,7 +115,8 @@ export default class EscolaxUsuarioxFuncaoService {
 
   updateRelacao = async (
     EscolaxUsuarioxFuncaoId: number,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    usuarioCPFAtor?: string
   ): Promise<EscolaxUsuarioxFuncaoDTO> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.updateRelacao()");
 
@@ -166,10 +193,22 @@ export default class EscolaxUsuarioxFuncaoService {
       });
     }
 
+    if (usuarioCPFAtor) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: refreshed.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPFAtor,
+        AcaoTipo: "Update",
+        EntidadeTipo: "escolaxusuarioxfuncao",
+        EntidadeGUID: String(refreshed.EscolaxUsuarioxFuncaoId),
+        EntidadeDescricao: `Vínculo de ${refreshed.UsuarioCPF} como função ${refreshed.FuncaoId} na escola`,
+        CategoriaAuditoriaId: 3,
+      });
+    }
+
     return this.toDTO(refreshed);
   };
 
-  deleteRelacao = async (EscolaxUsuarioxFuncaoId: number): Promise<boolean> => {
+  deleteRelacao = async (EscolaxUsuarioxFuncaoId: number, usuarioCPFAtor?: string): Promise<boolean> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.deleteRelacao()");
 
     const existente = await this.#relacaoDAO.findById(EscolaxUsuarioxFuncaoId);
@@ -183,6 +222,18 @@ export default class EscolaxUsuarioxFuncaoService {
     if (!deleted) {
       throw new ErrorResponse(500, "Erro ao deletar relacao", {
         message: "Nao foi possivel remover o registro.",
+      });
+    }
+
+    if (usuarioCPFAtor) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: existente.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPFAtor,
+        AcaoTipo: "Delete",
+        EntidadeTipo: "escolaxusuarioxfuncao",
+        EntidadeGUID: String(EscolaxUsuarioxFuncaoId),
+        EntidadeDescricao: `Vínculo de ${existente.UsuarioCPF} como função ${existente.FuncaoId} na escola`,
+        CategoriaAuditoriaId: 3,
       });
     }
 
@@ -242,11 +293,15 @@ export default class EscolaxUsuarioxFuncaoService {
       DataFim: string | null;
       Status: "Ativo" | "Inativo" | "Finalizado";
     }>;
+    UltimoAcessoEm: string | null;
   }>> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.findEscolasByUsuario()");
 
     // Buscar dados no repositório
-    const escolas = await this.#relacaoDAO.findEscolasByUsuarioCPF(UsuarioCPF);
+    const [escolas, acessoMap] = await Promise.all([
+      this.#relacaoDAO.findEscolasByUsuarioCPF(UsuarioCPF),
+      this.#acessoDAO.findByUsuario(UsuarioCPF),
+    ]);
 
     // Converter datas para strings ISO
     return escolas.map(item => ({
@@ -259,10 +314,21 @@ export default class EscolaxUsuarioxFuncaoService {
         DataFim: funcao.DataFim ? funcao.DataFim.toISOString().split('T')[0] : null,
         Status: funcao.Status,
       })),
+      UltimoAcessoEm: acessoMap.get(item.escola.EscolaGUID)?.toISOString() ?? null,
     }));
   };
 
-  private toDTO = (relacao: EscolaxUsuarioxFuncao): EscolaxUsuarioxFuncaoDTO => {
+  /**
+   * Registra/atualiza (upsert com throttle de 1h) o "último acesso" do
+   * usuário autenticado numa escola. NÃO é registro de auditoria — ver
+   * docs/PLANO_IMPLEMENTACAO_REGISTRO_AUDITORIA.md, Seção 3.4.
+   */
+  registrarAcesso = async (usuarioCPF: string, escolaGUID: string): Promise<void> => {
+    console.log("Service: EscolaxUsuarioxFuncaoService.registrarAcesso()");
+    await this.#acessoDAO.upsert(usuarioCPF, escolaGUID);
+  };
+
+  private toDTO = (relacao: EscolaxUsuarioxFuncao, ultimoAcessoEm: Date | null = null): EscolaxUsuarioxFuncaoDTO => {
     const id = relacao.EscolaxUsuarioxFuncaoId;
     if (id === null) {
       throw new Error("EscolaxUsuarioxFuncaoId nao pode ser nulo ao converter para DTO.");
@@ -283,6 +349,7 @@ export default class EscolaxUsuarioxFuncaoService {
       Status: relacao.Status,
       CreatedAt: relacao.CreatedAt.toISOString(),
       UpdatedAt: relacao.UpdatedAt.toISOString(),
+      UltimoAcessoEm: ultimoAcessoEm ? ultimoAcessoEm.toISOString() : null,
     };
   };
 }

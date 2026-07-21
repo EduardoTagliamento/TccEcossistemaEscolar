@@ -486,6 +486,23 @@ Documentação completa da API de convites (líder → aluno) e solicitações (
 - ✅ Elegibilidade revalidada antes de criar convite/solicitação
 - ✅ Sem duplicidade pendente; 1 participação por aluno por projeto
 
+### ✅ Registro de Auditoria (Audit Log)
+**Arquivo:** [auditoria-api.md](auditoria-api.md)
+
+Documentação completa da API somente leitura do módulo transversal de auditoria (quem fez o quê, quando, em qual entidade, por escola), incluindo a sub-feature "último acesso do usuário na escola":
+- **GET** `/api/auditoria` - Listar registros de auditoria da escola (com filtros)
+- **GET** `/api/auditoria/:RegistroAuditoriaGUID` - Buscar registro por ID
+- **GET** `/api/auditoria/categorias` - Catálogo de categorias de sensibilidade/retenção
+- **POST** `/api/usuario/:UsuarioCPF/escolas/:EscolaGUID/acesso` - Registrar "último acesso" do próprio usuário na escola (sub-feature separada, não é auditoria)
+
+**Regras de Negócio Implementadas:**
+- ✅ Sem endpoints de escrita expostos — registro criado só internamente via `AuditoriaService.registrar()`, chamado no fim de métodos de escrita de outros services
+- ✅ Sem diff campo a campo — só o fato de que a ação ocorreu (quem, o quê, quando, em qual entidade)
+- ✅ Consulta restrita a Coordenação/Secretaria/Direção ativa na escola consultada
+- ✅ 5 categorias de sensibilidade com retenção diferenciada (90 a 730 dias), expurgo automático por job agendado
+- ✅ Paginação com teto (limit padrão 50, máx. 100), ordenado por mais recente primeiro
+- ✅ "Último acesso" é um timestamp único por usuário+escola (upsert com throttle de 1h), não um histórico — exposto também em `GET /api/usuario/:cpf/escolas` e `GET /api/escolaxusuarioxfuncao?EscolaGUID=`
+
 ### ℹ️ Escolas do Usuário
 **Arquivo:** [usuario-escolas-api.md](usuario-escolas-api.md)
 

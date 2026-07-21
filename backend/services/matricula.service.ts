@@ -8,6 +8,7 @@ import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
 import ConversaGrupoService from "./conversa-grupo.service";
 import { getNotificacaoService } from "./notificacao.service";
+import { getAuditoriaService } from "./auditoria.service";
 
 /**
  * DTOs para transferência de dados
@@ -188,6 +189,16 @@ export default class MatriculaService {
       console.error("🔴 MatriculaService.criarMatricula() - notificação falhou:", error);
     });
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: turma.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Create",
+      EntidadeTipo: "matricula",
+      EntidadeGUID: matriculaCriada.MatriculaGUID,
+      EntidadeDescricao: `Matrícula de ${matriculaCriada.UsuarioCPF} na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
+      CategoriaAuditoriaId: 3, // DadosPessoais
+    });
+
     return this.toDTO(matriculaCriada);
   }
 
@@ -304,6 +315,25 @@ export default class MatriculaService {
       // COMMIT
       await connection.commit();
 
+      void getAuditoriaService().registrar({
+        EscolaGUID: turmaOrigem.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Update",
+        EntidadeTipo: "matricula",
+        EntidadeGUID: matriculaOrigem.MatriculaGUID,
+        EntidadeDescricao: `Transferência: matrícula encerrada na turma ${turmaOrigem.TurmaSerie} ${turmaOrigem.TurmaNome}`,
+        CategoriaAuditoriaId: 3, // DadosPessoais
+      });
+      void getAuditoriaService().registrar({
+        EscolaGUID: turmaDestino.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Create",
+        EntidadeTipo: "matricula",
+        EntidadeGUID: novaMatricula.MatriculaGUID,
+        EntidadeDescricao: `Transferência: nova matrícula na turma ${turmaDestino.TurmaSerie} ${turmaDestino.TurmaNome}`,
+        CategoriaAuditoriaId: 3, // DadosPessoais
+      });
+
       // Retornar dados das duas matrículas
       return {
         matriculaAnterior: {
@@ -406,6 +436,15 @@ export default class MatriculaService {
       );
     }
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: turma.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "matricula",
+      EntidadeGUID: matriculaAtualizada.MatriculaGUID,
+      CategoriaAuditoriaId: 3, // DadosPessoais
+    });
+
     return this.toDTO(matriculaAtualizada);
   }
 
@@ -448,6 +487,15 @@ export default class MatriculaService {
         matricula.UsuarioCPF
       );
     }
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: turma.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Delete",
+      EntidadeTipo: "matricula",
+      EntidadeGUID: matricula.MatriculaGUID,
+      CategoriaAuditoriaId: 3, // DadosPessoais
+    });
   }
 
   /**
@@ -655,6 +703,16 @@ export default class MatriculaService {
         novaMatricula.MatriculaUpdatedAt = new Date();
 
         await this.#matriculaDAO.create(novaMatricula);
+
+        void getAuditoriaService().registrar({
+          EscolaGUID: escolaGUID,
+          UsuarioCPFAtor: usuarioCPF,
+          AcaoTipo: "Create",
+          EntidadeTipo: "matricula",
+          EntidadeGUID: novaMatricula.MatriculaGUID,
+          EntidadeDescricao: `Matrícula em massa: ${novaMatricula.UsuarioCPF} na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
+          CategoriaAuditoriaId: 3, // DadosPessoais
+        });
 
         // Adicionar ao Set para evitar duplicatas no mesmo lote
         alunosComMatriculaAtiva.add(dados.UsuarioCPF);

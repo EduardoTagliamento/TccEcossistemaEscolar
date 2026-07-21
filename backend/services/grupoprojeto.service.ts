@@ -6,6 +6,7 @@ import ErrorResponse from '../utils/ErrorResponse';
 import MysqlDatabase from '../database/MysqlDatabase';
 import { Pool, PoolConnection } from 'mysql2/promise';
 import { getNotificacaoService } from './notificacao.service';
+import { getAuditoriaService } from './auditoria.service';
 import {
   GrupoProjetoComMembrosDTO,
   GrupoProjetoCreateDTO,
@@ -71,6 +72,16 @@ export default class GrupoProjetoService {
       UsuarioCPFAtor: usuarioCPF,
       UsuarioCPFAlvo: usuarioCPF,
       HistoricoDetalhes: { motivo: 'CriacaoGrupo' }
+    });
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: projeto.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: 'Create',
+      EntidadeTipo: 'grupoprojeto',
+      EntidadeGUID: grupoCriado.GrupoProjetoGUID,
+      EntidadeDescricao: `Grupo criado no projeto "${projeto.ProjetoTitulo}"`,
+      CategoriaAuditoriaId: 1,
     });
 
     const grupoComMembros = await this.#grupoProjetoDAO.findByIdComMembros(grupoCriado.GrupoProjetoGUID);
@@ -161,6 +172,19 @@ export default class GrupoProjetoService {
       });
     }
 
+    const projetoDoGrupo = await this.#projetoDAO.findById(grupo.ProjetoGUID);
+    if (projetoDoGrupo) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: projetoDoGrupo.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: 'Update',
+        EntidadeTipo: 'grupoprojeto',
+        EntidadeGUID: grupoGUID,
+        EntidadeDescricao: 'Grupo atualizado (nome/proposta/visibilidade)',
+        CategoriaAuditoriaId: 1,
+      });
+    }
+
     return { mensagem: 'Grupo atualizado com sucesso' };
   };
 
@@ -214,11 +238,21 @@ export default class GrupoProjetoService {
    * cada operação interna abre sua própria conexão via pool, como antes —
    * mantém `entrarGrupo`/`adicionarMembro` funcionando standalone.
    */
-  entrarNoGrupoComLimiteDeVagas = async (grupoGUID: string, usuarioCPF: string, executor?: Pool | PoolConnection): Promise<void> => {
-    return this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, usuarioCPF, executor);
+  entrarNoGrupoComLimiteDeVagas = async (
+    grupoGUID: string,
+    usuarioCPF: string,
+    executor?: Pool | PoolConnection,
+    atorCPFOverride?: string
+  ): Promise<void> => {
+    return this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, usuarioCPF, executor, atorCPFOverride);
   };
 
-  #entrarNoGrupoComLimiteDeVagas = async (grupoGUID: string, usuarioCPF: string, executor?: Pool | PoolConnection): Promise<void> => {
+  #entrarNoGrupoComLimiteDeVagas = async (
+    grupoGUID: string,
+    usuarioCPF: string,
+    executor?: Pool | PoolConnection,
+    atorCPFOverride?: string
+  ): Promise<void> => {
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -242,6 +276,23 @@ export default class GrupoProjetoService {
       UsuarioCPFAtor: usuarioCPF,
       UsuarioCPFAlvo: usuarioCPF
     }, executor);
+
+    // Auditoria: fire-and-forget, fora da transação do `executor` (registro
+    // de auditoria é best-effort, não pode travar/participar do commit
+    // principal — ver AuditoriaService.registrar()). `atorCPFOverride`
+    // existe pra ADICIONAR MEMBRO diretamente (adicionarMembro), onde quem
+    // executa a ação (atorCPF) é diferente de quem entra no grupo
+    // (usuarioCPF) — sem isso a auditoria atribuiria erroneamente a ação ao
+    // membro adicionado em vez de a quem adicionou.
+    void getAuditoriaService().registrar({
+      EscolaGUID: projeto.EscolaGUID,
+      UsuarioCPFAtor: atorCPFOverride ?? usuarioCPF,
+      AcaoTipo: 'Create',
+      EntidadeTipo: 'grupoprojeto',
+      EntidadeGUID: grupoGUID,
+      EntidadeDescricao: `${usuarioCPF} entrou no grupo do projeto "${projeto.ProjetoTitulo}"`,
+      CategoriaAuditoriaId: 1,
+    });
   };
 
   /**
@@ -257,6 +308,8 @@ export default class GrupoProjetoService {
       throw new ErrorResponse(404, 'Grupo não encontrado');
     }
 
+    const projeto = await this.#projetoDAO.findById(grupo.ProjetoGUID);
+
     if (grupo.UsuarioCPFLider === usuarioCPF) {
       const totalMembros = await this.#grupoProjetoDAO.contarMembros(grupoGUID);
       if (totalMembros > 1) {
@@ -264,6 +317,19 @@ export default class GrupoProjetoService {
       }
 
       await this.#grupoProjetoDAO.delete(grupoGUID);
+
+      if (projeto) {
+        void getAuditoriaService().registrar({
+          EscolaGUID: projeto.EscolaGUID,
+          UsuarioCPFAtor: usuarioCPF,
+          AcaoTipo: 'Delete',
+          EntidadeTipo: 'grupoprojeto',
+          EntidadeGUID: grupoGUID,
+          EntidadeDescricao: 'Grupo dissolvido — líder saiu sozinho',
+          CategoriaAuditoriaId: 1,
+        });
+      }
+
       return { mensagem: 'Grupo dissolvido — você era o único integrante' };
     }
 
@@ -280,6 +346,18 @@ export default class GrupoProjetoService {
       UsuarioCPFAtor: usuarioCPF,
       UsuarioCPFAlvo: usuarioCPF
     });
+
+    if (projeto) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: projeto.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: 'Update',
+        EntidadeTipo: 'grupoprojeto',
+        EntidadeGUID: grupoGUID,
+        EntidadeDescricao: 'Membro saiu do grupo',
+        CategoriaAuditoriaId: 1,
+      });
+    }
 
     return { mensagem: 'Você saiu do grupo' };
   };
@@ -324,7 +402,7 @@ export default class GrupoProjetoService {
       throw new ErrorResponse(409, 'O aluno já participa de outro grupo neste projeto');
     }
 
-    await this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, membroCPF);
+    await this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, membroCPF, undefined, atorCPF);
 
     return { mensagem: 'Membro adicionado com sucesso' };
   };
@@ -384,6 +462,16 @@ export default class GrupoProjetoService {
             console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
           });
 
+          void getAuditoriaService().registrar({
+            EscolaGUID: projeto.EscolaGUID,
+            UsuarioCPFAtor: atorCPF,
+            AcaoTipo: 'Delete',
+            EntidadeTipo: 'grupoprojeto',
+            EntidadeGUID: grupoGUID,
+            EntidadeDescricao: `Líder ${membroCPF} removido — grupo dissolvido`,
+            CategoriaAuditoriaId: 1,
+          });
+
           return { mensagem: 'Líder removido — grupo dissolvido (não havia outros membros)', grupoDissolvido: true };
         }
 
@@ -402,6 +490,16 @@ export default class GrupoProjetoService {
 
         this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroCPF, grupoGUID).catch((error) => {
           console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
+        });
+
+        void getAuditoriaService().registrar({
+          EscolaGUID: projeto.EscolaGUID,
+          UsuarioCPFAtor: atorCPF,
+          AcaoTipo: 'Delete',
+          EntidadeTipo: 'grupoprojeto',
+          EntidadeGUID: grupoGUID,
+          EntidadeDescricao: `Líder ${membroCPF} removido — liderança transferida a ${proximoLider.UsuarioCPF}`,
+          CategoriaAuditoriaId: 1,
         });
 
         return { mensagem: 'Líder removido — liderança transferida ao membro mais antigo', novoLiderCPF: proximoLider.UsuarioCPF };
@@ -426,6 +524,16 @@ export default class GrupoProjetoService {
 
       this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroCPF, grupoGUID).catch((error) => {
         console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
+      });
+
+      void getAuditoriaService().registrar({
+        EscolaGUID: projeto.EscolaGUID,
+        UsuarioCPFAtor: atorCPF,
+        AcaoTipo: 'Delete',
+        EntidadeTipo: 'grupoprojeto',
+        EntidadeGUID: grupoGUID,
+        EntidadeDescricao: `Membro ${membroCPF} expulso do grupo`,
+        CategoriaAuditoriaId: 1,
       });
 
       return { mensagem: 'Membro expulso com sucesso' };
@@ -497,6 +605,19 @@ export default class GrupoProjetoService {
 
       await connection.commit();
 
+      const projetoDoGrupo = await this.#projetoDAO.findById(grupo.ProjetoGUID);
+      if (projetoDoGrupo) {
+        void getAuditoriaService().registrar({
+          EscolaGUID: projetoDoGrupo.EscolaGUID,
+          UsuarioCPFAtor: liderAtualCPF,
+          AcaoTipo: 'Update',
+          EntidadeTipo: 'grupoprojeto',
+          EntidadeGUID: grupoGUID,
+          EntidadeDescricao: `Liderança transferida para ${novoLiderCPF}`,
+          CategoriaAuditoriaId: 1,
+        });
+      }
+
       return { mensagem: 'Liderança transferida com sucesso' };
     } catch (error) {
       await connection.rollback();
@@ -541,6 +662,16 @@ export default class GrupoProjetoService {
       HistoricoTipo: 'PontuacaoAtribuida',
       UsuarioCPFAtor: usuarioCPF,
       HistoricoDetalhes: { pontuacao }
+    });
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: projeto.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: 'Update',
+      EntidadeTipo: 'grupoprojeto',
+      EntidadeGUID: grupoGUID,
+      EntidadeDescricao: `Pontuação atribuída: ${pontuacao}`,
+      CategoriaAuditoriaId: 1,
     });
 
     const destinatarios = grupo.Membros.map((m) => m.UsuarioCPF);

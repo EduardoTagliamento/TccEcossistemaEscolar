@@ -11,6 +11,7 @@ import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket } from 'mysql2';
 import { pool as mysqlPool } from '../database/mysql';
 import { getNotificacaoService } from './notificacao.service';
+import { getAuditoriaService } from './auditoria.service';
 import {
   GrupoTarefaComMembrosDTO,
   GrupoTarefaCreateDTO
@@ -230,6 +231,10 @@ export default class GrupoTarefaService {
         console.error('🔴 GrupoTarefaService.#notificarRemovidoGrupo() falhou:', error);
       });
 
+      this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', liderCPF, `Membro ${membroCPF} expulso do grupo`).catch((error) => {
+        console.error('🔴 GrupoTarefaService.#registrarAuditoriaGrupo() falhou:', error);
+      });
+
       return {
         mensagem: 'Membro expulso com sucesso',
         novoGrupoGUID: novoGrupo.GrupoTarefaGUID
@@ -242,6 +247,41 @@ export default class GrupoTarefaService {
       connection.release();
     }
   }
+
+  /**
+   * Resolve o EscolaGUID a partir da turma — GrupoTarefa só guarda
+   * TurmaGUID, não EscolaGUID diretamente. Usado pelos hooks de auditoria
+   * (registroauditoria exige EscolaGUID). Mesmo padrão de JOIN já usado em
+   * #notificarRemovidoGrupo/#notificarConviteGrupo.
+   */
+  #resolverEscolaGUID = async (turmaGUID: string): Promise<string | null> => {
+    const [rows] = await mysqlPool.execute<RowDataPacket[]>(
+      `SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1`,
+      [turmaGUID]
+    );
+    return (rows[0] as any)?.EscolaGUID ?? null;
+  };
+
+  /** Registra auditoria (fire-and-forget) pra uma ação sobre um GrupoTarefa. */
+  #registrarAuditoriaGrupo = async (
+    turmaGUID: string,
+    grupoGUID: string,
+    acaoTipo: 'Create' | 'Update' | 'Delete',
+    usuarioCPFAtor: string,
+    entidadeDescricao?: string
+  ): Promise<void> => {
+    const escolaGUID = await this.#resolverEscolaGUID(turmaGUID);
+    if (!escolaGUID) return;
+    void getAuditoriaService().registrar({
+      EscolaGUID: escolaGUID,
+      UsuarioCPFAtor: usuarioCPFAtor,
+      AcaoTipo: acaoTipo,
+      EntidadeTipo: 'grupotarefa',
+      EntidadeGUID: grupoGUID,
+      EntidadeDescricao: entidadeDescricao ?? null,
+      CategoriaAuditoriaId: 1,
+    });
+  };
 
   /** Notifica o membro removido (tipo `removido_grupo`) */
   #notificarRemovidoGrupo = async (turmaGUID: string, tarefaGUID: string, membroCPF: string): Promise<void> => {
@@ -331,6 +371,10 @@ export default class GrupoTarefaService {
 
       await connection.commit();
 
+      this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', liderAtualCPF, `Liderança transferida para ${novoLiderCPF}`).catch((error) => {
+        console.error('🔴 GrupoTarefaService.#registrarAuditoriaGrupo() falhou:', error);
+      });
+
       return {
         mensagem: 'Liderança transferida com sucesso'
       };
@@ -372,6 +416,10 @@ export default class GrupoTarefaService {
 
     // 4. Atualizar
     await this.#grupoTarefaDAO.update(grupoGUID, { GrupoNome: novoNome.trim() });
+
+    this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', usuarioCPF, `Nome do grupo alterado para "${novoNome.trim()}"`).catch((error) => {
+      console.error('🔴 GrupoTarefaService.#registrarAuditoriaGrupo() falhou:', error);
+    });
 
     return {
       mensagem: 'Nome do grupo atualizado com sucesso'

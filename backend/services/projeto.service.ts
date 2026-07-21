@@ -5,6 +5,7 @@ import { MatriculaDAO } from '../repositories/matricula.repository';
 import { EscolaxUsuarioxFuncaoDAO } from '../repositories/escolaxusuarioxfuncao.repository';
 import ErrorResponse from '../utils/ErrorResponse';
 import { getNotificacaoService } from './notificacao.service';
+import { getAuditoriaService } from './auditoria.service';
 import {
   Projeto,
   ProjetoCreateDTO,
@@ -94,6 +95,16 @@ export default class ProjetoService {
 
     this.#notificarProjetoCriado(projetoCriado, turmasGUID).catch((error) => {
       console.error('🔴 ProjetoService.#notificarProjetoCriado() falhou:', error);
+    });
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: data.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: 'Create',
+      EntidadeTipo: 'projeto',
+      EntidadeGUID: projetoCriado.ProjetoGUID,
+      EntidadeDescricao: projetoCriado.ProjetoTitulo,
+      CategoriaAuditoriaId: 2,
     });
 
     const projetoDTO = await this.#projetoDAO.findByIdComDetalhes(projetoCriado.ProjetoGUID);
@@ -196,6 +207,16 @@ export default class ProjetoService {
 
     await this.#projetoDAO.update(projetoGUID, data);
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: projeto.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: 'Update',
+      EntidadeTipo: 'projeto',
+      EntidadeGUID: projetoGUID,
+      EntidadeDescricao: projeto.ProjetoTitulo,
+      CategoriaAuditoriaId: 2,
+    });
+
     const projetoAtualizado = await this.#projetoDAO.findByIdComDetalhes(projetoGUID);
     if (!projetoAtualizado) {
       throw new Error('Erro ao buscar projeto atualizado');
@@ -225,6 +246,16 @@ export default class ProjetoService {
     }
 
     await this.#projetoDAO.atualizarStatus(projetoGUID, 'Encerrado');
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: projeto.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: 'Update',
+      EntidadeTipo: 'projeto',
+      EntidadeGUID: projetoGUID,
+      EntidadeDescricao: `Projeto "${projeto.ProjetoTitulo}" encerrado`,
+      CategoriaAuditoriaId: 2,
+    });
 
     return { mensagem: 'Projeto encerrado com sucesso' };
   };

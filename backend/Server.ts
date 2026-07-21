@@ -38,8 +38,10 @@ import { grupoProjetoRoutes } from "../routes/grupoprojeto.routes";
 import { conviteGrupoProjetoRoutes } from "../routes/convitegrupoprojeto.routes";
 import { conversaRouterFactory } from "../routes/conversa.routes";
 import { notificacaoRoutes } from "../routes/notificacao.routes";
+import { auditoriaRoutes } from "../routes/auditoria.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { NotificacaoScheduler } from "./services/notificacao.scheduler";
+import { AuditoriaScheduler } from "./services/auditoria.scheduler";
 import { pool } from "./database/mysql";
 
 /**
@@ -63,6 +65,7 @@ export default class Server {
   #database: MysqlDatabase;
   #scheduler: CleanupScheduler;
   #notificacaoScheduler: NotificacaoScheduler;
+  #auditoriaScheduler: AuditoriaScheduler;
   #nextHandler: ((req: Request, res: Response) => Promise<void>) | null;
   #isFrontendUnified: boolean;
 
@@ -74,6 +77,7 @@ export default class Server {
     this.#database = new MysqlDatabase();
     this.#scheduler = new CleanupScheduler();
     this.#notificacaoScheduler = new NotificacaoScheduler();
+    this.#auditoriaScheduler = new AuditoriaScheduler();
     this.#nextHandler = null;
     this.#isFrontendUnified = false;
   }
@@ -299,6 +303,7 @@ export default class Server {
             professor: "/api/professor",
             verificacaoEmail: "/api/verificacao-email",
             notificacao: "/api/notificacao",
+            auditoria: "/api/auditoria",
           },
           frontendMainPagePath: "/ (Next.js app/page.tsx)",
         },
@@ -457,6 +462,9 @@ export default class Server {
     // 🔔 Rotas de Notificação
     this.#app.use("/api/notificacao", notificacaoRoutes());
     console.log("✅ Rotas de Notificação registradas em /api/notificacao");
+
+    this.#app.use("/api/auditoria", auditoriaRoutes());
+    console.log("✅ Rotas de Auditoria registradas em /api/auditoria");
 
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {
@@ -633,6 +641,9 @@ export default class Server {
       this.#notificacaoScheduler.start();
       console.log(`✅ Lembretes de notificação iniciados: ${this.#notificacaoScheduler.getActiveTasksCount()} tarefas ativas`);
 
+      this.#auditoriaScheduler.start();
+      console.log(`✅ Expurgo de auditoria iniciado: ${this.#auditoriaScheduler.getActiveTasksCount()} tarefa(s) ativa(s)`);
+
       // Configurar graceful shutdown para parar agendamentos
       this.setupGracefulShutdown();
 
@@ -656,6 +667,7 @@ export default class Server {
         console.log("   🔹 Parando agendamentos...");
         this.#scheduler.stop();
         this.#notificacaoScheduler.stop();
+        this.#auditoriaScheduler.stop();
 
         // Fechar conexões com banco
         console.log("   🔹 Fechando conexões com banco...");

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import EscolaxUsuarioxFuncaoService from "../services/escolaxusuarioxfuncao.service";
+import ErrorResponse from "../utils/ErrorResponse";
 
 export default class EscolaxUsuarioxFuncaoControl {
   #service: EscolaxUsuarioxFuncaoService;
@@ -13,7 +14,7 @@ export default class EscolaxUsuarioxFuncaoControl {
     console.log("Controller: EscolaxUsuarioxFuncaoControl.store()");
     try {
       const payload = request.body.escolaxusuarioxfuncao;
-      const relacao = await this.#service.createRelacao(payload);
+      const relacao = await this.#service.createRelacao(payload, request.user?.UsuarioCPF);
 
       response.status(201).json({
         success: true,
@@ -76,7 +77,7 @@ export default class EscolaxUsuarioxFuncaoControl {
     try {
       const id = Number(request.params.EscolaxUsuarioxFuncaoId);
       const payload = request.body.escolaxusuarioxfuncao;
-      const relacao = await this.#service.updateRelacao(id, payload);
+      const relacao = await this.#service.updateRelacao(id, payload, request.user?.UsuarioCPF);
 
       response.status(200).json({
         success: true,
@@ -92,7 +93,7 @@ export default class EscolaxUsuarioxFuncaoControl {
     console.log("Controller: EscolaxUsuarioxFuncaoControl.destroy()");
     try {
       const id = Number(request.params.EscolaxUsuarioxFuncaoId);
-      const deleted = await this.#service.deleteRelacao(id);
+      const deleted = await this.#service.deleteRelacao(id, request.user?.UsuarioCPF);
 
       response.status(200).json({
         success: true,
@@ -126,6 +127,39 @@ export default class EscolaxUsuarioxFuncaoControl {
       });
     } catch (error) {
       // Só lança erro se for erro de parâmetro ou exceção real
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/usuario/:UsuarioCPF/escolas/:EscolaGUID/acesso
+   * Registra o "último acesso" do usuário autenticado nesta escola (não é
+   * auditoria — ver docs/PLANO_IMPLEMENTACAO_REGISTRO_AUDITORIA.md, Seção
+   * 3.4). Só o próprio usuário pode atualizar seu próprio registro.
+   */
+  registrarAcesso = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("Controller: EscolaxUsuarioxFuncaoControl.registrarAcesso()");
+    try {
+      const { UsuarioCPF, EscolaGUID } = request.params;
+      const usuarioAutenticado = request.user?.UsuarioCPF;
+
+      if (!usuarioAutenticado) {
+        throw new ErrorResponse(401, "Não autenticado");
+      }
+      if (usuarioAutenticado !== UsuarioCPF) {
+        throw new ErrorResponse(403, "Sem permissão", {
+          message: "Só é possível registrar o próprio acesso.",
+        });
+      }
+
+      await this.#service.registrarAcesso(UsuarioCPF, EscolaGUID);
+
+      response.status(200).json({
+        success: true,
+        message: "Acesso registrado com sucesso",
+        data: {},
+      });
+    } catch (error) {
       next(error);
     }
   };

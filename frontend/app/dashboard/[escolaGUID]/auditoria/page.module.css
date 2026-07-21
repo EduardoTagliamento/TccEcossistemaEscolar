@@ -1,0 +1,375 @@
+/* ============================================================
+   Registro de Auditoria — Bauá Design System
+   Tokens copiados literalmente do Bauá Design System (project
+   689c269f-be3b-4445-98c6-69b779c38839), escopados localmente sob
+   `.container`, mesmo padrão já usado no restante do dashboard (ver
+   frontend/app/dashboard/[escolaGUID]/configuracoes/page.module.css,
+   frontend/app/dashboard/[escolaGUID]/perfil/page.module.css).
+   ============================================================ */
+
+.container {
+  /* cores */
+  --green-50: #E7F9F0;
+  --green-100: #C5F0DC;
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --blue-500: #2F5BEA;
+  --gold-500: #FFC02E;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  /* espaçamento (grid de 4px) */
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* raio */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 9999px;
+
+  /* elevação */
+  --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+  --shadow-md: 0 8px 20px -8px rgba(15, 29, 23, 0.14);
+  --shadow-focus: 0 0 0 3px rgba(23, 192, 119, 0.28);
+
+  padding: var(--space-8);
+  max-width: 1120px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--surface-50);
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-600);
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.titulo {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: var(--ink-900);
+}
+
+.subtitulo {
+  font-size: 0.9375rem;
+  color: var(--slate-500);
+  margin: 0;
+}
+
+.botaoVoltar {
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  border: 1.5px solid var(--line-200);
+  background: var(--white);
+  color: var(--slate-600);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.botaoVoltar:hover {
+  border-color: var(--green-500);
+  color: var(--green-700);
+  text-decoration: none;
+}
+
+.secao {
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6) var(--space-8);
+  margin-bottom: var(--space-5);
+}
+
+.secaoTitulo {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0 0 var(--space-4);
+}
+
+.filtrosGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-4);
+}
+
+.campoContainer {
+  margin-bottom: 0;
+}
+
+.label {
+  display: block;
+  font-weight: 700;
+  color: var(--slate-500);
+  margin-bottom: 6px;
+  font-size: 0.8125rem;
+}
+
+.input {
+  width: 100%;
+  height: 46px;
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body), 'Figtree', sans-serif;
+  font-size: 0.9375rem;
+  color: var(--ink-900);
+  background: var(--white);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:focus {
+  border-color: var(--green-500);
+  box-shadow: var(--shadow-focus);
+}
+
+.rodapeSecao {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.botaoSalvar {
+  padding: 14px 32px;
+  background: var(--green-500);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.botaoSalvar:hover:not(:disabled) {
+  background: var(--green-600);
+  transform: translateY(-1px);
+}
+
+.botaoSalvar:disabled {
+  background: var(--slate-400);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.botaoSecundario {
+  padding: 12px 24px;
+  background: var(--white);
+  color: var(--slate-600);
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.botaoSecundario:hover:not(:disabled) {
+  border-color: var(--green-500);
+  color: var(--green-700);
+}
+
+.botaoSecundario:disabled {
+  color: var(--slate-400);
+  cursor: not-allowed;
+}
+
+.erro {
+  background: var(--danger-50);
+  border: 1px solid var(--danger-500);
+  color: var(--danger-500);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.acessoRestrito {
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--slate-500);
+}
+
+.acessoRestrito p:first-child {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 700;
+  font-size: 1.0625rem;
+  color: var(--ink-900);
+  margin: 0 0 var(--space-2);
+}
+
+.estadoVazio {
+  text-align: center;
+  padding: var(--space-8) var(--space-6);
+  color: var(--slate-500);
+  font-size: 0.9375rem;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-6);
+  gap: var(--space-4);
+  color: var(--slate-500);
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid var(--line-200);
+  border-top-color: var(--green-500);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- Tabela ---------- */
+.tabelaWrap {
+  overflow-x: auto;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.tabela th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--line-200);
+  color: var(--slate-500);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line-100);
+  color: var(--ink-900);
+  vertical-align: middle;
+}
+
+.tabela tbody tr:hover {
+  background: var(--surface-50);
+}
+
+/* ---------- Badge de categoria ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--white);
+  white-space: nowrap;
+}
+
+.badgeTrivial {
+  background: var(--slate-400);
+}
+
+.badgeOperacional {
+  background: var(--green-500);
+}
+
+.badgeDadosPessoais {
+  background: var(--blue-500);
+}
+
+.badgeFinanceiro {
+  background: var(--gold-500);
+  color: var(--ink-900);
+}
+
+.badgeSegurancaConta {
+  background: var(--danger-500);
+}
+
+/* ---------- Paginação ---------- */
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.paginacaoInfo {
+  font-size: 0.8125rem;
+  color: var(--slate-500);
+}
+
+/* ============================================================
+   RESPONSIVIDADE
+   ============================================================ */
+@media (max-width: 640px) {
+  .container {
+    padding: var(--space-5);
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .secao {
+    padding: var(--space-5);
+  }
+
+  .paginacao {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
