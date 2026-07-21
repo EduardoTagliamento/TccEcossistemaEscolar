@@ -378,6 +378,7 @@ export default function DashboardNavbar() {
       ? [{ key: 'tarefas', href: `/dashboard/${escolaGUID}/tarefas`, label: 'Minhas Tarefas', icon: 'book-open' as IconName }]
       : []),
     { key: 'calendario', href: `/dashboard/${escolaGUID}/calendario`, label: 'Calendário', icon: 'calendar' },
+    { key: 'projetos', href: `/dashboard/${escolaGUID}/projetos`, label: 'Projetos', icon: 'users' },
     { key: 'chat', href: `/dashboard/${escolaGUID}/chat`, label: 'Conversas', icon: 'message-circle' },
     ...(isCoordenacaoOuDirecao
       ? [{ key: 'configuracoes', href: `/dashboard/${escolaGUID}/configuracoes`, label: 'Config. da Escola', icon: 'settings' as IconName }]
