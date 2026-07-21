@@ -243,7 +243,9 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Código real:** confirmado ausente — não há rota/controller de "configuração de usuário" nem tela dedicada (diferente da configuração de *escola*, ver abaixo). Board correto.
 
 **✅ Status atualizado (2026-07-19):** implementado parcialmente. Nova tela `frontend/app/dashboard/[escolaGUID]/perfil/page.tsx`, acessível pelo dropdown do avatar (item "Meu Perfil") — cobre dado cadastral (nome/e-mail/telefone via `PUT /api/usuario/:UsuarioCPF`), upload de foto (`POST/DELETE /api/upload/foto-usuario/:UsuarioCPF`, novo, mesmos limites do logo de escola — 1MB, PNG/JPG/JPEG) e troca de senha (`PATCH /api/usuario/:UsuarioCPF/senha`, novo, bcrypt). Coluna nova `usuario.UsuarioFotoUrl` — migration escrita mas **ainda não executada contra o banco real** (ver checklist).
-- **Pendente:** "modo daltônico"/paleta acessível — decisão já confirmada (persistência multi-dispositivo, cobrindo tipos específicos: protanopia/deuteranopia/tritanopia), mas nada implementado ainda.
+
+**✅ Status atualizado (2026-07-21):** seção "Preferências de acessibilidade" implementada na mesma tela `/perfil` — 5 controles: tema (claro/escuro/sistema), modo daltônico, tamanho de texto (pequeno/médio/grande), reduzir animações e alto contraste. Persistência por conta via `PUT /api/usuario/:UsuarioCPF` (campos `UsuarioTema`/`UsuarioModoDaltonico`/`UsuarioEscalaFonte`/`UsuarioReduzirMovimento`/`UsuarioAltoContraste`, colunas novas — migration `2026-07-21-add-usuario-preferencias-visuais.sql`, **ainda não executada contra o banco real**, ver checklist), sem `localStorage`. Aplicado via atributos `data-theme`/`data-daltonico`/`data-font-scale`/`data-reduzir-movimento`/`data-alto-contraste` em `<html>` (`frontend/lib/theme/tema.ts`, disparado pelo `AuthContext` assim que o usuário autenticado carrega, com script de boot em `frontend/app/layout.tsx` pra evitar flash antes disso). Modo daltônico é um par de cores segura (verde/vermelho semântico → azul/laranja), **não** um filtro de simulação por tipo (protanopia/deuteranopia/tritanopia) — o post-it original citava esses tipos, mas o objetivo real (remover dependência só-de-cor nos estados de sucesso/erro) foi resolvido sem simulação, que segue fora de escopo.
+- **Cobertura de CSS (dark/daltônico/alto-contraste):** `frontend/styles/globals.css` (base, incl. `[data-theme="dark"]` que já existia mas nunca era ativado — agora é), `DashboardNavbar.module.css`, home do dashboard (`page.module.css`), `perfil/page.module.css`, `configuracoes/page.module.css` (config. da escola). Resto do app (gestão de dados, calendário, tarefas, chat, projetos etc.) não foi coberto nesta rodada. Escala de fonte é global de fato (escala o `font-size` raiz, afeta todo conteúdo em `rem`), mas texto em `px` (comum em títulos grandes herdados do design system) não escala.
 
 ### Configuração da escola
 - **Board:** Backend 🔁 | Frontend ⬜
@@ -301,6 +303,7 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 ### Migrations escritas, faltando rodar contra o banco real
 - [ ] `backend/database/migrations/2026-07-19-add-projetos.sql` — 6 tabelas do módulo Projetos + seeds de notificação (sandbox de desenvolvimento não teve acesso à rede do banco Railway)
 - [ ] `backend/database/migrations/2026-07-19-add-usuario-foto-e-senha.sql` — coluna `usuario.UsuarioFotoUrl`
+- [ ] `backend/database/migrations/2026-07-21-add-usuario-preferencias-visuais.sql` — colunas `usuario.UsuarioTema`/`UsuarioModoDaltonico`/`UsuarioEscalaFonte`/`UsuarioReduzirMovimento`/`UsuarioAltoContraste` (mesmo motivo: sandbox sem acesso à rede do banco Railway — `DB_HOST` aponta pro host interno `mysql.railway.internal`, só resolvível de dentro da rede privada do Railway)
 
 ### Chat
 - [x] Lista de conversas, painel de mensagens, tempo real via WebSocket, anexos de imagem/arquivo
@@ -328,7 +331,7 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 
 ### Configuração do usuário
 - [x] Dado cadastral (nome/e-mail/telefone), foto de perfil, troca de senha — tela `/perfil`, acessível pelo dropdown do avatar
-- [ ] Modo daltônico / paleta acessível (decisão: multi-dispositivo, tipos protanopia/deuteranopia/tritanopia) — não implementado
+- [x] Preferências de acessibilidade (tema claro/escuro/sistema, modo daltônico, tamanho de texto, reduzir animações, alto contraste) — persistidas por conta, sem `localStorage`; cobertura de CSS limitada a `globals.css` + navbar + home do dashboard + perfil + config. da escola (resto do app não coberto nesta rodada)
 
 ### Configuração da escola
 - [ ] Alterar informações gerais da escola (nome/e-mail/logo fora do cronograma)

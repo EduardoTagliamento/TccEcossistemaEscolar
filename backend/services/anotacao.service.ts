@@ -3,6 +3,7 @@ import { AnotacaoDAO, AnotacaoFilters } from '../repositories/anotacao.repositor
 import { EscolaxUsuarioxFuncaoDAO } from '../repositories/escolaxusuarioxfuncao.repository';
 import { Anotacao, AnotacaoEntity, AnotacaoCreateDTO, AnotacaoUpdateDTO } from '../entities/anotacao.model';
 import ErrorResponse from '../utils/ErrorResponse';
+import { getAuditoriaService } from './auditoria.service';
 
 export class AnotacaoService {
   constructor(
@@ -42,7 +43,19 @@ export class AnotacaoService {
     entity.validar();
 
     // Salvar no banco
-    return await this.anotacaoDAO.create(anotacao);
+    const created = await this.anotacaoDAO.create(anotacao);
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: created.EscolaGUID,
+      UsuarioCPFAtor: created.UsuarioCPF,
+      AcaoTipo: "Create",
+      EntidadeTipo: "anotacao",
+      EntidadeGUID: created.AnotacaoGUID,
+      EntidadeDescricao: created.AnotacaoTitulo,
+      CategoriaAuditoriaId: 1,
+    });
+
+    return created;
   }
 
   // READ (lista com filtros)
@@ -161,6 +174,16 @@ export class AnotacaoService {
       throw new ErrorResponse(500, 'Erro ao atualizar anotação');
     }
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: updated.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "anotacao",
+      EntidadeGUID: updated.AnotacaoGUID,
+      EntidadeDescricao: updated.AnotacaoTitulo,
+      CategoriaAuditoriaId: 1,
+    });
+
     return updated;
   }
 
@@ -186,6 +209,16 @@ export class AnotacaoService {
       throw new ErrorResponse(500, 'Erro ao atualizar status');
     }
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: updated.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "anotacao",
+      EntidadeGUID: updated.AnotacaoGUID,
+      EntidadeDescricao: updated.AnotacaoTitulo,
+      CategoriaAuditoriaId: 1,
+    });
+
     return updated;
   }
 
@@ -207,6 +240,16 @@ export class AnotacaoService {
     if (!deleted) {
       throw new ErrorResponse(500, 'Erro ao excluir anotação');
     }
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: anotacao.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Delete",
+      EntidadeTipo: "anotacao",
+      EntidadeGUID: anotacao.AnotacaoGUID,
+      EntidadeDescricao: anotacao.AnotacaoTitulo,
+      CategoriaAuditoriaId: 1,
+    });
   }
 
   // ESTATÍSTICAS

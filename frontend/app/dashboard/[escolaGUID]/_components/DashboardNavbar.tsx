@@ -34,7 +34,12 @@ interface Escola {
   EscolaCorPriCl?: string | null;
   EscolaCorSecEs?: string | null;
   EscolaCorSecCl?: string | null;
-  EscolaLogo: string | null;
+  /** Path de arquivo legado — nunca populado em nenhum fluxo real do app hoje;
+   *  mantido só como fallback secundário. */
+  EscolaLogo?: string | null;
+  /** Ícone da escola salvo em `/configuracoes`, serializado como base64 pelo
+   *  backend (ver EscolaAPI.Escola em `frontend/lib/api/escola.api.ts`). */
+  EscolaIcone?: string | null;
 }
 
 interface EscolaComFuncoes {
@@ -62,7 +67,8 @@ type IconName =
   | 'bell'
   | 'chevron-down'
   | 'message-circle'
-  | 'user';
+  | 'user'
+  | 'shield';
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const common: React.SVGProps<SVGSVGElement> = {
@@ -175,6 +181,12 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
           <circle cx="12" cy="7" r="4" />
         </svg>
       );
+    case 'shield':
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -232,6 +244,22 @@ export default function DashboardNavbar() {
       .then(setNaoLidas)
       .catch(() => setNaoLidas(0));
   }, [usuario]);
+
+  useEffect(() => {
+    // Disparado pela tela de configurações (`/configuracoes`) após salvar a
+    // "Identidade da Escola". A navbar é montada uma única vez no layout e
+    // não remonta entre rotas, então sem isso a marca só atualizaria depois
+    // de um refresh manual.
+    const aoAtualizarEscola = (evento: Event) => {
+      const detalhe = (evento as CustomEvent<{ escolaGUID?: string }>).detail;
+      if (detalhe?.escolaGUID && detalhe.escolaGUID === escolaGUID) {
+        void buscarEscola();
+      }
+    };
+    window.addEventListener('baua:escola-atualizada', aoAtualizarEscola);
+    return () => window.removeEventListener('baua:escola-atualizada', aoAtualizarEscola);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escolaGUID]);
 
   useEffect(() => {
     const fecharAoClicarFora = (evento: MouseEvent) => {
@@ -365,6 +393,8 @@ export default function DashboardNavbar() {
   const isProfessor = funcoesEscola.includes(3);
   const isAluno = funcoesEscola.includes(5);
   const isCoordenacaoOuDirecao = funcoesEscola.includes(1) || funcoesEscola.includes(6);
+  const isCoordSecretariaOuDirecao =
+    funcoesEscola.includes(1) || funcoesEscola.includes(2) || funcoesEscola.includes(6);
 
   const modulosNav: Array<{ key: string; href: string; label: string; icon: IconName }> = [
     { key: 'dashboard', href: `/dashboard/${escolaGUID}`, label: 'Dashboard', icon: 'home' },
@@ -383,6 +413,9 @@ export default function DashboardNavbar() {
     ...(isCoordenacaoOuDirecao
       ? [{ key: 'configuracoes', href: `/dashboard/${escolaGUID}/configuracoes`, label: 'Config. da Escola', icon: 'settings' as IconName }]
       : []),
+    ...(isCoordSecretariaOuDirecao
+      ? [{ key: 'auditoria', href: `/dashboard/${escolaGUID}/auditoria`, label: 'Auditoria', icon: 'shield' as IconName }]
+      : []),
   ];
 
   const nomeCompleto = `${usuario?.UsuarioNome || ''} ${usuario?.UsuarioSobrenome || ''}`.trim();
@@ -392,7 +425,13 @@ export default function DashboardNavbar() {
     <header className={styles.navbar}>
       <div className={styles.navbarInner}>
         <Link href={`/dashboard/${escolaGUID}`} className={styles.brand}>
-          {escola?.EscolaLogo ? (
+          {escola?.EscolaIcone ? (
+            <img
+              src={`data:image/png;base64,${escola.EscolaIcone}`}
+              alt={escola.EscolaNome}
+              className={styles.brandLogo}
+            />
+          ) : escola?.EscolaLogo ? (
             <img src={escola.EscolaLogo} alt={escola.EscolaNome} className={styles.brandLogo} />
           ) : (
             <div className={styles.brandLogoFallback}>{escola?.EscolaNome?.charAt(0).toUpperCase()}</div>

@@ -5,6 +5,7 @@ import { MateriaDAO, MateriaFilters } from "../repositories/materia.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import { CursoDAO } from "../repositories/curso.repository";
+import { getAuditoriaService } from "./auditoria.service";
 
 export interface MateriaDTO {
   MateriaGUID: string;
@@ -133,6 +134,16 @@ export default class MateriaService {
 
     await this.#materiaDAO.create(materia);
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: materia.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Create",
+      EntidadeTipo: "materia",
+      EntidadeGUID: materia.MateriaGUID,
+      EntidadeDescricao: materia.MateriaNome,
+      CategoriaAuditoriaId: 2,
+    });
+
     return this.toDTO(materia);
   };
 
@@ -252,7 +263,17 @@ export default class MateriaService {
         materia.MateriaUpdatedAt = new Date();
 
         await this.#materiaDAO.create(materia);
-        
+
+        void getAuditoriaService().registrar({
+          EscolaGUID: escolaGUID,
+          UsuarioCPFAtor: usuarioCPF,
+          AcaoTipo: "Create",
+          EntidadeTipo: "materia",
+          EntidadeGUID: materia.MateriaGUID,
+          EntidadeDescricao: materia.MateriaNome,
+          CategoriaAuditoriaId: 2,
+        });
+
         // Adicionar ao conjunto de nomes existentes
         nomesExistentes.add(nomeComparacao);
 
@@ -374,6 +395,16 @@ export default class MateriaService {
       });
     }
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: resultado.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "materia",
+      EntidadeGUID: guid,
+      EntidadeDescricao: resultado.MateriaNome,
+      CategoriaAuditoriaId: 2,
+    });
+
     return this.toDTO(resultado);
   };
 
@@ -392,7 +423,21 @@ export default class MateriaService {
     await this.validarPermissaoEscrita(usuarioCPF, materia.EscolaGUID);
 
     // 3. Soft delete
-    return await this.#materiaDAO.delete(guid);
+    const deletado = await this.#materiaDAO.delete(guid);
+
+    if (deletado) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: materia.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Delete",
+        EntidadeTipo: "materia",
+        EntidadeGUID: guid,
+        EntidadeDescricao: materia.MateriaNome,
+        CategoriaAuditoriaId: 2,
+      });
+    }
+
+    return deletado;
   };
 
   // Helper: validar permissão de escrita (Coordenação ou Direção)

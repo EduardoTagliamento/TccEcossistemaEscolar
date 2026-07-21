@@ -121,6 +121,76 @@
   --color-accent: var(--escola-cor-4, #FFD700);
 }
 
+/* ============================================================
+   ♿ PREFERÊNCIAS DE ACESSIBILIDADE
+   Aplicadas via atributos em <html> (frontend/lib/theme/tema.ts), a partir
+   de UsuarioTema/UsuarioModoDaltonico/UsuarioEscalaFonte/
+   UsuarioReduzirMovimento/UsuarioAltoContraste (persistidos por conta, ver
+   backend/entities/usuario.model.ts). Sem localStorage.
+   ============================================================ */
+
+/* 🔵🟠 Modo daltônico — troca os pares semânticos verde=sucesso /
+   vermelho=perigo (que dependem só de cor) por azul/laranja, distinguíveis
+   em protanopia/deuteranopia. Cobre os componentes que usam os tokens
+   "antigos" (--color-success/--color-error/--color-primary) direto de
+   :root sem redeclarar localmente — os módulos que redeclaram os tokens do
+   Bauá Design System localmente (--green-500 etc.) têm seus próprios blocos
+   de override (ver DashboardNavbar.module.css, page.module.css do
+   dashboard, perfil/page.module.css, configuracoes/page.module.css). */
+[data-daltonico="true"] {
+  --color-success: #2F6FED;
+  --color-error: #E8720C;
+}
+
+/* 🔲 Alto contraste — ortogonal ao tema claro/escuro: reforça texto
+   secundário, bordas e o indicador de foco. */
+[data-alto-contraste="true"] {
+  --text-secondary: #1A1A1A;
+  --text-tertiary: #2E2E2E;
+  --border-color: #6B6B6B;
+  --border-color-dark: #3D3D3D;
+}
+
+[data-theme="dark"][data-alto-contraste="true"] {
+  --text-secondary: #F5F5F5;
+  --text-tertiary: #E0E0E0;
+  --border-color: #9A9A9A;
+  --border-color-dark: #C4C4C4;
+}
+
+/* Reforça o indicador de foco padrão do navegador em todo o app quando
+   alto contraste está ligado (não substitui os focus states já definidos
+   localmente em cada módulo — ver overrides de --shadow-focus nos módulos
+   cobertos: navbar, home do dashboard, perfil, configurações da escola). */
+[data-alto-contraste="true"] *:focus-visible {
+  outline: 3px solid #2F6FED !important;
+  outline-offset: 2px;
+}
+
+/* 🔤 Escala de fonte — escala o font-size raiz, o que afeta automaticamente
+   todo conteúdo dimensionado em rem (a maioria dos formulários/textos do
+   dashboard). Conteúdo em px (comum em títulos grandes/decorativos
+   herdados do design system) não escala — limitação conhecida. */
+html[data-font-scale="small"] {
+  font-size: 14px;
+}
+
+html[data-font-scale="large"] {
+  font-size: 19px;
+}
+
+/* 🐢 Redução de movimento forçada — independente da preferência do SO.
+   Mesma técnica universal do @media (prefers-reduced-motion: reduce), só
+   que disparada por atributo (preferência salva na conta). */
+[data-reduzir-movimento="true"] *,
+[data-reduzir-movimento="true"] *::before,
+[data-reduzir-movimento="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* 🔄 Reset e estilos base */
 * {
   box-sizing: border-box;

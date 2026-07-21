@@ -4,6 +4,7 @@ import Escola from "../entities/escola.model";
 import { EscolaDAO } from "../repositories/escola.repository";
 import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import { getAuditoriaService } from "./auditoria.service";
 
 export interface EscolaDTO {
   EscolaGUID: string;
@@ -110,6 +111,16 @@ export default class EscolaService {
       });
     }
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: escola.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Create",
+      EntidadeTipo: "escola",
+      EntidadeGUID: escola.EscolaGUID,
+      EntidadeDescricao: escola.EscolaNome ?? undefined,
+      CategoriaAuditoriaId: 2, // Operacional — dado institucional/config, não pessoal
+    });
+
     return this.toDTO(escola);
   };
 
@@ -204,6 +215,17 @@ export default class EscolaService {
     }
 
     await this.#escolaDAO.update(escola);
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: escola.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF!,
+      AcaoTipo: "Update",
+      EntidadeTipo: "escola",
+      EntidadeGUID: escola.EscolaGUID,
+      EntidadeDescricao: escola.EscolaNome ?? undefined,
+      CategoriaAuditoriaId: 2, // Operacional
+    });
+
     return this.toDTO(escola);
   };
 
@@ -213,7 +235,20 @@ export default class EscolaService {
     await this.validarPermissaoDirecao(usuarioCPF, EscolaGUID);
 
     await this.#escolaxusuarioxfuncaoDAO.deleteByEscolaGUID(EscolaGUID);
-    return this.#escolaDAO.delete(EscolaGUID);
+    const deletado = await this.#escolaDAO.delete(EscolaGUID);
+
+    if (deletado) {
+      void getAuditoriaService().registrar({
+        EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF!,
+        AcaoTipo: "Delete",
+        EntidadeTipo: "escola",
+        EntidadeGUID: EscolaGUID,
+        CategoriaAuditoriaId: 2, // Operacional
+      });
+    }
+
+    return deletado;
   };
 
   /**

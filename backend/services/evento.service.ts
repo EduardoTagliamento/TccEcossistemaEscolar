@@ -18,6 +18,7 @@ import { EscolaDAO } from "../repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { getNotificacaoService } from "./notificacao.service";
+import { getAuditoriaService } from "./auditoria.service";
 
 /** Coordenacao, Secretaria, Professor, Aluno, Direcao — ver docs/PLANO_IMPLEMENTACAO_NOTIFICACOES.md, seção 2.6 */
 const FUNCOES_EVENTO_CRIADO = [1, 2, 3, 5, 6];
@@ -112,6 +113,16 @@ export default class EventoService {
     // 7. Notificar Alunos, Professores e gestão da escola (tipo `evento_criado`)
     this.#notificarEventoCriado(created).catch((error) => {
       console.error("🔴 EventoService.#notificarEventoCriado() falhou:", error);
+    });
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: created.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Create",
+      EntidadeTipo: "evento",
+      EntidadeGUID: created.EventoGUID,
+      EntidadeDescricao: created.EventoTitulo,
+      CategoriaAuditoriaId: 2,
     });
 
     return this.#toDTO(created);
@@ -229,6 +240,16 @@ export default class EventoService {
     // 4. Atualizar no banco
     const updated = await this.#eventoDAO.update(guid, updateData);
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: updated.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "evento",
+      EntidadeGUID: updated.EventoGUID,
+      EntidadeDescricao: updated.EventoTitulo,
+      CategoriaAuditoriaId: 2,
+    });
+
     return this.#toDTO(updated);
   }
 
@@ -250,6 +271,16 @@ export default class EventoService {
 
     // 3. Deletar (soft delete)
     await this.#eventoDAO.delete(guid);
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: evento.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Delete",
+      EntidadeTipo: "evento",
+      EntidadeGUID: evento.EventoGUID,
+      EntidadeDescricao: evento.EventoTitulo,
+      CategoriaAuditoriaId: 2,
+    });
   }
 
   // ==================== HELPERS PRIVADOS ====================

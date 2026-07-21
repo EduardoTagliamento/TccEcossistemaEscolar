@@ -7,14 +7,25 @@
  *
  * Cobre as decisões já registradas em docs/RELATORIO_BAUA_CODIGO.md,
  * seção 11 (Configuração do usuário): dado cadastral (nome/e-mail/
- * telefone), foto de perfil e troca de senha. Modo daltônico fica de fora
- * desta rodada (fora de escopo, sinalizado no relatório).
+ * telefone), foto de perfil e troca de senha. Também cobre a seção
+ * "Preferências de acessibilidade" (tema, modo daltônico, tamanho de
+ * texto, redução de movimento e alto contraste) — persistida por conta
+ * (UsuarioTema/UsuarioModoDaltonico/UsuarioEscalaFonte/
+ * UsuarioReduzirMovimento/UsuarioAltoContraste), sem localStorage, pra
+ * sincronizar entre dispositivos.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import * as UsuarioAPI from '@/lib/api/usuario.api';
 import * as UploadAPI from '@/lib/api/upload.api';
+import {
+  aplicarTema,
+  aplicarModoDaltonico,
+  aplicarEscalaFonte,
+  aplicarReduzirMovimento,
+  aplicarAltoContraste,
+} from '@/lib/theme/tema';
 import styles from './page.module.css';
 
 function obterIniciais(nome?: string, sobrenome?: string): string {
@@ -48,6 +59,9 @@ export default function PerfilPage() {
   const [trocandoSenha, setTrocandoSenha] = useState(false);
   const [erroSenha, setErroSenha] = useState('');
   const [sucessoSenha, setSucessoSenha] = useState('');
+
+  const [salvandoPreferencia, setSalvandoPreferencia] = useState<string | null>(null);
+  const [erroPreferencias, setErroPreferencias] = useState('');
 
   useEffect(() => {
     if (usuario) {
@@ -150,6 +164,48 @@ export default function PerfilPage() {
       setTrocandoSenha(false);
     }
   };
+
+  /**
+   * Salva uma preferência de acessibilidade isolada. Aplica o atributo no
+   * `<html>` otimisticamente (feedback visual imediato) antes mesmo da
+   * resposta do servidor, e reverte via `refreshUser()` se a chamada falhar
+   * (o `AuthContext` reaplica o valor persistido de fato assim que o
+   * usuário atualizado voltar).
+   */
+  const salvarPreferencia = async (
+    chave: string,
+    aplicarOtimista: () => void,
+    dados: Parameters<typeof UsuarioAPI.atualizarUsuario>[1]
+  ) => {
+    if (!usuario) return;
+    setErroPreferencias('');
+    setSalvandoPreferencia(chave);
+    aplicarOtimista();
+    try {
+      await UsuarioAPI.atualizarUsuario(usuario.UsuarioCPF, dados);
+      await refreshUser();
+    } catch (erro: any) {
+      setErroPreferencias(erro?.message || 'Erro ao salvar preferência');
+      await refreshUser();
+    } finally {
+      setSalvandoPreferencia(null);
+    }
+  };
+
+  const handleAlterarTema = (novoTema: 'light' | 'dark' | 'system') =>
+    void salvarPreferencia('tema', () => aplicarTema(novoTema), { UsuarioTema: novoTema });
+
+  const handleAlterarModoDaltonico = (ativo: boolean) =>
+    void salvarPreferencia('daltonico', () => aplicarModoDaltonico(ativo), { UsuarioModoDaltonico: ativo });
+
+  const handleAlterarEscalaFonte = (escala: 'small' | 'medium' | 'large') =>
+    void salvarPreferencia('escalaFonte', () => aplicarEscalaFonte(escala), { UsuarioEscalaFonte: escala });
+
+  const handleAlterarReduzirMovimento = (ativo: boolean) =>
+    void salvarPreferencia('reduzirMovimento', () => aplicarReduzirMovimento(ativo), { UsuarioReduzirMovimento: ativo });
+
+  const handleAlterarAltoContraste = (ativo: boolean) =>
+    void salvarPreferencia('altoContraste', () => aplicarAltoContraste(ativo), { UsuarioAltoContraste: ativo });
 
   const iniciais = obterIniciais(usuario?.UsuarioNome, usuario?.UsuarioSobrenome);
 
@@ -260,6 +316,131 @@ export default function PerfilPage() {
               {trocandoSenha ? 'Alterando...' : 'Alterar senha'}
             </button>
           </form>
+        </section>
+
+        <section className={styles.card}>
+          <h2 className={styles.cardTitulo}>Preferências de acessibilidade</h2>
+
+          <div className={styles.prefBloco}>
+            <div className={styles.prefCabecalho}>
+              <span className={styles.prefTitulo}>Tema</span>
+              <div className={styles.segmentedControl} role="radiogroup" aria-label="Tema">
+                {(
+                  [
+                    { valor: 'light', rotulo: 'Claro' },
+                    { valor: 'dark', rotulo: 'Escuro' },
+                    { valor: 'system', rotulo: 'Sistema' },
+                  ] as const
+                ).map((opcao) => (
+                  <button
+                    key={opcao.valor}
+                    type="button"
+                    role="radio"
+                    aria-checked={(usuario?.UsuarioTema ?? 'system') === opcao.valor}
+                    className={`${styles.segmentedOption} ${
+                      (usuario?.UsuarioTema ?? 'system') === opcao.valor ? styles.segmentedOptionActivo : ''
+                    }`}
+                    disabled={salvandoPreferencia === 'tema'}
+                    onClick={() => handleAlterarTema(opcao.valor)}
+                  >
+                    {opcao.rotulo}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className={styles.prefDescricao}>Claro, escuro, ou acompanhando a preferência do seu sistema.</p>
+          </div>
+
+          <div className={styles.prefBloco}>
+            <div className={styles.prefCabecalho}>
+              <span className={styles.prefTitulo}>Tamanho de texto</span>
+              <div className={styles.segmentedControl} role="radiogroup" aria-label="Tamanho de texto">
+                {(
+                  [
+                    { valor: 'small', rotulo: 'Pequeno' },
+                    { valor: 'medium', rotulo: 'Médio' },
+                    { valor: 'large', rotulo: 'Grande' },
+                  ] as const
+                ).map((opcao) => (
+                  <button
+                    key={opcao.valor}
+                    type="button"
+                    role="radio"
+                    aria-checked={(usuario?.UsuarioEscalaFonte ?? 'medium') === opcao.valor}
+                    className={`${styles.segmentedOption} ${
+                      (usuario?.UsuarioEscalaFonte ?? 'medium') === opcao.valor ? styles.segmentedOptionActivo : ''
+                    }`}
+                    disabled={salvandoPreferencia === 'escalaFonte'}
+                    onClick={() => handleAlterarEscalaFonte(opcao.valor)}
+                  >
+                    {opcao.rotulo}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className={styles.prefDescricao}>Ajusta o tamanho do texto em todo o painel.</p>
+          </div>
+
+          <div className={styles.prefBloco}>
+            <div className={styles.prefCabecalho}>
+              <span className={styles.prefTitulo}>Modo daltônico</span>
+              <label className={styles.switchControl}>
+                <input
+                  type="checkbox"
+                  className={styles.switchInput}
+                  checked={usuario?.UsuarioModoDaltonico ?? false}
+                  disabled={salvandoPreferencia === 'daltonico'}
+                  onChange={(e) => handleAlterarModoDaltonico(e.target.checked)}
+                />
+                <span className={styles.switchTrack}>
+                  <span className={styles.switchThumb} />
+                </span>
+              </label>
+            </div>
+            <p className={styles.prefDescricao}>
+              Troca verde/vermelho por azul/laranja nos indicadores de sucesso e erro.
+            </p>
+          </div>
+
+          <div className={styles.prefBloco}>
+            <div className={styles.prefCabecalho}>
+              <span className={styles.prefTitulo}>Reduzir animações</span>
+              <label className={styles.switchControl}>
+                <input
+                  type="checkbox"
+                  className={styles.switchInput}
+                  checked={usuario?.UsuarioReduzirMovimento ?? false}
+                  disabled={salvandoPreferencia === 'reduzirMovimento'}
+                  onChange={(e) => handleAlterarReduzirMovimento(e.target.checked)}
+                />
+                <span className={styles.switchTrack}>
+                  <span className={styles.switchThumb} />
+                </span>
+              </label>
+            </div>
+            <p className={styles.prefDescricao}>Minimiza transições e animações em todo o app.</p>
+          </div>
+
+          <div className={styles.prefBloco}>
+            <div className={styles.prefCabecalho}>
+              <span className={styles.prefTitulo}>Alto contraste</span>
+              <label className={styles.switchControl}>
+                <input
+                  type="checkbox"
+                  className={styles.switchInput}
+                  checked={usuario?.UsuarioAltoContraste ?? false}
+                  disabled={salvandoPreferencia === 'altoContraste'}
+                  onChange={(e) => handleAlterarAltoContraste(e.target.checked)}
+                />
+                <span className={styles.switchTrack}>
+                  <span className={styles.switchThumb} />
+                </span>
+              </label>
+            </div>
+            <p className={styles.prefDescricao}>Reforça o contraste de texto, bordas e do indicador de foco.</p>
+          </div>
+
+          {erroPreferencias && <p className={styles.erro}>{erroPreferencias}</p>}
         </section>
       </div>
     </div>

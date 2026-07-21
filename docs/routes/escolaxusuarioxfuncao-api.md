@@ -83,6 +83,20 @@ Exemplo:
 
 `GET /api/escolaxusuarioxfuncao?UsuarioCPF=123.456.789-00&FuncaoId=3`
 
+**Campo `UltimoAcessoEm`:** cada item retornado inclui `UltimoAcessoEm` (string ISO 8601 ou `null`) — o "último acesso" do usuário naquela escola (tabela `usuarioxescolaacesso`, sub-feature separada de Auditoria, ver [auditoria-api.md](auditoria-api.md#sub-feature-último-acesso-do-usuário-na-escola)). Esse campo **só é populado quando a query informa `EscolaGUID`** (`EscolaxUsuarioxFuncaoService.findAll`, `backend/services/escolaxusuarioxfuncao.service.ts`); sem esse filtro, vem sempre `null`. Exemplo:
+
+```json
+{
+  "EscolaxUsuarioxFuncaoId": 42,
+  "UsuarioCPF": "123.456.789-00",
+  "EscolaGUID": "550e8400-e29b-41d4-a716-446655440000",
+  "FuncaoId": 5,
+  "FuncaoNome": "Aluno",
+  "Status": "Ativo",
+  "UltimoAcessoEm": "2026-07-21T08:15:00.000Z"
+}
+```
+
 ### GET `/api/escolaxusuarioxfuncao/:EscolaxUsuarioxFuncaoId`
 
 Busca vinculo por ID.

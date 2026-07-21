@@ -9,6 +9,7 @@ import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaConfiguracaoDAO } from "../repositories/escolaconfiguracao.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import { DiaSemana, calcularDataAulaNaSemana } from "../utils/gradeHoraria.util";
+import { getAuditoriaService } from "./auditoria.service";
 
 export interface HorarioTurmaDTO {
   HorarioTurmaGUID: string;
@@ -335,6 +336,16 @@ export default class HorarioTurmaService {
 
     await this.#horarioTurmaDAO.create(horario);
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: turma.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Create",
+      EntidadeTipo: "horarioturma",
+      EntidadeGUID: horario.HorarioTurmaGUID,
+      EntidadeDescricao: `${materia?.MateriaNome || ""} - ${data.DiaSemana} ${data.HoraInicio}-${data.HoraFim}`,
+      CategoriaAuditoriaId: 2,
+    });
+
     return {
       HorarioTurmaGUID: horario.HorarioTurmaGUID,
       TurmaGUID: turmaGUID,
@@ -373,6 +384,16 @@ export default class HorarioTurmaService {
     }
 
     await this.#horarioTurmaDAO.delete(horarioTurmaGUID);
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: turma.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Delete",
+      EntidadeTipo: "horarioturma",
+      EntidadeGUID: horarioTurmaGUID,
+      EntidadeDescricao: `${horario.DiaSemana} ${horario.HoraInicio}-${horario.HoraFim}`,
+      CategoriaAuditoriaId: 2,
+    });
   };
 
   private async validarPermissaoEscrita(cpf: string, escolaGUID: string): Promise<void> {

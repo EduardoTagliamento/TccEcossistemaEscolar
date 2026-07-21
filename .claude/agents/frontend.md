@@ -149,3 +149,29 @@ O `escolaGUID` vem da URL: `/dashboard/[escolaGUID]/...`
 - Sempre verificar autenticação antes de chamar endpoints protegidos
 - Usar `async/await`, nunca `.then()/.catch()`
 - Sem fallback de design: se `DesignSync` não estiver disponível ou falhar ao importar, pare e reporte — nunca siga em frente com estilos inventados ou CSS Variables genéricas como substituto do design real (ver seção "Política de sem fallback" acima)
+
+---
+
+## Lembrete obrigatório: Acessibilidade Visual
+
+O projeto tem um sistema de preferências visuais/acessibilidade por conta de usuário (tema claro/escuro/sistema, modo daltônico, escala de fonte, redução de movimento, alto contraste — persistido no backend, aplicado via atributos `data-*` no `<html>`, ver `frontend/lib/theme/tema.ts`):
+
+```
+data-theme="light|dark"
+data-daltonico="true|false"
+data-font-scale="small|medium|large"
+data-reduzir-movimento="true|false"
+data-alto-contraste="true|false"
+```
+
+**Toda vez que você criar uma tela nova ou editar uma `*.module.css` existente, verifique se essas 5 preferências têm cobertura real nela** — não é opcional nem só pras telas "principais". Como cada módulo redeclara os tokens do Bauá Design System localmente numa classe raiz (`.container { --green-500: ...; }`), um override em `:root` não alcança essas redeclarações — cada arquivo precisa do seu próprio bloco de override, seguindo exatamente o padrão já usado em `DashboardNavbar.module.css`, `page.module.css` (home do dashboard), `perfil/page.module.css` e `configuracoes/page.module.css`:
+
+```css
+:global([data-theme="dark"]) .container { --surface-50: ...; --ink-900: ...; /* etc. */ }
+:global([data-daltonico="true"]) .container { --color-success: ...; --color-error: ...; /* verde/vermelho -> azul/laranja */ }
+:global([data-alto-contraste="true"]) .container { --line-200: ...; /* bordas/texto mais fortes */ }
+```
+
+`data-font-scale` e `data-reduzir-movimento` já têm cobertura global em `frontend/styles/globals.css` (escala de fonte via `font-size` na raiz, redução de movimento via override geral de `animation`/`transition`) — não precisam de override por arquivo, mas confira se o conteúdo novo usa `rem` (não `px`) pra herdar a escala corretamente.
+
+Se, ao terminar uma tela/edição, você não tiver coberto os 3 primeiros (tema escuro, daltônico, alto contraste), **não finalize silenciosamente** — reporte explicitamente ao orquestrador o que ficou de fora e por quê (falta de tempo/escopo é uma resposta aceitável, esquecer não é).

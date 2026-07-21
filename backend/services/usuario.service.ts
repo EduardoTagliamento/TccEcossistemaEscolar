@@ -9,6 +9,11 @@ export interface UsuarioDTO {
   UsuarioCPF: string;
   UsuarioEmail: string | null;
   UsuarioFotoUrl: string | null;
+  UsuarioTema: "light" | "dark" | "system";
+  UsuarioModoDaltonico: boolean;
+  UsuarioEscalaFonte: "small" | "medium" | "large";
+  UsuarioReduzirMovimento: boolean;
+  UsuarioAltoContraste: boolean;
   UsuarioId: string | null;
   UsuarioTelefone: string | null;
   UsuarioNome: string;
@@ -152,6 +157,29 @@ export default class UsuarioService {
       existente.UsuarioStatus = jsonUsuario.UsuarioStatus as "Ativo" | "Inativo" | "Bloqueado";
     }
 
+    // Preferências visuais (tema + modo daltônico) — painel "Meu Perfil",
+    // seção "Preferências de acessibilidade". Persistidas por conta (sem
+    // localStorage) pra sincronizar entre dispositivos.
+    if (jsonUsuario.UsuarioTema !== undefined) {
+      existente.UsuarioTema = jsonUsuario.UsuarioTema as "light" | "dark" | "system";
+    }
+
+    if (jsonUsuario.UsuarioModoDaltonico !== undefined) {
+      existente.UsuarioModoDaltonico = jsonUsuario.UsuarioModoDaltonico as boolean;
+    }
+
+    if (jsonUsuario.UsuarioEscalaFonte !== undefined) {
+      existente.UsuarioEscalaFonte = jsonUsuario.UsuarioEscalaFonte as "small" | "medium" | "large";
+    }
+
+    if (jsonUsuario.UsuarioReduzirMovimento !== undefined) {
+      existente.UsuarioReduzirMovimento = jsonUsuario.UsuarioReduzirMovimento as boolean;
+    }
+
+    if (jsonUsuario.UsuarioAltoContraste !== undefined) {
+      existente.UsuarioAltoContraste = jsonUsuario.UsuarioAltoContraste as boolean;
+    }
+
     if (jsonUsuario.UsuarioDataNascimento !== undefined) {
       existente.UsuarioDataNascimento = jsonUsuario.UsuarioDataNascimento
         ? new Date(jsonUsuario.UsuarioDataNascimento as string)
@@ -242,6 +270,11 @@ export default class UsuarioService {
       UsuarioCPF: usuario.UsuarioCPF,
       UsuarioEmail: usuario.UsuarioEmail,
       UsuarioFotoUrl: usuario.UsuarioFotoUrl,
+      UsuarioTema: usuario.UsuarioTema,
+      UsuarioModoDaltonico: usuario.UsuarioModoDaltonico,
+      UsuarioEscalaFonte: usuario.UsuarioEscalaFonte,
+      UsuarioReduzirMovimento: usuario.UsuarioReduzirMovimento,
+      UsuarioAltoContraste: usuario.UsuarioAltoContraste,
       UsuarioId: usuario.UsuarioId,
       UsuarioTelefone: usuario.UsuarioTelefone,
       UsuarioNome: usuario.UsuarioNome,

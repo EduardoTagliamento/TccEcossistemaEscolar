@@ -35,9 +35,10 @@ export default class UsuarioRoteador {
       this.#usuarioControle.store
     );
 
-    // PUT /api/usuario/:UsuarioCPF - Atualizar usuário
+    // PUT /api/usuario/:UsuarioCPF - Atualizar usuário (exige autenticação)
     this.#router.put(
       "/:UsuarioCPF",
+      AuthMiddleware.authenticate,
       this.#usuarioMiddleware.validateCpfParam,
       this.#usuarioMiddleware.validateUpdateBody,
       this.#usuarioControle.update
@@ -52,9 +53,10 @@ export default class UsuarioRoteador {
       this.#usuarioControle.updateSenha
     );
 
-    // DELETE /api/usuario/:UsuarioCPF - Deletar usuário
+    // DELETE /api/usuario/:UsuarioCPF - Deletar usuário (exige autenticação)
     this.#router.delete(
       "/:UsuarioCPF",
+      AuthMiddleware.authenticate,
       this.#usuarioMiddleware.validateCpfParam,
       this.#usuarioControle.destroy
     );
@@ -67,6 +69,14 @@ export default class UsuarioRoteador {
       "/:UsuarioCPF/escolas",
       this.#usuarioMiddleware.validateCpfParam,
       this.#escolaxUsuarioxFuncaoControle.getEscolasByUsuario
+    );
+
+    // POST /api/usuario/:UsuarioCPF/escolas/:EscolaGUID/acesso - Registrar último acesso do usuário na escola
+    this.#router.post(
+      "/:UsuarioCPF/escolas/:EscolaGUID/acesso",
+      AuthMiddleware.authenticate,
+      this.#usuarioMiddleware.validateCpfParam,
+      this.#escolaxUsuarioxFuncaoControle.registrarAcesso
     );
 
     // GET /api/usuario/:UsuarioCPF - Buscar usuário por CPF
@@ -91,10 +101,12 @@ export const usuarioRouterFactory = () => {
   
   // EscolaxUsuarioxFuncao dependencies (para rota de escolas do usuário)
   const { EscolaxUsuarioxFuncaoDAO } = require("../backend/repositories/escolaxusuarioxfuncao.repository");
+  const { UsuarioxEscolaAcessoDAO } = require("../backend/repositories/usuarioxescolaacesso.repository");
   const EscolaxUsuarioxFuncaoService = require("../backend/services/escolaxusuarioxfuncao.service").default;
-  
+
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
-  const escolaxUsuarioxFuncaoService = new EscolaxUsuarioxFuncaoService(escolaxUsuarioxFuncaoDAO);
+  const usuarioxEscolaAcessoDAO = new UsuarioxEscolaAcessoDAO(database);
+  const escolaxUsuarioxFuncaoService = new EscolaxUsuarioxFuncaoService(escolaxUsuarioxFuncaoDAO, usuarioxEscolaAcessoDAO);
   const escolaxUsuarioxFuncaoControle = new EscolaxUsuarioxFuncaoControl(escolaxUsuarioxFuncaoService);
   
   const roteador = new UsuarioRoteador(

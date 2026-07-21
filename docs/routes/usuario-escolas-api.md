@@ -46,7 +46,8 @@ Público (não requer autenticação por enquanto - pode ser protegido posterior
             "DataFim": null,
             "Status": "Ativo"
           }
-        ]
+        ],
+        "UltimoAcessoEm": "2026-07-21T08:15:00.000Z"
       },
       {
         "escola": {
@@ -68,7 +69,8 @@ Público (não requer autenticação por enquanto - pode ser protegido posterior
             "DataFim": null,
             "Status": "Ativo"
           }
-        ]
+        ],
+        "UltimoAcessoEm": null
       }
     ]
   }
@@ -91,6 +93,10 @@ Público (não requer autenticação por enquanto - pode ser protegido posterior
 - `DataInicio`: Data de início no formato YYYY-MM-DD
 - `DataFim`: Data de fim (null se ainda ativo)
 - `Status`: "Ativo", "Inativo" ou "Finalizado"
+
+**UltimoAcessoEm** (nível do item de escola, fora de `funcoes`):
+- Timestamp ISO 8601 do último acesso do usuário **nesta escola**, ou `null` se nunca acessou (`usuarioxescolaacesso`, ver [auditoria-api.md](auditoria-api.md#sub-feature-último-acesso-do-usuário-na-escola))
+- **Não é registro de auditoria** — é um valor único por usuário+escola, sobrescrito a cada acesso (upsert com throttle de 1h), atualizado via `POST /api/usuario/:cpf/escolas/:EscolaGUID/acesso`
 
 ### Exemplo de Requisição
 
