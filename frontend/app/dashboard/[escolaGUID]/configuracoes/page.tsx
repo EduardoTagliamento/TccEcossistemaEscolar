@@ -197,6 +197,11 @@ export default function ConfiguracoesEscolaPage() {
       setIconePreview(null);
       setIconeRemovido(false);
 
+      // A navbar do dashboard (montada uma única vez no layout) escuta este
+      // evento para refazer o fetch da escola e refletir nome/cores/ícone
+      // sem precisar de um refresh manual da página.
+      window.dispatchEvent(new CustomEvent('baua:escola-atualizada', { detail: { escolaGUID } }));
+
       alert('Identidade da escola salva com sucesso!');
     } catch (err: any) {
       console.error('Erro ao salvar identidade da escola:', err);
@@ -509,7 +514,7 @@ export default function ConfiguracoesEscolaPage() {
               className={`${styles.diaChip} ${diasSemana.includes(dia) ? styles.diaChipAtivo : ''}`}
               onClick={() => alternarDia(dia)}
             >
-              <input type="checkbox" checked={diasSemana.includes(dia)} readOnly />
+              <input type="checkbox" className={styles.diaChipInput} checked={diasSemana.includes(dia)} readOnly />
               {DIA_SEMANA_LABEL[dia]}
             </div>
           ))}
@@ -536,15 +541,20 @@ export default function ConfiguracoesEscolaPage() {
       </div>
 
       <div className={styles.secao}>
-        <div className={styles.checkboxLinha}>
-          <input
-            type="checkbox"
-            id="temAulaTarde"
-            checked={temAulaTarde}
-            onChange={(e) => setTemAulaTarde(e.target.checked)}
-          />
-          <label htmlFor="temAulaTarde">Esta escola também tem aula à tarde</label>
-        </div>
+        <label className={styles.switchRow}>
+          <span className={styles.switchControl}>
+            <input
+              type="checkbox"
+              className={styles.switchInput}
+              checked={temAulaTarde}
+              onChange={(e) => setTemAulaTarde(e.target.checked)}
+            />
+            <span className={styles.switchTrack}>
+              <span className={styles.switchThumb} />
+            </span>
+          </span>
+          <span className={styles.switchLabel}>Esta escola também tem aula à tarde</span>
+        </label>
 
         {temAulaTarde && (
           <div className={styles.linhaHorarios}>
@@ -566,15 +576,20 @@ export default function ConfiguracoesEscolaPage() {
       </div>
 
       <div className={styles.secao}>
-        <div className={styles.checkboxLinha}>
-          <input
-            type="checkbox"
-            id="intervaloVariado"
-            checked={intervaloVariado}
-            onChange={(e) => alternarIntervaloVariado(e.target.checked)}
-          />
-          <label htmlFor="intervaloVariado">O horário do intervalo varia de acordo com o dia da semana</label>
-        </div>
+        <label className={styles.switchRow}>
+          <span className={styles.switchControl}>
+            <input
+              type="checkbox"
+              className={styles.switchInput}
+              checked={intervaloVariado}
+              onChange={(e) => alternarIntervaloVariado(e.target.checked)}
+            />
+            <span className={styles.switchTrack}>
+              <span className={styles.switchThumb} />
+            </span>
+          </span>
+          <span className={styles.switchLabel}>O horário do intervalo varia de acordo com o dia da semana</span>
+        </label>
 
         {!intervaloVariado && (
           <div className={styles.intervaloBloco}>

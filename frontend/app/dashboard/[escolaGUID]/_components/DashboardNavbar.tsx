@@ -34,7 +34,12 @@ interface Escola {
   EscolaCorPriCl?: string | null;
   EscolaCorSecEs?: string | null;
   EscolaCorSecCl?: string | null;
-  EscolaLogo: string | null;
+  /** Path de arquivo legado — nunca populado em nenhum fluxo real do app hoje;
+   *  mantido só como fallback secundário. */
+  EscolaLogo?: string | null;
+  /** Ícone da escola salvo em `/configuracoes`, serializado como base64 pelo
+   *  backend (ver EscolaAPI.Escola em `frontend/lib/api/escola.api.ts`). */
+  EscolaIcone?: string | null;
 }
 
 interface EscolaComFuncoes {
@@ -234,6 +239,22 @@ export default function DashboardNavbar() {
   }, [usuario]);
 
   useEffect(() => {
+    // Disparado pela tela de configurações (`/configuracoes`) após salvar a
+    // "Identidade da Escola". A navbar é montada uma única vez no layout e
+    // não remonta entre rotas, então sem isso a marca só atualizaria depois
+    // de um refresh manual.
+    const aoAtualizarEscola = (evento: Event) => {
+      const detalhe = (evento as CustomEvent<{ escolaGUID?: string }>).detail;
+      if (detalhe?.escolaGUID && detalhe.escolaGUID === escolaGUID) {
+        void buscarEscola();
+      }
+    };
+    window.addEventListener('baua:escola-atualizada', aoAtualizarEscola);
+    return () => window.removeEventListener('baua:escola-atualizada', aoAtualizarEscola);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escolaGUID]);
+
+  useEffect(() => {
     const fecharAoClicarFora = (evento: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(evento.target as Node)) {
         setUserMenuAberto(false);
@@ -391,7 +412,13 @@ export default function DashboardNavbar() {
     <header className={styles.navbar}>
       <div className={styles.navbarInner}>
         <Link href={`/dashboard/${escolaGUID}`} className={styles.brand}>
-          {escola?.EscolaLogo ? (
+          {escola?.EscolaIcone ? (
+            <img
+              src={`data:image/png;base64,${escola.EscolaIcone}`}
+              alt={escola.EscolaNome}
+              className={styles.brandLogo}
+            />
+          ) : escola?.EscolaLogo ? (
             <img src={escola.EscolaLogo} alt={escola.EscolaNome} className={styles.brandLogo} />
           ) : (
             <div className={styles.brandLogoFallback}>{escola?.EscolaNome?.charAt(0).toUpperCase()}</div>
