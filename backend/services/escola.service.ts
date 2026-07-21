@@ -132,8 +132,14 @@ export default class EscolaService {
     return this.toDTO(escola);
   };
 
-  updateEscola = async (EscolaGUID: string, jsonEscola: Record<string, unknown>): Promise<EscolaDTO> => {
+  updateEscola = async (
+    EscolaGUID: string,
+    jsonEscola: Record<string, unknown>,
+    usuarioCPF?: string
+  ): Promise<EscolaDTO> => {
     console.log("🟣 EscolaService.updateEscola()");
+
+    await this.validarPermissaoDirecao(usuarioCPF, EscolaGUID);
 
     const existente = await this.#escolaDAO.findById(EscolaGUID);
     if (!existente) {
@@ -201,11 +207,36 @@ export default class EscolaService {
     return this.toDTO(escola);
   };
 
-  deleteEscola = async (EscolaGUID: string): Promise<boolean> => {
+  deleteEscola = async (EscolaGUID: string, usuarioCPF?: string): Promise<boolean> => {
     console.log("🟣 EscolaService.deleteEscola()");
+
+    await this.validarPermissaoDirecao(usuarioCPF, EscolaGUID);
+
     await this.#escolaxusuarioxfuncaoDAO.deleteByEscolaGUID(EscolaGUID);
     return this.#escolaDAO.delete(EscolaGUID);
   };
+
+  /**
+   * Valida se usuário tem papel de Direção na escola (FuncaoId = 6).
+   * Alterar/excluir dados institucionais da escola é restrito à Direção.
+   */
+  private async validarPermissaoDirecao(usuarioCPF: string | undefined, escolaGUID: string): Promise<void> {
+    if (!usuarioCPF) {
+      throw new ErrorResponse(401, "Usuário não autenticado", {
+        message: "É necessário estar autenticado para realizar esta operação.",
+      });
+    }
+
+    const direcao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(usuarioCPF, escolaGUID, 6);
+
+    if (direcao && direcao.Status === "Ativo") {
+      return; // Tem permissão
+    }
+
+    throw new ErrorResponse(403, "Sem permissão", {
+      message: "Você não tem permissão para realizar esta operação. Apenas a Direção pode alterar os dados da escola.",
+    });
+  }
 
   private toDTO(escola: Escola): EscolaDTO {
     return {

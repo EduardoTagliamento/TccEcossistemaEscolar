@@ -13,6 +13,7 @@ import {
   excluirAnotacao,
   atualizarAnotacao
 } from '@/lib/api/anotacao.api';
+import { Icon } from './icons';
 import styles from './page.module.css';
 
 interface AvisoCalendario {
@@ -142,7 +143,7 @@ export default function CalendarioAlunoPage() {
       const data = new Date(ano, mes - 1, dia);
       const dataComparacao = new Date(data);
       dataComparacao.setHours(0, 0, 0, 0);
-      
+
       dias.push({
         data,
         diaDoMes: dia,
@@ -202,7 +203,7 @@ export default function CalendarioAlunoPage() {
       const data = new Date(ano, mes + 1, dia);
       const dataComparacao = new Date(data);
       dataComparacao.setHours(0, 0, 0, 0);
-      
+
       dias.push({
         data,
         diaDoMes: dia,
@@ -368,13 +369,33 @@ export default function CalendarioAlunoPage() {
     }
   };
 
+  // Paleta de tipo de aviso — tokens reais do Bauá Design System
+  // (tarefa → --blue-500, prova → --gold-500, evento → --green-500,
+  // anotacao → --slate-400), usada tanto nas fitas do mini-calendário
+  // quanto nos badges do modal de detalhes do dia (ver obterClasseBadgeTipo).
   const obterCorTipo = (tipo: string) => {
     switch (tipo) {
-      case 'tarefa': return '#4CAF50';
-      case 'prova': return '#FF5722';
-      case 'evento': return '#2196F3';
-      case 'anotacao': return '#FFC107';
-      default: return '#9E9E9E';
+      case 'tarefa': return '#2F5BEA';
+      case 'prova': return '#FFC02E';
+      case 'evento': return '#17C077';
+      case 'anotacao': return '#8A968E';
+      default: return '#B7C1BA';
+    }
+  };
+
+  const obterCorTextoTipo = (tipo: string) => {
+    // Contraste: o dourado (prova) precisa de texto escuro; os demais tons
+    // já têm luminância baixa o bastante para texto branco.
+    return tipo === 'prova' ? '#0F1D17' : '#FFFFFF';
+  };
+
+  const obterClasseBadgeTipo = (tipo: AvisoCalendario['TipoAviso']) => {
+    switch (tipo) {
+      case 'tarefa': return styles.badgeTarefa;
+      case 'prova': return styles.badgeProva;
+      case 'evento': return styles.badgeEvento;
+      case 'anotacao': return styles.badgeAnotacao;
+      default: return styles.badgeAnotacao;
     }
   };
 
@@ -436,13 +457,13 @@ export default function CalendarioAlunoPage() {
     const corBase = obterCorTipo(aviso.TipoAviso);
 
     if (!avisoEstaConcluido(aviso)) {
-      return { backgroundColor: corBase };
+      return { backgroundColor: corBase, color: obterCorTextoTipo(aviso.TipoAviso) };
     }
 
     return {
-      backgroundColor: hexParaRgba(corBase, 0.28),
-      border: '1px solid rgba(0, 0, 0, 0.15)',
-      color: 'rgba(255, 255, 255, 0.9)',
+      backgroundColor: hexParaRgba(corBase, 0.24),
+      border: '1px solid rgba(15, 29, 23, 0.12)',
+      color: 'rgba(15, 29, 23, 0.55)',
     };
   };
 
@@ -474,26 +495,34 @@ export default function CalendarioAlunoPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>Calendário de Avisos</h1>
+        <span className={styles.headerIcon} aria-hidden="true">
+          <Icon name="calendar" size={20} />
+        </span>
+        <h1 className={styles.pageTitle}>Calendário de Avisos</h1>
       </header>
 
       {/* Aviso de Timezone */}
       {mostrarAvisoTimezone && (
         <div className={styles.timezoneAlert}>
-          🌍 <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3). 
-          As datas e horários exibidos foram ajustados para o seu fuso local.
+          <Icon name="alert-triangle" size={18} className={styles.timezoneAlertIcon} />
+          <span>
+            <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3).
+            As datas e horários exibidos foram ajustados para o seu fuso local.
+          </span>
         </div>
       )}
 
       <section className={styles.calendarControls}>
         <button onClick={() => mudarMes(-1)} className={styles.navButton}>
-          ← Mês Anterior
+          <Icon name="chevron-left" size={16} />
+          Mês Anterior
         </button>
         <h2 className={styles.mesAno}>
           {dataAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}
         </h2>
         <button onClick={() => mudarMes(1)} className={styles.navButton}>
-          Próximo Mês →
+          Próximo Mês
+          <Icon name="chevron-right" size={16} />
         </button>
       </section>
 
@@ -560,22 +589,11 @@ export default function CalendarioAlunoPage() {
       </section>
 
       <div className={styles.legenda}>
-        <div className={styles.legendaItem}>
-          <div className={styles.legendaCor} style={{ backgroundColor: '#4CAF50' }}></div>
-          <span>Tarefa</span>
-        </div>
-        <div className={styles.legendaItem}>
-          <div className={styles.legendaCor} style={{ backgroundColor: '#FF5722' }}></div>
-          <span>Prova</span>
-        </div>
-        <div className={styles.legendaItem}>
-          <div className={styles.legendaCor} style={{ backgroundColor: '#2196F3' }}></div>
-          <span>Evento</span>
-        </div>
-        <div className={styles.legendaItem}>
-          <div className={styles.legendaCor} style={{ backgroundColor: '#FFC107' }}></div>
-          <span>Anotação</span>
-        </div>
+        <span className={`${styles.legendaBadge} ${styles.badgeTarefa}`}>Tarefa</span>
+        <span className={`${styles.legendaBadge} ${styles.badgeProva}`}>Prova</span>
+        <span className={`${styles.legendaBadge} ${styles.badgeEvento}`}>Evento</span>
+        <span className={`${styles.legendaBadge} ${styles.badgeAnotacao}`}>Anotação</span>
+
         <div className={styles.toggleContainer}>
           <label className={styles.toggleLabel}>
             <input
@@ -592,13 +610,17 @@ export default function CalendarioAlunoPage() {
       {modalAberto && diaSelecionado && (
         <div className={styles.modalOverlay} onClick={fecharModal}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <button onClick={fecharModal} className={styles.modalClose} aria-label="Fechar">
+              <Icon name="x" size={16} />
+            </button>
             <div className={styles.modalHeader}>
               <button
                 onClick={() => navegarDiaModal(-1)}
                 disabled={indiceDiaModal === 0}
                 className={styles.modalNavButton}
+                aria-label="Dia anterior"
               >
-                ←
+                <Icon name="chevron-left" size={16} />
               </button>
               <h2>
                 {diaSelecionado.data.toLocaleDateString('pt-BR', {
@@ -613,25 +635,23 @@ export default function CalendarioAlunoPage() {
                   className={styles.novaAnotacaoIconBtn}
                   title="Nova anotação"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 5v14"/>
-                    <path d="M5 12h14"/>
-                  </svg>
+                  <Icon name="plus" size={16} />
                 </button>
                 <button
                   onClick={() => navegarDiaModal(1)}
                   disabled={indiceDiaModal === diasDoMesAtual.length - 1}
                   className={styles.modalNavButton}
+                  aria-label="Próximo dia"
                 >
-                  →
+                  <Icon name="chevron-right" size={16} />
                 </button>
               </div>
             </div>
-            <button onClick={fecharModal} className={styles.modalClose}>✕</button>
             <div className={styles.modalBody}>
               {avisosDoDiaOrdenados.length === 0 ? (
                 <div className={styles.semAvisos}>
-                  <p>📅 Nenhum aviso agendado para este dia.</p>
+                  <Icon name="calendar" size={28} className={styles.semAvisosIcone} />
+                  <p>Nenhum aviso agendado para este dia.</p>
                   <button
                     type="button"
                     className={styles.semAvisosLink}
@@ -650,8 +670,8 @@ export default function CalendarioAlunoPage() {
                           className={`${styles.avisoDetalhes} ${avisoEstaConcluido(aviso) ? styles.avisoConcluido : ''}`}
                         >
                           <div className={styles.avisoHeader}>
-                            <span className={styles.avisoBadge} style={{ backgroundColor: '#FFC107', color: '#5D4037' }}>
-                              ANOTAÇÃO
+                            <span className={`${styles.badge} ${styles.badgeAnotacao}`}>
+                              Anotação
                             </span>
                           </div>
                           <div className={styles.edicaoAnotacaoForm}>
@@ -671,13 +691,13 @@ export default function CalendarioAlunoPage() {
                           </div>
                           <div className={styles.acoesEdicao}>
                             <button onClick={() => handleEditarAnotacao(aviso.AvisoId)} className={styles.btnConfirmar}>
-                              ✓ Confirmar
+                              <Icon name="check" size={14} /> Confirmar
                             </button>
                             <button onClick={() => {
                               setModoEdicaoAnotacao(null);
                               setFormEdicaoAnotacao({ titulo: '', descricao: '' });
                             }} className={styles.btnCancelar}>
-                              ✕ Cancelar
+                              <Icon name="x" size={14} /> Cancelar
                             </button>
                           </div>
                         </div>
@@ -689,8 +709,8 @@ export default function CalendarioAlunoPage() {
                         className={`${styles.avisoDetalhes} ${avisoEstaConcluido(aviso) ? styles.avisoConcluido : ''}`}
                       >
                         <div className={styles.avisoHeader}>
-                          <span className={styles.avisoBadge} style={{ backgroundColor: '#FFC107', color: '#5D4037' }}>
-                            ANOTAÇÃO
+                          <span className={`${styles.badge} ${styles.badgeAnotacao}`}>
+                            Anotação
                           </span>
                           <div className={styles.acoesInline}>
                             <button
@@ -701,20 +721,14 @@ export default function CalendarioAlunoPage() {
                               className={styles.iconBtnAnotacao}
                               title="Editar"
                             >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                              </svg>
+                              <Icon name="edit" size={14} />
                             </button>
                             <button
                               onClick={() => handleExcluirAnotacao(aviso.AvisoId)}
                               className={styles.iconBtnAnotacao}
                               title="Excluir"
                             >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                              </svg>
+                              <Icon name="trash" size={14} />
                             </button>
                           </div>
                         </div>
@@ -747,17 +761,21 @@ export default function CalendarioAlunoPage() {
                         onClick={() => alternarAvisoExpandido(aviso.AvisoId)}
                         aria-expanded={expandido}
                       >
-                        <div
-                          className={styles.avisoBadgeFaixa}
-                          style={{ backgroundColor: obterCorTipo(aviso.TipoAviso) }}
-                        >
-                          <span className={styles.avisoTipoGrupo}>
-                            <span className={styles.avisoToggleExpandido}>{expandido ? '▼' : '▶'}</span>
-                            <span className={styles.avisoBadgeTexto}>{obterLabelTipoAviso(aviso.TipoAviso)}</span>
+                        <div className={styles.avisoBadgeFaixa}>
+                          <span className={`${styles.badge} ${obterClasseBadgeTipo(aviso.TipoAviso)}`}>
+                            {obterLabelTipoAviso(aviso.TipoAviso)}
                           </span>
-                          {aviso.TipoAviso !== 'prova' && (
-                            <span className={styles.avisoHoraFaixa}>{formatarHoraAviso(aviso)}</span>
-                          )}
+                          <span className={styles.avisoTipoGrupoRight}>
+                            {aviso.TipoAviso !== 'prova' && (
+                              <span className={styles.avisoHoraFaixa}>
+                                <Icon name="clock" size={12} />
+                                {formatarHoraAviso(aviso)}
+                              </span>
+                            )}
+                            <span className={styles.avisoToggleExpandido}>
+                              <Icon name={expandido ? 'chevron-down' : 'chevron-right'} size={14} />
+                            </span>
+                          </span>
                         </div>
 
                         <div className={styles.avisoTituloLinha}>
@@ -835,7 +853,7 @@ export default function CalendarioAlunoPage() {
               />
               <div className={styles.acoesEdicao}>
                 <button onClick={handleCriarAnotacao} className={styles.btnConfirmar}>
-                  ✓ Salvar
+                  <Icon name="check" size={14} /> Salvar
                 </button>
                 <button
                   onClick={() => {
@@ -844,7 +862,7 @@ export default function CalendarioAlunoPage() {
                   }}
                   className={styles.btnCancelar}
                 >
-                  ✕ Cancelar
+                  <Icon name="x" size={14} /> Cancelar
                 </button>
               </div>
             </div>

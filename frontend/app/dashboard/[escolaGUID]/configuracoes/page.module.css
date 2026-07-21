@@ -56,6 +56,88 @@
   margin-bottom: 1rem;
 }
 
+.secaoTituloLinha {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.secaoTituloLinha .secaoTitulo {
+  margin-bottom: 0;
+}
+
+.secaoNota {
+  font-size: 0.8rem;
+  color: #666;
+  font-style: italic;
+}
+
+.paletaGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.uploadArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px dashed #ccc;
+  border-radius: 10px;
+  padding: 1.5rem;
+  max-width: 320px;
+  cursor: pointer;
+  text-align: center;
+  position: relative;
+}
+
+.uploadArea:hover {
+  border-color: #007bff;
+  background: #f4f9ff;
+}
+
+.fileInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.uploadTexto {
+  font-size: 0.9rem;
+  color: #444;
+  font-weight: 500;
+}
+
+.uploadDica {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.iconePreviewLinha {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.iconePreviewImg {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.rodapeSecao {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
 .campoContainer {
   margin-bottom: 1.25rem;
 }

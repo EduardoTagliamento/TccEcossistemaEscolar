@@ -1,26 +1,54 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, ChangeEvent } from 'react';
 import Link from 'next/link';
 import styles from './page.module.css';
 
 import * as EscolaConfiguracaoAPI from '@/lib/api/escolaconfiguracao.api';
 import { DIAS_SEMANA, DIA_SEMANA_LABEL, DiaSemana, Intervalo } from '@/lib/api/escolaconfiguracao.api';
+import * as EscolaAPI from '@/lib/api/escola.api';
+import { useAuth } from '@/lib/auth/AuthContext';
+import ColorPicker from '@/components/ColorPicker';
 
 interface IntervaloLinha {
   IntervaloInicio: string;
   IntervaloFim: string;
 }
 
+interface FuncaoEscola {
+  FuncaoId: number;
+  Status: 'Ativo' | 'Inativo' | 'Finalizado';
+}
+
+interface EscolaComFuncoes {
+  escola: { EscolaGUID: string };
+  funcoes: FuncaoEscola[];
+}
+
 export default function ConfiguracoesEscolaPage() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
+  const { usuario, token } = useAuth();
 
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [avisos, setAvisos] = useState<string[]>([]);
+
+  // ===== Seção "Identidade da Escola" (apenas Direção — FuncaoId 6) =====
+  const [isDirecao, setIsDirecao] = useState(false);
+  const [escolaNome, setEscolaNome] = useState('');
+  const [corPriEs, setCorPriEs] = useState('#1E3A8A');
+  const [corPriCl, setCorPriCl] = useState('#FFFFFF');
+  const [corSecEs, setCorSecEs] = useState('#FF5733');
+  const [corSecCl, setCorSecCl] = useState('#FFF3F0');
+  const [iconeArquivo, setIconeArquivo] = useState<File | null>(null);
+  const [iconePreview, setIconePreview] = useState<string | null>(null);
+  const [iconeAtualBase64, setIconeAtualBase64] = useState<string | null>(null);
+  const [iconeRemovido, setIconeRemovido] = useState(false);
+  const [salvandoIdentidade, setSalvandoIdentidade] = useState(false);
+  const [erroIdentidade, setErroIdentidade] = useState('');
 
   const [minutosPorAula, setMinutosPorAula] = useState(50);
   const [diasSemana, setDiasSemana] = useState<DiaSemana[]>(['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta']);
@@ -44,6 +72,139 @@ export default function ConfiguracoesEscolaPage() {
       carregarConfiguracao();
     }
   }, [escolaGUID]);
+
+  useEffect(() => {
+    if (escolaGUID && usuario) {
+      verificarFuncaoDirecao();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escolaGUID, usuario]);
+
+  useEffect(() => {
+    if (escolaGUID && isDirecao) {
+      carregarDadosIdentidade();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escolaGUID, isDirecao]);
+
+  const verificarFuncaoDirecao = async () => {
+    if (!usuario) return;
+    try {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) return;
+
+      const escolas: EscolaComFuncoes[] = data?.data?.escolas || [];
+      const escolaSelecionada = escolas.find((item) => item.escola.EscolaGUID === escolaGUID);
+      const funcoesAtivas = (escolaSelecionada?.funcoes || [])
+        .filter((funcao) => funcao.Status === 'Ativo')
+        .map((funcao) => funcao.FuncaoId);
+
+      setIsDirecao(funcoesAtivas.includes(6));
+    } catch (error) {
+      console.error('Erro ao verificar função de Direção:', error);
+      setIsDirecao(false);
+    }
+  };
+
+  const carregarDadosIdentidade = async () => {
+    try {
+      const { escola } = await EscolaAPI.buscarEscola(escolaGUID);
+      setEscolaNome(escola.EscolaNome || '');
+      setCorPriEs(escola.EscolaCorPriEs || '#1E3A8A');
+      setCorPriCl(escola.EscolaCorPriCl || '#FFFFFF');
+      setCorSecEs(escola.EscolaCorSecEs || '#FF5733');
+      setCorSecCl(escola.EscolaCorSecCl || '#FFF3F0');
+      setIconeAtualBase64(escola.EscolaIcone || null);
+      setIconeRemovido(false);
+      setIconeArquivo(null);
+      setIconePreview(null);
+    } catch (error) {
+      console.error('Erro ao carregar dados institucionais da escola:', error);
+    }
+  };
+
+  const handleIconeChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+      setErroIdentidade('Apenas imagens PNG e JPG são permitidas');
+      return;
+    }
+
+    if (file.size > 1024 * 1024) {
+      setErroIdentidade('A imagem deve ter no máximo 1MB');
+      return;
+    }
+
+    setIconeArquivo(file);
+    setIconeRemovido(false);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setIconePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setErroIdentidade('');
+  };
+
+  const removerIcone = () => {
+    setIconeArquivo(null);
+    setIconePreview(null);
+    setIconeAtualBase64(null);
+    setIconeRemovido(true);
+  };
+
+  const handleSalvarIdentidade = async () => {
+    try {
+      setSalvandoIdentidade(true);
+      setErroIdentidade('');
+
+      if (!escolaNome.trim() || escolaNome.trim().length < 3) {
+        setErroIdentidade('O nome da escola deve ter pelo menos 3 caracteres');
+        return;
+      }
+
+      const dados: EscolaAPI.AtualizarEscolaDados = {
+        EscolaNome: escolaNome.trim(),
+        EscolaCorPriEs: corPriEs,
+        EscolaCorPriCl: corPriCl,
+        EscolaCorSecEs: corSecEs,
+        EscolaCorSecCl: corSecCl,
+      };
+
+      if (iconeArquivo && iconePreview) {
+        // Remove o prefixo "data:image/...;base64," antes de enviar
+        const base64 = iconePreview.split(',')[1] || '';
+        dados.EscolaIcone = base64;
+      } else if (iconeRemovido) {
+        dados.EscolaIcone = null;
+      }
+
+      const { escola } = await EscolaAPI.atualizarEscola(escolaGUID, dados);
+
+      setEscolaNome(escola.EscolaNome || '');
+      setCorPriEs(escola.EscolaCorPriEs || corPriEs);
+      setCorPriCl(escola.EscolaCorPriCl || corPriCl);
+      setCorSecEs(escola.EscolaCorSecEs || corSecEs);
+      setCorSecCl(escola.EscolaCorSecCl || corSecCl);
+      setIconeAtualBase64(escola.EscolaIcone || null);
+      setIconeArquivo(null);
+      setIconePreview(null);
+      setIconeRemovido(false);
+
+      alert('Identidade da escola salva com sucesso!');
+    } catch (err: any) {
+      console.error('Erro ao salvar identidade da escola:', err);
+      setErroIdentidade(err.message || 'Erro ao salvar identidade da escola');
+    } finally {
+      setSalvandoIdentidade(false);
+    }
+  };
 
   const carregarConfiguracao = async () => {
     try {
@@ -243,6 +404,84 @@ export default function ConfiguracoesEscolaPage() {
               <li key={idx}>{aviso}</li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {isDirecao && (
+        <div className={styles.secao}>
+          <div className={styles.secaoTituloLinha}>
+            <h2 className={styles.secaoTitulo}>Identidade da Escola</h2>
+            <span className={styles.secaoNota}>Visível apenas para a Direção</span>
+          </div>
+
+          {erroIdentidade && <div className={styles.erro}>{erroIdentidade}</div>}
+
+          <div className={styles.campoContainer}>
+            <label className={styles.label}>Nome da escola</label>
+            <input
+              type="text"
+              className={styles.input}
+              style={{ maxWidth: '360px' }}
+              value={escolaNome}
+              onChange={(e) => setEscolaNome(e.target.value)}
+              disabled={salvandoIdentidade}
+            />
+          </div>
+
+          <div className={styles.campoContainer}>
+            <span className={styles.label}>Paleta da escola</span>
+            <div className={styles.paletaGrid}>
+              <ColorPicker label="Primária escura" color={corPriEs} onChange={setCorPriEs} disabled={salvandoIdentidade} />
+              <ColorPicker label="Primária clara" color={corPriCl} onChange={setCorPriCl} disabled={salvandoIdentidade} />
+              <ColorPicker label="Secundária escura" color={corSecEs} onChange={setCorSecEs} disabled={salvandoIdentidade} />
+              <ColorPicker label="Secundária clara" color={corSecCl} onChange={setCorSecCl} disabled={salvandoIdentidade} />
+            </div>
+          </div>
+
+          <div className={styles.campoContainer}>
+            <span className={styles.label}>Ícone da escola</span>
+
+            {!iconePreview && !iconeAtualBase64 ? (
+              <label className={styles.uploadArea}>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg"
+                  onChange={handleIconeChange}
+                  className={styles.fileInput}
+                  disabled={salvandoIdentidade}
+                />
+                <span className={styles.uploadTexto}>Clique para selecionar uma imagem</span>
+                <span className={styles.uploadDica}>PNG ou JPG · Máximo 1MB</span>
+              </label>
+            ) : (
+              <div className={styles.iconePreviewLinha}>
+                <img
+                  src={iconePreview || `data:image/png;base64,${iconeAtualBase64}`}
+                  alt="Ícone da escola"
+                  className={styles.iconePreviewImg}
+                />
+                <button
+                  type="button"
+                  className={styles.botaoRemover}
+                  onClick={removerIcone}
+                  disabled={salvandoIdentidade}
+                >
+                  Remover
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.rodapeSecao}>
+            <button
+              type="button"
+              className={styles.botaoSalvar}
+              onClick={handleSalvarIdentidade}
+              disabled={salvandoIdentidade}
+            >
+              {salvandoIdentidade ? 'Salvando...' : 'Salvar Identidade da Escola'}
+            </button>
+          </div>
         </div>
       )}
 
