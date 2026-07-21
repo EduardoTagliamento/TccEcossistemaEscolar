@@ -26,16 +26,36 @@ export interface UsuarioAtualizado {
   UsuarioCPF: string;
   UsuarioEmail: string | null;
   UsuarioFotoUrl: string | null;
+  UsuarioTema: 'light' | 'dark' | 'system';
+  UsuarioModoDaltonico: boolean;
+  UsuarioEscalaFonte: 'small' | 'medium' | 'large';
+  UsuarioReduzirMovimento: boolean;
+  UsuarioAltoContraste: boolean;
   UsuarioId: string | null;
   UsuarioTelefone: string | null;
   UsuarioNome: string;
   UsuarioStatus: 'Ativo' | 'Inativo' | 'Bloqueado';
 }
 
-/** PUT /api/usuario/:UsuarioCPF — atualiza dado cadastral básico (nome/e-mail/telefone). */
+/**
+ * PUT /api/usuario/:UsuarioCPF — atualiza dado cadastral básico
+ * (nome/e-mail/telefone) e/ou preferências de acessibilidade (tema, modo
+ * daltônico, escala de fonte, redução de movimento, alto contraste — seção
+ * "Preferências de acessibilidade" em Meu Perfil). Campos omitidos mantêm
+ * o valor existente (PUT parcial).
+ */
 export async function atualizarUsuario(
   usuarioCPF: string,
-  dados: { UsuarioNome?: string; UsuarioEmail?: string; UsuarioTelefone?: string }
+  dados: {
+    UsuarioNome?: string;
+    UsuarioEmail?: string;
+    UsuarioTelefone?: string;
+    UsuarioTema?: 'light' | 'dark' | 'system';
+    UsuarioModoDaltonico?: boolean;
+    UsuarioEscalaFonte?: 'small' | 'medium' | 'large';
+    UsuarioReduzirMovimento?: boolean;
+    UsuarioAltoContraste?: boolean;
+  }
 ): Promise<UsuarioAtualizado> {
   const response = await fetch(`${API_URL}/usuario/${usuarioCPF}`, {
     method: 'PUT',

@@ -7,6 +7,7 @@ import GrupoProjetoService from './grupoprojeto.service';
 import ErrorResponse from '../utils/ErrorResponse';
 import MysqlDatabase from '../database/MysqlDatabase';
 import { getNotificacaoService } from './notificacao.service';
+import { getAuditoriaService } from './auditoria.service';
 import {
   ConviteGrupoProjeto,
   ConviteGrupoProjetoCreateDTO,
@@ -107,6 +108,16 @@ export default class ConviteGrupoProjetoService {
       console.error('🔴 ConviteGrupoProjetoService.enviarConvite() falhou ao notificar:', error);
     });
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: projeto.EscolaGUID,
+      UsuarioCPFAtor: liderCPF,
+      AcaoTipo: 'Create',
+      EntidadeTipo: 'convitegrupoprojeto',
+      EntidadeGUID: convite.ConviteGUID,
+      EntidadeDescricao: `Convite enviado a ${convidadoCPF}`,
+      CategoriaAuditoriaId: 1,
+    });
+
     return convite;
   };
 
@@ -173,6 +184,16 @@ export default class ConviteGrupoProjetoService {
       console.error('🔴 ConviteGrupoProjetoService.solicitarEntrada() falhou ao notificar:', error);
     });
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: projeto.EscolaGUID,
+      UsuarioCPFAtor: solicitanteCPF,
+      AcaoTipo: 'Create',
+      EntidadeTipo: 'convitegrupoprojeto',
+      EntidadeGUID: solicitacao.ConviteGUID,
+      EntidadeDescricao: 'Solicitação de entrada no grupo',
+      CategoriaAuditoriaId: 1,
+    });
+
     return solicitacao;
   };
 
@@ -218,7 +239,7 @@ export default class ConviteGrupoProjetoService {
     try {
       await connection.beginTransaction();
 
-      await this.#grupoProjetoService.entrarNoGrupoComLimiteDeVagas(convite.GrupoProjetoGUID, novoMembroCPF, connection);
+      await this.#grupoProjetoService.entrarNoGrupoComLimiteDeVagas(convite.GrupoProjetoGUID, novoMembroCPF, connection, usuarioCPF);
       await this.#conviteDAO.updateStatus(conviteGUID, 'Aceito', connection);
 
       await connection.commit();
@@ -227,6 +248,19 @@ export default class ConviteGrupoProjetoService {
       throw error;
     } finally {
       connection.release();
+    }
+
+    const projetoDoGrupo = await this.#projetoDAO.findById(grupo.ProjetoGUID);
+    if (projetoDoGrupo) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: projetoDoGrupo.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: 'Update',
+        EntidadeTipo: 'convitegrupoprojeto',
+        EntidadeGUID: conviteGUID,
+        EntidadeDescricao: `${convite.ConviteTipo} aceito`,
+        CategoriaAuditoriaId: 1,
+      });
     }
 
     return { mensagem: `${convite.ConviteTipo} aceito com sucesso` };
@@ -261,6 +295,19 @@ export default class ConviteGrupoProjetoService {
     }
 
     await this.#conviteDAO.updateStatus(conviteGUID, 'Recusado');
+
+    const projetoDoGrupo = await this.#projetoDAO.findById(grupo.ProjetoGUID);
+    if (projetoDoGrupo) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: projetoDoGrupo.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: 'Update',
+        EntidadeTipo: 'convitegrupoprojeto',
+        EntidadeGUID: conviteGUID,
+        EntidadeDescricao: `${convite.ConviteTipo} recusado`,
+        CategoriaAuditoriaId: 1,
+      });
+    }
 
     return { mensagem: `${convite.ConviteTipo} recusado` };
   };

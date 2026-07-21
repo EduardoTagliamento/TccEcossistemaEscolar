@@ -1,6 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+  aplicarTema,
+  aplicarModoDaltonico,
+  aplicarEscalaFonte,
+  aplicarReduzirMovimento,
+  aplicarAltoContraste,
+  type PreferenciaTema,
+  type EscalaFonte,
+} from '@/lib/theme/tema';
 
 interface Usuario {
   UsuarioCPF: string;
@@ -9,6 +18,11 @@ interface Usuario {
   UsuarioEmail: string;
   UsuarioTelefone: string;
   UsuarioFotoUrl?: string | null;
+  UsuarioTema?: PreferenciaTema;
+  UsuarioModoDaltonico?: boolean;
+  UsuarioEscalaFonte?: EscalaFonte;
+  UsuarioReduzirMovimento?: boolean;
+  UsuarioAltoContraste?: boolean;
   UsuarioStatus: 'Ativo' | 'Inativo' | 'Pendente';
 }
 
@@ -28,6 +42,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Aplica as 5 preferências de acessibilidade assim que o usuário
+  // autenticado carrega (ou reaplica o fallback padrão quando desloga). Ver
+  // frontend/lib/theme/tema.ts — preferências são salvas por conta, sem
+  // localStorage.
+  useEffect(() => {
+    aplicarTema(usuario?.UsuarioTema ?? 'system');
+    aplicarModoDaltonico(usuario?.UsuarioModoDaltonico ?? false);
+    aplicarEscalaFonte(usuario?.UsuarioEscalaFonte ?? 'medium');
+    aplicarReduzirMovimento(usuario?.UsuarioReduzirMovimento ?? false);
+    aplicarAltoContraste(usuario?.UsuarioAltoContraste ?? false);
+  }, [
+    usuario?.UsuarioTema,
+    usuario?.UsuarioModoDaltonico,
+    usuario?.UsuarioEscalaFonte,
+    usuario?.UsuarioReduzirMovimento,
+    usuario?.UsuarioAltoContraste,
+  ]);
 
   // Carregar token do localStorage na montagem
   useEffect(() => {

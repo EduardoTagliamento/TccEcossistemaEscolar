@@ -12,6 +12,7 @@
   --slate-600: #46564D;
   --slate-500: #647268;
   --slate-400: #8A968E;
+  --slate-300: #B7C1BA;
   --line-200: #E2EAE5;
   --line-100: #EDF3EF;
   --surface-50: #F5F9F6;
@@ -21,6 +22,8 @@
   --radius-lg: 16px;
   --radius-pill: 9999px;
   --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+  --shadow-xs: 0 1px 2px rgba(15, 29, 23, 0.05);
+  --shadow-focus: 0 0 0 3px rgba(23, 192, 119, 0.28);
 
   min-height: 100vh;
   background: var(--surface-50);
@@ -30,6 +33,73 @@
 
 .container :global(*) {
   box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   Overrides dos tokens locais acima, disparados pelos atributos que
+   frontend/lib/theme/tema.ts aplica em <html> a partir das preferências
+   salvas na conta (ver frontend/lib/auth/AuthContext.tsx). Como cada
+   módulo redeclara os tokens do Bauá Design System localmente em
+   `.container`, um override em :root não bastaria — precisa reafirmar os
+   mesmos nomes de variável aqui, escopados por atributo.
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-50: #123324;
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --slate-300: #445048;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-focus: 0 0 0 3px rgba(34, 212, 136, 0.35);
+}
+
+/* Modo daltônico — troca verde=sucesso / vermelho=perigo por azul/laranja
+   (distinguível em protanopia/deuteranopia). Independente de tema. */
+:global(html[data-daltonico="true"]) .container {
+  --green-50: #E9F0FF;
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --green-700: #1D46A3;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-50: #16233D;
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --green-700: #2558C7;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+}
+
+/* Alto contraste — ortogonal ao tema, reforça texto secundário e bordas. */
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+  --line-100: #647268;
 }
 
 .pageWrap {
@@ -231,12 +301,153 @@
   cursor: not-allowed;
 }
 
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE — controles
+   ============================================================ */
+.prefBloco {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--line-100);
+}
+
+.prefBloco:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.prefBloco:first-child {
+  padding-top: 0;
+}
+
+.prefCabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.prefTitulo {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--ink-900);
+}
+
+.prefDescricao {
+  font-size: 0.8125rem;
+  color: var(--slate-500);
+  margin: 0;
+}
+
+/* Switch (trilho pill 44x26) — mesmo padrão visual da tela de
+   Configurações da Escola (frontend/app/dashboard/[escolaGUID]/configuracoes/page.module.css). */
+.switchControl {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+}
+
+.switchInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.switchTrack {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: var(--slate-300);
+  pointer-events: none;
+  transition: background 0.2s ease;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.2s ease;
+}
+
+.switchInput:checked + .switchTrack {
+  background: var(--green-500);
+}
+
+.switchInput:checked + .switchTrack .switchThumb {
+  transform: translateX(18px);
+}
+
+.switchInput:focus-visible + .switchTrack {
+  box-shadow: var(--shadow-focus);
+}
+
+.switchInput:disabled {
+  cursor: not-allowed;
+}
+
+.switchInput:disabled + .switchTrack {
+  opacity: 0.6;
+}
+
+/* Controle segmentado (Tema: Claro/Escuro/Sistema — Tamanho de texto:
+   Pequeno/Médio/Grande) */
+.segmentedControl {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--surface-50);
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-pill);
+  gap: 2px;
+}
+
+.segmentedOption {
+  border: none;
+  background: transparent;
+  color: var(--slate-500);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.segmentedOption:hover:not(:disabled):not(.segmentedOptionActivo) {
+  color: var(--ink-900);
+}
+
+.segmentedOptionActivo {
+  background: var(--green-500);
+  color: #fff;
+}
+
+.segmentedOption:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 @media (max-width: 640px) {
   .pageWrap {
     padding: 1.5rem 1rem 2.5rem;
   }
 
   .fotoRow {
+    flex-wrap: wrap;
+  }
+
+  .prefCabecalho {
     flex-wrap: wrap;
   }
 }

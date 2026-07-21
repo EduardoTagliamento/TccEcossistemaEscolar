@@ -20,6 +20,7 @@ import R2StorageService from "./r2storage.service";
 import { RowDataPacket } from "mysql2";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
+import { getAuditoriaService } from "./auditoria.service";
 
 export interface ConteudoTurmaDTO {
   TurmaGUID: string;
@@ -227,6 +228,16 @@ export default class ConteudoService {
       this.#notificarMateriaPostada(conteudo, data.TurmasGUID, escolaGUID).catch((error) => {
         console.error("🔴 ConteudoService.#notificarMateriaPostada() falhou:", error);
       });
+
+      void getAuditoriaService().registrar({
+        EscolaGUID: escolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Create",
+        EntidadeTipo: "conteudo",
+        EntidadeGUID: conteudo.ConteudoGUID,
+        EntidadeDescricao: conteudo.ConteudoTitulo,
+        CategoriaAuditoriaId: 2,
+      });
     }
 
     return this.buscarConteudo(conteudo.ConteudoGUID);
@@ -378,6 +389,15 @@ export default class ConteudoService {
       });
     }
 
+    // Resolver EscolaGUID (via turma associada) antes de excluir — necessário pro registro de auditoria,
+    // já que Conteudo não carrega EscolaGUID diretamente e o CASCADE apaga conteudoturma junto.
+    let escolaGUIDParaAuditoria: string | null = null;
+    const atribuicoesParaAuditoria = await this.#conteudoTurmaDAO.findByConteudo(guid);
+    if (atribuicoesParaAuditoria.length > 0) {
+      const turma = await this.#turmaDAO.findById(atribuicoesParaAuditoria[0].TurmaGUID);
+      escolaGUIDParaAuditoria = turma?.EscolaGUID ?? null;
+    }
+
     // Coletar URLs de arquivo antes de excluir os registros (para limpar o R2 depois)
     const urlsParaRemover: string[] = [];
 
@@ -393,6 +413,18 @@ export default class ConteudoService {
 
     // CASCADE no banco cuida das subtabelas e de conteudoturma
     await this.#conteudoDAO.delete(guid);
+
+    if (escolaGUIDParaAuditoria) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: escolaGUIDParaAuditoria,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Delete",
+        EntidadeTipo: "conteudo",
+        EntidadeGUID: conteudo.ConteudoGUID,
+        EntidadeDescricao: conteudo.ConteudoTitulo,
+        CategoriaAuditoriaId: 2,
+      });
+    }
 
     // Remoção no R2 não bloqueia a resposta se falhar
     urlsParaRemover.forEach((url) => {

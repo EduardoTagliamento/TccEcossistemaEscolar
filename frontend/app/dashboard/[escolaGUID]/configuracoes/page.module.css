@@ -1,67 +1,217 @@
+/* ============================================================
+   Configurações da Escola — Bauá Design System
+   Tokens copiados literalmente do Bauá Design System (mcp claude-design,
+   project 689c269f-be3b-4445-98c6-69b779c38839), escopados localmente sob
+   `.container`, mesmo padrão já usado no restante do dashboard (ver
+   frontend/app/dashboard/[escolaGUID]/_components/DashboardNavbar.module.css,
+   frontend/app/dashboard/[escolaGUID]/perfil/page.module.css,
+   frontend/app/dashboard/[escolaGUID]/calendario/page.module.css).
+   Este escopo também é o ancestral que o <ColorPicker> (usado na seção
+   "Identidade da Escola") herda via cascata do DOM.
+   ============================================================ */
+
 .container {
-  padding: 2rem;
+  /* cores */
+  --green-50: #E7F9F0;
+  --green-100: #C5F0DC;
+  --green-200: #97E6C2;
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --blue-500: #2F5BEA;
+  --gold-500: #FFC02E;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --slate-300: #B7C1BA;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  /* espaçamento (grid de 4px) */
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* raio */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 9999px;
+
+  /* elevação */
+  --shadow-xs: 0 1px 2px rgba(15, 29, 23, 0.05);
+  --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+  --shadow-md: 0 8px 20px -8px rgba(15, 29, 23, 0.14);
+  --shadow-lg: 0 18px 40px -16px rgba(15, 29, 23, 0.2);
+  --shadow-focus: 0 0 0 3px rgba(23, 192, 119, 0.28);
+
+  /* tipografia */
+  --font-mono: 'Courier New', Courier, monospace;
+
+  padding: var(--space-8);
   max-width: 900px;
   margin: 0 auto;
+  min-height: 100vh;
+  background: var(--surface-50);
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-600);
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   Mesmo mecanismo de frontend/app/dashboard/[escolaGUID]/_components/DashboardNavbar.module.css
+   — ver comentário lá pra contexto completo. Também é o escopo herdado
+   pelo <ColorPicker> da seção "Identidade da Escola".
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-50: #123324;
+  --green-100: #163D2B;
+  --green-200: #1B4A34;
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --blue-500: #5B82FF;
+  --gold-500: #FFCB52;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --slate-300: #445048;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 18px 40px -16px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(34, 212, 136, 0.35);
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-50: #E9F0FF;
+  --green-100: #D2E1FF;
+  --green-200: #B3CBFF;
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --green-700: #1D46A3;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+  --shadow-focus: 0 0 0 3px rgba(47, 111, 237, 0.28);
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-50: #16233D;
+  --green-100: #1C2E4F;
+  --green-200: #223A63;
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --green-700: #2558C7;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+  --shadow-focus: 0 0 0 3px rgba(91, 140, 255, 0.35);
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --slate-300: #647268;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --slate-300: #93A398;
+  --line-200: #7C8B82;
+  --line-100: #647268;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 2rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
 .titulo {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  color: #1a1a1a;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: var(--ink-900);
 }
 
 .subtitulo {
-  font-size: 1rem;
-  color: #666;
+  font-size: 0.9375rem;
+  color: var(--slate-500);
+  margin: 0;
 }
 
 .botaoVoltar {
-  padding: 0.75rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 500;
-  border: none;
-  font-size: 1rem;
-  background: #6c757d;
-  color: white;
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  border: 1.5px solid var(--line-200);
+  background: var(--white);
+  color: var(--slate-600);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .botaoVoltar:hover {
-  background: #5a6268;
+  border-color: var(--green-500);
+  color: var(--green-700);
+  text-decoration: none;
 }
 
 .secao {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 1.5rem 2rem;
-  margin-bottom: 1.5rem;
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6) var(--space-8);
+  margin-bottom: var(--space-5);
 }
 
 .secaoTitulo {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 1rem;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0 0 var(--space-4);
 }
 
 .secaoTituloLinha {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 }
 
 .secaoTituloLinha .secaoTitulo {
@@ -69,15 +219,15 @@
 }
 
 .secaoNota {
-  font-size: 0.8rem;
-  color: #666;
+  font-size: 0.75rem;
+  color: var(--slate-400);
   font-style: italic;
 }
 
 .paletaGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .uploadArea {
@@ -85,19 +235,20 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  border: 1px dashed #ccc;
-  border-radius: 10px;
-  padding: 1.5rem;
+  gap: 6px;
+  border: 1.5px dashed var(--line-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-6);
   max-width: 320px;
   cursor: pointer;
   text-align: center;
   position: relative;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .uploadArea:hover {
-  border-color: #007bff;
-  background: #f4f9ff;
+  border-color: var(--green-500);
+  background: var(--green-50);
 }
 
 .fileInput {
@@ -108,61 +259,72 @@
 }
 
 .uploadTexto {
-  font-size: 0.9rem;
-  color: #444;
-  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--slate-600);
+  font-weight: 600;
 }
 
 .uploadDica {
-  font-size: 0.8rem;
-  color: #888;
+  font-size: 0.75rem;
+  color: var(--slate-400);
 }
 
 .iconePreviewLinha {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .iconePreviewImg {
   width: 64px;
   height: 64px;
   object-fit: cover;
-  border-radius: 12px;
-  border: 1px solid #e0e0e0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-200);
 }
 
 .rodapeSecao {
   display: flex;
   justify-content: flex-end;
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 
 .campoContainer {
-  margin-bottom: 1.25rem;
+  margin-bottom: var(--space-5);
 }
 
 .label {
   display: block;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--slate-500);
+  margin-bottom: 6px;
+  font-size: 0.8125rem;
 }
 
 .input {
   width: 100%;
-  padding: 0.6rem 0.85rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 1rem;
+  height: 46px;
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body), 'Figtree', sans-serif;
+  font-size: 0.9375rem;
+  color: var(--ink-900);
+  background: var(--white);
   max-width: 220px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:focus {
+  border-color: var(--green-500);
+  box-shadow: var(--shadow-focus);
 }
 
 .linhaHorarios {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
@@ -171,67 +333,146 @@
 }
 
 .ate {
-  color: #666;
+  color: var(--slate-500);
+  font-size: 0.875rem;
 }
 
 .diasSemanaGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .diaChip {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.5rem 0.9rem;
-  border-radius: 20px;
-  border: 1px solid #ccc;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--line-200);
+  background: var(--white);
+  color: var(--slate-600);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
   user-select: none;
-  transition: all 0.15s;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.diaChip:hover {
+  border-color: var(--green-500);
 }
 
 .diaChipAtivo {
-  background: #e3f2fd;
-  border-color: #007bff;
-  color: #0056b3;
-  font-weight: 600;
+  background: var(--green-50);
+  border-color: var(--green-500);
+  color: var(--green-700);
 }
 
-.checkboxLinha {
+.diaChipInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------- Switch (Bauá Design System — components/core/Switch.jsx) ---------- */
+.switchRow {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 1rem;
+  gap: var(--space-3);
+  cursor: pointer;
+  margin-bottom: var(--space-4);
+  width: fit-content;
 }
 
-.checkboxLinha label {
-  font-weight: 500;
-  color: #333;
+.switchControl {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+}
+
+.switchInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
   cursor: pointer;
+  z-index: 1;
+}
+
+.switchTrack {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-pill);
+  background: var(--slate-300);
+  pointer-events: none;
+  transition: background 0.2s ease;
+}
+
+.switchThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.2s ease;
+}
+
+.switchInput:checked + .switchTrack {
+  background: var(--green-500);
+}
+
+.switchInput:checked + .switchTrack .switchThumb {
+  transform: translateX(18px);
+}
+
+.switchInput:focus-visible + .switchTrack {
+  box-shadow: var(--shadow-focus);
+}
+
+.switchInput:disabled {
+  cursor: not-allowed;
+}
+
+.switchInput:disabled + .switchTrack {
+  opacity: 0.6;
+}
+
+.switchLabel {
+  font-weight: 600;
+  color: var(--slate-600);
+  font-size: 0.9375rem;
 }
 
 .intervaloBloco {
-  border: 1px dashed #ccc;
-  border-radius: 10px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  border: 1.5px dashed var(--line-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 .intervaloBlocoTitulo {
-  font-weight: 600;
-  color: #444;
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin-bottom: var(--space-3);
+  font-size: 0.875rem;
 }
 
 .intervaloLinha {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .intervaloLinha .input {
@@ -239,47 +480,50 @@
 }
 
 .botaoRemover {
-  background: #ffebee;
-  color: #c62828;
+  background: var(--danger-50);
+  color: var(--danger-500);
   border: none;
-  border-radius: 6px;
-  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  transition: background 0.15s ease;
 }
 
 .botaoRemover:hover {
-  background: #ffcdd2;
+  background: #FADBDC;
 }
 
 .botaoAdicionar {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border: none;
-  border-radius: 6px;
-  padding: 0.5rem 0.9rem;
+  background: var(--white);
+  color: var(--green-700);
+  border: 1.5px solid var(--green-500);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
   cursor: pointer;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  transition: background 0.15s ease;
 }
 
 .botaoAdicionar:hover {
-  background: #c8e6c9;
+  background: var(--green-50);
 }
 
 .preview {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  font-size: 0.9rem;
-  color: #444;
+  background: var(--surface-50);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  font-size: 0.875rem;
+  color: var(--slate-600);
 }
 
 .previewLinha {
   display: flex;
   justify-content: space-between;
-  padding: 0.25rem 0;
-  border-bottom: 1px solid #eee;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-100);
 }
 
 .previewLinha:last-child {
@@ -287,62 +531,65 @@
 }
 
 .avisos {
-  background: #fff3cd;
-  border: 1px solid #ffc107;
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.5rem;
+  background: #FFF7E0;
+  border: 1px solid var(--gold-500);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
 }
 
 .avisosTitulo {
-  font-weight: 600;
-  color: #856404;
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
+  font-weight: 700;
+  color: #8A6A00;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
 }
 
 .avisosLista {
   margin: 0;
-  padding-left: 1.25rem;
-  color: #856404;
-  font-size: 0.875rem;
+  padding-left: var(--space-5);
+  color: #8A6A00;
+  font-size: 0.8125rem;
 }
 
 .erro {
-  background: #ffebee;
-  border: 1px solid #ef5350;
-  color: #c62828;
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.9rem;
+  background: var(--danger-50);
+  border: 1px solid var(--danger-500);
+  color: var(--danger-500);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .rodape {
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .botaoSalvar {
-  padding: 0.85rem 2rem;
-  background: #007bff;
-  color: white;
+  padding: 14px 32px;
+  background: var(--green-500);
+  color: var(--white);
   border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 1rem;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.9375rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s ease, transform 0.15s ease;
 }
 
 .botaoSalvar:hover:not(:disabled) {
-  background: #0056b3;
+  background: var(--green-600);
+  transform: translateY(-1px);
 }
 
 .botaoSalvar:disabled {
-  background: #ccc;
+  background: var(--slate-300);
   cursor: not-allowed;
+  transform: none;
 }
 
 .loadingContainer {
@@ -350,14 +597,16 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 2rem;
+  padding: var(--space-8) var(--space-6);
+  gap: var(--space-4);
+  color: var(--slate-500);
 }
 
 .spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid #e0e0e0;
-  border-top-color: #007bff;
+  width: 44px;
+  height: 44px;
+  border: 4px solid var(--line-200);
+  border-top-color: var(--green-500);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -365,5 +614,22 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   RESPONSIVIDADE
+   ============================================================ */
+@media (max-width: 640px) {
+  .container {
+    padding: var(--space-5);
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .secao {
+    padding: var(--space-5);
   }
 }

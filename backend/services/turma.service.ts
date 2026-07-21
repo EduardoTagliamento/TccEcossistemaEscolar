@@ -6,6 +6,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.
 import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
 import ConversaGrupoService from "./conversa-grupo.service";
+import { getAuditoriaService } from "./auditoria.service";
 
 /**
  * DTOs para transferência de dados
@@ -193,6 +194,16 @@ export default class TurmaService {
       );
     }
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: turmaCriada.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Create",
+      EntidadeTipo: "turma",
+      EntidadeGUID: turmaCriada.TurmaGUID,
+      EntidadeDescricao: `${turmaCriada.TurmaSerie} ${turmaCriada.TurmaNome}`,
+      CategoriaAuditoriaId: 2,
+    });
+
     return this.toDTO(turmaCriada);
   }
 
@@ -322,7 +333,17 @@ export default class TurmaService {
 
         turma.validar();
         await this.#turmaDAO.create(turma);
-        
+
+        void getAuditoriaService().registrar({
+          EscolaGUID: escolaGUID,
+          UsuarioCPFAtor: usuarioCPF,
+          AcaoTipo: "Create",
+          EntidadeTipo: "turma",
+          EntidadeGUID: turma.TurmaGUID,
+          EntidadeDescricao: `${turma.TurmaSerie} ${turma.TurmaNome}`,
+          CategoriaAuditoriaId: 2,
+        });
+
         // Adicionar ao conjunto de chaves existentes
         chavesExistentes.add(chave);
 
@@ -492,6 +513,16 @@ export default class TurmaService {
       }
     }
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: turmaExistente.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "turma",
+      EntidadeGUID: turmaGUID,
+      EntidadeDescricao: `${turmaAtualizada.TurmaSerie} ${turmaAtualizada.TurmaNome}`,
+      CategoriaAuditoriaId: 2,
+    });
+
     return this.toDTO(turmaAtualizada);
   }
 
@@ -518,6 +549,16 @@ export default class TurmaService {
         message: 'Não foi possível excluir a turma',
       });
     }
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: turma.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Delete",
+      EntidadeTipo: "turma",
+      EntidadeGUID: turmaGUID,
+      EntidadeDescricao: `${turma.TurmaSerie} ${turma.TurmaNome}`,
+      CategoriaAuditoriaId: 2,
+    });
 
     // 4. Encerrar grupo de conversa da turma
     if (this.#conversaGrupoService) {

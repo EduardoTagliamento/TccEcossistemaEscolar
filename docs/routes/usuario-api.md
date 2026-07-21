@@ -623,6 +623,12 @@ interface UsuarioDTO {
   UsuarioEmail: string | null;   // Email (único)
   UsuarioTelefone: string | null; // Telefone
   UsuarioId: string | null;      // ID customizado
+  UsuarioFotoUrl: string | null; // URL pública da foto de perfil (R2)
+  UsuarioTema: 'light' | 'dark' | 'system'; // Preferência de tema (painel "Meu Perfil")
+  UsuarioModoDaltonico: boolean; // Preferência de paleta segura pra daltonismo
+  UsuarioEscalaFonte: 'small' | 'medium' | 'large'; // Tamanho de texto
+  UsuarioReduzirMovimento: boolean; // Força redução de animações
+  UsuarioAltoContraste: boolean; // Reforça contraste texto/borda/foco
   // UsuarioSenha: NUNCA retornado por segurança
 }
 ```
@@ -636,6 +642,12 @@ interface UsuarioDTO {
 | `UsuarioEmail` | string \| null | Email do usuário | Formato email válido, Max: 60 chars, UNIQUE |
 | `UsuarioTelefone` | string \| null | Telefone com DDD | Formato: `(XX) XXXXX-XXXX` (15 chars) |
 | `UsuarioId` | string \| null | Identificador customizado | Max: 45 chars |
+| `UsuarioFotoUrl` | string \| null | URL pública da foto de perfil | Max: 500 chars |
+| `UsuarioTema` | `'light' \| 'dark' \| 'system'` | Preferência de tema visual, editável em "Meu Perfil" | Default: `'system'` |
+| `UsuarioModoDaltonico` | boolean | Preferência de paleta segura pra daltonismo (troca verde/vermelho semântico por azul/laranja) | Default: `false` |
+| `UsuarioEscalaFonte` | `'small' \| 'medium' \| 'large'` | Tamanho de texto (escala o `font-size` raiz, afeta conteúdo em `rem`) | Default: `'medium'` |
+| `UsuarioReduzirMovimento` | boolean | Força redução de animações/transições independente do SO | Default: `false` |
+| `UsuarioAltoContraste` | boolean | Reforça contraste de texto/borda e indicadores de foco | Default: `false` |
 | `UsuarioSenha` | string (hash) | Hash bcrypt da senha | Max: 100 chars, NOT NULL (nunca retornado) |
 
 **Database Schema:**

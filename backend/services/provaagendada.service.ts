@@ -10,6 +10,7 @@ import { MateriaDAO } from "../repositories/materia.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
+import { getAuditoriaService } from "./auditoria.service";
 
 const DATA_VALIDACAO_TOLERANCIA_MS = 60 * 1000;
 
@@ -189,6 +190,16 @@ export default class ProvaAgendadaService {
       this.#notificarProvaPostada(provaCriada, data.TurmasGUID, escolaGUID).catch((error) => {
         console.error("🔴 ProvaAgendadaService.#notificarProvaPostada() falhou:", error);
       });
+
+      void getAuditoriaService().registrar({
+        EscolaGUID: escolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Create",
+        EntidadeTipo: "provaagendada",
+        EntidadeGUID: provaCriada.ProvaAgendadaGUID,
+        EntidadeDescricao: provaCriada.ProvaDescricao,
+        CategoriaAuditoriaId: 2,
+      });
     }
 
     return this.toDTO(provaCriada, atribuicoes);
@@ -304,6 +315,21 @@ export default class ProvaAgendadaService {
     // Buscar turmas atribuídas
     const atribuicoes = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
 
+    if (atribuicoes.length > 0) {
+      const turmaRef = await this.#turmaDAO.findById(atribuicoes[0].TurmaGUID);
+      if (turmaRef) {
+        void getAuditoriaService().registrar({
+          EscolaGUID: turmaRef.EscolaGUID,
+          UsuarioCPFAtor: usuarioCPF,
+          AcaoTipo: "Update",
+          EntidadeTipo: "provaagendada",
+          EntidadeGUID: provaAtualizada.ProvaAgendadaGUID,
+          EntidadeDescricao: provaAtualizada.ProvaDescricao,
+          CategoriaAuditoriaId: 2,
+        });
+      }
+    }
+
     return this.toDTO(provaAtualizada, atribuicoes);
   };
 
@@ -326,8 +352,30 @@ export default class ProvaAgendadaService {
       });
     }
 
+    // Resolver EscolaGUID antes de excluir (CASCADE apaga as atribuições junto)
+    const atribuicoesParaAuditoria = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
+    let escolaGUIDParaAuditoria: string | null = null;
+    if (atribuicoesParaAuditoria.length > 0) {
+      const turmaRef = await this.#turmaDAO.findById(atribuicoesParaAuditoria[0].TurmaGUID);
+      escolaGUIDParaAuditoria = turmaRef?.EscolaGUID ?? null;
+    }
+
     // Deleta prova (CASCADE deleta atribuições automaticamente)
-    return await this.#provaDAO.delete(ProvaAgendadaGUID);
+    const excluida = await this.#provaDAO.delete(ProvaAgendadaGUID);
+
+    if (excluida && escolaGUIDParaAuditoria) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: escolaGUIDParaAuditoria,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Delete",
+        EntidadeTipo: "provaagendada",
+        EntidadeGUID: prova.ProvaAgendadaGUID,
+        EntidadeDescricao: prova.ProvaDescricao,
+        CategoriaAuditoriaId: 2,
+      });
+    }
+
+    return excluida;
   };
 
   /**
