@@ -58,7 +58,9 @@ export function pendenciaRoutes(): Router {
     relacaoAnexosDAO,
     anexoDAO,
     tarefaDAO,
-    eventoDAO
+    eventoDAO,
+    pendenciaDAO,
+    escolaxUsuarioxFuncaoDAO
   );
 
   const pendenciaController = new PendenciaController(pendenciaService, relacaoAnexosService);

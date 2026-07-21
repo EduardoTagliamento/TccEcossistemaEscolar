@@ -69,7 +69,7 @@
 
 .selectButton:hover:not(:disabled) {
   border-color: var(--color-primary);
-  background: rgba(0, 123, 255, 0.05);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
 }
 
 .selectButton:disabled {
@@ -97,7 +97,7 @@
 
 .tipoOpcaoAtiva {
   border-color: var(--color-primary);
-  background: rgba(0, 123, 255, 0.08);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
   font-weight: 600;
 }
 

@@ -8,6 +8,8 @@ import { TarefaAcademicaMatriculaDAO } from "../backend/repositories/tarefaacade
 import { AnexoDAO } from "../backend/repositories/anexo.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { EventoDAO } from "../backend/repositories/evento.repository";
+import { PendenciaDAO } from "../backend/repositories/pendencia.repository";
+import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
 import { RelacaoAnexosDAO } from "../backend/repositories/relacaoanexos.repository";
 import RelacaoAnexosService from "../backend/services/relacaoanexos.service";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
@@ -129,10 +131,12 @@ const tarefaMatriculaDAO = new TarefaAcademicaMatriculaDAO(db);
 const anexoDAO = new AnexoDAO(db);
 const matriculaDAO = new MatriculaDAO(db);
 const eventoDAO = new EventoDAO(db);
+const pendenciaDAO = new PendenciaDAO(db);
+const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(db);
 const relacaoAnexosDAO = new RelacaoAnexosDAO(db);
 
 const tarefaService = new TarefaAcademicaService(tarefaDAO, tarefaMatriculaDAO, anexoDAO, matriculaDAO);
-const relacaoAnexosService = new RelacaoAnexosService(relacaoAnexosDAO, anexoDAO, tarefaDAO, eventoDAO);
+const relacaoAnexosService = new RelacaoAnexosService(relacaoAnexosDAO, anexoDAO, tarefaDAO, eventoDAO, pendenciaDAO, escolaxUsuarioxFuncaoDAO);
 const tarefaControle = new TarefaAcademicaControl(tarefaService, relacaoAnexosService);
 const tarefaMiddleware = new TarefaAcademicaMiddleware();
 

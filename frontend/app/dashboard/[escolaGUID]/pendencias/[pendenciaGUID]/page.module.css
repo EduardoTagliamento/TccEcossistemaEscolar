@@ -1,0 +1,362 @@
+/* ============================================================
+   Detalhe / Recebimento de Pendência — Bauá Design System
+   Tokens copiados literalmente do mesmo escopo já usado em
+   frontend/app/dashboard/[escolaGUID]/configuracoes/page.module.css
+   (fonte de verdade dos tokens app-wide), redeclarados localmente sob
+   `.container`, mesmo padrão de
+   frontend/app/dashboard/[escolaGUID]/cadastro-evento/page.module.css,
+   frontend/app/dashboard/[escolaGUID]/pendencias/page.module.css.
+   ============================================================ */
+
+.container {
+  /* cores */
+  --green-50: #E7F9F0;
+  --green-100: #C5F0DC;
+  --green-200: #97E6C2;
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --blue-500: #2F5BEA;
+  --gold-500: #FFC02E;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --slate-300: #B7C1BA;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  /* espaçamento (grid de 4px) */
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* raio */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 9999px;
+
+  /* elevação */
+  --shadow-xs: 0 1px 2px rgba(15, 29, 23, 0.05);
+  --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+  --shadow-md: 0 8px 20px -8px rgba(15, 29, 23, 0.14);
+  --shadow-lg: 0 18px 40px -16px rgba(15, 29, 23, 0.2);
+  --shadow-focus: 0 0 0 3px rgba(23, 192, 119, 0.28);
+
+  padding: var(--space-8);
+  max-width: 760px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--surface-50);
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-600);
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   Mesmo mecanismo de frontend/app/dashboard/[escolaGUID]/configuracoes/page.module.css
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-50: #123324;
+  --green-100: #163D2B;
+  --green-200: #1B4A34;
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --blue-500: #5B82FF;
+  --gold-500: #FFCB52;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --slate-300: #445048;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 18px 40px -16px rgba(0, 0, 0, 0.6);
+  --shadow-focus: 0 0 0 3px rgba(34, 212, 136, 0.35);
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-50: #E9F0FF;
+  --green-100: #D2E1FF;
+  --green-200: #B3CBFF;
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --green-700: #1D46A3;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+  --shadow-focus: 0 0 0 3px rgba(47, 111, 237, 0.28);
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-50: #16233D;
+  --green-100: #1C2E4F;
+  --green-200: #223A63;
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --green-700: #2558C7;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+  --shadow-focus: 0 0 0 3px rgba(91, 140, 255, 0.35);
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --slate-300: #647268;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --slate-300: #93A398;
+  --line-200: #7C8B82;
+  --line-100: #647268;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--space-5);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--slate-500);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--green-700);
+  text-decoration: none;
+}
+
+.secao {
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6) var(--space-8);
+  margin-bottom: var(--space-5);
+}
+
+.tituloLinha {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.titulo {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--ink-900);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.badgePendente {
+  background: var(--white);
+  color: var(--blue-500);
+  border: 1.5px solid var(--blue-500);
+}
+
+.badgeFeito {
+  background: var(--green-50);
+  color: var(--green-700);
+}
+
+.badgeAtrasada {
+  background: var(--danger-50);
+  color: var(--danger-500);
+}
+
+.prazo {
+  font-size: 0.875rem;
+  color: var(--slate-500);
+  margin: 0 0 var(--space-4);
+}
+
+.conteudo {
+  font-size: 0.9375rem;
+  color: var(--slate-600);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.secaoTitulo {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0 0 var(--space-4);
+}
+
+.listaAnexos {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.anexoItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-50);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  color: var(--slate-600);
+}
+
+.anexoTamanho {
+  font-size: 0.75rem;
+  color: var(--slate-400);
+  flex-shrink: 0;
+}
+
+.semAnexos {
+  font-size: 0.875rem;
+  color: var(--slate-400);
+  margin: 0 0 var(--space-4);
+}
+
+.inputFile {
+  width: 100%;
+  padding: var(--space-3) 0;
+  font-size: 0.875rem;
+  color: var(--slate-600);
+}
+
+.hint {
+  font-size: 0.75rem;
+  color: var(--slate-400);
+  margin: 6px 0 0;
+}
+
+.avisoSomenteDestinatario {
+  font-size: 0.8125rem;
+  color: var(--slate-400);
+  font-style: italic;
+  margin: 0;
+}
+
+.rodape {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.botaoConcluir {
+  padding: 14px 32px;
+  background: var(--green-500);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.botaoConcluir:hover:not(:disabled) {
+  background: var(--green-600);
+  transform: translateY(-1px);
+}
+
+.botaoConcluir:disabled {
+  background: var(--slate-300);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.erro {
+  background: var(--danger-50);
+  border: 1px solid var(--danger-500);
+  color: var(--danger-500);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.info,
+.loading {
+  text-align: center;
+  padding: var(--space-8) var(--space-6);
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-lg);
+  color: var(--slate-500);
+  font-size: 0.9375rem;
+}
+
+.acessoNegado {
+  text-align: center;
+  padding: var(--space-8) var(--space-6);
+  background: var(--white);
+  border: 1px solid var(--danger-500);
+  border-radius: var(--radius-lg);
+  color: var(--danger-500);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+/* ============================================================
+   RESPONSIVIDADE
+   ============================================================ */
+@media (max-width: 640px) {
+  .container {
+    padding: var(--space-5);
+  }
+
+  .secao {
+    padding: var(--space-5);
+  }
+
+  .tituloLinha {
+    flex-direction: column;
+  }
+}

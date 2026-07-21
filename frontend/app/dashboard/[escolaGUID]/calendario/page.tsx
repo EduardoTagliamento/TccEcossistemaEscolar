@@ -13,6 +13,7 @@ import {
   excluirAnotacao,
   atualizarAnotacao
 } from '@/lib/api/anotacao.api';
+import { Evento, listarEventos } from '@/lib/api/evento.api';
 import { Icon } from './icons';
 import styles from './page.module.css';
 
@@ -61,6 +62,7 @@ export default function CalendarioAlunoPage() {
   const [diaSelecionado, setDiaSelecionado] = useState<DiaCalendario | null>(null);
   const [indiceDiaModal, setIndiceDiaModal] = useState(0);
   const [anotacoes, setAnotacoes] = useState<Anotacao[]>([]);
+  const [eventos, setEventos] = useState<Evento[]>([]);
   const [mostrarAnotacoes, setMostrarAnotacoes] = useState(true);
   const [modoEdicaoAnotacao, setModoEdicaoAnotacao] = useState<string | null>(null);
   const [modalCriarAnotacaoAberto, setModalCriarAnotacaoAberto] = useState(false);
@@ -114,6 +116,19 @@ export default function CalendarioAlunoPage() {
         setAnotacoes(anotacoesData);
       } catch (err) {
         console.error('Erro ao carregar anotações:', err);
+      }
+
+      // Buscar eventos do período (avisos amplos da escola, sempre exibidos —
+      // não é gated pelo toggle "Mostrar Anotações")
+      try {
+        const eventosData = await listarEventos({
+          EscolaGUID: escolaGUID,
+          dataInicio: inicio.toISOString(),
+          dataFim: fim.toISOString(),
+        });
+        setEventos(eventosData.eventos);
+      } catch (err) {
+        console.error('Erro ao carregar eventos:', err);
       }
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar calendário');
@@ -184,6 +199,24 @@ export default function CalendarioAlunoPage() {
         });
       }
 
+      // Eventos sempre aparecem — não é gated pelo toggle "Mostrar Anotações"
+      const eventosNoDia = eventos.filter(evento => {
+        const dataEvento = new Date(evento.EventoData);
+        return dataEvento.toISOString().split('T')[0] === dataStr;
+      });
+
+      eventosNoDia.forEach(evento => {
+        avisosNoDia.push({
+          AvisoId: evento.EventoGUID,
+          Titulo: evento.EventoTitulo,
+          Descricao: evento.EventoDescricao,
+          DataPrazo: evento.EventoData,
+          TipoAviso: 'evento',
+          StatusTexto: evento.EventoStatus,
+          TipoEntrega: null,
+        });
+      });
+
       const dataComparacao = new Date(data);
       dataComparacao.setHours(0, 0, 0, 0);
 
@@ -215,7 +248,7 @@ export default function CalendarioAlunoPage() {
     }
 
     return dias;
-  }, [dataAtual, avisos, anotacoes, mostrarAnotacoes]);
+  }, [dataAtual, avisos, anotacoes, mostrarAnotacoes, eventos]);
 
   const diasComAvisos = useMemo(() => {
     return diasDoCalendario.filter(dia => dia.ehMesAtual && dia.avisos.length > 0);

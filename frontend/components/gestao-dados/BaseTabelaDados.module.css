@@ -1,8 +1,78 @@
+/* ============================================================
+   Gestão de Dados — Tabela base (BaseTabelaDados) — Bauá Design System.
+   Tokens escopados localmente sob `.container`, mesmo padrão usado em
+   frontend/app/dashboard/[escolaGUID]/gestao-dados/page.module.css.
+   ============================================================ */
+
 .container {
-  background: white;
-  border-radius: 12px;
+  /* cores */
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --ink-900: #0F1D17;
+  --slate-700: #2B3B33;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --line-200: #E2EAE5;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  /* raio */
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* elevação */
+  --shadow-sm: 0 2px 8px rgba(15, 29, 23, 0.1);
+
+  background: var(--white);
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-700);
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --ink-900: #F3F7F4;
+  --slate-700: #D6DFDA;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --line-200: #2A3A31;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-700: #1A2620;
+  --slate-600: #2B3B33;
+  --slate-500: #46564D;
+  --line-200: #8A968E;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-700: #FFFFFF;
+  --slate-600: #E7ECE9;
+  --slate-500: #C7D2CB;
+  --line-200: #7C8B82;
 }
 
 .header {
@@ -15,7 +85,7 @@
 .titulo {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--ink-900);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -23,30 +93,30 @@
 
 .contador {
   font-size: 1rem;
-  color: #666;
+  color: var(--slate-500);
   font-weight: 400;
 }
 
 .botaoNovo {
   padding: 0.75rem 1.5rem;
-  background: #007bff;
-  color: white;
+  background: var(--green-500);
+  color: var(--white);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .botaoNovo:hover {
-  background: #0056b3;
+  background: var(--green-600);
 }
 
 .carregando,
 .vazio {
   padding: 3rem;
   text-align: center;
-  color: #666;
+  color: var(--slate-500);
 }
 
 .carregando {
@@ -59,8 +129,8 @@
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #007bff;
+  border: 4px solid var(--line-200);
+  border-top: 4px solid var(--green-500);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -80,8 +150,8 @@
 }
 
 .tabela thead {
-  background: #f8f9fa;
-  border-bottom: 2px solid #dee2e6;
+  background: var(--surface-50);
+  border-bottom: 2px solid var(--line-200);
 }
 
 .tabela th {
@@ -89,24 +159,24 @@
   text-align: left;
   font-weight: 600;
   font-size: 0.875rem;
-  color: #495057;
+  color: var(--slate-600);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .tabela tbody tr {
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--line-200);
   transition: background 0.2s;
 }
 
 .tabela tbody tr:hover {
-  background: #f8f9fa;
+  background: var(--surface-50);
 }
 
 .tabela td {
   padding: 0.75rem 1rem;
   font-size: 0.9375rem;
-  color: #212529;
+  color: var(--ink-900);
 }
 
 .colunaAcoes {
