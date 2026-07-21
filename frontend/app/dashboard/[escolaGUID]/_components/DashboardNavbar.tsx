@@ -67,7 +67,8 @@ type IconName =
   | 'bell'
   | 'chevron-down'
   | 'message-circle'
-  | 'user';
+  | 'user'
+  | 'shield';
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const common: React.SVGProps<SVGSVGElement> = {
@@ -178,6 +179,12 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
         <svg {...common} aria-hidden="true">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
+        </svg>
+      );
+    case 'shield':
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       );
     default:
@@ -386,6 +393,8 @@ export default function DashboardNavbar() {
   const isProfessor = funcoesEscola.includes(3);
   const isAluno = funcoesEscola.includes(5);
   const isCoordenacaoOuDirecao = funcoesEscola.includes(1) || funcoesEscola.includes(6);
+  const isCoordSecretariaOuDirecao =
+    funcoesEscola.includes(1) || funcoesEscola.includes(2) || funcoesEscola.includes(6);
 
   const modulosNav: Array<{ key: string; href: string; label: string; icon: IconName }> = [
     { key: 'dashboard', href: `/dashboard/${escolaGUID}`, label: 'Dashboard', icon: 'home' },
@@ -402,6 +411,9 @@ export default function DashboardNavbar() {
     { key: 'chat', href: `/dashboard/${escolaGUID}/chat`, label: 'Conversas', icon: 'message-circle' },
     ...(isCoordenacaoOuDirecao
       ? [{ key: 'configuracoes', href: `/dashboard/${escolaGUID}/configuracoes`, label: 'Config. da Escola', icon: 'settings' as IconName }]
+      : []),
+    ...(isCoordSecretariaOuDirecao
+      ? [{ key: 'auditoria', href: `/dashboard/${escolaGUID}/auditoria`, label: 'Auditoria', icon: 'shield' as IconName }]
       : []),
   ];
 

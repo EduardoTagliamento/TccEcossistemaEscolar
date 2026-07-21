@@ -4,6 +4,7 @@ import { EscolaDAO } from "../repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
+import { getAuditoriaService } from "./auditoria.service";
 
 /**
  * DTOs para transferência de dados
@@ -125,6 +126,16 @@ export default class CursoService {
     // 6. Persistir
     const cursoCriado = await this.#cursoDAO.create(curso);
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: cursoCriado.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Create",
+      EntidadeTipo: "curso",
+      EntidadeGUID: cursoCriado.CursoGUID,
+      EntidadeDescricao: cursoCriado.CursoNome,
+      CategoriaAuditoriaId: 2,
+    });
+
     return this.toDTO(cursoCriado);
   }
 
@@ -221,7 +232,17 @@ export default class CursoService {
         curso.validar();
 
         const cursoCriado = await this.#cursoDAO.create(curso);
-        
+
+        void getAuditoriaService().registrar({
+          EscolaGUID: escolaGUID,
+          UsuarioCPFAtor: usuarioCPF,
+          AcaoTipo: "Create",
+          EntidadeTipo: "curso",
+          EntidadeGUID: cursoCriado.CursoGUID,
+          EntidadeDescricao: cursoCriado.CursoNome,
+          CategoriaAuditoriaId: 2,
+        });
+
         // Adicionar ao conjunto de nomes existentes para evitar duplicatas no mesmo batch
         nomesExistentes.add(nomeComparacao);
 
@@ -332,6 +353,16 @@ export default class CursoService {
       });
     }
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: cursoAtualizado.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "curso",
+      EntidadeGUID: cursoGUID,
+      EntidadeDescricao: cursoAtualizado.CursoNome,
+      CategoriaAuditoriaId: 2,
+    });
+
     return this.toDTO(cursoAtualizado);
   }
 
@@ -358,6 +389,16 @@ export default class CursoService {
         message: 'Não foi possível excluir o curso',
       });
     }
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: curso.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Delete",
+      EntidadeTipo: "curso",
+      EntidadeGUID: cursoGUID,
+      EntidadeDescricao: curso.CursoNome,
+      CategoriaAuditoriaId: 2,
+    });
   }
 
   /**

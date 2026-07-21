@@ -7,6 +7,7 @@ import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket } from 'mysql2';
 import { pool } from '../database/mysql';
 import { getNotificacaoService } from './notificacao.service';
+import { getAuditoriaService } from './auditoria.service';
 import {
   ConviteGrupoTarefa,
   ConviteGrupoTarefaCreateDTO,
@@ -88,8 +89,45 @@ export default class ConviteGrupoTarefaService {
       console.error('🔴 ConviteGrupoTarefaService.#notificarConviteGrupo() falhou:', error);
     });
 
+    this.#registrarAuditoriaConvite(grupo.TurmaGUID, convite.ConviteGUID, 'Create', liderCPF, `Convite enviado a ${convidadoCPF}`).catch((error) => {
+      console.error('🔴 ConviteGrupoTarefaService.#registrarAuditoriaConvite() falhou:', error);
+    });
+
     return convite;
   }
+
+  /**
+   * Resolve o EscolaGUID a partir da turma (mesma necessidade/padrão de
+   * GrupoTarefaService.#resolverEscolaGUID) — usado pelos hooks de auditoria.
+   */
+  #resolverEscolaGUID = async (turmaGUID: string): Promise<string | null> => {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1`,
+      [turmaGUID]
+    );
+    return (rows[0] as any)?.EscolaGUID ?? null;
+  };
+
+  /** Registra auditoria (fire-and-forget) pra uma ação sobre um ConviteGrupoTarefa. */
+  #registrarAuditoriaConvite = async (
+    turmaGUID: string,
+    conviteGUID: string,
+    acaoTipo: 'Create' | 'Update' | 'Delete',
+    usuarioCPFAtor: string,
+    entidadeDescricao?: string
+  ): Promise<void> => {
+    const escolaGUID = await this.#resolverEscolaGUID(turmaGUID);
+    if (!escolaGUID) return;
+    void getAuditoriaService().registrar({
+      EscolaGUID: escolaGUID,
+      UsuarioCPFAtor: usuarioCPFAtor,
+      AcaoTipo: acaoTipo,
+      EntidadeTipo: 'convitegrupotarefa',
+      EntidadeGUID: conviteGUID,
+      EntidadeDescricao: entidadeDescricao ?? null,
+      CategoriaAuditoriaId: 1,
+    });
+  };
 
   /** Notifica o convidado (tipo `convite_grupo`) — só quando é um convite de fato, não solicitação */
   #notificarConviteGrupo = async (
@@ -153,6 +191,10 @@ export default class ConviteGrupoTarefaService {
     };
 
     const solicitacao = await this.#conviteDAO.create(solicitacaoData);
+
+    this.#registrarAuditoriaConvite(grupo.TurmaGUID, solicitacao.ConviteGUID, 'Create', solicitanteCPF, 'Solicitação de entrada no grupo').catch((error) => {
+      console.error('🔴 ConviteGrupoTarefaService.#registrarAuditoriaConvite() falhou:', error);
+    });
 
     return solicitacao;
   }
@@ -221,6 +263,10 @@ export default class ConviteGrupoTarefaService {
 
       await connection.commit();
 
+      this.#registrarAuditoriaConvite(grupo.TurmaGUID, conviteGUID, 'Update', usuarioCPF, `${convite.ConviteTipo} aceito`).catch((error) => {
+        console.error('🔴 ConviteGrupoTarefaService.#registrarAuditoriaConvite() falhou:', error);
+      });
+
       return {
         mensagem: `${convite.ConviteTipo} aceito com sucesso`
       };
@@ -268,6 +314,10 @@ export default class ConviteGrupoTarefaService {
 
     // 3. Atualizar status
     await this.#conviteDAO.updateStatus(conviteGUID, 'Recusado');
+
+    this.#registrarAuditoriaConvite(grupo.TurmaGUID, conviteGUID, 'Update', usuarioCPF, `${convite.ConviteTipo} recusado`).catch((error) => {
+      console.error('🔴 ConviteGrupoTarefaService.#registrarAuditoriaConvite() falhou:', error);
+    });
 
     return {
       mensagem: `${convite.ConviteTipo} recusado`

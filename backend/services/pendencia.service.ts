@@ -20,6 +20,7 @@ import { EscolaDAO } from "../repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { getNotificacaoService } from "./notificacao.service";
+import { getAuditoriaService } from "./auditoria.service";
 
 /**
  * DTOs
@@ -149,6 +150,16 @@ export default class PendenciaService {
       console.error("🔴 PendenciaService.store() - notificação falhou:", error);
     });
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: created.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPFCriador,
+      AcaoTipo: "Create",
+      EntidadeTipo: "pendencia",
+      EntidadeGUID: created.PendenciaGUID,
+      EntidadeDescricao: created.PendenciaTitulo,
+      CategoriaAuditoriaId: 1,
+    });
+
     return this.#toDTO(created);
   }
 
@@ -241,6 +252,16 @@ export default class PendenciaService {
     // 4. Atualizar no banco
     const updated = await this.#pendenciaDAO.update(guid, updateData);
 
+    void getAuditoriaService().registrar({
+      EscolaGUID: updated.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "pendencia",
+      EntidadeGUID: updated.PendenciaGUID,
+      EntidadeDescricao: updated.PendenciaTitulo,
+      CategoriaAuditoriaId: 1,
+    });
+
     return this.#toDTO(updated);
   }
 
@@ -262,6 +283,16 @@ export default class PendenciaService {
 
     // 3. Deletar
     await this.#pendenciaDAO.delete(guid);
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: pendencia.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Delete",
+      EntidadeTipo: "pendencia",
+      EntidadeGUID: pendencia.PendenciaGUID,
+      EntidadeDescricao: pendencia.PendenciaTitulo,
+      CategoriaAuditoriaId: 1,
+    });
   }
 
   /**
@@ -288,6 +319,16 @@ export default class PendenciaService {
 
     // 4. Marcar como feito
     const updated = await this.#pendenciaDAO.marcarComoFeito(guid);
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: updated.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "pendencia",
+      EntidadeGUID: updated.PendenciaGUID,
+      EntidadeDescricao: updated.PendenciaTitulo,
+      CategoriaAuditoriaId: 1,
+    });
 
     return this.#toDTO(updated);
   }

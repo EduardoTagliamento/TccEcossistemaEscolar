@@ -12,6 +12,7 @@ import {
   calcularSlotsPeriodo,
   horaParaMinutos,
 } from "../utils/gradeHoraria.util";
+import { getAuditoriaService } from "./auditoria.service";
 
 export interface IntervaloDTO {
   DiaSemana: DiaSemana | null;
@@ -141,6 +142,15 @@ export default class EscolaConfiguracaoService {
     const intervalosSalvos = await this.#escolaConfiguracaoDAO.findIntervalosByConfiguracao(
       config.EscolaConfiguracaoGUID
     );
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: escolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: existente ? "Update" : "Create",
+      EntidadeTipo: "escolaconfiguracao",
+      EntidadeGUID: config.EscolaConfiguracaoGUID,
+      CategoriaAuditoriaId: 2,
+    });
 
     return {
       configuracao: this.toDTO(configuracaoSalva!, intervalosSalvos),

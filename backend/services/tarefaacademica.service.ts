@@ -9,6 +9,7 @@ import { MatriculaDAO } from "../repositories/matricula.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
+import { getAuditoriaService } from "./auditoria.service";
 
 /**
  * DTOs - Estruturas normalizadas (1 tarefa → N alunos)
@@ -222,7 +223,32 @@ export default class TarefaAcademicaService {
       console.error("🔴 TarefaAcademicaService.#notificarTarefaPostada() falhou:", error);
     });
 
+    const primeiraMatriculaValida = matriculasExistentes.find((m): m is NonNullable<typeof m> => m !== null);
+    if (primeiraMatriculaValida) {
+      const escolaGUID = await this.#resolverEscolaGUIDPorTurma((primeiraMatriculaValida as any).TurmaGUID);
+      if (escolaGUID) {
+        void getAuditoriaService().registrar({
+          EscolaGUID: escolaGUID,
+          UsuarioCPFAtor: usuarioCPF,
+          AcaoTipo: "Create",
+          EntidadeTipo: "tarefaacademica",
+          EntidadeGUID: tarefaCriada.TarefaGUID,
+          EntidadeDescricao: tarefaCriada.TarefaTitulo,
+          CategoriaAuditoriaId: 2,
+        });
+      }
+    }
+
     return this.toDTO(tarefaCriada, atribuicoesCriadas);
+  };
+
+  /** Resolve EscolaGUID via turma — TarefaAcademica não carrega EscolaGUID diretamente. */
+  #resolverEscolaGUIDPorTurma = async (turmaGUID: string): Promise<string | null> => {
+    const [turmaRows] = await pool.execute<RowDataPacket[]>(
+      "SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1",
+      [turmaGUID]
+    );
+    return (turmaRows[0] as any)?.EscolaGUID ?? null;
   };
 
   /**
@@ -400,6 +426,22 @@ export default class TarefaAcademicaService {
       });
     }
 
+    if (atribuicoes.length > 0) {
+      const matriculaRef = await this.#matriculaDAO.findById(atribuicoes[0].MatriculaGUID);
+      const escolaGUID = matriculaRef ? await this.#resolverEscolaGUIDPorTurma(matriculaRef.TurmaGUID) : null;
+      if (escolaGUID) {
+        void getAuditoriaService().registrar({
+          EscolaGUID: escolaGUID,
+          UsuarioCPFAtor: usuarioCPF,
+          AcaoTipo: "Update",
+          EntidadeTipo: "tarefaacademica",
+          EntidadeGUID: tarefaAtualizada.TarefaGUID,
+          EntidadeDescricao: tarefaAtualizada.TarefaTitulo,
+          CategoriaAuditoriaId: 2,
+        });
+      }
+    }
+
     return this.toDTO(tarefaAtualizada, atribuicoes);
   };
 
@@ -446,8 +488,30 @@ export default class TarefaAcademicaService {
       });
     }
 
+    // Resolver EscolaGUID antes de excluir (CASCADE apaga as atribuições junto)
+    const atribuicoesParaAuditoria = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
+    let escolaGUIDParaAuditoria: string | null = null;
+    if (atribuicoesParaAuditoria.length > 0) {
+      const matriculaRef = await this.#matriculaDAO.findById(atribuicoesParaAuditoria[0].MatriculaGUID);
+      escolaGUIDParaAuditoria = matriculaRef ? await this.#resolverEscolaGUIDPorTurma(matriculaRef.TurmaGUID) : null;
+    }
+
     // CASCADE vai excluir automaticamente as atribuições em tarefaacademica_matricula
-    return await this.#tarefaDAO.delete(TarefaGUID);
+    const excluida = await this.#tarefaDAO.delete(TarefaGUID);
+
+    if (excluida && escolaGUIDParaAuditoria) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: escolaGUIDParaAuditoria,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Delete",
+        EntidadeTipo: "tarefaacademica",
+        EntidadeGUID: tarefa.TarefaGUID,
+        EntidadeDescricao: tarefa.TarefaTitulo,
+        CategoriaAuditoriaId: 2,
+      });
+    }
+
+    return excluida;
   };
 
   /**
@@ -497,6 +561,20 @@ export default class TarefaAcademicaService {
     if (TarefaFeito && tarefa) {
       this.#notificarTarefaRespostaRecebida(tarefa, usuarioCPF).catch((error) => {
         console.error("🔴 TarefaAcademicaService.#notificarTarefaRespostaRecebida() falhou:", error);
+      });
+    }
+
+    const matriculaRefFeito = await this.#matriculaDAO.findById(MatriculaGUID);
+    const escolaGUIDFeito = matriculaRefFeito ? await this.#resolverEscolaGUIDPorTurma(matriculaRefFeito.TurmaGUID) : null;
+    if (escolaGUIDFeito) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: escolaGUIDFeito,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Update",
+        EntidadeTipo: "tarefaacademica",
+        EntidadeGUID: TarefaGUID,
+        EntidadeDescricao: tarefa?.TarefaTitulo ?? null,
+        CategoriaAuditoriaId: 2,
       });
     }
 

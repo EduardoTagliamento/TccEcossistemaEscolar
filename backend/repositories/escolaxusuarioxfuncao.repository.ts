@@ -363,6 +363,23 @@ export class EscolaxUsuarioxFuncaoDAO {
   };
 
   /**
+   * Verifica se o usuário é Coordenação (FuncaoId=1), Secretaria (FuncaoId=2)
+   * ou Direção (FuncaoId=6) ativo na escola. Usado pela tela de Registro de
+   * Auditoria — só esses três papéis podem consultar o log (ver
+   * docs/PLANO_IMPLEMENTACAO_REGISTRO_AUDITORIA.md, Seção 1, decisão #2).
+   */
+  isCoordSecretariaOuDirecaoEmEscola = async (usuarioCPF: string, escolaGUID: string): Promise<boolean> => {
+    console.log('🟢 EscolaxUsuarioxFuncaoDAO.isCoordSecretariaOuDirecaoEmEscola()');
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(
+      `SELECT 1 FROM escolaxusuarioxfuncao
+       WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId IN (1, 2, 6) AND Status = 'Ativo' LIMIT 1`,
+      [usuarioCPF, escolaGUID]
+    );
+    return (rows as Array<Record<string, unknown>>).length > 0;
+  };
+
+  /**
    * Busca UsuarioCPF de todos os usuários ativos de uma escola que tenham
    * pelo menos uma das funções informadas. Usado pelo fan-out de notificações
    * (ex.: novo evento na escola → todos os Alunos e Professores).
