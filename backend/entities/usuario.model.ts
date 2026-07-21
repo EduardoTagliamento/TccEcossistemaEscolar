@@ -12,6 +12,11 @@ export default class Usuario {
   #UsuarioCPF!: string;
   #UsuarioEmail: string | null = null;
   #UsuarioFotoUrl: string | null = null;
+  #UsuarioTema: "light" | "dark" | "system" = "system";
+  #UsuarioModoDaltonico: boolean = false;
+  #UsuarioEscalaFonte: "small" | "medium" | "large" = "medium";
+  #UsuarioReduzirMovimento: boolean = false;
+  #UsuarioAltoContraste: boolean = false;
   #UsuarioId: string | null = null;
   #UsuarioTelefone: string | null = null;
   #UsuarioNome!: string;
@@ -87,6 +92,68 @@ export default class Usuario {
     }
 
     this.#UsuarioFotoUrl = value;
+  }
+
+  // ========== Tema (preferência visual — claro/escuro/sistema) ==========
+  get UsuarioTema(): "light" | "dark" | "system" {
+    return this.#UsuarioTema;
+  }
+
+  set UsuarioTema(value: "light" | "dark" | "system") {
+    const temasValidos = ["light", "dark", "system"];
+    if (!temasValidos.includes(value)) {
+      throw new Error("UsuarioTema deve ser 'light', 'dark' ou 'system'.");
+    }
+    this.#UsuarioTema = value;
+  }
+
+  // ========== Modo daltônico (preferência de acessibilidade) ==========
+  get UsuarioModoDaltonico(): boolean {
+    return this.#UsuarioModoDaltonico;
+  }
+
+  set UsuarioModoDaltonico(value: boolean) {
+    if (typeof value !== "boolean") {
+      throw new Error("UsuarioModoDaltonico deve ser boolean.");
+    }
+    this.#UsuarioModoDaltonico = value;
+  }
+
+  // ========== Escala de fonte (preferência de acessibilidade) ==========
+  get UsuarioEscalaFonte(): "small" | "medium" | "large" {
+    return this.#UsuarioEscalaFonte;
+  }
+
+  set UsuarioEscalaFonte(value: "small" | "medium" | "large") {
+    const escalasValidas = ["small", "medium", "large"];
+    if (!escalasValidas.includes(value)) {
+      throw new Error("UsuarioEscalaFonte deve ser 'small', 'medium' ou 'large'.");
+    }
+    this.#UsuarioEscalaFonte = value;
+  }
+
+  // ========== Reduzir movimento (preferência de acessibilidade) ==========
+  get UsuarioReduzirMovimento(): boolean {
+    return this.#UsuarioReduzirMovimento;
+  }
+
+  set UsuarioReduzirMovimento(value: boolean) {
+    if (typeof value !== "boolean") {
+      throw new Error("UsuarioReduzirMovimento deve ser boolean.");
+    }
+    this.#UsuarioReduzirMovimento = value;
+  }
+
+  // ========== Alto contraste (preferência de acessibilidade) ==========
+  get UsuarioAltoContraste(): boolean {
+    return this.#UsuarioAltoContraste;
+  }
+
+  set UsuarioAltoContraste(value: boolean) {
+    if (typeof value !== "boolean") {
+      throw new Error("UsuarioAltoContraste deve ser boolean.");
+    }
+    this.#UsuarioAltoContraste = value;
   }
 
   // ========== Id ==========

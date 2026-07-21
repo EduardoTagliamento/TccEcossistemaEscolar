@@ -23,6 +23,11 @@ interface LoginResponse {
     UsuarioEmailVerificado: boolean;
     UsuarioTelefone: string | null;
     UsuarioFotoUrl: string | null;
+    UsuarioTema: 'light' | 'dark' | 'system';
+    UsuarioModoDaltonico: boolean;
+    UsuarioEscalaFonte: 'small' | 'medium' | 'large';
+    UsuarioReduzirMovimento: boolean;
+    UsuarioAltoContraste: boolean;
   };
 }
 
@@ -153,6 +158,11 @@ export default class AuthService {
           UsuarioEmailVerificado: usuario.UsuarioEmailVerificado,
           UsuarioTelefone: usuario.UsuarioTelefone,
           UsuarioFotoUrl: usuario.UsuarioFotoUrl,
+          UsuarioTema: usuario.UsuarioTema,
+          UsuarioModoDaltonico: usuario.UsuarioModoDaltonico,
+          UsuarioEscalaFonte: usuario.UsuarioEscalaFonte,
+          UsuarioReduzirMovimento: usuario.UsuarioReduzirMovimento,
+          UsuarioAltoContraste: usuario.UsuarioAltoContraste,
         },
       };
     } catch (error: any) {
@@ -198,6 +208,11 @@ export default class AuthService {
         UsuarioEmailVerificado: usuario.UsuarioEmailVerificado,
         UsuarioTelefone: usuario.UsuarioTelefone,
         UsuarioFotoUrl: usuario.UsuarioFotoUrl,
+        UsuarioTema: usuario.UsuarioTema,
+        UsuarioModoDaltonico: usuario.UsuarioModoDaltonico,
+        UsuarioEscalaFonte: usuario.UsuarioEscalaFonte,
+        UsuarioReduzirMovimento: usuario.UsuarioReduzirMovimento,
+        UsuarioAltoContraste: usuario.UsuarioAltoContraste,
       };
     } catch (error: any) {
       if (error instanceof ErrorResponse) {

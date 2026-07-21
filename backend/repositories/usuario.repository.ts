@@ -5,6 +5,11 @@ interface UsuarioRow {
   UsuarioCPF: string;
   UsuarioEmail: string | null;
   UsuarioFotoUrl: string | null;
+  UsuarioTema: "light" | "dark" | "system";
+  UsuarioModoDaltonico: number; // MySQL retorna 0 ou 1
+  UsuarioEscalaFonte: "small" | "medium" | "large";
+  UsuarioReduzirMovimento: number; // MySQL retorna 0 ou 1
+  UsuarioAltoContraste: number; // MySQL retorna 0 ou 1
   UsuarioId: string | null;
   UsuarioTelefone: string | null;
   UsuarioNome: string;
@@ -74,13 +79,19 @@ export class UsuarioDAO {
 
     const SQL = `
       UPDATE usuario
-      SET UsuarioEmail = ?, UsuarioFotoUrl = ?, UsuarioId = ?, UsuarioTelefone = ?, UsuarioNome = ?, UsuarioSenha = ?,
+      SET UsuarioEmail = ?, UsuarioFotoUrl = ?, UsuarioTema = ?, UsuarioModoDaltonico = ?, UsuarioEscalaFonte = ?,
+          UsuarioReduzirMovimento = ?, UsuarioAltoContraste = ?, UsuarioId = ?, UsuarioTelefone = ?, UsuarioNome = ?, UsuarioSenha = ?,
           UsuarioEmailVerificado = ?, UsuarioDataNascimento = ?, UsuarioStatus = ?
       WHERE UsuarioCPF = ? AND UsuarioDeletedAt IS NULL;
     `;
     const params = [
       usuario.UsuarioEmail,
       usuario.UsuarioFotoUrl,
+      usuario.UsuarioTema,
+      usuario.UsuarioModoDaltonico,
+      usuario.UsuarioEscalaFonte,
+      usuario.UsuarioReduzirMovimento,
+      usuario.UsuarioAltoContraste,
       usuario.UsuarioId,
       usuario.UsuarioTelefone,
       usuario.UsuarioNome,
@@ -234,6 +245,11 @@ export class UsuarioDAO {
     usuario.UsuarioCPF = row.UsuarioCPF;
     usuario.UsuarioEmail = row.UsuarioEmail;
     usuario.UsuarioFotoUrl = row.UsuarioFotoUrl;
+    usuario.UsuarioTema = row.UsuarioTema ?? "system";
+    usuario.UsuarioModoDaltonico = Boolean(row.UsuarioModoDaltonico);
+    usuario.UsuarioEscalaFonte = row.UsuarioEscalaFonte ?? "medium";
+    usuario.UsuarioReduzirMovimento = Boolean(row.UsuarioReduzirMovimento);
+    usuario.UsuarioAltoContraste = Boolean(row.UsuarioAltoContraste);
     usuario.UsuarioId = row.UsuarioId;
     usuario.UsuarioTelefone = row.UsuarioTelefone;
     usuario.UsuarioNome = row.UsuarioNome;
