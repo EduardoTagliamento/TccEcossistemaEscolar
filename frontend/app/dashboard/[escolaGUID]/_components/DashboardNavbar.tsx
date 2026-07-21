@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import type { Notificacao } from '@/lib/api/notificacao.api';
+import { contarPendencias } from '@/lib/api/pendencia.api';
 import styles from './DashboardNavbar.module.css';
 
 interface Escola {
@@ -230,6 +231,8 @@ export default function DashboardNavbar() {
   const [naoLidas, setNaoLidas] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
 
+  const [pendenciasPendentesCount, setPendenciasPendentesCount] = useState(0);
+
   useEffect(() => {
     if (usuario && escolaGUID) {
       void buscarEscola();
@@ -246,6 +249,13 @@ export default function DashboardNavbar() {
   }, [usuario]);
 
   useEffect(() => {
+    if (!usuario) return;
+    contarPendencias(escolaGUID)
+      .then(setPendenciasPendentesCount)
+      .catch(() => setPendenciasPendentesCount(0));
+  }, [usuario, escolaGUID]);
+
+  useEffect(() => {
     // Disparado pela tela de configurações (`/configuracoes`) após salvar a
     // "Identidade da Escola". A navbar é montada uma única vez no layout e
     // não remonta entre rotas, então sem isso a marca só atualizaria depois
@@ -260,6 +270,22 @@ export default function DashboardNavbar() {
     return () => window.removeEventListener('baua:escola-atualizada', aoAtualizarEscola);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [escolaGUID]);
+
+  useEffect(() => {
+    // Disparado pela tela de recebimento de pendência
+    // (`/pendencias/[pendenciaGUID]`) após `PATCH .../feito`. Sem isso o item
+    // "Minhas Pendências" só sumiria da navbar depois de um refresh manual,
+    // já que ela é montada uma única vez no layout e não remonta entre rotas.
+    const aoAtualizarPendencia = () => {
+      if (!usuario) return;
+      contarPendencias(escolaGUID)
+        .then(setPendenciasPendentesCount)
+        .catch(() => setPendenciasPendentesCount(0));
+    };
+    window.addEventListener('baua:pendencia-atualizada', aoAtualizarPendencia);
+    return () => window.removeEventListener('baua:pendencia-atualizada', aoAtualizarPendencia);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario, escolaGUID]);
 
   useEffect(() => {
     const fecharAoClicarFora = (evento: MouseEvent) => {
@@ -401,11 +427,20 @@ export default function DashboardNavbar() {
     ...(isCoordenacaoOuDirecao
       ? [{ key: 'gestao-dados', href: `/dashboard/${escolaGUID}/gestao-dados`, label: 'Gestão de Dados', icon: 'database' as IconName }]
       : []),
+    ...(isCoordSecretariaOuDirecao
+      ? [{ key: 'cadastro-evento', href: `/dashboard/${escolaGUID}/cadastro-evento`, label: 'Cadastro de Eventos', icon: 'edit' as IconName }]
+      : []),
+    ...(isCoordSecretariaOuDirecao
+      ? [{ key: 'cadastro-pendencia', href: `/dashboard/${escolaGUID}/cadastro-pendencia`, label: 'Cadastro de Pendências', icon: 'file-text' as IconName }]
+      : []),
     ...(isProfessor
       ? [{ key: 'cadastro', href: `/dashboard/${escolaGUID}/cadastro`, label: 'Cadastro', icon: 'edit' as IconName }]
       : []),
     ...(isAluno
       ? [{ key: 'tarefas', href: `/dashboard/${escolaGUID}/tarefas`, label: 'Minhas Tarefas', icon: 'book-open' as IconName }]
+      : []),
+    ...(pendenciasPendentesCount > 0
+      ? [{ key: 'pendencias', href: `/dashboard/${escolaGUID}/pendencias`, label: 'Minhas Pendências', icon: 'bell' as IconName }]
       : []),
     { key: 'calendario', href: `/dashboard/${escolaGUID}/calendario`, label: 'Calendário', icon: 'calendar' },
     { key: 'projetos', href: `/dashboard/${escolaGUID}/projetos`, label: 'Projetos', icon: 'users' },

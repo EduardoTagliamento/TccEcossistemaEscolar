@@ -18,6 +18,7 @@ import { EscolaDAO } from "../backend/repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
 import { AnexoDAO } from "../backend/repositories/anexo.repository";
 import { TarefaAcademicaDAO } from "../backend/repositories/tarefaacademica.repository";
+import { PendenciaDAO } from "../backend/repositories/pendencia.repository";
 import { RelacaoAnexosDAO } from "../backend/repositories/relacaoanexos.repository";
 import EventoService from "../backend/services/evento.service";
 import RelacaoAnexosService from "../backend/services/relacaoanexos.service";
@@ -38,6 +39,7 @@ export function eventoRoutes(): Router {
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
   const anexoDAO = new AnexoDAO(database);
   const tarefaDAO = new TarefaAcademicaDAO(database);
+  const pendenciaDAO = new PendenciaDAO(database);
   const relacaoAnexosDAO = new RelacaoAnexosDAO(database);
 
   const eventoService = new EventoService(
@@ -50,7 +52,9 @@ export function eventoRoutes(): Router {
     relacaoAnexosDAO,
     anexoDAO,
     tarefaDAO,
-    eventoDAO
+    eventoDAO,
+    pendenciaDAO,
+    escolaxUsuarioxFuncaoDAO
   );
 
   const eventoController = new EventoController(eventoService, relacaoAnexosService);

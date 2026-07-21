@@ -1,10 +1,17 @@
+/* ============================================================
+   Gestão de Dados — Modal Resolver Erros — Bauá Design System.
+   Tokens escopados localmente sob `.modal` (a raiz visual real deste
+   componente — `.overlay` é o backdrop de tela cheia), mesmo padrão
+   usado em frontend/app/dashboard/[escolaGUID]/gestao-dados/page.module.css.
+   ============================================================ */
+
 .overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(15, 29, 23, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,15 +20,92 @@
 }
 
 .modal {
-  background: white;
-  border-radius: 16px;
+  /* cores */
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --blue-500: #2F5BEA;
+  --blue-50: #EAF0FE;
+  --gold-500: #FFC02E;
+  --gold-50: #FFF7E0;
+  --gold-700: #8A6A00;
+  --ink-900: #0F1D17;
+  --slate-700: #2B3B33;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --line-200: #E2EAE5;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  /* raio */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+
+  /* elevação */
+  --shadow-lg: 0 10px 40px rgba(15, 29, 23, 0.3);
+
+  background: var(--white);
+  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 600px;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-700);
+}
+
+.modal :global(*) {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .modal {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --blue-500: #5B82FF;
+  --blue-50: #182246;
+  --gold-500: #FFCB52;
+  --gold-50: #3A2C0F;
+  --gold-700: #FFD98A;
+  --ink-900: #F3F7F4;
+  --slate-700: #D6DFDA;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --line-200: #2A3A31;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.55);
+}
+
+:global(html[data-daltonico="true"]) .modal {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .modal {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+}
+
+:global(html[data-alto-contraste="true"]) .modal {
+  --slate-700: #1A2620;
+  --slate-600: #2B3B33;
+  --slate-500: #46564D;
+  --line-200: #8A968E;
+  --gold-700: #6B5200;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .modal {
+  --slate-700: #FFFFFF;
+  --slate-600: #E7ECE9;
+  --slate-500: #C7D2CB;
+  --line-200: #7C8B82;
+  --gold-700: #FFE7B0;
 }
 
 .header {
@@ -29,14 +113,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
-  background: #f8f9fa;
+  border-bottom: 1px solid var(--line-200);
+  background: var(--surface-50);
 }
 
 .titulo {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--ink-900);
   margin: 0;
 }
 
@@ -45,40 +129,40 @@
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #666;
+  color: var(--slate-500);
   padding: 0.25rem 0.5rem;
   transition: color 0.2s;
 }
 
 .botaoFechar:hover {
-  color: #000;
+  color: var(--ink-900);
 }
 
 .progressoContainer {
   padding: 1rem 1.5rem;
-  background: white;
-  border-bottom: 1px solid #e0e0e0;
+  background: var(--white);
+  border-bottom: 1px solid var(--line-200);
 }
 
 .progressoInfo {
   display: flex;
   justify-content: space-between;
   font-size: 0.875rem;
-  color: #666;
+  color: var(--slate-500);
   margin-bottom: 0.5rem;
 }
 
 .progressoBarra {
   width: 100%;
   height: 8px;
-  background: #e0e0e0;
-  border-radius: 4px;
+  background: var(--line-200);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .progressoPreenchimento {
   height: 100%;
-  background: linear-gradient(90deg, #007bff, #0056b3);
+  background: linear-gradient(90deg, var(--green-500), var(--green-600));
   transition: width 0.3s ease;
 }
 
@@ -94,13 +178,13 @@
   gap: 0.5rem;
   margin-bottom: 1.5rem;
   padding: 0.75rem;
-  background: #f0f8ff;
-  border-left: 4px solid #007bff;
-  border-radius: 4px;
+  background: var(--blue-50);
+  border-left: 4px solid var(--blue-500);
+  border-radius: var(--radius-sm);
 }
 
 .labelCampo {
-  color: #666;
+  color: var(--slate-500);
   font-size: 0.875rem;
 }
 
@@ -113,12 +197,12 @@
 .descricaoErro {
   font-size: 1rem;
   line-height: 1.5;
-  color: #333;
+  color: var(--slate-700);
 }
 
 .instrucao {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--slate-500);
   margin-top: 0.5rem;
 }
 
@@ -130,17 +214,21 @@
 
 .inputBusca {
   padding: 0.75rem;
-  border: 1px solid #d0d0d0;
-  border-radius: 8px;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
   font-size: 0.9375rem;
+  background: var(--white);
+  color: var(--ink-900);
 }
 
 .select {
   padding: 0.5rem;
-  border: 1px solid #d0d0d0;
-  border-radius: 8px;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
   font-size: 0.9375rem;
   min-height: 150px;
+  background: var(--white);
+  color: var(--ink-900);
 }
 
 .select option {
@@ -149,16 +237,18 @@
 
 .input {
   padding: 0.75rem;
-  border: 1px solid #d0d0d0;
-  border-radius: 8px;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
   font-size: 1rem;
+  background: var(--white);
+  color: var(--ink-900);
   transition: border-color 0.2s;
 }
 
 .input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px rgba(23, 192, 119, 0.15);
 }
 
 .listaOpcoes {
@@ -172,24 +262,25 @@
   align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  border: 2px solid var(--line-200);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .opcaoRadio:hover {
-  border-color: #007bff;
-  background: #f0f8ff;
+  border-color: var(--green-500);
+  background: var(--surface-50);
 }
 
 .opcaoRadio input[type="radio"] {
   margin-top: 0.25rem;
   cursor: pointer;
+  accent-color: var(--green-500);
 }
 
 .opcaoRadio input[type="radio"]:checked ~ .opcaoConteudo {
-  color: #007bff;
+  color: var(--green-600);
 }
 
 .opcaoConteudo {
@@ -200,7 +291,7 @@
 
 .detalhes {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--slate-500);
 }
 
 .opcoesBoolean {
@@ -217,11 +308,11 @@
 
 .dica {
   font-size: 0.875rem;
-  color: #666;
-  background: #fffacd;
+  color: var(--gold-700);
+  background: var(--gold-50);
   padding: 0.75rem;
-  border-radius: 8px;
-  border-left: 4px solid #ffd700;
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--gold-500);
   margin-top: 0.5rem;
 }
 
@@ -229,15 +320,15 @@
   display: flex;
   gap: 1rem;
   padding: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-  background: #f8f9fa;
+  border-top: 1px solid var(--line-200);
+  background: var(--surface-50);
 }
 
 .botaoPular,
 .botaoResolver {
   flex: 1;
   padding: 0.75rem 1.5rem;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -245,26 +336,27 @@
 }
 
 .botaoPular {
-  background: white;
-  border: 1px solid #d0d0d0;
-  color: #333;
+  background: var(--white);
+  border: 1px solid var(--line-200);
+  color: var(--slate-700);
 }
 
 .botaoPular:hover {
-  background: #f0f0f0;
+  background: var(--line-200);
 }
 
 .botaoResolver {
-  background: #28a745;
+  background: var(--green-500);
   border: none;
-  color: white;
+  color: var(--white);
 }
 
 .botaoResolver:hover:not(:disabled) {
-  background: #218838;
+  background: var(--green-600);
 }
 
 .botaoResolver:disabled {
-  background: #d0d0d0;
+  background: var(--line-200);
+  color: var(--slate-500);
   cursor: not-allowed;
 }

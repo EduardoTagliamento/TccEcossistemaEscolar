@@ -16,6 +16,8 @@ import { RelacaoAnexosDAO } from "../repositories/relacaoanexos.repository";
 import { AnexoDAO } from "../repositories/anexo.repository";
 import { TarefaAcademicaDAO } from "../repositories/tarefaacademica.repository";
 import { EventoDAO } from "../repositories/evento.repository";
+import { PendenciaDAO } from "../repositories/pendencia.repository";
+import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 
 /**
@@ -39,18 +41,24 @@ export default class RelacaoAnexosService {
   #anexoDAO: AnexoDAO;
   #tarefaDAO: TarefaAcademicaDAO;
   #eventoDAO: EventoDAO;
+  #pendenciaDAO: PendenciaDAO;
+  #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
 
   constructor(
     relacaoDAO: RelacaoAnexosDAO,
     anexoDAO: AnexoDAO,
     tarefaDAO: TarefaAcademicaDAO,
-    eventoDAO: EventoDAO
+    eventoDAO: EventoDAO,
+    pendenciaDAO: PendenciaDAO,
+    escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO
   ) {
     console.log("🟣 RelacaoAnexosService.constructor()");
     this.#relacaoDAO = relacaoDAO;
     this.#anexoDAO = anexoDAO;
     this.#tarefaDAO = tarefaDAO;
     this.#eventoDAO = eventoDAO;
+    this.#pendenciaDAO = pendenciaDAO;
+    this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAO;
   }
 
   /**
@@ -94,9 +102,15 @@ export default class RelacaoAnexosService {
       }
 
       case "pendencia": {
-        // Pendência usa PendenciaDAO que não está injetado
-        // Por enquanto, assumir que anexo já pertence à escola correta
-        escolaGUID = anexo.EscolaGUID;
+        const pendencia = await this.#pendenciaDAO.findById(recursoGUID);
+        if (!pendencia) {
+          throw new ErrorResponse(404, "Pendência não encontrada");
+        }
+        // Só o destinatário pode anexar sua própria resposta à pendência
+        if (pendencia.UsuarioCPF !== usuarioCPF) {
+          throw new ErrorResponse(403, "Apenas o destinatário pode anexar arquivos a esta pendência");
+        }
+        escolaGUID = pendencia.EscolaGUID;
         break;
       }
 
@@ -156,7 +170,25 @@ export default class RelacaoAnexosService {
   async listarAnexosPendencia(pendenciaGUID: string, usuarioCPF: string): Promise<AnexoDTO[]> {
     console.log("🟣 RelacaoAnexosService.listarAnexosPendencia()");
 
-    // Buscar anexos (validação de pendência feita no controller)
+    // Validar pendência existe
+    const pendencia = await this.#pendenciaDAO.findById(pendenciaGUID);
+    if (!pendencia) {
+      throw new ErrorResponse(404, "Pendência não encontrada");
+    }
+
+    // Validar acesso: destinatário sempre vê; caso contrário, precisa ser admin da escola
+    if (pendencia.UsuarioCPF !== usuarioCPF) {
+      const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
+        EscolaGUID: pendencia.EscolaGUID,
+        UsuarioCPF: usuarioCPF
+      });
+
+      if (vinculos.length === 0 || vinculos[0].Status !== "Ativo" || ![1, 2, 6].includes(vinculos[0].FuncaoId)) {
+        throw new ErrorResponse(403, "Sem permissão para acessar os anexos desta pendência");
+      }
+    }
+
+    // Buscar anexos
     const anexos = await this.#relacaoDAO.findAnexosByPendencia(pendenciaGUID);
     return anexos.map(a => this.#toDTO(a));
   }

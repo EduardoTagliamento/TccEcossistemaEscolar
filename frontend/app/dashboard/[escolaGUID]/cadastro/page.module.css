@@ -18,6 +18,45 @@
   background: var(--surface-50);
 }
 
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   Mesmo mecanismo de frontend/app/dashboard/[escolaGUID]/configuracoes/page.module.css
+   — como este módulo redeclara os tokens do Bauá Design System localmente
+   sob `.container`, um override em :root não bastaria: precisa reafirmar
+   os mesmos nomes de variável aqui, escopados por atributo.
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --ink-900: #F3F7F4;
+  --slate-500: #93A398;
+  --line-200: #2A3A31;
+  --surface-50: #0F1712;
+}
+
+/* Modo daltônico — troca verde=sucesso / vermelho=perigo por azul/laranja
+   (distinguível em protanopia/deuteranopia). Independente de tema. */
+:global(html[data-daltonico="true"]) .container {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+}
+
+/* Alto contraste — ortogonal ao tema, reforça texto secundário e bordas. */
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-500: #2B3B33;
+  --line-200: #8A968E;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-500: #E7ECE9;
+  --line-200: #7C8B82;
+}
+
 .pageWrap {
   max-width: 960px;
   margin: 0 auto;
@@ -49,7 +88,7 @@
 .aba,
 .abaAtiva {
   border: 1.5px solid var(--line-200);
-  background: #fff;
+  background: var(--surface-50);
   color: var(--slate-500);
   font-family: var(--font-body), 'Figtree', system-ui, sans-serif;
   font-size: 0.875rem;
