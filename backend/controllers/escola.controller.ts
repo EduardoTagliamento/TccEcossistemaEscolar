@@ -62,7 +62,8 @@ export default class EscolaControl {
     console.log("🔵 EscolaControl.update()");
     try {
       const { EscolaGUID } = request.params;
-      const escolaAtualizada = await this.#escolaService.updateEscola(EscolaGUID, request.body.escola);
+      const usuarioCPF = request.user?.UsuarioCPF;
+      const escolaAtualizada = await this.#escolaService.updateEscola(EscolaGUID, request.body.escola, usuarioCPF);
 
       response.status(200).json({
         success: true,
@@ -78,7 +79,8 @@ export default class EscolaControl {
     console.log("🔵 EscolaControl.destroy()");
     try {
       const { EscolaGUID } = request.params;
-      const excluiu = await this.#escolaService.deleteEscola(EscolaGUID);
+      const usuarioCPF = request.user?.UsuarioCPF;
+      const excluiu = await this.#escolaService.deleteEscola(EscolaGUID, usuarioCPF);
 
       if (!excluiu) {
         return response.status(404).json({

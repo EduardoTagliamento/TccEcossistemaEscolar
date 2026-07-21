@@ -20,13 +20,35 @@ function getHeaders(): HeadersInit {
 
 export interface Escola {
   EscolaGUID: string;
-  EscolaNome: string;
+  EscolaNome: string | null;
   EscolaCNPJ: string | null;
+  EscolaTelefone: string | null;
+  EscolaEmail: string | null;
   EscolaEndereco: string | null;
-  EscolaContato: string | null;
-  EscolaStatus: 'Ativo' | 'Inativo';
-  EscolaCreatedAt: Date;
-  EscolaUpdatedAt: Date;
+  EscolaCorPriEs: string | null;
+  EscolaCorPriCl: string | null;
+  EscolaCorSecEs: string | null;
+  EscolaCorSecCl: string | null;
+  EscolaIcone: string | null; // base64
+  EscolaStatus: 'Ativa' | 'Inativa';
+  EscolaIsTecnica: boolean;
+  EscolaCreatedAt: string | null;
+  EscolaUpdatedAt: string | null;
+}
+
+export interface AtualizarEscolaDados {
+  EscolaNome?: string | null;
+  EscolaCNPJ?: string | null;
+  EscolaTelefone?: string | null;
+  EscolaEmail?: string | null;
+  EscolaEndereco?: string | null;
+  EscolaCorPriEs?: string | null;
+  EscolaCorPriCl?: string | null;
+  EscolaCorSecEs?: string | null;
+  EscolaCorSecCl?: string | null;
+  EscolaIcone?: string | null; // base64 sem prefixo data:*, ou null/"" para remover
+  EscolaStatus?: 'Ativa' | 'Inativa';
+  EscolaIsTecnica?: boolean;
 }
 
 /**
@@ -45,6 +67,28 @@ export async function buscarEscola(escolaGUID: string): Promise<{ escola: Escola
 
   const data = await response.json();
   return { escola: data.data || data };
+}
+
+/**
+ * Atualizar dados institucionais da escola (apenas Direção — FuncaoId=6)
+ */
+export async function atualizarEscola(
+  escolaGUID: string,
+  dados: AtualizarEscolaDados
+): Promise<{ escola: Escola }> {
+  const response = await fetch(`${API_URL}/escola/${escolaGUID}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ escola: dados }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao atualizar escola');
+  }
+
+  const data = await response.json();
+  return { escola: data.data?.escola ?? data.data };
 }
 
 /**

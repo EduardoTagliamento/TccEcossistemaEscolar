@@ -31,6 +31,7 @@ export default class EscolaRoteador {
 
     this.#router.put(
       "/:EscolaGUID",
+      AuthMiddleware.authenticate,
       this.#escolaMiddleware.validateIdParam,
       this.#escolaMiddleware.validateUpdateBody,
       this.#escolaControle.update
@@ -38,14 +39,16 @@ export default class EscolaRoteador {
 
     this.#router.delete(
       "/:EscolaGUID",
+      AuthMiddleware.authenticate,
       this.#escolaMiddleware.validateIdParam,
       this.#escolaControle.destroy
     );
 
-    this.#router.get("/", this.#escolaControle.index);
+    this.#router.get("/", AuthMiddleware.authenticate, this.#escolaControle.index);
 
     this.#router.get(
       "/:EscolaGUID",
+      AuthMiddleware.authenticate,
       this.#escolaMiddleware.validateIdParam,
       this.#escolaControle.show
     );
