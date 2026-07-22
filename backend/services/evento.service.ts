@@ -161,7 +161,7 @@ export default class EventoService {
         UsuarioCPF: usuarioCPF
       });
 
-      if (vinculos.length === 0 || vinculos[0].Status !== "Ativo") {
+      if (!vinculos.some((v) => v.Status === "Ativo")) {
         throw new ErrorResponse(403, "Usuário não vinculado a esta escola");
       }
     }
@@ -188,7 +188,7 @@ export default class EventoService {
       UsuarioCPF: usuarioCPF
     });
 
-    if (vinculos.length === 0 || vinculos[0].Status !== "Ativo") {
+    if (!vinculos.some((v) => v.Status === "Ativo")) {
       throw new ErrorResponse(403, "Sem permissão para visualizar este evento");
     }
 
@@ -294,12 +294,13 @@ export default class EventoService {
       UsuarioCPF: cpf
     });
 
-    if (vinculos.length === 0 || vinculos[0].Status !== "Ativo") {
+    if (!vinculos.some((v) => v.Status === "Ativo")) {
       throw new ErrorResponse(403, "Usuário não está vinculado a esta escola");
     }
 
-    // FuncaoId: 1=Coordenação, 2=Secretaria, 6=Direção
-    if (![1, 2, 6].includes(vinculos[0].FuncaoId)) {
+    // FuncaoId: 1=Coordenação, 2=Secretaria, 6=Direção — considera QUALQUER
+    // vínculo ativo do usuário na escola, não só o primeiro retornado.
+    if (!vinculos.some((v) => v.Status === "Ativo" && [1, 2, 6].includes(v.FuncaoId))) {
       throw new ErrorResponse(
         403,
         "Sem permissão. Apenas Coordenação, Direção e Secretaria podem gerenciar eventos"
