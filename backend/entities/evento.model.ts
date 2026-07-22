@@ -6,6 +6,9 @@
  * Campos:
  * - EventoGUID: Identificador único (UUID v4)
  * - EscolaGUID: Escola organizadora
+ * - UsuarioCPF: CPF de quem criou o evento (coluna NOT NULL/FK já existente
+ *   na tabela `evento` em produção, sem correspondente na entidade até
+ *   2026-07-22 — ver backend/database/migrations/2026-07-22-fix-evento-schema.sql)
  * - EventoTitulo: Nome do evento (3-128 caracteres)
  * - EventoDescricao: Detalhes do evento (opcional, 0-1024 caracteres)
  * - EventoData: Data e hora do evento
@@ -17,6 +20,7 @@
 export default class Evento {
   #EventoGUID: string;
   #EscolaGUID: string;
+  #UsuarioCPF: string;
   #EventoTitulo: string;
   #EventoDescricao: string | null;
   #EventoData: Date;
@@ -27,6 +31,7 @@ export default class Evento {
   constructor(
     EventoGUID: string,
     EscolaGUID: string,
+    UsuarioCPF: string,
     EventoTitulo: string,
     EventoDescricao: string | null,
     EventoData: Date,
@@ -36,6 +41,7 @@ export default class Evento {
   ) {
     this.#EventoGUID = EventoGUID;
     this.#EscolaGUID = EscolaGUID;
+    this.#UsuarioCPF = UsuarioCPF;
     this.#EventoTitulo = EventoTitulo;
     this.#EventoDescricao = EventoDescricao;
     this.#EventoData = EventoData;
@@ -52,6 +58,10 @@ export default class Evento {
 
   get EscolaGUID(): string {
     return this.#EscolaGUID;
+  }
+
+  get UsuarioCPF(): string {
+    return this.#UsuarioCPF;
   }
 
   get EventoTitulo(): string {
@@ -132,6 +142,10 @@ export default class Evento {
       throw new Error("EscolaGUID inválido (deve ser UUID v4)");
     }
 
+    if (!this.#UsuarioCPF) {
+      throw new Error("UsuarioCPF (criador do evento) é obrigatório");
+    }
+
     // Título
     if (!this.#EventoTitulo || this.#EventoTitulo.trim().length < 3) {
       throw new Error("EventoTitulo deve ter no mínimo 3 caracteres");
@@ -192,6 +206,7 @@ export default class Evento {
     return {
       EventoGUID: this.#EventoGUID,
       EscolaGUID: this.#EscolaGUID,
+      UsuarioCPF: this.#UsuarioCPF,
       EventoTitulo: this.#EventoTitulo,
       EventoDescricao: this.#EventoDescricao,
       EventoData: this.#EventoData,
@@ -208,6 +223,7 @@ export default class Evento {
     return new Evento(
       obj.EventoGUID,
       obj.EscolaGUID,
+      obj.UsuarioCPF,
       obj.EventoTitulo,
       obj.EventoDescricao ?? null,
       new Date(obj.EventoData),

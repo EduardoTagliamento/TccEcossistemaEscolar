@@ -192,18 +192,88 @@
   font-size: 12px;
 }
 
+.moduleNavWrap {
+  flex: 1;
+  min-width: 0; /* permite ao flex item encolher e o overflow-x da nav funcionar */
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .moduleNav {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 2px;
   overflow-x: auto;
-  scrollbar-width: none;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-200) transparent;
 }
 
 .moduleNav::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+}
+
+.moduleNav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.moduleNav::-webkit-scrollbar-thumb {
+  background: var(--line-200);
+  border-radius: var(--radius-pill);
+}
+
+.moduleNav::-webkit-scrollbar-thumb:hover {
+  background: var(--slate-400);
+}
+
+.moduleNavComSetaEsquerda {
+  padding-left: 26px;
+}
+
+.moduleNavComSetaDireita {
+  padding-right: 26px;
+}
+
+/* Setas de rolagem — só renderizadas (via JS) quando os módulos não cabem
+   na largura disponível. Semi-transparentes por padrão pra ficarem
+   discretas, opacas no hover/foco; o fundo em gradiente funde com o branco
+   da navbar em vez de cortar o conteúdo abruptamente. */
+.moduleNavSeta {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--slate-600);
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.moduleNavSeta:hover,
+.moduleNavSeta:focus-visible {
+  opacity: 1;
+}
+
+.moduleNavSetaEsquerda {
+  left: 0;
+  justify-content: flex-start;
+  background: linear-gradient(to right, var(--white) 55%, transparent);
+}
+
+.moduleNavSetaDireita {
+  right: 0;
+  justify-content: flex-end;
+  background: linear-gradient(to left, var(--white) 55%, transparent);
 }
 
 .moduleItem {

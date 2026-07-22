@@ -48,16 +48,18 @@ export class EventoDAO {
       INSERT INTO evento (
         EventoGUID,
         EscolaGUID,
+        UsuarioCPF,
         EventoTitulo,
         EventoDescricao,
         EventoData,
         EventoStatus
-      ) VALUES (?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       evento.EventoGUID,
       evento.EscolaGUID,
+      evento.UsuarioCPF,
       evento.EventoTitulo,
       evento.EventoDescricao,
       evento.EventoData,
@@ -86,6 +88,7 @@ export class EventoDAO {
       SELECT
         EventoGUID,
         EscolaGUID,
+        UsuarioCPF,
         EventoTitulo,
         EventoDescricao,
         EventoData,
@@ -116,6 +119,7 @@ export class EventoDAO {
       SELECT
         EventoGUID,
         EscolaGUID,
+        UsuarioCPF,
         EventoTitulo,
         EventoDescricao,
         EventoData,
@@ -253,6 +257,7 @@ export class EventoDAO {
     return Evento.fromPlainObject({
       EventoGUID: row.EventoGUID,
       EscolaGUID: row.EscolaGUID,
+      UsuarioCPF: row.UsuarioCPF,
       EventoTitulo: row.EventoTitulo,
       EventoDescricao: row.EventoDescricao,
       EventoData: row.EventoData,
