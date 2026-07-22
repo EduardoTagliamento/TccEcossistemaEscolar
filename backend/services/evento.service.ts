@@ -29,6 +29,7 @@ const FUNCOES_EVENTO_CRIADO = [1, 2, 3, 5, 6];
 export interface EventoDTO {
   EventoGUID: string;
   EscolaGUID: string;
+  UsuarioCPF: string;
   EventoTitulo: string;
   EventoDescricao: string | null;
   EventoData: Date;
@@ -96,6 +97,7 @@ export default class EventoService {
     const evento = Evento.fromPlainObject({
       EventoGUID: uuidv4(),
       EscolaGUID: data.EscolaGUID,
+      UsuarioCPF: usuarioCPF,
       EventoTitulo: data.EventoTitulo.trim(),
       EventoDescricao: data.EventoDescricao?.trim() || null,
       EventoData: eventoData,
@@ -315,6 +317,7 @@ export default class EventoService {
     return {
       EventoGUID: evento.EventoGUID,
       EscolaGUID: evento.EscolaGUID,
+      UsuarioCPF: evento.UsuarioCPF,
       EventoTitulo: evento.EventoTitulo,
       EventoDescricao: evento.EventoDescricao,
       EventoData: evento.EventoData,

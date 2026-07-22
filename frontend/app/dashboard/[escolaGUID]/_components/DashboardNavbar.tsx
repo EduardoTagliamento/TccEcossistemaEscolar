@@ -67,6 +67,8 @@ type IconName =
   | 'database'
   | 'bell'
   | 'chevron-down'
+  | 'chevron-left'
+  | 'chevron-right'
   | 'message-circle'
   | 'user'
   | 'shield';
@@ -169,6 +171,18 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
           <polyline points="6 9 12 15 18 9" />
         </svg>
       );
+    case 'chevron-left':
+      return (
+        <svg {...common} aria-hidden="true">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      );
+    case 'chevron-right':
+      return (
+        <svg {...common} aria-hidden="true">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      );
     case 'message-circle':
       return (
         <svg {...common} aria-hidden="true">
@@ -232,6 +246,48 @@ export default function DashboardNavbar() {
   const notifRef = useRef<HTMLDivElement>(null);
 
   const [pendenciasPendentesCount, setPendenciasPendentesCount] = useState(0);
+
+  // Setas de rolagem da nav de módulos — só aparecem quando os itens não
+  // cabem na largura disponível (ex. usuário com muitos papéis/módulos
+  // visíveis ao mesmo tempo).
+  const moduleNavRef = useRef<HTMLElement>(null);
+  const [podeRolarNavEsquerda, setPodeRolarNavEsquerda] = useState(false);
+  const [podeRolarNavDireita, setPodeRolarNavDireita] = useState(false);
+
+  const atualizarEstadoScrollNav = () => {
+    const el = moduleNavRef.current;
+    if (!el) return;
+    const folga = 4; // margem pra evitar flicker por arredondamento de subpixel
+    setPodeRolarNavEsquerda(el.scrollLeft > folga);
+    setPodeRolarNavDireita(el.scrollLeft < el.scrollWidth - el.clientWidth - folga);
+  };
+
+  useEffect(() => {
+    const el = moduleNavRef.current;
+    if (!el) return;
+
+    atualizarEstadoScrollNav();
+
+    const observer = new ResizeObserver(() => atualizarEstadoScrollNav());
+    observer.observe(el);
+    el.addEventListener('scroll', atualizarEstadoScrollNav, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      el.removeEventListener('scroll', atualizarEstadoScrollNav);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [funcoesEscola.length, pendenciasPendentesCount]);
+
+  const rolarNavParaEsquerda = () => {
+    moduleNavRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+  };
+
+  const rolarNavParaDireita = () => {
+    const el = moduleNavRef.current;
+    if (!el) return;
+    el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     if (usuario && escolaGUID) {
@@ -479,21 +535,55 @@ export default function DashboardNavbar() {
           </div>
         </Link>
 
-        <nav className={styles.moduleNav} aria-label="Módulos da escola">
-          {modulosNav.map((modulo) => {
-            const ativo = modulo.key === 'dashboard' ? pathname === modulo.href : (pathname || '').startsWith(modulo.href);
-            return (
-              <Link
-                key={modulo.key}
-                href={modulo.href}
-                className={`${styles.moduleItem} ${ativo ? styles.moduleItemActive : ''}`}
-              >
-                <Icon name={modulo.icon} size={20} />
-                <span>{modulo.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+        <div className={styles.moduleNavWrap}>
+          {podeRolarNavEsquerda && (
+            <button
+              type="button"
+              className={`${styles.moduleNavSeta} ${styles.moduleNavSetaEsquerda}`}
+              onClick={rolarNavParaEsquerda}
+              aria-label="Rolar módulos para a esquerda"
+              tabIndex={-1}
+            >
+              <Icon name="chevron-left" size={18} />
+            </button>
+          )}
+
+          <nav
+            className={[
+              styles.moduleNav,
+              podeRolarNavEsquerda ? styles.moduleNavComSetaEsquerda : '',
+              podeRolarNavDireita ? styles.moduleNavComSetaDireita : '',
+            ].filter(Boolean).join(' ')}
+            aria-label="Módulos da escola"
+            ref={moduleNavRef}
+          >
+            {modulosNav.map((modulo) => {
+              const ativo = modulo.key === 'dashboard' ? pathname === modulo.href : (pathname || '').startsWith(modulo.href);
+              return (
+                <Link
+                  key={modulo.key}
+                  href={modulo.href}
+                  className={`${styles.moduleItem} ${ativo ? styles.moduleItemActive : ''}`}
+                >
+                  <Icon name={modulo.icon} size={20} />
+                  <span>{modulo.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {podeRolarNavDireita && (
+            <button
+              type="button"
+              className={`${styles.moduleNavSeta} ${styles.moduleNavSetaDireita}`}
+              onClick={rolarNavParaDireita}
+              aria-label="Rolar módulos para a direita"
+              tabIndex={-1}
+            >
+              <Icon name="chevron-right" size={18} />
+            </button>
+          )}
+        </div>
 
         <div className={styles.navActions}>
           <div className={styles.notifWrap} ref={notifRef}>
