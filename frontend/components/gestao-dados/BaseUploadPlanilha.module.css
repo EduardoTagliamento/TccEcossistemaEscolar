@@ -155,8 +155,19 @@
 }
 
 .iconeUpload {
-  font-size: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--slate-400);
   margin-bottom: 0.5rem;
+}
+
+.dropzoneMensagemAtiva {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--blue-500);
+  font-weight: 500;
 }
 
 .textoSecundario {
@@ -192,6 +203,10 @@
 }
 
 .arquivoSelecionado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   margin-top: 1rem;
   padding: 0.75rem;
   background: var(--green-50);

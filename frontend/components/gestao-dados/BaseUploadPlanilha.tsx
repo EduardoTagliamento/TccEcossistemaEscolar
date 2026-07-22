@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
+import { Icon } from '@/components/Icon';
 import styles from './BaseUploadPlanilha.module.css';
 
 export interface DadosPlanilha<T = any> {
@@ -118,12 +119,12 @@ export default function BaseUploadPlanilha<T = any>({
 
       {modeloUrl && (
         <div className={styles.modeloContainer}>
-          <a 
-            href={modeloUrl} 
-            download 
+          <a
+            href={modeloUrl}
+            download
             className={styles.botaoModelo}
           >
-            📥 Baixar Modelo da Planilha
+            <Icon name="file-text" size={16} /> Baixar Modelo da Planilha
           </a>
         </div>
       )}
@@ -140,10 +141,10 @@ export default function BaseUploadPlanilha<T = any>({
             <p>Processando planilha...</p>
           </div>
         ) : isDragActive ? (
-          <p>📂 Solte o arquivo aqui...</p>
+          <p className={styles.dropzoneMensagemAtiva}><Icon name="folder" size={20} /> Solte o arquivo aqui...</p>
         ) : (
           <div className={styles.dropzoneConteudo}>
-            <div className={styles.iconeUpload}>📊</div>
+            <div className={styles.iconeUpload}><Icon name="upload" size={40} /></div>
             <p><strong>Arraste um arquivo Excel aqui</strong></p>
             <p className={styles.textoSecundario}>ou clique para selecionar</p>
             <p className={styles.textoFormato}>Formatos aceitos: .xlsx, .xls</p>
@@ -153,7 +154,7 @@ export default function BaseUploadPlanilha<T = any>({
 
       {nomeArquivo && !carregando && (
         <div className={styles.arquivoSelecionado}>
-          ✅ Arquivo carregado: <strong>{nomeArquivo}</strong>
+          <Icon name="check-circle" size={16} /> Arquivo carregado: <strong>{nomeArquivo}</strong>
         </div>
       )}
     </div>
