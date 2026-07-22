@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';import Link from 'next/link';import 
 import BaseFormularioCadastro, { CampoFormulario } from '@/components/gestao-dados/BaseFormularioCadastro';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
 import BaseTabelaDados, { Coluna } from '@/components/gestao-dados/BaseTabelaDados';
+import { Icon } from '@/components/Icon';
 
 import * as ProfessorAPI from '@/lib/api/professor.api';
 import * as EscolaAPI from '@/lib/api/escola.api';
@@ -431,7 +432,7 @@ export default function ProfessoresPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.titulo}>👨‍🏫 Gestão de Professores</h1>
+          <h1 className={styles.titulo}><Icon name="award" size={22} /> Gestão de Professores</h1>
           <p className={styles.subtitulo}>
             Gerencie os professores e suas alocações em matérias/turmas
           </p>
@@ -445,7 +446,7 @@ export default function ProfessoresPage() {
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}
           >
-            📊 Importar Planilha
+<Icon name="upload" size={16} /> Importar Planilha
           </button>
           <button
             onClick={() => setModalAberto(true)}
@@ -469,7 +470,7 @@ export default function ProfessoresPage() {
               className={styles.botaoEditar}
               title="Editar"
             >
-              ✏️
+              <Icon name="edit" size={16} />
             </button>
             {professor.UsuarioStatus === 'Ativo' ? (
               <button
@@ -477,7 +478,7 @@ export default function ProfessoresPage() {
                 className={styles.botaoExcluir}
                 title="Inativar"
               >
-                🗑️
+                <Icon name="trash" size={16} />
               </button>
             ) : (
               <button
@@ -485,7 +486,7 @@ export default function ProfessoresPage() {
                 className={styles.botaoReativar}
                 title="Reativar"
               >
-                ✅
+                <Icon name="check" size={16} />
               </button>
             )}
           </>
@@ -531,7 +532,7 @@ export default function ProfessoresPage() {
                   <p>Carregando alocações...</p>
                 ) : (
                   <>
-                    <p><strong>📚 Matérias:</strong></p>
+                    <p><strong><Icon name="book-open" size={16} /> Matérias:</strong></p>
                     {(() => {
                       const materiasUnicas = [...new Map(
                         alocacoesProfessor.map(a => [a.MateriaGUID, a])
@@ -561,7 +562,7 @@ export default function ProfessoresPage() {
                       );
                     })()}
 
-                    <p style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8 }}><strong>🏫 Alocações por turma:</strong></p>
+                    <p style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8 }}><strong><Icon name="grid" size={16} /> Alocações por turma:</strong></p>
                     {(() => {
                       const porTurma = alocacoesProfessor.reduce<Record<string, ProfessorAPI.Alocacao[]>>(
                         (acc, a) => {
@@ -602,7 +603,7 @@ export default function ProfessoresPage() {
                                             title="Salvar aulas/semana"
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2f855a', fontSize: 12 }}
                                           >
-                                            ✓
+                                            <Icon name="check" size={14} />
                                           </button>
                                         </>
                                       ) : (
@@ -638,7 +639,7 @@ export default function ProfessoresPage() {
                     })()}
 
                     <div style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 10 }}>
-                      <p style={{ marginBottom: 6 }}><strong>➕ Nova alocação:</strong></p>
+                      <p style={{ marginBottom: 6 }}><strong><Icon name="plus-circle" size={16} /> Nova alocação:</strong></p>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <select
                           value={novaAlocacaoTurma}
@@ -696,7 +697,7 @@ export default function ProfessoresPage() {
                       {avisoConflito && (
                         <div style={{ marginTop: 8, padding: 8, background: '#fffbeb', border: '1px solid #fbd38d', borderRadius: 4 }}>
                           <p style={{ fontSize: 12, marginBottom: 6 }}>
-                            ⚠️ <strong>{avisoConflito.materiaNome}</strong> já é lecionada por <strong>{avisoConflito.professorNome}</strong> em <strong>{avisoConflito.turmaNome}</strong>. Confirmar mesmo assim?
+                            <Icon name="alert-triangle" size={14} /> <strong>{avisoConflito.materiaNome}</strong> já é lecionada por <strong>{avisoConflito.professorNome}</strong> em <strong>{avisoConflito.turmaNome}</strong>. Confirmar mesmo assim?
                           </p>
                           <div style={{ display: 'flex', gap: 6 }}>
                             <button
@@ -720,8 +721,8 @@ export default function ProfessoresPage() {
               </div>
             ) : (
               <div className={styles.ajuda}>
-                <p><strong>💡 Dica:</strong> Você pode deixar Matérias e Turmas em branco e adicioná-las depois.</p>
-                <p><strong>📝 Formato:</strong> Separe matérias e turmas por vírgula. Ex: "Matemática, Física"</p>
+                <p><strong><Icon name="help-circle" size={16} /> Dica:</strong> Você pode deixar Matérias e Turmas em branco e adicioná-las depois.</p>
+                <p><strong><Icon name="file-text" size={16} /> Formato:</strong> Separe matérias e turmas por vírgula. Ex: "Matemática, Física"</p>
               </div>
             )}
           </div>
@@ -748,12 +749,12 @@ export default function ProfessoresPage() {
               {dadosImportados && (
                 <div className={styles.previewContainer}>
                   <h3 className={styles.previewTitulo}>
-                    📋 Preview - {dadosImportados.dados.length} professores encontrados
+                    <Icon name="file-text" size={18} /> Preview - {dadosImportados.dados.length} professores encontrados
                   </h3>
                   <div className={styles.previewLista}>
                     {dadosImportados.dados.slice(0, 5).map((linha: any, idx: number) => (
                       <div key={idx} className={styles.previewItem}>
-                        ✅ {linha['Nome'] || linha.UsuarioNome || linha.nome} (CPF: {linha['CPF'] || linha.UsuarioCPF || linha.cpf})
+                        <Icon name="check" size={14} /> {linha['Nome'] || linha.UsuarioNome || linha.nome} (CPF: {linha['CPF'] || linha.UsuarioCPF || linha.cpf})
                         {(linha['Matérias'] || linha.Materias) && (
                           <span className={styles.previewCurso}>
                             {' '}→ Matérias: {linha['Matérias'] || linha.Materias}
@@ -772,7 +773,7 @@ export default function ProfessoresPage() {
                     disabled={processandoBatch}
                     className={styles.botaoImportar}
                   >
-                    {processandoBatch ? 'Processando...' : '💾 Salvar Todos'}
+                    {processandoBatch ? 'Processando...' : (<><Icon name="check" size={16} /> Salvar Todos</>)}
                   </button>
                 </div>
               )}
@@ -780,7 +781,7 @@ export default function ProfessoresPage() {
               {/* Resultado do Batch */}
               {resultadoBatch && (
                 <div className={styles.resultadoContainer}>
-                  <h3 className={styles.resultadoTitulo}>✅ Processamento Concluído</h3>
+                  <h3 className={styles.resultadoTitulo}><Icon name="check-circle" size={20} /> Processamento Concluído</h3>
                   <div className={styles.resultadoStats}>
                     <div className={styles.stat}>
                       <span className={styles.statNumero}>{resultadoBatch.criados}</span>
@@ -799,7 +800,7 @@ export default function ProfessoresPage() {
                   {/* Mostrar erros se houver */}
                   {resultadoBatch.erros > 0 && (
                     <div className={styles.errosContainer}>
-                      <h4 className={styles.errosTitulo}>⚠️ Erros Encontrados:</h4>
+                      <h4 className={styles.errosTitulo}><Icon name="alert-triangle" size={18} /> Erros Encontrados:</h4>
                       <div className={styles.errosLista}>
                         {resultadoBatch.resultados
                           .filter(r => r.tipo === 'erro')

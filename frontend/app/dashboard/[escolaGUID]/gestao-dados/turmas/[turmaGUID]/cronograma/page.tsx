@@ -9,6 +9,7 @@ import * as EscolaConfiguracaoAPI from '@/lib/api/escolaconfiguracao.api';
 import { DiaSemana, DIA_SEMANA_LABEL, SlotAula, SlotsPorDia } from '@/lib/api/escolaconfiguracao.api';
 import * as HorarioTurmaAPI from '@/lib/api/horarioturma.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
+import { Icon } from '@/components/Icon';
 
 type Turno = 'Manha' | 'Tarde';
 
@@ -267,7 +268,7 @@ export default function CronogramaTurmaPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.titulo}>
-            🗓️ Cronograma {turma ? `— ${turma.TurmaSerie} ${turma.TurmaNome}` : ''}
+            <Icon name="calendar" size={22} /> Cronograma {turma ? `— ${turma.TurmaSerie} ${turma.TurmaNome}` : ''}
           </h1>
           <p className={styles.subtitulo}>
             Arraste as matérias do banco para um horário da grade. Arraste de volta para remover.
@@ -329,7 +330,7 @@ export default function CronogramaTurmaPage() {
             onDragLeave={() => setBancoSobre(false)}
             onDrop={handleDropBanco}
           >
-            <h2 className={styles.bancoTitulo}>📚 Banco de matérias</h2>
+            <h2 className={styles.bancoTitulo}><Icon name="book-open" size={20} /> Banco de matérias</h2>
             {!cronograma || cronograma.Banco.length === 0 ? (
               <p className={styles.bancoVazio}>
                 Nenhuma matéria alocada a esta turma ainda. Associe matérias e professores na tela de

@@ -9,12 +9,13 @@ import * as MateriaAPI from '@/lib/api/materia.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
 import * as AlunoAPI from '@/lib/api/aluno.api';
 import * as ProfessorAPI from '@/lib/api/professor.api';
+import { Icon, IconName } from '@/components/Icon';
 
 interface Modulo {
   id: string;
   nome: string;
   descricao: string;
-  icone: string;
+  icone: IconName;
   contador?: number;
 }
 
@@ -22,11 +23,11 @@ export default function GestaoDadosPage() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
   const [modulos, setModulos] = useState<Modulo[]>([
-    { id: 'cursos', nome: 'Cursos', descricao: 'Gerencie cursos técnicos', icone: '🎓' },
-    { id: 'materias', nome: 'Matérias', descricao: 'Gerencie disciplinas', icone: '📚' },
-    { id: 'turmas', nome: 'Turmas', descricao: 'Gerencie turmas/classes', icone: '🏫' },
-    { id: 'alunos', nome: 'Alunos', descricao: 'Gerencie matrículas', icone: '👨‍🎓' },
-    { id: 'professores', nome: 'Professores', descricao: 'Gerencie corpo docente', icone: '👩‍🏫' },
+    { id: 'cursos', nome: 'Cursos', descricao: 'Gerencie cursos técnicos', icone: 'layers' },
+    { id: 'materias', nome: 'Matérias', descricao: 'Gerencie disciplinas', icone: 'book-open' },
+    { id: 'turmas', nome: 'Turmas', descricao: 'Gerencie turmas/classes', icone: 'grid' },
+    { id: 'alunos', nome: 'Alunos', descricao: 'Gerencie matrículas', icone: 'users' },
+    { id: 'professores', nome: 'Professores', descricao: 'Gerencie corpo docente', icone: 'award' },
   ]);
   const [loading, setLoading] = useState(true);
 
@@ -97,7 +98,7 @@ export default function GestaoDadosPage() {
               href={`/dashboard/${escolaGUID}/gestao-dados/${modulo.id}`}
               className={styles.card}
             >
-              <div className={styles.icone}>{modulo.icone}</div>
+              <div className={styles.icone}><Icon name={modulo.icone} size={28} /></div>
               <h2 className={styles.cardTitulo}>{modulo.nome}</h2>
               <p className={styles.cardDescricao}>{modulo.descricao}</p>
               {modulo.contador !== undefined && (

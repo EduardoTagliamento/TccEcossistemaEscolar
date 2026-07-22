@@ -8,6 +8,7 @@ import styles from '../page.module.css';
 import BaseFormularioCadastro, { CampoFormulario } from '@/components/gestao-dados/BaseFormularioCadastro';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
 import BaseTabelaDados, { Coluna } from '@/components/gestao-dados/BaseTabelaDados';
+import { Icon } from '@/components/Icon';
 
 import * as TurmaAPI from '@/lib/api/turma.api';
 import * as CursoAPI from '@/lib/api/curso.api';
@@ -288,7 +289,7 @@ export default function TurmasPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.titulo}>🎓 Gestão de Turmas</h1>
+          <h1 className={styles.titulo}><Icon name="grid" size={22} /> Gestão de Turmas</h1>
           <p className={styles.subtitulo}>
             Gerencie as turmas da escola
           </p>
@@ -302,7 +303,7 @@ export default function TurmasPage() {
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}
           >
-            📊 Importar Planilha
+<Icon name="upload" size={16} /> Importar Planilha
           </button>
           <button
             onClick={() => setModalAberto(true)}
@@ -326,14 +327,14 @@ export default function TurmasPage() {
               className={styles.botaoEditar}
               title="Cronograma"
             >
-              🗓️
+              <Icon name="calendar" size={16} />
             </Link>
             <button
               onClick={() => handleEditar(turma)}
               className={styles.botaoEditar}
               title="Editar"
             >
-              ✏️
+              <Icon name="edit" size={16} />
             </button>
             {turma.TurmaStatus === 'Ativa' ? (
               <button
@@ -341,7 +342,7 @@ export default function TurmasPage() {
                 className={styles.botaoExcluir}
                 title="Inativar"
               >
-                🗑️
+                <Icon name="trash" size={16} />
               </button>
             ) : (
               <button
@@ -349,7 +350,7 @@ export default function TurmasPage() {
                 className={styles.botaoReativar}
                 title="Reativar"
               >
-                ✅
+                <Icon name="check" size={16} />
               </button>
             )}
           </>
@@ -406,12 +407,12 @@ export default function TurmasPage() {
               {dadosImportados && (
                 <div className={styles.previewContainer}>
                   <h3 className={styles.previewTitulo}>
-                    📋 Preview - {dadosImportados.dados.length} turmas encontradas
+                    <Icon name="file-text" size={18} /> Preview - {dadosImportados.dados.length} turmas encontradas
                   </h3>
                   <div className={styles.previewLista}>
                     {dadosImportados.dados.slice(0, 5).map((linha: any, idx: number) => (
                       <div key={idx} className={styles.previewItem}>
-                        ✅ {linha['Série'] || linha.TurmaSerie || linha.serie} - {linha['Nome da Turma'] || linha.TurmaNome || linha.nome}
+                        <Icon name="check" size={14} /> {linha['Série'] || linha.TurmaSerie || linha.serie} - {linha['Nome da Turma'] || linha.TurmaNome || linha.nome}
                         {(linha['Nome do Curso'] || linha.CursoNome) && (
                           <span className={styles.previewCurso}>
                             {' '}({linha['Nome do Curso'] || linha.CursoNome})
@@ -430,7 +431,7 @@ export default function TurmasPage() {
                     disabled={processandoBatch}
                     className={styles.botaoImportar}
                   >
-                    {processandoBatch ? 'Processando...' : '💾 Salvar Todas'}
+                    {processandoBatch ? 'Processando...' : (<><Icon name="check" size={16} /> Salvar Todas</>)}
                   </button>
                 </div>
               )}
@@ -438,7 +439,7 @@ export default function TurmasPage() {
               {/* Resultado do Batch */}
               {resultadoBatch && (
                 <div className={styles.resultadoContainer}>
-                  <h3 className={styles.resultadoTitulo}>✅ Processamento Concluído</h3>
+                  <h3 className={styles.resultadoTitulo}><Icon name="check-circle" size={20} /> Processamento Concluído</h3>
                   <div className={styles.resultadoStats}>
                     <div className={styles.stat}>
                       <span className={styles.statNumero}>{resultadoBatch.criados}</span>
@@ -457,7 +458,7 @@ export default function TurmasPage() {
                   {/* Mostrar erros se houver */}
                   {resultadoBatch.erros > 0 && (
                     <div className={styles.errosContainer}>
-                      <h4 className={styles.errosTitulo}>⚠️ Erros Encontrados:</h4>
+                      <h4 className={styles.errosTitulo}><Icon name="alert-triangle" size={18} /> Erros Encontrados:</h4>
                       <div className={styles.errosLista}>
                         {resultadoBatch.resultados
                           .filter(r => r.tipo === 'erro')

@@ -8,6 +8,7 @@ import styles from './page.module.css';
 import BaseFormularioCadastro, { CampoFormulario } from '@/components/gestao-dados/BaseFormularioCadastro';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
 import BaseTabelaDados, { Coluna } from '@/components/gestao-dados/BaseTabelaDados';
+import { Icon } from '@/components/Icon';
 
 import * as CursoAPI from '@/lib/api/curso.api';
 
@@ -196,7 +197,7 @@ export default function CursosPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.titulo}>🎓 Gestão de Cursos</h1>
+          <h1 className={styles.titulo}><Icon name="layers" size={22} /> Gestão de Cursos</h1>
           <p className={styles.subtitulo}>
             Gerencie os cursos técnicos da escola
           </p>
@@ -212,7 +213,7 @@ export default function CursosPage() {
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}
           >
-            📊 Importar Planilha
+<Icon name="upload" size={16} /> Importar Planilha
           </button>
           <button
             onClick={() => setModalAberto(true)}
@@ -236,7 +237,7 @@ export default function CursosPage() {
               className={styles.botaoEditar}
               title="Editar"
             >
-              ✏️
+              <Icon name="edit" size={16} />
             </button>
             {curso.CursoStatus === 'Ativo' ? (
               <button
@@ -244,7 +245,7 @@ export default function CursosPage() {
                 className={styles.botaoExcluir}
                 title="Inativar"
               >
-                🗑️
+                <Icon name="trash" size={16} />
               </button>
             ) : (
               <button
@@ -252,7 +253,7 @@ export default function CursosPage() {
                 className={styles.botaoReativar}
                 title="Reativar"
               >
-                ✅
+                <Icon name="check" size={16} />
               </button>
             )}
           </>
@@ -303,12 +304,12 @@ export default function CursosPage() {
               {dadosImportados && (
                 <div className={styles.previewContainer}>
                   <h3 className={styles.previewTitulo}>
-                    📋 Preview - {dadosImportados.dados.length} cursos encontrados
+                    <Icon name="file-text" size={18} /> Preview - {dadosImportados.dados.length} cursos encontrados
                   </h3>
                   <div className={styles.previewLista}>
                     {dadosImportados.dados.slice(0, 5).map((linha: any, idx: number) => (
                       <div key={idx} className={styles.previewItem}>
-                        ✅ {linha['Nome do Curso'] || linha.CursoNome || linha.nome}
+                        <Icon name="check" size={14} /> {linha['Nome do Curso'] || linha.CursoNome || linha.nome}
                       </div>
                     ))}
                     {dadosImportados.dados.length > 5 && (
@@ -322,7 +323,7 @@ export default function CursosPage() {
                     disabled={processandoBatch}
                     className={styles.botaoImportar}
                   >
-                    {processandoBatch ? 'Processando...' : '💾 Salvar Todos'}
+                    {processandoBatch ? 'Processando...' : (<><Icon name="check" size={16} /> Salvar Todos</>)}
                   </button>
                 </div>
               )}
@@ -330,7 +331,7 @@ export default function CursosPage() {
               {/* Resultado do Batch */}
               {resultadoBatch && (
                 <div className={styles.resultadoContainer}>
-                  <h3 className={styles.resultadoTitulo}>✅ Processamento Concluído</h3>
+                  <h3 className={styles.resultadoTitulo}><Icon name="check-circle" size={20} /> Processamento Concluído</h3>
                   <div className={styles.resultadoStats}>
                     <div className={styles.stat}>
                       <span className={styles.statNumero}>{resultadoBatch.criados}</span>

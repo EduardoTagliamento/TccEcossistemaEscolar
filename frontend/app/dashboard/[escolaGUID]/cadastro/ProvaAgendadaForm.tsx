@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
 import { DiaSemana, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
+import { Icon } from '@/components/Icon';
 import styles from './ProvaAgendadaForm.module.css';
 
 interface Prova {
@@ -527,7 +528,7 @@ export default function ProvaAgendadaForm() {
       {/* Aviso de Timezone */}
       {mostrarAvisoTimezone && (
         <div className={styles.timezoneAlert}>
-          🌍 <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3).
+          <Icon name="clock" size={16} /> <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3).
           As datas e horários exibidos foram ajustados para o seu fuso local.
         </div>
       )}
