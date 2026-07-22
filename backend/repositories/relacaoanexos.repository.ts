@@ -1,8 +1,13 @@
 /**
  * 🟢 Repository - RelacaoAnexos
- * 
+ *
  * Camada de acesso a dados para vínculos entre anexos e recursos (tarefa/pendência/evento).
- * 
+ *
+ * Não existe uma tabela `relacaoanexos` unificada: cada recurso tem sua própria
+ * tabela de vínculo, já existente em produção (`relacaoanexostarefa`,
+ * `relacaoanexospendencia`, `relacaoanexosevento`), com PK e colunas próprias.
+ * Este DAO normaliza esse acesso na forma da entidade RelacaoAnexos.
+ *
  * Métodos:
  * - vincularAnexoTarefa: Vincular anexo a tarefa
  * - vincularAnexoPendencia: Vincular anexo a pendência
@@ -30,7 +35,7 @@ export class RelacaoAnexosDAO {
   }
 
   /**
-   * Vincular anexo a tarefa acadêmica
+   * Vincular anexo a tarefa acadêmica (material de apoio → AnexoTipo 'descricao')
    */
   async vincularAnexoTarefa(anexoGUID: string, tarefaGUID: string): Promise<RelacaoAnexos> {
     console.log("🟢 RelacaoAnexosDAO.vincularAnexoTarefa()");
@@ -39,13 +44,12 @@ export class RelacaoAnexosDAO {
     const relacaoGUID = uuidv4();
 
     const query = `
-      INSERT INTO relacaoanexos (
-        RelacaoAnexoGUID,
+      INSERT INTO relacaoanexostarefa (
+        RelacaoAnexoTarefaGUID,
         AnexoGUID,
         TarefaGUID,
-        PendenciaGUID,
-        EventoGUID
-      ) VALUES (?, ?, ?, NULL, NULL)
+        AnexoTipo
+      ) VALUES (?, ?, ?, 'descricao')
     `;
 
     const pool = await this.#database.getPool();
@@ -62,7 +66,7 @@ export class RelacaoAnexosDAO {
   }
 
   /**
-   * Vincular anexo a pendência
+   * Vincular anexo a pendência (resposta do destinatário → AnexoTipo 'entrega')
    */
   async vincularAnexoPendencia(anexoGUID: string, pendenciaGUID: string): Promise<RelacaoAnexos> {
     console.log("🟢 RelacaoAnexosDAO.vincularAnexoPendencia()");
@@ -71,13 +75,12 @@ export class RelacaoAnexosDAO {
     const relacaoGUID = uuidv4();
 
     const query = `
-      INSERT INTO relacaoanexos (
-        RelacaoAnexoGUID,
+      INSERT INTO relacaoanexospendencia (
+        RelacaoAnexoPendenciaGUID,
         AnexoGUID,
-        TarefaGUID,
         PendenciaGUID,
-        EventoGUID
-      ) VALUES (?, ?, NULL, ?, NULL)
+        AnexoTipo
+      ) VALUES (?, ?, ?, 'entrega')
     `;
 
     const pool = await this.#database.getPool();
@@ -94,7 +97,7 @@ export class RelacaoAnexosDAO {
   }
 
   /**
-   * Vincular anexo a evento
+   * Vincular anexo a evento (unidirecional, sem AnexoTipo)
    */
   async vincularAnexoEvento(anexoGUID: string, eventoGUID: string): Promise<RelacaoAnexos> {
     console.log("🟢 RelacaoAnexosDAO.vincularAnexoEvento()");
@@ -103,13 +106,11 @@ export class RelacaoAnexosDAO {
     const relacaoGUID = uuidv4();
 
     const query = `
-      INSERT INTO relacaoanexos (
-        RelacaoAnexoGUID,
+      INSERT INTO relacaoanexosevento (
+        RelacaoAnexoEventoGUID,
         AnexoGUID,
-        TarefaGUID,
-        PendenciaGUID,
         EventoGUID
-      ) VALUES (?, ?, NULL, NULL, ?)
+      ) VALUES (?, ?, ?)
     `;
 
     const pool = await this.#database.getPool();
@@ -139,12 +140,11 @@ export class RelacaoAnexosDAO {
         a.AnexoCaminho,
         a.AnexoNomeOriginal,
         a.AnexoTamanho,
-        a.AnexoTipo,
-        a.AnexoCreatedAt
+        a.CreatedAt
       FROM anexo a
-      JOIN relacaoanexos ra ON ra.AnexoGUID = a.AnexoGUID
+      JOIN relacaoanexostarefa ra ON ra.AnexoGUID = a.AnexoGUID
       WHERE ra.TarefaGUID = ?
-      ORDER BY a.AnexoCreatedAt ASC
+      ORDER BY a.CreatedAt ASC
     `;
 
     const pool = await this.#database.getPool();
@@ -167,12 +167,11 @@ export class RelacaoAnexosDAO {
         a.AnexoCaminho,
         a.AnexoNomeOriginal,
         a.AnexoTamanho,
-        a.AnexoTipo,
-        a.AnexoCreatedAt
+        a.CreatedAt
       FROM anexo a
-      JOIN relacaoanexos ra ON ra.AnexoGUID = a.AnexoGUID
+      JOIN relacaoanexospendencia ra ON ra.AnexoGUID = a.AnexoGUID
       WHERE ra.PendenciaGUID = ?
-      ORDER BY a.AnexoCreatedAt ASC
+      ORDER BY a.CreatedAt ASC
     `;
 
     const pool = await this.#database.getPool();
@@ -195,12 +194,11 @@ export class RelacaoAnexosDAO {
         a.AnexoCaminho,
         a.AnexoNomeOriginal,
         a.AnexoTamanho,
-        a.AnexoTipo,
-        a.AnexoCreatedAt
+        a.CreatedAt
       FROM anexo a
-      JOIN relacaoanexos ra ON ra.AnexoGUID = a.AnexoGUID
+      JOIN relacaoanexosevento ra ON ra.AnexoGUID = a.AnexoGUID
       WHERE ra.EventoGUID = ?
-      ORDER BY a.AnexoCreatedAt ASC
+      ORDER BY a.CreatedAt ASC
     `;
 
     const pool = await this.#database.getPool();
@@ -210,20 +208,37 @@ export class RelacaoAnexosDAO {
   }
 
   /**
-   * Remover vínculo entre anexo e recurso
+   * Remover vínculo entre anexo e recurso.
+   * O GUID de vínculo é único globalmente (uuidv4), mas pode estar em
+   * qualquer uma das 3 tabelas de recurso — tenta nas três.
    */
   async delete(relacaoGUID: string): Promise<boolean> {
     console.log("🟢 RelacaoAnexosDAO.delete()");
 
-    const query = `
-      DELETE FROM relacaoanexos
-      WHERE RelacaoAnexoGUID = ?
-    `;
-
     const pool = await this.#database.getPool();
-    const [result] = await pool.execute<ResultSetHeader>(query, [relacaoGUID]);
 
-    return result.affectedRows > 0;
+    const [resultTarefa] = await pool.execute<ResultSetHeader>(
+      "DELETE FROM relacaoanexostarefa WHERE RelacaoAnexoTarefaGUID = ?",
+      [relacaoGUID]
+    );
+    if (resultTarefa.affectedRows > 0) {
+      return true;
+    }
+
+    const [resultPendencia] = await pool.execute<ResultSetHeader>(
+      "DELETE FROM relacaoanexospendencia WHERE RelacaoAnexoPendenciaGUID = ?",
+      [relacaoGUID]
+    );
+    if (resultPendencia.affectedRows > 0) {
+      return true;
+    }
+
+    const [resultEvento] = await pool.execute<ResultSetHeader>(
+      "DELETE FROM relacaoanexosevento WHERE RelacaoAnexoEventoGUID = ?",
+      [relacaoGUID]
+    );
+
+    return resultEvento.affectedRows > 0;
   }
 
   /**
@@ -234,13 +249,11 @@ export class RelacaoAnexosDAO {
 
     const query = `
       SELECT
-        RelacaoAnexoGUID,
+        RelacaoAnexoTarefaGUID,
         AnexoGUID,
         TarefaGUID,
-        PendenciaGUID,
-        EventoGUID,
-        RelacaoCreatedAt
-      FROM relacaoanexos
+        CreatedAt
+      FROM relacaoanexostarefa
       WHERE AnexoGUID = ? AND TarefaGUID = ?
     `;
 
@@ -253,12 +266,12 @@ export class RelacaoAnexosDAO {
 
     const row = rows[0];
     return {
-      RelacaoAnexoGUID: row.RelacaoAnexoGUID,
+      RelacaoAnexoGUID: row.RelacaoAnexoTarefaGUID,
       AnexoGUID: row.AnexoGUID,
       TarefaGUID: row.TarefaGUID,
-      PendenciaGUID: row.PendenciaGUID,
-      EventoGUID: row.EventoGUID,
-      RelacaoCreatedAt: row.RelacaoCreatedAt
+      PendenciaGUID: null,
+      EventoGUID: null,
+      RelacaoCreatedAt: row.CreatedAt
     };
   }
 
@@ -273,7 +286,7 @@ export class RelacaoAnexosDAO {
     anexo.AnexoCaminho = row.AnexoCaminho;
     anexo.AnexoNomeOriginal = row.AnexoNomeOriginal;
     anexo.AnexoTamanho = row.AnexoTamanho;
-    anexo.CreatedAt = row.AnexoCreatedAt || row.CreatedAt;
+    anexo.CreatedAt = row.CreatedAt;
     return anexo;
   }
 }
