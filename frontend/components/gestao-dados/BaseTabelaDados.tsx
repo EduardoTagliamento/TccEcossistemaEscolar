@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styles from './BaseTabelaDados.module.css';
+import { Icon } from '@/components/Icon';
 
 export interface Coluna<T = any> {
   id: string; // Alterado de keyof T para string para permitir IDs arbitrários
@@ -19,6 +20,9 @@ interface BaseTabelaDadosProps<T = any> {
   mensagemVazia?: string;
   onNovoRegistro?: () => void;
   botaoNovoTexto?: string;
+  /** Quando informado, exibe um campo de busca no header. O termo já chega em minúsculas. */
+  filtrarPor?: (item: T, termoBusca: string) => boolean;
+  buscaPlaceholder?: string;
 }
 
 export default function BaseTabelaDados<T = any>({
@@ -31,9 +35,17 @@ export default function BaseTabelaDados<T = any>({
   carregando = false,
   mensagemVazia = 'Nenhum registro encontrado',
   onNovoRegistro,
-  botaoNovoTexto = '+ Novo'
+  botaoNovoTexto = '+ Novo',
+  filtrarPor,
+  buscaPlaceholder = 'Buscar...'
 }: BaseTabelaDadosProps<T>) {
-  
+  const [termoBusca, setTermoBusca] = useState('');
+
+  const termoBuscaNormalizado = termoBusca.trim().toLowerCase();
+  const dadosFiltrados = filtrarPor && termoBuscaNormalizado
+    ? dados.filter((item) => filtrarPor(item, termoBuscaNormalizado))
+    : dados;
+
   if (carregando) {
     return (
       <div className={styles.container}>
@@ -52,18 +64,37 @@ export default function BaseTabelaDados<T = any>({
     <div className={styles.container}>
       <div className={styles.header}>
         <h2 className={styles.titulo}>
-          {titulo} <span className={styles.contador}>({dados.length})</span>
+          {titulo} <span className={styles.contador}>({dadosFiltrados.length})</span>
         </h2>
-        {onNovoRegistro && (
-          <button onClick={onNovoRegistro} className={styles.botaoNovo}>
-            {botaoNovoTexto}
-          </button>
-        )}
+        <div className={styles.headerAcoes}>
+          {filtrarPor && (
+            <div className={styles.buscaContainer}>
+              <Icon name="search" size={16} className={styles.buscaIcone} />
+              <input
+                type="text"
+                value={termoBusca}
+                onChange={(e) => setTermoBusca(e.target.value)}
+                placeholder={buscaPlaceholder}
+                className={styles.buscaInput}
+                aria-label={buscaPlaceholder}
+              />
+            </div>
+          )}
+          {onNovoRegistro && (
+            <button onClick={onNovoRegistro} className={styles.botaoNovo}>
+              {botaoNovoTexto}
+            </button>
+          )}
+        </div>
       </div>
 
-      {dados.length === 0 ? (
+      {dadosFiltrados.length === 0 ? (
         <div className={styles.vazio}>
-          <p>{mensagemVazia}</p>
+          <p>
+            {dados.length === 0
+              ? mensagemVazia
+              : `Nenhum resultado para "${termoBusca.trim()}"`}
+          </p>
         </div>
       ) : (
         <div className={styles.tabelaContainer}>
@@ -71,8 +102,8 @@ export default function BaseTabelaDados<T = any>({
             <thead>
               <tr>
                 {colunas.map((coluna) => (
-                  <th 
-                    key={String(coluna.id)} 
+                  <th
+                    key={String(coluna.id)}
                     style={{ width: coluna.width }}
                   >
                     {coluna.label}
@@ -84,7 +115,7 @@ export default function BaseTabelaDados<T = any>({
               </tr>
             </thead>
             <tbody>
-              {dados.map((linha, index) => (
+              {dadosFiltrados.map((linha, index) => (
                 <tr key={index}>
                   {colunas.map((coluna) => (
                     <td key={String(coluna.id)}>

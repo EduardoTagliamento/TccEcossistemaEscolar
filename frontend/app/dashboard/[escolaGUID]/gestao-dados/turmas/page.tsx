@@ -316,6 +316,12 @@ export default function TurmasPage() {
         colunas={colunas}
         dados={turmas}
         carregando={carregando}
+        filtrarPor={(turma, termo) =>
+          turma.TurmaNome.toLowerCase().includes(termo) ||
+          turma.TurmaSerie.toLowerCase().includes(termo) ||
+          `${turma.TurmaSerie} ${turma.TurmaNome}`.toLowerCase().includes(termo)
+        }
+        buscaPlaceholder="Buscar por série ou nome..."
         acoes={(turma, index) => (
           <>
             <Link

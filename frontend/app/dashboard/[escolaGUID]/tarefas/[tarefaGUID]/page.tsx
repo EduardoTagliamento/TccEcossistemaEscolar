@@ -12,6 +12,7 @@ import ConviteGrupoModal from '@/components/ConviteGrupoModal';
 import TransferirLiderancaModal from '@/components/TransferirLiderancaModal';
 import ConvitesPendentesModal from '@/components/ConvitesPendentesModal';
 import SolicitarEntradaModal from '@/components/SolicitarEntradaModal';
+import { Icon } from '@/components/Icon';
 import styles from './page.module.css';
 
 export default function TarefaDetalhesPage() {
@@ -205,7 +206,7 @@ export default function TarefaDetalhesPage() {
             onClick={() => setModalConvitesPendentes(true)}
             className={styles.btnNotificacoes}
           >
-            📬 Convites
+            <Icon name="mail" size={16} color="#FFFFFF" /> Convites
           </button>
         )}
       </header>
@@ -218,7 +219,9 @@ export default function TarefaDetalhesPage() {
             <p className={styles.materia}>Matéria • Professor</p>
           </div>
           {tarefa.TarefaCompartilhada && (
-            <span className={styles.badgeCompartilhada}>👥 Compartilhada</span>
+            <span className={styles.badgeCompartilhada}>
+              <Icon name="users" size={14} color="#FFFFFF" /> Compartilhada
+            </span>
           )}
         </div>
 
@@ -226,12 +229,12 @@ export default function TarefaDetalhesPage() {
           <div className={styles.detalheItem}>
             <strong>Prazo:</strong>
             <span className={atrasada ? styles.prazoAtrasado : ''}>
-              📅 {prazo.toLocaleDateString('pt-BR')} às {prazo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              <Icon name="calendar" size={16} /> {prazo.toLocaleDateString('pt-BR')} às {prazo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
           <div className={styles.detalheItem}>
             <strong>Tipo de entrega:</strong>
-            <span>{tarefa.TarefaTipoEntrega === 'digital' ? '💻 Digital' : '📄 Física'}</span>
+            <span>{tarefa.TarefaTipoEntrega === 'digital' ? <><Icon name="upload" size={16} /> Digital</> : <><Icon name="file-text" size={16} /> Física</>}</span>
           </div>
           {tarefa.TarefaCompartilhada && (
             <div className={styles.detalheItem}>
@@ -251,7 +254,7 @@ export default function TarefaDetalhesPage() {
 
       {tarefa.TarefaCompartilhada && (
         <div className={styles.grupoSection}>
-          <h2>👥 Seu Grupo</h2>
+          <h2><Icon name="users" size={20} /> Seu Grupo</h2>
           {grupo ? (
             <div className={styles.grupoCard}>
               <div className={styles.grupoHeader}>
@@ -280,7 +283,11 @@ export default function TarefaDetalhesPage() {
                       <div>
                         <p className={styles.membroNome}>
                           {membro.UsuarioNome}
-                          {membro.IsLider && <span className={styles.badgeLider}>👑 Líder</span>}
+                          {membro.IsLider && (
+                            <span className={styles.badgeLider}>
+                              <Icon name="award" size={12} /> Líder
+                            </span>
+                          )}
                         </p>
                         {membro.UsuarioEmail && (
                           <p className={styles.membroEmail}>{membro.UsuarioEmail}</p>
@@ -308,31 +315,31 @@ export default function TarefaDetalhesPage() {
               </div>
 
               {usuarioELider && !grupoAtingiuLimite && (
-                <button 
+                <button
                   className={styles.btnConvidar}
                   onClick={() => setModalConvite(true)}
                 >
-                  ➕ Convidar Membro
+                  <Icon name="plus" size={16} color="#FFFFFF" /> Convidar Membro
                 </button>
               )}
 
               {!usuarioELider && usuarioEstaSozinho && (
-                <button 
+                <button
                   className={styles.btnSolicitar}
                   onClick={() => setModalSolicitar(true)}
                 >
-                  🔄 Solicitar Entrada em Outro Grupo
+                  <Icon name="search" size={16} /> Solicitar Entrada em Outro Grupo
                 </button>
               )}
             </div>
           ) : (
             <div className={styles.grupoPlaceholder}>
               <p>Você ainda não faz parte de um grupo para esta tarefa.</p>
-              <button 
+              <button
                 className={styles.btnSolicitar}
                 onClick={() => setModalSolicitar(true)}
               >
-                🔄 Buscar Grupo
+                <Icon name="search" size={16} /> Buscar Grupo
               </button>
             </div>
           )}
@@ -341,7 +348,7 @@ export default function TarefaDetalhesPage() {
 
       <div className={styles.trabalhoSection}>
         <h2>
-          {tarefa.TarefaCompartilhada ? '📦 Trabalho do Grupo' : '📦 Seu Trabalho'}
+          {tarefa.TarefaCompartilhada ? <><Icon name="folder" size={20} /> Trabalho do Grupo</> : <><Icon name="folder" size={20} /> Seu Trabalho</>}
         </h2>
 
         {tarefa.TarefaTipoEntrega === 'digital' ? (
@@ -358,16 +365,16 @@ export default function TarefaDetalhesPage() {
 
             <div className={styles.anexosAcoes}>
               <button className={styles.btnAnexar}>
-                📎 Adicionar Arquivo
+                <Icon name="paperclip" size={16} /> Adicionar Arquivo
               </button>
               <button className={styles.btnConcluir} disabled>
-                ✅ Concluir e Enviar
+                <Icon name="check-circle" size={16} color="#FFFFFF" /> Concluir e Enviar
               </button>
             </div>
 
             {tarefa.TarefaCompartilhada && (
               <p className={styles.warningText}>
-                ⚠️ Ao concluir, todos os membros do grupo terão a tarefa marcada como feita.
+                <Icon name="alert-triangle" size={16} color="var(--gold-500)" /> Ao concluir, todos os membros do grupo terão a tarefa marcada como feita.
               </p>
             )}
           </div>
@@ -388,10 +395,10 @@ export default function TarefaDetalhesPage() {
       {tarefa.TarefaCompartilhada && grupo && (
         <div className={styles.pendenciasSection}>
           <div className={styles.pendenciasHeader}>
-            <h2>📋 Pendências Individuais</h2>
+            <h2><Icon name="file-text" size={20} /> Pendências Individuais</h2>
             {usuarioELider && (
               <button className={styles.btnNovaPendencia}>
-                ➕ Nova Pendência
+                <Icon name="plus" size={16} color="#FFFFFF" /> Nova Pendência
               </button>
             )}
           </div>

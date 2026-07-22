@@ -19,6 +19,11 @@ export interface Usuario {
   UsuarioTelefone: string | null;
   UsuarioDataNascimento: Date | null;
   UsuarioStatus: 'Ativo' | 'Inativo' | 'Bloqueado';
+  // Nota: o backend (toProfessorDTO em professor.service.ts) ainda não inclui
+  // UsuarioId na resposta de listagem de professores (diferente de aluno.api.ts,
+  // que já recebe esse campo). Campo tipado aqui para manter os tipos alinhados
+  // e permitir a busca por ID assim que o backend passar a retorná-lo.
+  UsuarioId?: string | null;
 }
 
 export interface Professor extends Usuario {

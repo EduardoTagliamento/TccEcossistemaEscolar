@@ -1,92 +1,189 @@
+/* ============================================================
+   Projetos — Bauá Design System
+   Tokens copiados literalmente do Bauá Design System (project
+   689c269f-be3b-4445-98c6-69b779c38839), escopados localmente sob
+   `.container`, mesmo padrão já usado no restante do dashboard (ver
+   frontend/app/dashboard/[escolaGUID]/gestao-dados/cursos/page.module.css,
+   frontend/app/dashboard/[escolaGUID]/auditoria/page.module.css).
+   ============================================================ */
+
 .container {
+  /* cores */
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  /* espaçamento (grid de 4px) */
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* raio */
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* elevação */
+  --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+
   min-height: 100vh;
-  padding: var(--spacing-xl);
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  padding: var(--space-8);
+  background-color: var(--surface-50);
+  color: var(--slate-600);
   max-width: 1400px;
   margin: 0 auto;
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+  --line-100: #647268;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--space-8);
   flex-wrap: wrap;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .header h1 {
   margin: 0;
   font-size: 2rem;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 800;
+  color: var(--ink-900);
 }
 
 .headerActions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .criarBtn {
   text-decoration: none;
-  background: var(--color-primary);
-  color: white;
+  background: var(--green-500);
+  color: var(--white);
   padding: 0.6rem 1.25rem;
-  border-radius: var(--radius-md);
-  font-weight: var(--font-weight-semibold);
-  transition: opacity 0.2s;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  transition: background 0.2s;
 }
 
 .criarBtn:hover {
-  opacity: 0.9;
+  background: var(--green-600);
 }
 
 .backLink {
   text-decoration: none;
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+  color: var(--green-600);
+  font-weight: 700;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
   transition: background 0.2s;
 }
 
 .backLink:hover {
-  background: rgba(0, 123, 255, 0.1);
+  background: var(--surface-50);
 }
 
 .loading,
 .error,
 .empty {
   text-align: center;
-  padding: var(--spacing-xl);
-  color: var(--text-secondary);
+  padding: var(--space-8);
+  color: var(--slate-500);
 }
 
 .error {
-  color: #dc3545;
+  color: var(--danger-500);
 }
 
 .projetosGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--spacing-lg);
+  gap: var(--space-6);
 }
 
 .projetoCard {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-lg);
-  background: var(--bg-primary);
-  border: 2px solid var(--border-color);
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: var(--white);
+  border: 1px solid var(--line-100);
   border-radius: var(--radius-lg);
   text-decoration: none;
-  color: var(--text-primary);
+  color: var(--slate-600);
+  box-shadow: var(--shadow-sm);
   transition: border-color 0.2s, transform 0.2s;
 }
 
 .projetoCard:hover {
-  border-color: var(--color-primary);
+  border-color: var(--green-500);
   transform: translateY(-2px);
 }
 
@@ -98,35 +195,36 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--spacing-sm);
+  gap: var(--space-3);
 }
 
 .cardHeader h3 {
   margin: 0;
   font-size: 1.15rem;
+  color: var(--ink-900);
 }
 
 .statusBadge {
   font-size: 0.75rem;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
   padding: 0.2rem 0.6rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
 .statusAberto {
-  background: rgba(40, 167, 69, 0.15);
-  color: #28a745;
+  background: var(--green-500);
+  color: var(--white);
 }
 
 .statusEncerrado {
-  background: rgba(108, 117, 125, 0.15);
-  color: #6c757d;
+  background: var(--slate-400);
+  color: var(--white);
 }
 
 .descricao {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--slate-500);
   font-size: 0.95rem;
   line-height: 1.4;
 }
@@ -135,9 +233,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--space-3);
   margin-top: auto;
   font-size: 0.85rem;
-  color: var(--text-secondary);
+  color: var(--slate-500);
   flex-wrap: wrap;
+}
+
+.publico,
+.prazo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }

@@ -46,6 +46,7 @@ export interface ProfessorDTO {
   UsuarioCPF: string;
   UsuarioNome: string;
   UsuarioEmail: string | null;
+  UsuarioId: string | null;
   UsuarioDataNascimento: Date | null;
   UsuarioTelefone: string | null;
   UsuarioStatus: 'Ativo' | 'Inativo' | 'Bloqueado';
@@ -919,6 +920,7 @@ export default class ProfessorService {
       UsuarioCPF: usuario.UsuarioCPF,
       UsuarioNome: usuario.UsuarioNome,
       UsuarioEmail: usuario.UsuarioEmail,
+      UsuarioId: usuario.UsuarioId,
       UsuarioDataNascimento: usuario.UsuarioDataNascimento,
       UsuarioTelefone: usuario.UsuarioTelefone,
       UsuarioStatus: usuario.UsuarioStatus,

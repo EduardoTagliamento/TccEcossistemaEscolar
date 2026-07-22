@@ -1,170 +1,305 @@
+/* ============================================================
+   Detalhe do Projeto — Bauá Design System
+   Tokens copiados literalmente do Bauá Design System (project
+   689c269f-be3b-4445-98c6-69b779c38839), escopados localmente sob
+   `.container`, mesmo padrão já usado no restante do dashboard (ver
+   frontend/app/dashboard/[escolaGUID]/gestao-dados/cursos/page.module.css,
+   frontend/app/dashboard/[escolaGUID]/auditoria/page.module.css).
+   ============================================================ */
+
 .container {
+  /* cores */
+  --green-50: #E7F9F0;
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --gold-500: #FFC02E;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  /* espaçamento (grid de 4px) */
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* raio */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* elevação */
+  --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+
   min-height: 100vh;
-  padding: var(--spacing-xl);
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  padding: var(--space-8);
+  background-color: var(--surface-50);
+  color: var(--slate-600);
   max-width: 1000px;
   margin: 0 auto;
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-50: #123324;
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --gold-500: #FFCB52;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-50: #E9F0FF;
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --green-700: #1D46A3;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-50: #16233D;
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --green-700: #2558C7;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+  --line-100: #647268;
 }
 
 .header {
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--space-6);
 }
 
 .backLink {
   text-decoration: none;
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+  color: var(--green-600);
+  font-weight: 700;
 }
 
 .loading,
 .error,
 .empty {
   text-align: center;
-  padding: var(--spacing-xl);
-  color: var(--text-secondary);
+  padding: var(--space-8);
+  color: var(--slate-500);
 }
 
 .error {
-  color: #dc3545;
+  color: var(--danger-500);
 }
 
 .projetoInfo {
-  background: var(--bg-primary);
-  border: 2px solid var(--border-color);
+  background: var(--white);
+  border: 1px solid var(--line-100);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-8);
+  margin-bottom: var(--space-8);
 }
 
 .tituloRow {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .tituloRow h1 {
   margin: 0;
   font-size: 1.75rem;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 800;
+  color: var(--ink-900);
 }
 
 .statusBadge {
   font-size: 0.8rem;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
   padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
 .statusAberto {
-  background: rgba(40, 167, 69, 0.15);
-  color: #28a745;
+  background: var(--green-500);
+  color: var(--white);
 }
 
 .statusEncerrado {
-  background: rgba(108, 117, 125, 0.15);
-  color: #6c757d;
+  background: var(--slate-400);
+  color: var(--white);
 }
 
 .criador {
-  color: var(--text-secondary);
+  color: var(--slate-500);
   font-size: 0.9rem;
-  margin: var(--spacing-xs) 0 var(--spacing-md);
+  margin: var(--space-2) 0 var(--space-4);
 }
 
 .descricao {
   line-height: 1.5;
+  color: var(--slate-600);
 }
 
 .mecanica {
-  background: var(--bg-secondary);
+  background: var(--surface-50);
   border-radius: var(--radius-md);
-  padding: var(--spacing-md);
-  margin: var(--spacing-md) 0;
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
 }
 
 .mecanica p {
-  margin: var(--spacing-xs) 0 0;
+  margin: var(--space-2) 0 0;
 }
 
 .metaGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-md);
-  color: var(--text-secondary);
+  gap: var(--space-4);
+  color: var(--slate-500);
   font-size: 0.9rem;
-  margin-top: var(--spacing-md);
+  margin-top: var(--space-4);
+}
+
+.metaGrid span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .encerrarBtn {
-  margin-top: var(--spacing-lg);
-  background: #dc3545;
-  color: white;
+  margin-top: var(--space-6);
+  background: var(--danger-500);
+  color: var(--white);
   border: none;
   padding: 0.6rem 1.5rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
 }
 
 .gruposSection {
-  margin-top: var(--spacing-xl);
+  margin-top: var(--space-8);
 }
 
 .gruposHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--space-4);
   flex-wrap: wrap;
-  gap: var(--spacing-sm);
+  gap: var(--space-3);
+}
+
+.gruposHeader h2 {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
 }
 
 .criarGrupoBtn {
-  background: var(--color-primary);
-  color: white;
+  background: var(--green-500);
+  color: var(--white);
   border: none;
   padding: 0.5rem 1.25rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+.criarGrupoBtn:hover {
+  background: var(--green-600);
 }
 
 .formGrupo {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
-  background: var(--bg-primary);
-  border: 2px solid var(--border-color);
+  gap: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--line-100);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
 }
 
 .formGrupo label {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  font-weight: var(--font-weight-semibold);
+  gap: var(--space-2);
+  font-weight: 700;
   font-size: 0.9rem;
+  color: var(--slate-600);
 }
 
 .formGrupo input[type='text'],
 .formGrupo textarea {
   padding: 0.6rem 0.8rem;
-  border: 2px solid var(--border-color);
+  border: 1.5px solid var(--line-200);
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: var(--surface-50);
+  color: var(--ink-900);
   font-family: inherit;
   font-size: 1rem;
+}
+
+.formGrupo input[type='text']:focus,
+.formGrupo textarea:focus {
+  outline: none;
+  border-color: var(--green-500);
 }
 
 .radioGroup {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--space-2);
 }
 
 .radioGroup label {
@@ -176,13 +311,18 @@
 
 .submitBtn {
   align-self: flex-start;
-  background: var(--color-primary);
-  color: white;
+  background: var(--green-500);
+  color: var(--white);
   border: none;
   padding: 0.6rem 1.5rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: var(--green-600);
 }
 
 .submitBtn:disabled {
@@ -193,62 +333,72 @@
 .gruposGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--spacing-lg);
+  gap: var(--space-6);
 }
 
 .grupoCard {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  background: var(--bg-primary);
-  border: 2px solid var(--border-color);
+  gap: var(--space-2);
+  background: var(--white);
+  border: 1px solid var(--line-100);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
 }
 
 .grupoCard h3 {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--ink-900);
 }
 
 .visibilidadeBadge {
   align-self: flex-start;
   font-size: 0.75rem;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
   padding: 0.15rem 0.6rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
 }
 
 .aberto {
-  background: rgba(40, 167, 69, 0.15);
-  color: #28a745;
+  background: var(--green-50);
+  color: var(--green-700);
 }
 
 .fechado {
-  background: rgba(220, 53, 69, 0.15);
-  color: #dc3545;
+  background: var(--danger-50);
+  color: var(--danger-500);
 }
 
 .proposta {
-  color: var(--text-secondary);
+  color: var(--slate-500);
   font-size: 0.9rem;
   margin: 0;
 }
 
 .membrosCount,
 .pontuacao {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.85rem;
   margin: 0;
+  color: var(--slate-600);
 }
 
 .entrarBtn {
   align-self: flex-start;
-  margin-top: var(--spacing-xs);
-  background: var(--color-primary);
-  color: white;
+  margin-top: var(--space-2);
+  background: var(--green-500);
+  color: var(--white);
   border: none;
   padding: 0.4rem 1rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
+  transition: background 0.2s;
+}
+
+.entrarBtn:hover {
+  background: var(--green-600);
 }

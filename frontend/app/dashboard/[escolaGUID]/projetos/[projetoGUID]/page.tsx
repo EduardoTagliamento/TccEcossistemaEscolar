@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { buscarProjeto, encerrarProjeto } from '@/lib/api/projeto.api';
 import { criarGrupo, entrarGrupo, listarGruposDoProjeto } from '@/lib/api/grupoprojeto.api';
 import { GrupoProjeto, GrupoProjetoVisibilidade, Projeto } from '@/types/projeto';
+import { Icon } from '@/components/Icon';
 import styles from './page.module.css';
 
 export default function ProjetoDetalhePage() {
@@ -147,10 +148,10 @@ export default function ProjetoDetalhePage() {
         )}
 
         <div className={styles.metaGrid}>
-          <span>👥 Grupos de {projeto.ProjetoGrupoMinPessoas} a {projeto.ProjetoGrupoMaxPessoas} pessoas</span>
-          <span>📅 Inscrições até {new Date(projeto.ProjetoInscricaoPrazoData).toLocaleString('pt-BR')}</span>
+          <span><Icon name="users" size={16} /> Grupos de {projeto.ProjetoGrupoMinPessoas} a {projeto.ProjetoGrupoMaxPessoas} pessoas</span>
+          <span><Icon name="calendar" size={16} /> Inscrições até {new Date(projeto.ProjetoInscricaoPrazoData).toLocaleString('pt-BR')}</span>
           {projeto.ProjetoEntregaPrazoData && (
-            <span>🏁 Entrega até {new Date(projeto.ProjetoEntregaPrazoData).toLocaleString('pt-BR')}</span>
+            <span><Icon name="clock" size={16} /> Entrega até {new Date(projeto.ProjetoEntregaPrazoData).toLocaleString('pt-BR')}</span>
           )}
         </div>
 
@@ -235,7 +236,7 @@ export default function ProjetoDetalhePage() {
                   <p className={styles.proposta}>{grupo.GrupoProjetoProposta}</p>
                   <p className={styles.membrosCount}>{grupo.TotalMembros} / {grupo.LimiteMaximo} membros</p>
                   {grupo.GrupoProjetoPontuacao !== null && (
-                    <p className={styles.pontuacao}>⭐ Pontuação: {grupo.GrupoProjetoPontuacao}</p>
+                    <p className={styles.pontuacao}><Icon name="star" size={14} color="var(--gold-500)" /> Pontuação: {grupo.GrupoProjetoPontuacao}</p>
                   )}
                   {!souMembro && !meuGrupo && grupo.GrupoProjetoVisibilidade === 'Aberto' && grupo.PodeEntrar && !projetoEncerrado && !prazoVencido && (
                     <button onClick={() => handleEntrarGrupo(grupo.GrupoProjetoGUID)} className={styles.entrarBtn}>

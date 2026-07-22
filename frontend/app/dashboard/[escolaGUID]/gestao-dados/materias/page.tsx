@@ -318,6 +318,13 @@ export default function MateriasPage() {
         colunas={colunas}
         dados={materias}
         carregando={carregando}
+        filtrarPor={(materia, termo) => {
+          if (materia.MateriaNome.toLowerCase().includes(termo)) return true;
+          if (!materia.CursoGUID) return false;
+          const curso = cursos.find(c => c.CursoGUID === materia.CursoGUID);
+          return curso?.CursoNome.toLowerCase().includes(termo) ?? false;
+        }}
+        buscaPlaceholder="Buscar por matéria ou curso..."
         acoes={(materia, index) => (
           <>
             <button
