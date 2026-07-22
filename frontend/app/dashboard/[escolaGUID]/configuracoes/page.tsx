@@ -2,7 +2,6 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState, ChangeEvent } from 'react';
-import Link from 'next/link';
 import styles from './page.module.css';
 
 import * as EscolaConfiguracaoAPI from '@/lib/api/escolaconfiguracao.api';
@@ -394,9 +393,6 @@ export default function ConfiguracoesEscolaPage() {
             Defina os parâmetros de horário letivo usados no cronograma das turmas
           </p>
         </div>
-        <Link href={`/dashboard/${escolaGUID}`} className={styles.botaoVoltar}>
-          ← Voltar
-        </Link>
       </div>
 
       {erro && <div className={styles.erro}>{erro}</div>}

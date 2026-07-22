@@ -27,7 +27,6 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil } from '@/lib/timezone-utils';
 import {
@@ -246,9 +245,6 @@ export default function CadastroPendenciaPage() {
             Crie lembretes/avisos direcionados a um único aluno ou professor da escola.
           </p>
         </div>
-        <Link href={`/dashboard/${escolaGUID}`} className={styles.botaoVoltar}>
-          Voltar ao Dashboard
-        </Link>
       </header>
 
       {erro && <p className={styles.erro}>{erro}</p>}

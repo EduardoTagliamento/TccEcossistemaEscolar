@@ -294,12 +294,8 @@ export default function TurmasPage() {
             Gerencie as turmas da escola
           </p>
         </div>
-        <div className={styles.acoes}>          <Link
-            href={`/dashboard/${escolaGUID}/gestao-dados`}
-            className={styles.botaoVoltar}
-          >
-            ← Voltar
-          </Link>          <button
+        <div className={styles.acoes}>
+          <button
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}
           >

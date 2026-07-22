@@ -2,7 +2,6 @@
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import styles from './page.module.css';
 
 import BaseFormularioCadastro, { CampoFormulario } from '@/components/gestao-dados/BaseFormularioCadastro';
@@ -203,12 +202,6 @@ export default function CursosPage() {
           </p>
         </div>
         <div className={styles.acoes}>
-          <Link
-            href={`/dashboard/${escolaGUID}/gestao-dados`}
-            className={styles.botaoVoltar}
-          >
-            ← Voltar
-          </Link>
           <button
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}

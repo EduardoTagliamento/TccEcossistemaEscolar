@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';import Link from 'next/link';import styles from '../page.module.css';
+import { useState, useEffect } from 'react';import styles from '../page.module.css';
 
 import BaseFormularioCadastro, { CampoFormulario } from '@/components/gestao-dados/BaseFormularioCadastro';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
@@ -437,12 +437,8 @@ export default function ProfessoresPage() {
             Gerencie os professores e suas alocações em matérias/turmas
           </p>
         </div>
-        <div className={styles.acoes}>          <Link
-            href={`/dashboard/${escolaGUID}/gestao-dados`}
-            className={styles.botaoVoltar}
-          >
-            ← Voltar
-          </Link>          <button
+        <div className={styles.acoes}>
+          <button
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}
           >

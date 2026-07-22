@@ -14,7 +14,6 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import styles from './page.module.css';
 
 import * as AuditoriaAPI from '@/lib/api/auditoria.api';
@@ -211,9 +210,6 @@ export default function AuditoriaPage() {
           <div>
             <h1 className={styles.titulo}>Registro de Auditoria</h1>
           </div>
-          <Link href={`/dashboard/${escolaGUID}`} className={styles.botaoVoltar}>
-            ← Voltar
-          </Link>
         </div>
         <div className={styles.acessoRestrito}>
           <p>Acesso restrito.</p>
@@ -233,9 +229,6 @@ export default function AuditoriaPage() {
           <h1 className={styles.titulo}>Registro de Auditoria</h1>
           <p className={styles.subtitulo}>Histórico de ações realizadas nesta escola</p>
         </div>
-        <Link href={`/dashboard/${escolaGUID}`} className={styles.botaoVoltar}>
-          ← Voltar
-        </Link>
       </div>
 
       {erro && <div className={styles.erro}>{erro}</div>}
