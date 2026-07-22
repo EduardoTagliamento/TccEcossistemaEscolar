@@ -16,6 +16,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import * as UsuarioAPI from '@/lib/api/usuario.api';
 import * as UploadAPI from '@/lib/api/upload.api';
@@ -40,6 +42,8 @@ function obterIniciais(nome?: string, sobrenome?: string): string {
 }
 
 export default function PerfilPage() {
+  const params = useParams();
+  const escolaGUID = (params?.escolaGUID as string) || '';
   const { usuario, refreshUser } = useAuth();
 
   const [nome, setNome] = useState('');
@@ -316,6 +320,17 @@ export default function PerfilPage() {
               {trocandoSenha ? 'Alterando...' : 'Alterar senha'}
             </button>
           </form>
+        </section>
+
+        <section className={styles.card}>
+          <h2 className={styles.cardTitulo}>Notificações</h2>
+          <p className={styles.prefDescricao} style={{ marginBottom: '0.75rem' }}>
+            Escolha quais avisos e lembretes você também quer receber por e-mail ou WhatsApp — além de sempre
+            aparecerem no sino de notificações.
+          </p>
+          <Link href={`/dashboard/${escolaGUID}/notificacoes/configuracoes`} className={styles.botaoSecundario}>
+            Gerenciar preferências de notificação
+          </Link>
         </section>
 
         <section className={styles.card}>
