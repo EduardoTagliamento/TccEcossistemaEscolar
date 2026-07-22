@@ -59,6 +59,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Código real:** `frontend/app/saiba-mais/page.tsx` (131 linhas) já implementado, com cor fixa em `page.module.css`.
 - **Ação real pendente:** decidir sobre a seta de navegação + cores do design system.
 
+**✅ Status atualizado (2026-07-22):** Login, Cadastro, Criar-escola e a Landing page **já foram migrados** para os componentes novos do design system (`frontend/components/auth/AuthBrandShell.tsx`, `AuthButton.tsx`, `AuthIcon.tsx`, `AuthInput.tsx`, `AuthGreenShell.tsx`, `BauaLogo.tsx`) — confirmado por grep: `1cc47b`/`169162`/`ebebeb` não aparecem mais em nenhum desses 4 CSS. Uma tela nova também nasceu já no padrão novo: `frontend/app/verificar-email/page.tsx` (fluxo de verificação de e-mail, ligado à integração Resend/Brevo documentada em `docs/PLANEJAMENTO_VERIFICACAO_EMAIL_RESEND.md`/`_BREVO.md`). **`saiba-mais` é a única página institucional que ainda não recebeu o rework** — continua com cor fixa e sem os componentes novos.
+
 ---
 
 ## 2. Escolas (pág. 2)
@@ -174,6 +176,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 **✅ Status atualizado (2026-07-19):** frontend implementado nesta sessão — `frontend/app/dashboard/[escolaGUID]/chat/page.tsx` (lista de conversas + painel de mensagens), conexão WebSocket única e compartilhada (`frontend/lib/socket/SocketContext.tsx`, montada no `layout.tsx`), `socket.io-client` instalado. Cobre: lista com prévia/não-lidas, histórico paginado, envio em tempo real, digitando, fixar/desafixar/editar/apagar mensagem, iniciar conversa individual, e **upload de imagem/arquivo em anexo** (endpoint novo `POST /api/upload/mensagem/:conversaGUID`, 10MB, imagens + documentos comuns). Layout inspirado no design system atual (`689c269f`), não há tela dedicada de chat no design system oficial — confirmado por busca direta nos dois projetos Bauá.
 - **Pendente (ver checklist no fim do documento):** reações a mensagens (decidido que entra no escopo, mas não implementado — só a bolha de mensagem foi construída, sem funcionalidade de reagir); gestão de Representante/Vice-Representante (kick/promover) na "lista no grupo" pedida pelo post-it — os endpoints já existem (`docs/routes/conversa-api.md`), mas não há UI; recibo de leitura visual (evento `mensagem_lida` existe, não é consumido no frontend).
 
+**✅ Status atualizado (2026-07-22):** a "bolha de chat minimizada ao navegar pra fora da tela de chat" (estilo Instagram Web), que estava listada como "em andamento", **está pronta** — `frontend/app/dashboard/[escolaGUID]/_components/MinimizedChatBubble.tsx`, com "Expandir" levando direto de volta pra conversa que estava minimizada. Reconfirmado por leitura direta do código que reações, kick/promover (2ª tela de membros) e recibo de leitura **continuam pendentes** — nenhuma menção a painel de membros com ações administrativas em `chat/page.tsx`, `meuPapelNoGrupo` (Líder/Representante/Vice-Representante) hoje só controla permissão de fixar/apagar mensagem, não gestão de membros.
+
 ---
 
 ## 8. Secretaria (pág. 7)
@@ -185,15 +189,21 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Post-its:** cadastrar eventos da escola; evento cadastrado vai direto para o calendário.
 - **Código real:** `backend/controllers/evento.controller.ts` (285 linhas) + `routes/evento.routes.ts` prontos. Nenhuma pasta frontend dedicada — ⬜ do board confere.
 
+**✅ Status atualizado (2026-07-22):** tela implementada — `frontend/app/dashboard/[escolaGUID]/cadastro-evento/page.tsx`, visível só a Coordenação/Secretaria/Direção (gate real no backend, retorna 403 pros demais papéis). Segue o mesmo padrão de formulário controlado + lista com ações inline usado em `cadastro/TarefaForm.tsx`, com upload/vínculo de anexo ao evento (`vincularAnexoEvento`).
+
 ### Registro de Auditoria
 - **Board:** Backend 🔁 (em revisão) | Frontend ⬜
 - **Post-its:** ver ações por usuário da escola; sistema de filtro.
 - **Código real:** **não existe controller, rota, entidade ou serviço de auditoria.** A única menção a "auditoria" no backend é um comentário em `backend/Server.ts:229` ("Útil para logging e auditoria") sobre um middleware de pré-roteamento genérico — não há persistência de ações por usuário nem filtro. O 🔁 do board provavelmente reflete essa intenção genérica de logging, mas na prática **a feature em si está mais próxima de ⬜ do que de 🔁**.
 
+**✅ Status atualizado (2026-07-22):** essa leitura ficou desatualizada — **o módulo já existe ponta a ponta**, conforme `docs/PLANO_IMPLEMENTACAO_REGISTRO_AUDITORIA.md`: backend completo (`backend/entities/registroauditoria.model.ts`, `backend/repositories/registroauditoria.repository.ts`, `backend/services/auditoria.service.ts`, `backend/services/auditoria.scheduler.ts` — job de expurgo por retenção diferenciada, `backend/controllers/auditoria.controller.ts`, `routes/auditoria.routes.ts`, registrado em `/api/auditoria`) e frontend (`frontend/app/dashboard/[escolaGUID]/auditoria/page.tsx`, com filtro por categoria/entidade, badges por categoria de sensibilidade, `frontend/lib/api/auditoria.api.ts`). Acesso restrito a Coordenação/Secretaria/Direção (403 no backend para os demais). **Falta apenas confirmar se a migration `2026-07-21-add-registro-auditoria.sql` já rodou contra o banco real** (ver checklist).
+
 ### Cadastro de pendências / Tela de pendência
 - **Board:** Backend ✅ | Frontend ⬜ (nas 2)
 - **Post-its:** pendência associada a usuário responsável e/ou pendência específica a resolver; tela de pendência deve seguir o padrão da tela de tarefa.
 - **Código real:** `backend/controllers/pendencia.controller.ts` (390 linhas) + `routes/pendencia.routes.ts` prontos e robustos. Nenhuma tela frontend dedicada encontrada — ⬜ confere.
+
+**✅ Status atualizado (2026-07-22):** tela implementada — `frontend/app/dashboard/[escolaGUID]/cadastro-pendencia/page.tsx`, mesmo padrão do cadastro de evento acima. Seletor de destinatário reaproveita `AlunoAPI.listarAlunos`/`ProfessorAPI.listarProfessores` (não existe endpoint genérico de "buscar todos os usuários da escola com nome" — decisão documentada no próprio arquivo); Coordenação/Secretaria/Direção não aparecem como destinatário possível.
 
 ### Notificações
 - **Board:** Backend ⬜ | Frontend ⬜
@@ -202,6 +212,7 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 
 **⚠️ Correção (2026-07-19):** essa leitura ficou desatualizada — hoje **backend e frontend de Notificações já existem e funcionam**: `backend/services/notificacao.service.ts`, catálogo de tipos + preferências por usuário, envio de e-mail via Resend, canal WhatsApp com interface pronta mas sem provedor conectado ainda (decisão do usuário: fica fora de escopo por ora), WebSocket `notificacao:nova` na room pessoal do usuário, e as telas `frontend/app/dashboard/[escolaGUID]/notificacoes/page.tsx` + `.../notificacoes/configuracoes/page.tsx`. Nesta sessão o sino da navbar também passou a abrir um dropdown com as notificações recentes (em vez de navegar pra página cheia).
 - **Pendente:** toast em tempo real ouvindo `notificacao:nova` (decisão confirmada: deve aparecer em todas as telas do dashboard) — ainda não implementado, o dropdown hoje só busca a lista ao abrir, não reage a eventos WS em tempo real; paginação/retenção do feed — sem decisão fechada ainda.
+- **Reconfirmado (2026-07-22):** `notificacao:nova` ainda não é escutado em nenhum lugar do frontend (busca direta, zero ocorrências) — o toast em tempo real segue sem implementação. O commit `att notificação e resend` desta data mexeu em `.env`/`perfil/page.tsx`, não no toast.
 
 ---
 
@@ -252,6 +263,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Post-its:** só acesso direção/coordenação; informar cronograma das turmas; alterar informações da escola; avaliar restringir customização de cor ao representante legal da escola.
 - **Código real:** **discrepância relevante** — `frontend/app/dashboard/[escolaGUID]/configuracoes/page.tsx` já implementa cronograma de turmas, grade horária, dias letivos e intervalos, consumindo `lib/api/escolaconfiguracao.api.ts`. Backend: `backend/controllers/escolaconfiguracao.controller.ts` + `routes/escolaconfiguracao.routes.ts` também existem. O board marca Frontend ⬜, mas a tela de cronograma (um dos 4 post-its) já está pronta. **O que falta de fato**, pelo que dá para inferir sem abrir o arquivo por completo: alterar informações gerais da escola (nome/e-mail/logo fora do cronograma) e a regra de restringir customização de cor ao representante legal — vale confirmar com o board original quais dessas ainda não estão na tela atual.
 
+**✅ Status atualizado (2026-07-22):** seção "Identidade da Escola" implementada na mesma tela, visível **só para Direção** (`FuncaoId` 6 — nota explícita na UI: "Visível apenas para a Direção"), cobrindo `EscolaNome` e as 4 cores (`EscolaCorPriEs/Cl`, `EscolaCorSecEs/Cl`). Isso resolve a regra "restringir customização de cor ao representante legal" (interpretando Direção como o representante legal da escola) e parte de "alterar informações da escola". **Ainda falta:** e-mail e logo da escola não têm campo nessa tela (busca direta por `EscolaEmail`/`EscolaLogo`/upload de logo em `configuracoes/page.tsx` não encontrou nada) — permanecem pendentes.
+
 ---
 
 ## 12. Módulo em standby (pág. 11)
@@ -296,21 +309,37 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 
 ---
 
-## Checklist — Pendências restantes (atualizado em 2026-07-19)
+## Correções de bugs em produção (2026-07-22)
+
+Sessão focada em estabilização, não em features novas do board. Achados relevantes:
+
+- **`relacaoanexos` inexistente:** as rotas de anexos de Tarefa/Pendência/Evento (`POST`/`GET /api/{tarefa,pendencia,evento}/:GUID/anexos`) quebravam em produção com `Table 'railway.relacaoanexos' doesn't exist`. Causa raiz: `backend/repositories/relacaoanexos.repository.ts` foi escrito contra uma tabela pivot unificada que **nunca existiu** — o schema real (confirmado via `SHOW CREATE TABLE` direto no banco Railway nesta sessão) já tinha o design correto de 4 tabelas separadas por recurso (`relacaoanexostarefa`, `relacaoanexospendencia`, `relacaoanexosevento`, `relacaoanexosprova`), usado corretamente por outro arquivo (`backend/repositories/anexo.repository.ts`). O repositório foi reescrito para usar as tabelas certas — **sem precisar de nenhuma migration nova**. Commit `cb33974` "fix anexos".
+- **`fix vinculos` (commit `c61ff1c`):** bug de permissão em `pendencia.service.ts`, `evento.service.ts` e `anotacao.service.ts` — o código checava só `vinculos[0]` (primeiro vínculo escola-usuário-função retornado) em vez de verificar se **qualquer** vínculo ativo do usuário atendia à regra. Quebrava para usuários com mais de uma função na mesma escola (ex.: Professor que também é Coordenador). Corrigido para `vinculos.some(...)`.
+- **`fix-pendencia-timestamps.sql` / `fix-evento-schema.sql` (commit `b7c14e9`/`98b805c`):** as tabelas `pendencia` e `evento` foram criadas manualmente em produção com nomes de coluna divergentes do código (`CreatedAt`/`UpdatedAt` sem prefixo; `EventoConteudo`/`EventoDataHora` em vez de `EventoDescricao`/`EventoData`). **Confirmado nesta sessão via `SHOW CREATE TABLE` real** que essas duas migrations **já foram executadas** em produção — os nomes de coluna corretos já estão lá.
+- Evento também ganhou persistência de `UsuarioCPF` (quem criou o evento), campo que existia na tabela mas nunca era populado pelo código.
+
+---
+
+## Checklist — Pendências restantes (atualizado em 2026-07-22)
 
 Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat completo (texto + anexo), dashboard reconstruído contra o design system real, navbar tornada persistente em todo o dashboard, telas de cadastro de Tarefa/Prova/Conteúdo condensadas numa só, tela de configuração do usuário nova, sino de notificações virou dropdown. Detalhes em cada seção acima. Itens marcados `[x]` foram concluídos nesta sessão; `[ ]` seguem em aberto.
 
-### Migrations escritas, faltando rodar contra o banco real
-- [ ] `backend/database/migrations/2026-07-19-add-projetos.sql` — 6 tabelas do módulo Projetos + seeds de notificação (sandbox de desenvolvimento não teve acesso à rede do banco Railway)
-- [ ] `backend/database/migrations/2026-07-19-add-usuario-foto-e-senha.sql` — coluna `usuario.UsuarioFotoUrl`
-- [ ] `backend/database/migrations/2026-07-21-add-usuario-preferencias-visuais.sql` — colunas `usuario.UsuarioTema`/`UsuarioModoDaltonico`/`UsuarioEscalaFonte`/`UsuarioReduzirMovimento`/`UsuarioAltoContraste` (mesmo motivo: sandbox sem acesso à rede do banco Railway — `DB_HOST` aponta pro host interno `mysql.railway.internal`, só resolvível de dentro da rede privada do Railway)
+**Trabalho adicional identificado em 2026-07-22** (não fruto desta sessão de auditoria, mas confirmado por leitura direta do código/git log — o relatório estava desatualizado nesses pontos): Registro de Auditoria completo (backend+frontend), telas de Cadastro de Evento e Cadastro de Pendência, rework de design system em Login/Cadastro/Criar-escola/Landing page, seção "Identidade da Escola" (nome+cores, restrita à Direção), bolha de chat minimizada. Mais 3 correções de bugs em produção (ver seção acima). Todos os itens abaixo já refletem esse estado.
+
+### Migrations escritas, faltando confirmar execução contra o banco real
+- [x] `backend/database/migrations/2026-07-22-fix-pendencia-timestamps.sql` — **confirmado executado** via `SHOW CREATE TABLE pendencia` direto no Railway nesta sessão (colunas já vêm como `PendenciaCreatedAt`/`PendenciaUpdatedAt`)
+- [x] `backend/database/migrations/2026-07-22-fix-evento-schema.sql` — **confirmado executado** via `SHOW CREATE TABLE evento` direto no Railway nesta sessão (colunas já vêm como `EventoDescricao`/`EventoData`/`EventoCreatedAt`/`EventoUpdatedAt`)
+- [ ] `backend/database/migrations/2026-07-19-add-projetos.sql` — 6 tabelas do módulo Projetos + seeds de notificação — **execução não confirmada**, verificar
+- [ ] `backend/database/migrations/2026-07-19-add-usuario-foto-e-senha.sql` — coluna `usuario.UsuarioFotoUrl` — **execução não confirmada**, verificar
+- [ ] `backend/database/migrations/2026-07-21-add-usuario-preferencias-visuais.sql` — colunas `usuario.UsuarioTema`/`UsuarioModoDaltonico`/`UsuarioEscalaFonte`/`UsuarioReduzirMovimento`/`UsuarioAltoContraste` — **execução não confirmada**, verificar
+- [ ] `backend/database/migrations/2026-07-21-add-registro-auditoria.sql` — tabelas `categoriaauditoria`/`registroauditoria`/`usuarioxescolaacesso` — **execução não confirmada**, verificar (o código do módulo já está pronto ponta a ponta, ver seção 8)
 
 ### Chat
 - [x] Lista de conversas, painel de mensagens, tempo real via WebSocket, anexos de imagem/arquivo
+- [x] Bolha de chat minimizada ao navegar pra fora da tela de chat (estilo Instagram Web) — `MinimizedChatBubble.tsx`
 - [ ] Reações a mensagens (decidido que entra no escopo — não implementado ainda)
-- [ ] Gestão de Representante/Vice-Representante (kick/promover) na tela de grupo — endpoints já existem, falta UI
+- [ ] Gestão de Representante/Vice-Representante (kick/promover) na tela de grupo — endpoints já existem, falta UI (nenhum painel de membros com ações administrativas encontrado em `chat/page.tsx`)
 - [ ] Recibo de leitura visual (`mensagem_lida`) — evento existe, não é consumido no frontend
-- [ ] Bolha de chat minimizada ao navegar pra fora da tela de chat (estilo Instagram Web) — em andamento
 
 ### Notificações
 - [x] Dropdown no sino da navbar (lista recente + link "ver todas")
@@ -319,9 +348,9 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 - [ ] Paginação/retenção do feed — sem decisão fechada
 
 ### Secretaria
-- [ ] Tela de cadastro de eventos (backend já pronto)
-- [ ] Tela de cadastro/gestão de pendências (backend já pronto)
-- [ ] Registro de Auditoria — nenhum código (nem backend nem frontend); decisões de escopo já confirmadas com o usuário (auditar todo CRUD, visível a Direção/Coordenação/Secretaria, retenção diferenciada por sensibilidade, sem diff antes/depois)
+- [x] Tela de cadastro de eventos — `cadastro-evento/page.tsx`
+- [x] Tela de cadastro/gestão de pendências — `cadastro-pendencia/page.tsx`
+- [x] Registro de Auditoria — ponta a ponta (backend completo + `auditoria/page.tsx`, filtro por categoria/entidade, scheduler de expurgo por retenção); falta só confirmar execução da migration (ver acima)
 
 ### Matérias
 - [ ] As 4 telas (geral, específica, prova-visão-aluno, tarefa-visão-aluno) — nada implementado
@@ -334,13 +363,20 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 - [x] Preferências de acessibilidade (tema claro/escuro/sistema, modo daltônico, tamanho de texto, reduzir animações, alto contraste) — persistidas por conta, sem `localStorage`; cobertura de CSS limitada a `globals.css` + navbar + home do dashboard + perfil + config. da escola (resto do app não coberto nesta rodada)
 
 ### Configuração da escola
-- [ ] Alterar informações gerais da escola (nome/e-mail/logo fora do cronograma)
-- [ ] Restringir customização de cor ao representante legal
+- [x] Alterar nome e cores da escola (seção "Identidade da Escola", restrita à Direção)
+- [x] Restringir customização de cor ao representante legal (interpretado como Direção/`FuncaoId` 6)
+- [ ] Alterar e-mail e logo da escola — ainda sem campo na tela
 
 ### Auth / institucional (Login, Cadastro, Saiba mais, Landing page)
-- [ ] Migrar cores fixas (`#1cc47b`/`#169162`/`#ebebeb`) para CSS Variables do design system em `login`, `cadastro`, `saiba-mais`, `criar-escola`
-- [ ] Reposicionamento conforme post-its (imagem à esquerda, formulário à direita, espelhado em login/cadastro)
+- [x] Migrar cores fixas (`#1cc47b`/`#169162`/`#ebebeb`) para o design system em `login`, `cadastro`, `criar-escola`, landing page — feito via componentes novos `AuthBrandShell`/`AuthButton`/`AuthIcon`/`AuthInput`/`AuthGreenShell`/`BauaLogo`
+- [ ] `saiba-mais` ainda não recebeu o rework — continua com cor fixa
+- [ ] Reposicionamento conforme post-its (imagem à esquerda, formulário à direita, espelhado em login/cadastro) — confirmar se o rework de 2026-07-22 já cobriu isso ou só trocou cores/componentes
 - [ ] Revisão de copy/persuasão da landing page (confiança, argumentos de venda, FAQ) — decisão de conteúdo, não de layout
+
+### Bugs de produção (2026-07-22)
+- [x] `relacaoanexos` inexistente — anexos de Tarefa/Pendência/Evento quebravam com "Table doesn't exist"; repositório reescrito para usar as tabelas reais (`relacaoanexostarefa`/`relacaoanexospendencia`/`relacaoanexosevento`), sem migration nova
+- [x] Bug de permissão multi-função (`vinculos[0]` em vez de `vinculos.some(...)`) em Pendência/Evento/Anotação — corrigia acesso incorreto para usuários com mais de uma função na mesma escola
+- [x] Schema de `pendencia`/`evento` corrigido e **confirmado executado em produção** (nomes de coluna renomeados para bater com o código)
 
 ### Outros
 - [ ] `frontend/refs/Dashboard_ref.png` parece pertencer a um projeto não relacionado ("Ferretto") — confirmar se é o arquivo errado antes de usar como referência de novo

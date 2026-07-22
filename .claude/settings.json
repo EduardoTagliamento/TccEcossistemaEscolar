@@ -4,5 +4,13 @@
       "type": "http",
       "url": "https://api.anthropic.com/v1/design/mcp"
     }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(railway whoami)",
+      "Bash(railway status)",
+      "Bash(railway variables:*)",
+      "Bash(node -e:*)"
+    ]
   }
 }
