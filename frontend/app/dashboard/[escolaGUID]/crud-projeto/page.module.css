@@ -1,69 +1,160 @@
+/* ============================================================
+   Criar Projeto — Bauá Design System
+   Tokens copiados literalmente do Bauá Design System (project
+   689c269f-be3b-4445-98c6-69b779c38839), escopados localmente sob
+   `.container`, mesmo padrão já usado no restante do dashboard (ver
+   frontend/app/dashboard/[escolaGUID]/gestao-dados/cursos/page.module.css,
+   frontend/app/dashboard/[escolaGUID]/auditoria/page.module.css).
+   ============================================================ */
+
 .container {
+  /* cores */
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --danger-500: #E5484D;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  /* espaçamento (grid de 4px) */
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* raio */
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* elevação */
+  --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+
   min-height: 100vh;
-  padding: var(--spacing-xl);
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  padding: var(--space-8);
+  background-color: var(--surface-50);
+  color: var(--slate-600);
   max-width: 800px;
   margin: 0 auto;
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --danger-500: #FF6B70;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --danger-500: #E8720C;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --danger-500: #FF9142;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --line-200: #7C8B82;
+  --line-100: #647268;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--space-8);
   flex-wrap: wrap;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 .header h1 {
   margin: 0;
   font-size: 1.75rem;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 800;
+  color: var(--ink-900);
 }
 
 .backLink {
   text-decoration: none;
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+  color: var(--green-600);
+  font-weight: 700;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
   transition: background 0.2s;
 }
 
 .backLink:hover {
-  background: rgba(0, 123, 255, 0.1);
+  background: var(--surface-50);
 }
 
 .loading,
 .error {
   text-align: center;
-  padding: var(--spacing-lg);
+  padding: var(--space-6);
+  color: var(--slate-500);
 }
 
 .error {
-  color: #dc3545;
+  color: var(--danger-500);
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
-  background: var(--bg-primary);
-  border: 2px solid var(--border-color);
+  gap: var(--space-6);
+  background: var(--white);
+  border: 1px solid var(--line-100);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-8);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
+  gap: var(--space-2);
   flex: 1;
 }
 
 .field span {
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
   font-size: 0.9rem;
+  color: var(--slate-600);
 }
 
 .field input[type='text'],
@@ -71,10 +162,10 @@
 .field input[type='datetime-local'],
 .field textarea {
   padding: 0.6rem 0.8rem;
-  border: 2px solid var(--border-color);
+  border: 1.5px solid var(--line-200);
   border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  background: var(--surface-50);
+  color: var(--ink-900);
   font-size: 1rem;
   font-family: inherit;
 }
@@ -82,18 +173,18 @@
 .field input:focus,
 .field textarea:focus {
   outline: none;
-  border-color: var(--color-primary);
+  border-color: var(--green-500);
 }
 
 .fieldRow {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
 .radioGroup {
   display: flex;
-  gap: var(--spacing-lg);
+  gap: var(--space-6);
 }
 
 .radioGroup label {
@@ -102,14 +193,15 @@
   gap: 0.4rem;
   font-weight: normal;
   cursor: pointer;
+  color: var(--slate-600);
 }
 
 .turmasGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: 2px solid var(--border-color);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1.5px solid var(--line-200);
   border-radius: var(--radius-md);
   max-height: 220px;
   overflow-y: auto;
@@ -121,28 +213,29 @@
   gap: 0.4rem;
   font-weight: normal;
   cursor: pointer;
+  color: var(--slate-600);
 }
 
 .turmasVazio {
-  color: var(--text-secondary);
+  color: var(--slate-500);
   margin: 0;
 }
 
 .submitBtn {
   align-self: flex-start;
-  background: var(--color-primary);
-  color: white;
+  background: var(--green-500);
+  color: var(--white);
   border: none;
   padding: 0.75rem 2rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   font-size: 1rem;
-  font-weight: var(--font-weight-semibold);
+  font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: background 0.2s;
 }
 
 .submitBtn:hover:not(:disabled) {
-  opacity: 0.9;
+  background: var(--green-600);
 }
 
 .submitBtn:disabled {

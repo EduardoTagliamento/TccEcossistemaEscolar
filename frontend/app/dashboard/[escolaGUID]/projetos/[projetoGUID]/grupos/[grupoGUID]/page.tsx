@@ -17,6 +17,7 @@ import {
 } from '@/lib/api/grupoprojeto.api';
 import { solicitarEntrada } from '@/lib/api/convitegrupoprojeto.api';
 import { GrupoProjeto, Projeto } from '@/types/projeto';
+import { Icon } from '@/components/Icon';
 import styles from './page.module.css';
 
 export default function GrupoProjetoDetalhePage() {
@@ -166,7 +167,9 @@ export default function GrupoProjetoDetalhePage() {
         <p className={styles.proposta}>{grupo.GrupoProjetoProposta}</p>
         <p className={styles.meta}>
           {grupo.TotalMembros} / {grupo.LimiteMaximo} membros
-          {grupo.GrupoProjetoPontuacao !== null && ` · ⭐ Pontuação: ${grupo.GrupoProjetoPontuacao}`}
+          {grupo.GrupoProjetoPontuacao !== null && (
+            <> · <Icon name="star" size={14} color="var(--gold-500)" /> Pontuação: {grupo.GrupoProjetoPontuacao}</>
+          )}
         </p>
 
         {souLider && !projeto.ProjetoStatus.includes('Encerrado') && (
@@ -196,7 +199,11 @@ export default function GrupoProjetoDetalhePage() {
           {grupo.Membros.map((membro) => (
             <li key={membro.UsuarioCPF} className={styles.membroItem}>
               <span>
-                {membro.UsuarioNome} {membro.IsLider && <span className={styles.liderTag}>👑 Líder</span>}
+                {membro.UsuarioNome} {membro.IsLider && (
+                  <span className={styles.liderTag}>
+                    <Icon name="award" size={12} /> Líder
+                  </span>
+                )}
               </span>
               <div className={styles.membroAcoes}>
                 {souLider && !membro.IsLider && (

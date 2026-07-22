@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { listarTarefas } from '@/lib/api/tarefaacademica.api';
 import { TarefaListItem } from '@/types/tarefaacademica';
+import { Icon } from '@/components/Icon';
 import styles from './page.module.css';
 
 export default function TarefasPage() {
@@ -148,10 +149,12 @@ export default function TarefasPage() {
             <p className={styles.materia}>{tarefa.MateriaNome || 'Sem matéria'}</p>
           </div>
           {tarefa.TarefaCompartilhada && (
-            <span className={styles.badgeCompartilhada}>👥 Compartilhada</span>
+            <span className={styles.badgeCompartilhada}>
+              <Icon name="users" size={14} color="#FFFFFF" /> Compartilhada
+            </span>
           )}
         </div>
-        
+
         <div className={styles.cardBody}>
           {tarefa.TarefaConteudo && (
             <p className={styles.conteudo}>
@@ -163,7 +166,7 @@ export default function TarefasPage() {
 
         <div className={styles.cardFooter}>
           <span className={styles.prazo}>
-            📅 {prazo.toLocaleDateString('pt-BR')} às {prazo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            <Icon name="calendar" size={14} /> {prazo.toLocaleDateString('pt-BR')} às {prazo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </span>
           <span className={`${styles.statusBadge} ${styles[`status${tarefa.Status}`]}`}>
             {tarefa.Status}
@@ -173,7 +176,7 @@ export default function TarefasPage() {
     );
   };
 
-  const renderGrupo = (titulo: string, tarefas: TarefaListItem[]) => {
+  const renderGrupo = (titulo: ReactNode, tarefas: TarefaListItem[]) => {
     if (tarefas.length === 0) return null;
 
     return (
@@ -199,7 +202,7 @@ export default function TarefasPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>📚 Minhas Tarefas</h1>
+        <h1><Icon name="book-open" size={24} /> Minhas Tarefas</h1>
       </header>
 
       {/* Filtros */}
@@ -228,16 +231,16 @@ export default function TarefasPage() {
 
       {tarefas.length === 0 ? (
         <div className={styles.empty}>
-          <p>🎉 Você não tem tarefas pendentes!</p>
+          <p><Icon name="check-circle" size={20} color="var(--green-500)" /> Você não tem tarefas pendentes!</p>
         </div>
       ) : (
         <>
-          {renderGrupo('🔴 Atrasadas', grupos.atrasadas)}
-          {renderGrupo('⏰ Amanhã', grupos.amanha)}
-          {renderGrupo('📅 Esta Semana', grupos.estaSemana)}
-          {renderGrupo('📆 Este Mês', grupos.esteMes)}
-          {renderGrupo('🗓️ Próximo Mês', grupos.proximoMes)}
-          {renderGrupo('🔮 Futuro', grupos.futuro)}
+          {renderGrupo(<><Icon name="alert-triangle" size={20} color="var(--danger-500)" /> Atrasadas</>, grupos.atrasadas)}
+          {renderGrupo(<><Icon name="clock" size={20} /> Amanhã</>, grupos.amanha)}
+          {renderGrupo(<><Icon name="calendar" size={20} /> Esta Semana</>, grupos.estaSemana)}
+          {renderGrupo(<><Icon name="calendar" size={20} /> Este Mês</>, grupos.esteMes)}
+          {renderGrupo(<><Icon name="calendar" size={20} /> Próximo Mês</>, grupos.proximoMes)}
+          {renderGrupo(<><Icon name="layers" size={20} /> Futuro</>, grupos.futuro)}
         </>
       )}
     </div>

@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { listarProjetos } from '@/lib/api/projeto.api';
 import { Projeto } from '@/types/projeto';
+import { Icon } from '@/components/Icon';
 import styles from './page.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -81,7 +82,7 @@ export default function ProjetosPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>🚀 Projetos</h1>
+        <h1><Icon name="award" size={22} /> Projetos</h1>
         <div className={styles.headerActions}>
           {podeCriar && (
             <Link href={`/dashboard/${escolaGUID}/crud-projeto`} className={styles.criarBtn}>
@@ -121,10 +122,14 @@ export default function ProjetosPage() {
                 </p>
                 <div className={styles.cardFooter}>
                   <span className={styles.publico}>
-                    {projeto.ProjetoPublicoAlvo === 'Escola' ? '🏫 Escola inteira' : '👥 Turmas específicas'}
+                    {projeto.ProjetoPublicoAlvo === 'Escola' ? (
+                      <><Icon name="grid" size={14} /> Escola inteira</>
+                    ) : (
+                      <><Icon name="users" size={14} /> Turmas específicas</>
+                    )}
                   </span>
                   <span className={styles.prazo}>
-                    📅 Inscrições até {prazo.toLocaleDateString('pt-BR')}
+                    <Icon name="calendar" size={14} /> Inscrições até {prazo.toLocaleDateString('pt-BR')}
                   </span>
                 </div>
               </Link>

@@ -333,6 +333,15 @@ export default function AlunosPage() {
         colunas={colunas}
         dados={alunos}
         carregando={carregando}
+        filtrarPor={(aluno, termo) => {
+          const termoLimpo = termo.replace(/\D/g, '');
+          return (
+            aluno.usuario.UsuarioNome.toLowerCase().includes(termo) ||
+            (termoLimpo.length > 0 && aluno.usuario.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
+            (aluno.usuario.UsuarioId?.toLowerCase().includes(termo) ?? false)
+          );
+        }}
+        buscaPlaceholder="Buscar por nome, CPF ou ID..."
         acoes={(aluno, index) => (
           <>
             <button

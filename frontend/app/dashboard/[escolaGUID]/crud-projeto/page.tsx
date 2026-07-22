@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { criarProjeto } from '@/lib/api/projeto.api';
 import { listarTurmas, Turma } from '@/lib/api/turma.api';
 import { ProjetoPublicoAlvo } from '@/types/projeto';
+import { Icon } from '@/components/Icon';
 import styles from './page.module.css';
 
 export default function CrudProjetoPage() {
@@ -122,7 +123,7 @@ export default function CrudProjetoPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1>🚀 Criar Projeto</h1>
+        <h1><Icon name="award" size={22} /> Criar Projeto</h1>
         <Link href={`/dashboard/${escolaGUID}/projetos`} className={styles.backLink}>
           ← Voltar aos Projetos
         </Link>

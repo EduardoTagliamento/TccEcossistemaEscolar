@@ -223,6 +223,8 @@ export default function CursosPage() {
         colunas={colunas}
         dados={cursos}
         carregando={carregando}
+        filtrarPor={(curso, termo) => curso.CursoNome.toLowerCase().includes(termo)}
+        buscaPlaceholder="Buscar por nome do curso..."
         acoes={(curso, index) => (
           <>
             <button

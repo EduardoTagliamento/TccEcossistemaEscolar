@@ -1,137 +1,255 @@
+/* ============================================================
+   Minhas Tarefas — Bauá Design System
+   Tokens copiados literalmente do Bauá Design System (project
+   689c269f-be3b-4445-98c6-69b779c38839), escopados localmente sob
+   `.container`, mesmo padrão já usado no restante do dashboard (ver
+   frontend/app/dashboard/[escolaGUID]/gestao-dados/cursos/page.module.css,
+   frontend/app/dashboard/[escolaGUID]/auditoria/page.module.css).
+   ============================================================ */
+
 .container {
+  /* cores */
+  --green-50: #E7F9F0;
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --gold-500: #FFC02E;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  /* espaçamento (grid de 4px) */
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  /* raio */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* elevação */
+  --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
+  --shadow-md: 0 8px 20px -8px rgba(15, 29, 23, 0.14);
+
   min-height: 100vh;
-  padding: var(--spacing-xl);
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  padding: var(--space-8);
+  background-color: var(--surface-50);
+  color: var(--slate-600);
   max-width: 1400px;
   margin: 0 auto;
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   Mesmo mecanismo de frontend/app/dashboard/[escolaGUID]/configuracoes/page.module.css
+   — cada módulo redeclara os tokens localmente, então o override precisa
+   reafirmar os mesmos nomes de variável aqui, escopados por atributo.
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-50: #123324;
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --gold-500: #FFCB52;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-50: #E9F0FF;
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --green-700: #1D46A3;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-50: #16233D;
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --green-700: #2558C7;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+  --line-100: #647268;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--space-8);
 }
 
 .header h1 {
   margin: 0;
   font-size: 2rem;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 800;
+  color: var(--ink-900);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .backLink {
   text-decoration: none;
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
+  color: var(--green-700);
+  font-weight: 700;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
   transition: background 0.2s;
 }
 
 .backLink:hover {
-  background: rgba(0, 123, 255, 0.1);
+  background: var(--green-50);
 }
 
 /* Filtros */
 .filtros {
   display: flex;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xl);
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
   flex-wrap: wrap;
 }
 
 .filtro,
 .filtroAtivo {
   padding: 0.5rem 1.5rem;
-  border: 2px solid var(--border-color);
-  background: var(--bg-primary);
-  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--line-200);
+  background: var(--white);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   font-weight: 600;
   transition: all 0.2s;
   font-size: 1rem;
+  color: var(--slate-600);
 }
 
 .filtro:hover {
-  border-color: var(--color-primary);
-  background: rgba(0, 123, 255, 0.05);
+  border-color: var(--green-500);
+  background: var(--green-50);
 }
 
 .filtroAtivo {
-  background: var(--color-primary);
-  color: white;
-  border-color: var(--color-primary);
+  background: var(--green-500);
+  color: var(--white);
+  border-color: var(--green-500);
 }
 
 /* Grupos de Tarefas */
 .grupoTarefas {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--space-8);
 }
 
 .grupoTitulo {
   font-size: 1.5rem;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--space-4);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--text-primary);
+  gap: var(--space-2);
+  color: var(--ink-900);
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 700;
 }
 
 .contador {
   font-size: 1rem;
-  color: var(--text-secondary);
+  color: var(--slate-500);
   font-weight: normal;
 }
 
 .tarefasGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: var(--spacing-md);
+  gap: var(--space-4);
 }
 
 /* Card de Tarefa */
 .tarefaCard {
-  background: var(--bg-primary);
-  border: 2px solid var(--border-color);
+  background: var(--white);
+  border: 1px solid var(--line-100);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-md);
+  padding: var(--space-4);
   text-decoration: none;
-  color: var(--text-primary);
+  color: var(--slate-600);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--space-3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .tarefaCard:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  border-color: var(--green-500);
 }
 
 .cardAtrasada {
-  border-left: 6px solid #ff4444;
-  background: linear-gradient(to right, rgba(255, 68, 68, 0.05), var(--bg-primary));
+  border-left: 6px solid var(--danger-500);
+  background: linear-gradient(to right, var(--danger-50), var(--white));
 }
 
 .cardPendente {
-  border-left: 6px solid #4CAF50;
+  border-left: 6px solid var(--green-500);
 }
 
 .cardHeader {
   display: flex;
   align-items: flex-start;
-  gap: var(--spacing-sm);
+  gap: var(--space-3);
 }
 
 .materiaIcone {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-  color: white;
+  background: linear-gradient(135deg, var(--green-500), var(--green-700));
+  color: var(--white);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -148,20 +266,23 @@
   margin: 0 0 0.25rem 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--ink-900);
 }
 
 .materia {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: var(--slate-500);
 }
 
 .badgeCompartilhada {
-  background: #4CAF50;
-  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--green-500);
+  color: var(--white);
   padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
@@ -174,7 +295,7 @@
 .conteudo {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: var(--slate-500);
   line-height: 1.5;
 }
 
@@ -182,36 +303,39 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding-top: var(--spacing-sm);
-  border-top: 1px solid var(--border-color);
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line-100);
 }
 
 .prazo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: var(--slate-500);
 }
 
 .statusBadge {
   padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
   font-size: 0.75rem;
   font-weight: 600;
 }
 
 .statusAtrasada {
-  background: #ff4444;
-  color: white;
+  background: var(--danger-500);
+  color: var(--white);
 }
 
 .statusPendente {
-  background: #4CAF50;
-  color: white;
+  background: var(--green-500);
+  color: var(--white);
 }
 
 .statusRascunho {
-  background: #FFC107;
-  color: #000;
+  background: var(--gold-500);
+  color: var(--ink-900);
 }
 
 /* Estados */
@@ -219,28 +343,33 @@
 .error,
 .empty {
   text-align: center;
-  padding: var(--spacing-xl);
-  background: var(--bg-primary);
+  padding: var(--space-8);
+  background: var(--white);
+  border: 1px solid var(--line-100);
   border-radius: var(--radius-lg);
-  margin: var(--spacing-lg) 0;
+  margin: var(--space-6) 0;
 }
 
 .loading {
-  color: var(--text-secondary);
+  color: var(--slate-500);
 }
 
 .error {
-  color: var(--color-error);
-  background: rgba(255, 68, 68, 0.1);
+  color: var(--danger-500);
+  background: var(--danger-50);
+  border-color: var(--danger-500);
 }
 
 .empty {
   font-size: 1.25rem;
-  color: var(--text-secondary);
+  color: var(--slate-500);
 }
 
 .empty p {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 /* Responsive */
@@ -252,13 +381,13 @@
 
 @media (max-width: 768px) {
   .container {
-    padding: var(--spacing-md);
+    padding: var(--space-4);
   }
 
   .header {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--spacing-md);
+    gap: var(--space-4);
   }
 
   .tarefasGrid {

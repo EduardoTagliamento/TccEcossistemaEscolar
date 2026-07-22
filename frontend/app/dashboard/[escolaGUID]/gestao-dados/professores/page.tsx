@@ -459,6 +459,15 @@ export default function ProfessoresPage() {
         colunas={colunas}
         dados={professores}
         carregando={carregando}
+        filtrarPor={(professor, termo) => {
+          const termoLimpo = termo.replace(/\D/g, '');
+          return (
+            professor.UsuarioNome.toLowerCase().includes(termo) ||
+            (termoLimpo.length > 0 && professor.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
+            (professor.UsuarioId?.toLowerCase().includes(termo) ?? false)
+          );
+        }}
+        buscaPlaceholder="Buscar por nome, CPF ou ID..."
         acoes={(professor, index) => (
           <>
             <button

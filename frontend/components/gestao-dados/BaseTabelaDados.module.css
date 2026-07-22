@@ -22,6 +22,7 @@
 
   /* elevação */
   --shadow-sm: 0 2px 8px rgba(15, 29, 23, 0.1);
+  --focus-ring: rgba(23, 192, 119, 0.15);
 
   background: var(--white);
   border-radius: var(--radius-lg);
@@ -49,16 +50,19 @@
   --surface-50: #0F1712;
   --white: #16211C;
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --focus-ring: rgba(34, 212, 136, 0.2);
 }
 
 :global(html[data-daltonico="true"]) .container {
   --green-500: #2F6FED;
   --green-600: #2558C7;
+  --focus-ring: rgba(47, 111, 237, 0.15);
 }
 
 :global(html[data-theme="dark"][data-daltonico="true"]) .container {
   --green-500: #5B8CFF;
   --green-600: #2F6FED;
+  --focus-ring: rgba(91, 140, 255, 0.2);
 }
 
 :global(html[data-alto-contraste="true"]) .container {
@@ -106,10 +110,54 @@
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s;
+  white-space: nowrap;
 }
 
 .botaoNovo:hover {
   background: var(--green-600);
+}
+
+.headerAcoes {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.buscaContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.buscaIcone {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--slate-500);
+  pointer-events: none;
+}
+
+.buscaInput {
+  height: 2.5rem;
+  min-width: 15rem;
+  padding: 0 0.75rem 0 2.25rem;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--ink-900);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.buscaInput::placeholder {
+  color: var(--slate-500);
+}
+
+.buscaInput:focus {
+  outline: none;
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .carregando,
