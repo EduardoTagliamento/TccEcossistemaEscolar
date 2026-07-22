@@ -103,7 +103,7 @@ export default class PendenciaService {
       UsuarioCPF: data.UsuarioCPFDestino
     });
 
-    if (vinculos.length === 0 || vinculos[0].Status !== "Ativo") {
+    if (!vinculos.some((v) => v.Status === "Ativo")) {
       throw new ErrorResponse(
         400,
         "Usuário destinatário não está vinculado a esta escola"
@@ -176,12 +176,12 @@ export default class PendenciaService {
         UsuarioCPF: usuarioCPF
       });
 
-      if (vinculos.length === 0 || vinculos[0].Status !== "Ativo") {
+      if (!vinculos.some((v) => v.Status === "Ativo")) {
         throw new ErrorResponse(403, "Sem acesso a esta escola");
       }
 
       // Se não for admin (Coord/Sec/Dir), só pode ver suas próprias pendências
-      if (![1, 2, 6].includes(vinculos[0].FuncaoId)) {
+      if (!vinculos.some((v) => v.Status === "Ativo" && [1, 2, 6].includes(v.FuncaoId))) {
         filters.UsuarioCPF = usuarioCPF;
       }
     } else {
@@ -345,7 +345,7 @@ export default class PendenciaService {
         EscolaGUID: escolaGUID,
         UsuarioCPF: usuarioCPF
       });
-      if (vinculos.length === 0 || vinculos[0].Status !== "Ativo") {
+      if (!vinculos.some((v) => v.Status === "Ativo")) {
         throw new ErrorResponse(403, "Sem acesso a esta escola");
       }
     }
@@ -365,7 +365,7 @@ export default class PendenciaService {
         EscolaGUID: escolaGUID,
         UsuarioCPF: usuarioCPF
       });
-      if (vinculos.length === 0 || vinculos[0].Status !== "Ativo") {
+      if (!vinculos.some((v) => v.Status === "Ativo")) {
         throw new ErrorResponse(403, "Sem acesso a esta escola");
       }
     }
@@ -384,12 +384,14 @@ export default class PendenciaService {
       UsuarioCPF: cpf
     });
 
-    if (vinculos.length === 0 || vinculos[0].Status !== "Ativo") {
+    if (!vinculos.some((v) => v.Status === "Ativo")) {
       throw new ErrorResponse(403, "Usuário não está vinculado a esta escola");
     }
 
-    // FuncaoId: 1=Coordenação, 2=Secretaria, 6=Direção
-    if (![1, 2, 6].includes(vinculos[0].FuncaoId)) {
+    // FuncaoId: 1=Coordenação, 2=Secretaria, 6=Direção — considera QUALQUER
+    // vínculo ativo do usuário na escola, não só o primeiro retornado
+    // (um usuário pode ter mais de uma função na mesma escola).
+    if (!vinculos.some((v) => v.Status === "Ativo" && [1, 2, 6].includes(v.FuncaoId))) {
       throw new ErrorResponse(
         403,
         "Sem permissão para criar pendências (apenas Coordenação, Secretaria ou Direção)"
@@ -406,11 +408,11 @@ export default class PendenciaService {
       UsuarioCPF: cpf
     });
 
-    if (vinculos.length === 0 || vinculos[0].Status !== "Ativo") {
+    if (!vinculos.some((v) => v.Status === "Ativo")) {
       throw new ErrorResponse(403, "Usuário não está vinculado a esta escola");
     }
 
-    if (![1, 2, 6].includes(vinculos[0].FuncaoId)) {
+    if (!vinculos.some((v) => v.Status === "Ativo" && [1, 2, 6].includes(v.FuncaoId))) {
       throw new ErrorResponse(403, "Sem permissão (apenas Coordenação, Secretaria ou Direção)");
     }
   }
@@ -430,7 +432,7 @@ export default class PendenciaService {
       UsuarioCPF: cpf
     });
 
-    if (vinculos.length === 0 || vinculos[0].Status !== "Ativo" || ![1, 2, 6].includes(vinculos[0].FuncaoId)) {
+    if (!vinculos.some((v) => v.Status === "Ativo" && [1, 2, 6].includes(v.FuncaoId))) {
       throw new ErrorResponse(403, "Sem permissão para acessar esta pendência");
     }
   }

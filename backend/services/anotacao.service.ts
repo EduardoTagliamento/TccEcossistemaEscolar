@@ -19,9 +19,9 @@ export class AnotacaoService {
       UsuarioCPF: data.UsuarioCPF
     });
 
-    const vinculo = vinculos.length > 0 ? vinculos[0] : null;
-
-    if (!vinculo || vinculo.Status !== 'Ativo') {
+    // Considera QUALQUER vínculo ativo do usuário na escola, não só o
+    // primeiro retornado (um usuário pode ter mais de uma função na mesma escola).
+    if (!vinculos.some((v) => v.Status === 'Ativo')) {
       throw new ErrorResponse(403, 'Usuário não vinculado à escola ou vínculo inativo');
     }
 
@@ -70,9 +70,9 @@ export class AnotacaoService {
       UsuarioCPF: usuarioCPF
     });
 
-    const vinculo = vinculos.length > 0 ? vinculos[0] : null;
-
-    if (!vinculo || vinculo.Status !== 'Ativo') {
+    // Considera QUALQUER vínculo ativo do usuário na escola, não só o
+    // primeiro retornado (um usuário pode ter mais de uma função na mesma escola).
+    if (!vinculos.some((v) => v.Status === 'Ativo')) {
       throw new ErrorResponse(403, 'Usuário não vinculado à escola');
     }
 
@@ -91,9 +91,9 @@ export class AnotacaoService {
       UsuarioCPF: usuarioCPF
     });
 
-    const vinculo = vinculos.length > 0 ? vinculos[0] : null;
-
-    if (!vinculo || vinculo.Status !== 'Ativo') {
+    // Considera QUALQUER vínculo ativo do usuário na escola, não só o
+    // primeiro retornado (um usuário pode ter mais de uma função na mesma escola).
+    if (!vinculos.some((v) => v.Status === 'Ativo')) {
       throw new ErrorResponse(403, 'Usuário não vinculado à escola');
     }
 
@@ -263,9 +263,9 @@ export class AnotacaoService {
       UsuarioCPF: usuarioCPF
     });
 
-    const vinculo = vinculos.length > 0 ? vinculos[0] : null;
-
-    if (!vinculo || vinculo.Status !== 'Ativo') {
+    // Considera QUALQUER vínculo ativo do usuário na escola, não só o
+    // primeiro retornado (um usuário pode ter mais de uma função na mesma escola).
+    if (!vinculos.some((v) => v.Status === 'Ativo')) {
       throw new ErrorResponse(403, 'Usuário não vinculado à escola');
     }
 

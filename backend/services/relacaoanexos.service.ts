@@ -183,7 +183,7 @@ export default class RelacaoAnexosService {
         UsuarioCPF: usuarioCPF
       });
 
-      if (vinculos.length === 0 || vinculos[0].Status !== "Ativo" || ![1, 2, 6].includes(vinculos[0].FuncaoId)) {
+      if (!vinculos.some((v) => v.Status === "Ativo" && [1, 2, 6].includes(v.FuncaoId))) {
         throw new ErrorResponse(403, "Sem permissão para acessar os anexos desta pendência");
       }
     }
