@@ -121,13 +121,16 @@ export class RegistroAuditoriaDAO {
 
     query += ` ORDER BY CreatedAt DESC`;
 
+    // LIMIT/OFFSET não são passados como parâmetro vinculado de propósito —
+    // pool.execute() (prepared statement/protocolo binário do mysql2) falha
+    // com "Incorrect arguments to mysqld_stmt_execute" ao vincular LIMIT/OFFSET
+    // via `?`. Os valores já são `number` validados (Math.min/Math.trunc), sem
+    // risco de injeção.
     const limit = Math.min(filters.limit && filters.limit > 0 ? filters.limit : LIMIT_PADRAO, LIMIT_MAXIMO);
-    query += ` LIMIT ?`;
-    params.push(limit);
+    query += ` LIMIT ${Math.trunc(limit)}`;
 
     if (filters.offset) {
-      query += ` OFFSET ?`;
-      params.push(filters.offset);
+      query += ` OFFSET ${Math.trunc(Number(filters.offset)) || 0}`;
     }
 
     const pool = await this.#database.getPool();

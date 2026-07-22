@@ -90,14 +90,18 @@ export class MensagemDAO {
       }
     }
 
+    // LIMIT inlinado diretamente (não vinculado via `?`) — pool.execute()
+    // (prepared statement do mysql2) falha com "Incorrect arguments to
+    // mysqld_stmt_execute" ao vincular LIMIT como parâmetro. `limit` já é
+    // `number` (parâmetro tipado da função), sem risco de injeção.
     const [rows] = await pool.execute(
       `SELECT * FROM mensagem
        WHERE ConversaGUID = ?
          AND MensagemDeletedAt IS NULL
          ${cursorClause}
        ORDER BY MensagemCreatedAt DESC
-       LIMIT ?`,
-      [...params, limit]
+       LIMIT ${Math.trunc(Number(limit)) || 30}`,
+      params
     );
     // Retorna em ordem cronológica (mais antigas primeiro)
     return (rows as MensagemRow[]).map((r) => Mensagem.fromDatabase(r)).reverse();

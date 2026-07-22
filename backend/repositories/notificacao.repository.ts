@@ -98,13 +98,15 @@ export class NotificacaoDAO {
 
     query += ` ORDER BY NotificacaoCreatedAt DESC`;
 
+    // LIMIT/OFFSET inlinados diretamente (não vinculados via `?`) — pool.execute()
+    // (prepared statement do mysql2) falha com "Incorrect arguments to
+    // mysqld_stmt_execute" ao vincular LIMIT/OFFSET como parâmetro. Valores já
+    // são `number`, sem risco de injeção.
     if (filters.limit) {
-      query += ` LIMIT ?`;
-      params.push(filters.limit);
+      query += ` LIMIT ${Math.trunc(Number(filters.limit))}`;
     }
     if (filters.offset) {
-      query += ` OFFSET ?`;
-      params.push(filters.offset);
+      query += ` OFFSET ${Math.trunc(Number(filters.offset))}`;
     }
 
     const pool = await this.#database.getPool();
