@@ -109,6 +109,133 @@
 }
 
 /* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   Mesmo mecanismo de frontend/app/dashboard/[escolaGUID]/configuracoes/page.module.css
+   e frontend/app/dashboard/[escolaGUID]/_components/DashboardNavbar.module.css
+   — ver comentário lá pra contexto completo. Tokens sobrepostos com o
+   design system (green-50/200/500/600/700, ink-900, slate-*, line-*,
+   surface-50, white, shadow-*, gold-500, danger-500/50) reaproveitam os
+   valores literais de configuracoes/page.module.css. Tokens exclusivos
+   desta tela (green-800, blue-50/700, gold-50/600, mint-wash,
+   success/warning/danger/info-500/50, aliases text- e border- e surface-,
+   shadow-primary) foram derivados seguindo a mesma lógica de
+   brightening (escuro) e hue-shift verde→azul / vermelho→laranja
+   (daltônico) já estabelecida.
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-50: #123324;
+  --green-200: #1B4A34;
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --green-800: #0F8F58;
+  --blue-50: #16223F;
+  --blue-700: #7C9CFF;
+  --gold-50: #332705;
+  --gold-500: #FFCB52;
+  --gold-600: #FFC670;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --slate-300: #445048;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --surface-page: #0F1712;
+  --mint-wash: #13291D;
+  --white: #16211C;
+  --success-500: #2ED88F;
+  --success-50: #14301F;
+  --warning-500: #FFB84D;
+  --warning-50: #3A2A0E;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --info-500: #5B9CFF;
+  --info-50: #15233F;
+  --text-strong: #F3F7F4;
+  --text-body: #C7D2CB;
+  --text-muted: #93A398;
+  --text-faint: #6B7A70;
+  --text-link: #12A063;
+  --border-default: #2A3A31;
+  --border-subtle: #21302A;
+  --border-strong: #445048;
+  --border-focus: #22D488;
+  --surface-card: #16211C;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 18px 40px -16px rgba(0, 0, 0, 0.6);
+  --shadow-primary: 0 12px 26px -10px rgba(34, 212, 136, 0.55);
+  --shadow-focus: 0 0 0 3px rgba(34, 212, 136, 0.35);
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-50: #E9F0FF;
+  --green-200: #B3CBFF;
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --green-700: #1D46A3;
+  --green-800: #173882;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+  --success-500: #0E9BA6;
+  --success-50: #E1F5F7;
+  --text-link: #1D46A3;
+  --border-focus: #2F6FED;
+  --shadow-primary: 0 12px 26px -10px rgba(47, 111, 237, 0.55);
+  --shadow-focus: 0 0 0 3px rgba(47, 111, 237, 0.28);
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-50: #16233D;
+  --green-200: #223A63;
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --green-700: #2558C7;
+  --green-800: #1F4BA9;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+  --success-500: #3FC4D1;
+  --success-50: #0F2C2E;
+  --text-link: #2558C7;
+  --border-focus: #5B8CFF;
+  --shadow-primary: 0 12px 26px -10px rgba(91, 140, 255, 0.55);
+  --shadow-focus: 0 0 0 3px rgba(91, 140, 255, 0.35);
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --slate-300: #647268;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+  --text-body: #1A2620;
+  --text-muted: #2B3B33;
+  --text-faint: #46564D;
+  --border-default: #8A968E;
+  --border-subtle: #B7C1BA;
+  --border-strong: #647268;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --slate-300: #93A398;
+  --line-200: #7C8B82;
+  --line-100: #647268;
+  --text-body: #FFFFFF;
+  --text-muted: #E7ECE9;
+  --text-faint: #C7D2CB;
+  --border-default: #7C8B82;
+  --border-subtle: #647268;
+  --border-strong: #93A398;
+}
+
+/* ============================================================
    CABEÇALHO
    ============================================================ */
 .header {

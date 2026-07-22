@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import * as ConteudoAPI from '@/lib/api/conteudo.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
+import { Icon, IconName } from '@/components/Icon';
 import styles from './ConteudoForm.module.css';
 
 interface MateriaOption {
@@ -391,17 +392,17 @@ export default function ConteudoForm() {
     }
   };
 
-  const rotuloTipo: Record<ConteudoAPI.ConteudoTipo, string> = {
-    cronometrado: '🎬 Vídeo/Áudio',
-    texto: '📝 Texto',
-    paginado: '📄 Paginado',
+  const rotuloTipo: Record<ConteudoAPI.ConteudoTipo, { icon: IconName; label: string }> = {
+    cronometrado: { icon: 'camera', label: 'Vídeo/Áudio' },
+    texto: { icon: 'file-text', label: 'Texto' },
+    paginado: { icon: 'layers', label: 'Paginado' },
   };
 
   return (
     <div className={styles.container}>
       {mostrarAvisoTimezone && (
         <div className={styles.hint}>
-          🌍 Você está em um fuso horário diferente do Brasil (GMT-3). Datas ajustadas para o seu fuso local.
+          <Icon name="clock" size={16} /> Você está em um fuso horário diferente do Brasil (GMT-3). Datas ajustadas para o seu fuso local.
         </div>
       )}
 
@@ -517,7 +518,7 @@ export default function ConteudoForm() {
                 className={`${styles.tipoOpcao} ${form.ConteudoTipo === tipo ? styles.tipoOpcaoAtiva : ''}`}
                 onClick={() => setForm((prev) => ({ ...prev, ConteudoTipo: tipo }))}
               >
-                {rotuloTipo[tipo]}
+                <Icon name={rotuloTipo[tipo].icon} size={16} /> {rotuloTipo[tipo].label}
               </div>
             ))}
           </div>
@@ -578,7 +579,7 @@ export default function ConteudoForm() {
                   <option key={opcao.valor} value={opcao.valor}>{opcao.label}</option>
                 ))}
               </select>
-              <button type="button" onClick={inserirLink}>🔗 Link</button>
+              <button type="button" onClick={inserirLink}><Icon name="paperclip" size={14} /> Link</button>
             </div>
             <div
               ref={editorRef}
@@ -739,7 +740,9 @@ export default function ConteudoForm() {
             {conteudos.map((conteudo) => (
               <li key={conteudo.ConteudoGUID} className={styles.card}>
                 <div>
-                  <span className={styles.badge}>{rotuloTipo[conteudo.ConteudoTipo]}</span>
+                  <span className={styles.badge}>
+                    <Icon name={rotuloTipo[conteudo.ConteudoTipo].icon} size={14} /> {rotuloTipo[conteudo.ConteudoTipo].label}
+                  </span>
                   <strong>{conteudo.ConteudoTitulo}</strong>
                   {conteudo.ConteudoDescricao && <p>{conteudo.ConteudoDescricao}</p>}
                   <p>Turmas: {conteudo.Turmas.length}</p>

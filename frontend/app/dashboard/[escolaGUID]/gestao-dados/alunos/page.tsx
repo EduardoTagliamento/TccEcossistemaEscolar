@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';import Link from 'next/link';import 
 import BaseFormularioCadastro, { CampoFormulario } from '@/components/gestao-dados/BaseFormularioCadastro';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
 import BaseTabelaDados, { Coluna } from '@/components/gestao-dados/BaseTabelaDados';
+import { Icon } from '@/components/Icon';
 
 import * as AlunoAPI from '@/lib/api/aluno.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
@@ -305,7 +306,7 @@ export default function AlunosPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.titulo}>👨‍🎓 Gestão de Alunos</h1>
+          <h1 className={styles.titulo}><Icon name="users" size={22} /> Gestão de Alunos</h1>
           <p className={styles.subtitulo}>
             Gerencie os alunos e suas matrículas
           </p>
@@ -319,7 +320,7 @@ export default function AlunosPage() {
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}
           >
-            📊 Importar Planilha
+<Icon name="upload" size={16} /> Importar Planilha
           </button>
           <button
             onClick={() => setModalAberto(true)}
@@ -343,7 +344,7 @@ export default function AlunosPage() {
               className={styles.botaoEditar}
               title="Editar"
             >
-              ✏️
+              <Icon name="edit" size={16} />
             </button>
             {aluno.matricula.MatriculaStatus === 'Ativa' ? (
               <button
@@ -351,7 +352,7 @@ export default function AlunosPage() {
                 className={styles.botaoExcluir}
                 title="Cancelar Matrícula"
               >
-                🗑️
+                <Icon name="trash" size={16} />
               </button>
             ) : (
               <button
@@ -359,7 +360,7 @@ export default function AlunosPage() {
                 className={styles.botaoReativar}
                 title="Reativar Matrícula"
               >
-                ✅
+                <Icon name="check" size={16} />
               </button>
             )}
           </>
@@ -417,12 +418,12 @@ export default function AlunosPage() {
               {dadosImportados && (
                 <div className={styles.previewContainer}>
                   <h3 className={styles.previewTitulo}>
-                    📋 Preview - {dadosImportados.dados.length} alunos encontrados
+                    <Icon name="file-text" size={18} /> Preview - {dadosImportados.dados.length} alunos encontrados
                   </h3>
                   <div className={styles.previewLista}>
                     {dadosImportados.dados.slice(0, 5).map((linha: any, idx: number) => (
                       <div key={idx} className={styles.previewItem}>
-                        ✅ {linha['Nome'] || linha.UsuarioNome || linha.nome} (CPF: {linha['CPF'] || linha.UsuarioCPF || linha.cpf})
+                        <Icon name="check" size={14} /> {linha['Nome'] || linha.UsuarioNome || linha.nome} (CPF: {linha['CPF'] || linha.UsuarioCPF || linha.cpf})
                         <span className={styles.previewCurso}>
                           {' '}→ {linha['Turma'] || linha.TurmaNome || 'Turma não especificada'}
                         </span>
@@ -439,7 +440,7 @@ export default function AlunosPage() {
                     disabled={processandoBatch}
                     className={styles.botaoImportar}
                   >
-                    {processandoBatch ? 'Processando...' : '💾 Salvar Todos'}
+                    {processandoBatch ? 'Processando...' : (<><Icon name="check" size={16} /> Salvar Todos</>)}
                   </button>
                 </div>
               )}
@@ -447,7 +448,7 @@ export default function AlunosPage() {
               {/* Resultado do Batch */}
               {resultadoBatch && (
                 <div className={styles.resultadoContainer}>
-                  <h3 className={styles.resultadoTitulo}>✅ Processamento Concluído</h3>
+                  <h3 className={styles.resultadoTitulo}><Icon name="check-circle" size={20} /> Processamento Concluído</h3>
                   <div className={styles.resultadoStats}>
                     <div className={styles.stat}>
                       <span className={styles.statNumero}>{resultadoBatch.criados}</span>
@@ -466,7 +467,7 @@ export default function AlunosPage() {
                   {/* Mostrar erros se houver */}
                   {resultadoBatch.erros > 0 && (
                     <div className={styles.errosContainer}>
-                      <h4 className={styles.errosTitulo}>⚠️ Erros Encontrados:</h4>
+                      <h4 className={styles.errosTitulo}><Icon name="alert-triangle" size={18} /> Erros Encontrados:</h4>
                       <div className={styles.errosLista}>
                         {resultadoBatch.resultados
                           .filter(r => r.tipo === 'erro')

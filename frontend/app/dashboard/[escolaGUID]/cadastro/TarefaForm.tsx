@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
 import { DiaSemana, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
+import { Icon } from '@/components/Icon';
 import styles from './TarefaForm.module.css';
 
 interface Tarefa {
@@ -637,7 +638,7 @@ export default function TarefaForm() {
       {/* Aviso de Timezone */}
       {mostrarAvisoTimezone && (
         <div className={styles.timezoneAlert}>
-          🌍 <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3).
+          <Icon name="clock" size={16} /> <strong>Atenção:</strong> Você está em um fuso horário diferente do Brasil (GMT-3).
           As datas e horários exibidos foram ajustados para o seu fuso local.
         </div>
       )}
@@ -891,7 +892,7 @@ export default function TarefaForm() {
           </p>
           {compartilhadaReadonly && (
             <p className={styles.warning}>
-              ⚠️ Não é possível alterar o tipo de tarefa após criação
+              <Icon name="alert-triangle" size={16} /> Não é possível alterar o tipo de tarefa após criação
             </p>
           )}
         </div>
