@@ -26,6 +26,11 @@
   --line-100: #EDF3EF;
   --surface-50: #F5F9F6;
   --white: #FFFFFF;
+  /* Texto dos badges de categoria — sempre branco, independente do tema.
+     Não usa var(--white) porque esse token é redefinido para uma cor de
+     superfície escura no tema dark (ver override abaixo), e os badges
+     seguem tendo fundo colorido sólido nos dois temas. */
+  --badge-text: #FFFFFF;
 
   /* espaçamento (grid de 4px) */
   --space-2: 0.5rem;
@@ -60,6 +65,79 @@
   box-sizing: border-box;
 }
 
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   Mesmo mecanismo de frontend/app/dashboard/[escolaGUID]/configuracoes/page.module.css
+   — cada módulo redeclara os tokens localmente, então o override precisa
+   reafirmar os mesmos nomes de variável aqui, escopados por atributo.
+   Só as variáveis realmente declaradas em .container acima são
+   sobrescritas (este arquivo não tem --green-200/--slate-300/--shadow-xs/
+   --shadow-lg, por exemplo).
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-50: #123324;
+  --green-100: #163D2B;
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --blue-500: #5B82FF;
+  --gold-500: #FFCB52;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+  --shadow-focus: 0 0 0 3px rgba(34, 212, 136, 0.35);
+}
+
+/* Modo daltônico — troca verde=sucesso / vermelho=perigo por azul/laranja
+   (distinguível em protanopia/deuteranopia). Independente de tema. */
+:global(html[data-daltonico="true"]) .container {
+  --green-50: #E9F0FF;
+  --green-100: #D2E1FF;
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --green-700: #1D46A3;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+  --shadow-focus: 0 0 0 3px rgba(47, 111, 237, 0.28);
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-50: #16233D;
+  --green-100: #1C2E4F;
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --green-700: #2558C7;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+  --shadow-focus: 0 0 0 3px rgba(91, 140, 255, 0.35);
+}
+
+/* Alto contraste — ortogonal ao tema, reforça texto secundário e bordas. */
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+  --line-100: #647268;
+}
+
 .header {
   display: flex;
   justify-content: space-between;
@@ -80,28 +158,6 @@
   font-size: 0.9375rem;
   color: var(--slate-500);
   margin: 0;
-}
-
-.botaoVoltar {
-  padding: 10px 20px;
-  border-radius: var(--radius-pill);
-  font-weight: 700;
-  font-size: 0.8125rem;
-  border: 1.5px solid var(--line-200);
-  background: var(--white);
-  color: var(--slate-600);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.botaoVoltar:hover {
-  border-color: var(--green-500);
-  color: var(--green-700);
-  text-decoration: none;
 }
 
 .secao {
@@ -313,7 +369,7 @@
   border-radius: var(--radius-pill);
   font-size: 0.75rem;
   font-weight: 700;
-  color: var(--white);
+  color: var(--badge-text);
   white-space: nowrap;
 }
 

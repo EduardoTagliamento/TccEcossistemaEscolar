@@ -164,28 +164,6 @@
   margin: 0;
 }
 
-.botaoVoltar {
-  padding: 10px 20px;
-  border-radius: var(--radius-pill);
-  font-weight: 700;
-  font-size: 0.8125rem;
-  border: 1.5px solid var(--line-200);
-  background: var(--white);
-  color: var(--slate-600);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: border-color 0.15s ease, color 0.15s ease;
-}
-
-.botaoVoltar:hover {
-  border-color: var(--green-500);
-  color: var(--green-700);
-  text-decoration: none;
-}
-
 .secao {
   background: var(--white);
   border: 1px solid var(--line-100);
