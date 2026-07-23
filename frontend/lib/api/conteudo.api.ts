@@ -41,14 +41,13 @@ export interface Conteudo {
     ArquivoMimeType: string | null;
   };
   Texto?: { ConteudoHtml: string };
-  Paginado?: { Arquivos: { Ordem: number; ArquivoUrl: string; ArquivoMimeType: string }[] };
+  Paginado?: { Arquivos: { ConteudoPaginadoArquivoGUID: string; Ordem: number; ArquivoUrl: string; ArquivoMimeType: string }[] };
   CreatedAt: string | null;
   UpdatedAt: string | null;
 }
 
 export interface CriarConteudoParams {
   MateriaGUID: string;
-  CategoriaGUID?: string | null;
   ConteudoTitulo: string;
   ConteudoTipo: ConteudoTipo;
   ConteudoDescricao?: string;
@@ -56,6 +55,8 @@ export interface CriarConteudoParams {
   /** String de data já no formato esperado pelo backend (GMT-3 "ingênuo", mesma convenção de Prova/Tarefa) */
   ConteudoDataPublicacao: string;
   DatasPorTurma?: Record<string, string>;
+  /** Categoria por turma (chave = TurmaGUID) — categoria agora é escopada por turma, não só por matéria. */
+  CategoriasPorTurma?: Record<string, string>;
 
   // tipo "cronometrado"
   OrigemTipo?: ConteudoOrigemTipo;
@@ -72,7 +73,6 @@ export interface CriarConteudoParams {
 export async function criarConteudo(params: CriarConteudoParams): Promise<Conteudo> {
   const formData = new FormData();
   formData.append('MateriaGUID', params.MateriaGUID);
-  if (params.CategoriaGUID) formData.append('CategoriaGUID', params.CategoriaGUID);
   formData.append('ConteudoTitulo', params.ConteudoTitulo);
   formData.append('ConteudoTipo', params.ConteudoTipo);
   if (params.ConteudoDescricao) formData.append('ConteudoDescricao', params.ConteudoDescricao);
@@ -80,6 +80,9 @@ export async function criarConteudo(params: CriarConteudoParams): Promise<Conteu
   formData.append('ConteudoDataPublicacao', params.ConteudoDataPublicacao);
   if (params.DatasPorTurma) {
     formData.append('DatasPorTurma', JSON.stringify(params.DatasPorTurma));
+  }
+  if (params.CategoriasPorTurma) {
+    formData.append('CategoriasPorTurma', JSON.stringify(params.CategoriasPorTurma));
   }
 
   if (params.ConteudoTipo === 'cronometrado') {

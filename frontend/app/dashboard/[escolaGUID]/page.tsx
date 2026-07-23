@@ -5,9 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import * as PendenciaAPI from '@/lib/api/pendencia.api';
-import * as TarefaAPI from '@/lib/api/tarefaacademica.api';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
-import type { TarefaListItem } from '@/types/tarefaacademica';
+import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import styles from './page.module.css';
 
 interface Escola {
@@ -45,9 +44,13 @@ export default function DashboardPage() {
   const [carregandoPendencias, setCarregandoPendencias] = useState(true);
   const [erroPendencias, setErroPendencias] = useState('');
 
-  const [tarefas, setTarefas] = useState<TarefaListItem[]>([]);
+  const [tarefas, setTarefas] = useState<MateriasModuloAPI.TarefaPendenteAluno[]>([]);
   const [carregandoTarefas, setCarregandoTarefas] = useState(true);
   const [erroTarefas, setErroTarefas] = useState('');
+
+  const [avaliacoesPendentes, setAvaliacoesPendentes] = useState<MateriasModuloAPI.TarefaPendenteAvaliacao[]>([]);
+  const [carregandoAvaliacoes, setCarregandoAvaliacoes] = useState(true);
+  const [erroAvaliacoes, setErroAvaliacoes] = useState('');
 
   const [avisos, setAvisos] = useState<NotificacaoAPI.Notificacao[]>([]);
   const [carregandoAvisos, setCarregandoAvisos] = useState(true);
@@ -113,12 +116,18 @@ export default function DashboardPage() {
         .map((funcao) => funcao.FuncaoId);
       setFuncoesEscola(funcoesAtivas);
 
-      // "Tarefas a se esgotar" só faz sentido pra quem tem tarefas atribuídas
-      // (Aluno) — mesma fonte de dados de /tarefas (listarTarefas).
+      // "Tarefas a se esgotar" só faz sentido pra quem tem tarefas atribuídas (Aluno)
       if (funcoesAtivas.includes(5)) {
         void carregarTarefas();
       } else {
         setCarregandoTarefas(false);
+      }
+
+      // "Avaliações pendentes" só faz sentido pra Professor
+      if (funcoesAtivas.includes(3)) {
+        void carregarAvaliacoesPendentes();
+      } else {
+        setCarregandoAvaliacoes(false);
       }
     } catch (error) {
       console.error('Erro ao buscar funções da escola:', error);
@@ -147,15 +156,25 @@ export default function DashboardPage() {
     setCarregandoTarefas(true);
     setErroTarefas('');
     try {
-      const dados = await TarefaAPI.listarTarefas();
-      const ordenadas = [...dados].sort(
-        (a, b) => new Date(a.TarefaPrazoData).getTime() - new Date(b.TarefaPrazoData).getTime()
-      );
-      setTarefas(ordenadas.slice(0, 5));
+      const dados = await MateriasModuloAPI.listarPendentesAluno();
+      setTarefas(dados.slice(0, 5));
     } catch (erro: any) {
       setErroTarefas(erro?.message || 'Erro ao carregar tarefas');
     } finally {
       setCarregandoTarefas(false);
+    }
+  };
+
+  const carregarAvaliacoesPendentes = async () => {
+    setCarregandoAvaliacoes(true);
+    setErroAvaliacoes('');
+    try {
+      const dados = await MateriasModuloAPI.listarPendentesAvaliacaoProfessor();
+      setAvaliacoesPendentes(dados.slice(0, 5));
+    } catch (erro: any) {
+      setErroAvaliacoes(erro?.message || 'Erro ao carregar avaliações pendentes');
+    } finally {
+      setCarregandoAvaliacoes(false);
     }
   };
 
@@ -206,6 +225,7 @@ export default function DashboardPage() {
   }
 
   const isAluno = funcoesEscola.includes(5);
+  const isProfessor = funcoesEscola.includes(3);
 
   const agora = new Date();
   const hora = agora.getHours();
@@ -275,7 +295,37 @@ export default function DashboardPage() {
                           className={styles.widgetItem}
                         >
                           <span className={styles.widgetItemTitulo}>{tarefa.TarefaTitulo}</span>
-                          <span className={styles.widgetItemData}>Prazo: {formatarData(tarefa.TarefaPrazoData)}</span>
+                          <span className={styles.widgetItemData}>
+                            {tarefa.MateriaNome} · {tarefa.TurmaNome} · Prazo: {formatarData(tarefa.TarefaPrazoData)}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {isProfessor && (
+              <div className={styles.widgetCard}>
+                <div className={styles.widgetHeader}>
+                  <h3>Avaliações pendentes</h3>
+                </div>
+                {carregandoAvaliacoes ? (
+                  <p className={styles.widgetEstado}>Carregando...</p>
+                ) : erroAvaliacoes ? (
+                  <p className={styles.widgetErro}>{erroAvaliacoes}</p>
+                ) : avaliacoesPendentes.length === 0 ? (
+                  <p className={styles.widgetEstado}>Nenhuma entrega esperando avaliação.</p>
+                ) : (
+                  <ul className={styles.widgetLista}>
+                    {avaliacoesPendentes.map((item) => (
+                      <li key={item.TarefaMatriculaGUID}>
+                        <Link href={`/dashboard/${escolaGUID}/tarefas/${item.TarefaGUID}`} className={styles.widgetItem}>
+                          <span className={styles.widgetItemTitulo}>{item.TarefaTitulo}</span>
+                          <span className={styles.widgetItemData}>
+                            {item.AlunoNome} · {item.MateriaNome} · {item.TurmaNome}
+                          </span>
                         </Link>
                       </li>
                     ))}

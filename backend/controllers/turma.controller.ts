@@ -209,6 +209,49 @@ export class TurmaController {
   };
 
   /**
+   * PUT /api/turma/:guid/capa
+   * Atualiza capa (imagem) e/ou cor de fundo da turma.
+   * multipart/form-data: campo "imagem" (opcional) + campo "cor" (opcional, hex)
+   */
+  atualizarCapa = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { guid } = req.params;
+      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const arquivo = (req as any).file as Express.Multer.File | undefined;
+      const cor = req.body.cor as string | undefined;
+
+      if (!arquivo && !cor) {
+        res.status(400).json({ success: false, message: "Envie uma imagem e/ou uma cor" });
+        return;
+      }
+
+      const turmaAtualizada = await this.#turmaService.atualizarCapa(guid, usuarioCPF, {
+        imagem: arquivo ? { buffer: arquivo.buffer, mimetype: arquivo.mimetype } : undefined,
+        cor,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Capa da turma atualizada com sucesso",
+        data: turmaAtualizada,
+      });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+      } else {
+        console.error("Erro ao atualizar capa da turma:", error);
+        res.status(500).json({
+          success: false,
+          message: "Erro interno ao atualizar capa da turma",
+        });
+      }
+    }
+  };
+
+  /**
    * DELETE /api/turma/:guid
    * Excluir turma (soft delete)
    */

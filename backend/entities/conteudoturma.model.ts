@@ -12,6 +12,7 @@ export default class ConteudoTurma {
   #ConteudoGUID!: string;
   #TurmaGUID!: string;
   #ConteudoDataPublicacaoTurma: Date | null = null;
+  #CategoriaGUID: string | null = null;
   #CreatedAt?: Date;
 
   get ConteudoTurmaGUID(): string {
@@ -75,6 +76,25 @@ export default class ConteudoTurma {
     this.#ConteudoDataPublicacaoTurma = value;
   }
 
+  get CategoriaGUID(): string | null {
+    return this.#CategoriaGUID;
+  }
+
+  set CategoriaGUID(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#CategoriaGUID = null;
+      return;
+    }
+    const trimmed = value.trim();
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(trimmed)) {
+      throw new ErrorResponse(400, "CategoriaGUID inválido", {
+        message: "CategoriaGUID deve ser um UUID válido ou null",
+      });
+    }
+    this.#CategoriaGUID = trimmed;
+  }
+
   get CreatedAt(): Date | undefined {
     return this.#CreatedAt;
   }
@@ -101,6 +121,7 @@ export default class ConteudoTurma {
       ConteudoGUID: this.#ConteudoGUID,
       TurmaGUID: this.#TurmaGUID,
       ConteudoDataPublicacaoTurma: this.#ConteudoDataPublicacaoTurma?.toISOString() || null,
+      CategoriaGUID: this.#CategoriaGUID,
       CreatedAt: this.#CreatedAt?.toISOString() || null,
     };
   }

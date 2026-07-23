@@ -25,6 +25,8 @@ export default class Turma {
   #TurmaIsTecnico!: boolean;
   #CursoGUID!: string | null;
   #TurmaStatus!: 'Ativa' | 'Inativa' | 'Encerrada';
+  #TurmaImagemUrl: string | null = null;
+  #TurmaCorFundo: string | null = null;
   #TurmaCreatedAt!: Date;
   #TurmaUpdatedAt!: Date;
 
@@ -56,6 +58,14 @@ export default class Turma {
 
   get TurmaStatus(): 'Ativa' | 'Inativa' | 'Encerrada' {
     return this.#TurmaStatus;
+  }
+
+  get TurmaImagemUrl(): string | null {
+    return this.#TurmaImagemUrl;
+  }
+
+  get TurmaCorFundo(): string | null {
+    return this.#TurmaCorFundo;
   }
 
   get TurmaCreatedAt(): Date {
@@ -129,6 +139,29 @@ export default class Turma {
     this.#TurmaStatus = value;
   }
 
+  set TurmaImagemUrl(value: string | null) {
+    if (value === null) {
+      this.#TurmaImagemUrl = null;
+      return;
+    }
+    if (typeof value !== 'string' || value.trim().length > 500) {
+      throw new Error('TurmaImagemUrl deve ser uma string de até 500 caracteres');
+    }
+    this.#TurmaImagemUrl = value.trim();
+  }
+
+  set TurmaCorFundo(value: string | null) {
+    if (value === null) {
+      this.#TurmaCorFundo = null;
+      return;
+    }
+    const cor = value.trim();
+    if (!/^#?[0-9a-fA-F]{6}$/.test(cor)) {
+      throw new Error('TurmaCorFundo deve ser uma cor hexadecimal válida (ex: #17C077)');
+    }
+    this.#TurmaCorFundo = cor.startsWith('#') ? cor : `#${cor}`;
+  }
+
   set TurmaCreatedAt(value: Date) {
     if (!(value instanceof Date) || isNaN(value.getTime())) {
       throw new Error('TurmaCreatedAt deve ser uma data válida');
@@ -172,6 +205,8 @@ export default class Turma {
       TurmaIsTecnico: this.#TurmaIsTecnico,
       CursoGUID: this.#CursoGUID,
       TurmaStatus: this.#TurmaStatus,
+      TurmaImagemUrl: this.#TurmaImagemUrl,
+      TurmaCorFundo: this.#TurmaCorFundo,
       TurmaCreatedAt: this.#TurmaCreatedAt,
       TurmaUpdatedAt: this.#TurmaUpdatedAt,
     };
@@ -189,6 +224,8 @@ export default class Turma {
     turma.TurmaIsTecnico = data.TurmaIsTecnico;
     turma.CursoGUID = data.CursoGUID;
     turma.TurmaStatus = data.TurmaStatus;
+    turma.TurmaImagemUrl = data.TurmaImagemUrl ?? null;
+    turma.TurmaCorFundo = data.TurmaCorFundo ?? null;
     turma.TurmaCreatedAt = data.TurmaCreatedAt;
     turma.TurmaUpdatedAt = data.TurmaUpdatedAt;
     return turma;

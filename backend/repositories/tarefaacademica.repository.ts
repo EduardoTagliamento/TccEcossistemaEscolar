@@ -10,6 +10,7 @@ interface TarefaAcademicaRow extends RowDataPacket {
   TarefaPostagemData: Date;
   TarefaPrazoData: Date;
   TarefaTipoEntrega: "digital" | "fisica";
+  CategoriaGUID: string | null;
   TarefaCompartilhada: boolean;
   TarefaMinPessoas: number | null;
   TarefaMaxPessoas: number | null;
@@ -51,9 +52,9 @@ export class TarefaAcademicaDAO {
     const SQL = `
       INSERT INTO tarefaacademica
       (TarefaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo,
-       TarefaPostagemData, TarefaPrazoData, TarefaTipoEntrega,
+       TarefaPostagemData, TarefaPrazoData, TarefaTipoEntrega, CategoriaGUID,
        TarefaCompartilhada, TarefaMinPessoas, TarefaMaxPessoas)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       tarefa.TarefaGUID,
@@ -63,6 +64,7 @@ export class TarefaAcademicaDAO {
       tarefa.TarefaPostagemData,
       tarefa.TarefaPrazoData,
       tarefa.TarefaTipoEntrega,
+      tarefa.CategoriaGUID,
       tarefa.TarefaCompartilhada,
       tarefa.TarefaMinPessoas,
       tarefa.TarefaMaxPessoas,
@@ -138,7 +140,7 @@ export class TarefaAcademicaDAO {
     TarefaGUID: string,
     updates: Partial<Pick<
       TarefaAcademica,
-      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega" |
+      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega" | "CategoriaGUID" |
       "TarefaCompartilhada" | "TarefaMinPessoas" | "TarefaMaxPessoas"
     >>
   ): Promise<TarefaAcademica | null> => {
@@ -162,6 +164,10 @@ export class TarefaAcademicaDAO {
     if (updates.TarefaTipoEntrega !== undefined) {
       fields.push("TarefaTipoEntrega = ?");
       values.push(updates.TarefaTipoEntrega);
+    }
+    if (updates.CategoriaGUID !== undefined) {
+      fields.push("CategoriaGUID = ?");
+      values.push(updates.CategoriaGUID);
     }
     if (updates.TarefaCompartilhada !== undefined) {
       fields.push("TarefaCompartilhada = ?");
@@ -244,6 +250,7 @@ export class TarefaAcademicaDAO {
     tarefa.TarefaPostagemData = row.TarefaPostagemData;
     tarefa.TarefaPrazoData = row.TarefaPrazoData;
     tarefa.TarefaTipoEntrega = row.TarefaTipoEntrega;
+    tarefa.CategoriaGUID = row.CategoriaGUID;
     tarefa.TarefaCompartilhada = Boolean(row.TarefaCompartilhada);
     tarefa.TarefaMinPessoas = row.TarefaMinPessoas;
     tarefa.TarefaMaxPessoas = row.TarefaMaxPessoas;

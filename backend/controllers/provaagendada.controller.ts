@@ -49,6 +49,7 @@ export default class ProvaAgendadaControl {
         ProvaDescricao: prova.ProvaDescricao,
         anexosDescricao: prova.anexosDescricao,
         DatasPorTurma: datasPorTurma,
+        CategoriasPorTurma: prova.CategoriasPorTurma,
       };
 
       const provaCriada = await this.#provaService.criarProva(createData, usuarioCPF);
@@ -58,6 +59,24 @@ export default class ProvaAgendadaControl {
         message: "Prova criada com sucesso",
         data: { prova: provaCriada },
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/prova/turma/:ProvaAgendadaTurmaGUID/visualizar
+   * Aluno marca que abriu/visualizou a prova (100% instantâneo, sem nota)
+   */
+  registrarVisualizacao = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 ProvaAgendadaControl.registrarVisualizacao()");
+    try {
+      const { ProvaAgendadaTurmaGUID } = request.params;
+      const usuarioCPF = request.user?.UsuarioCPF || "";
+
+      await this.#provaService.registrarVisualizacao(ProvaAgendadaTurmaGUID, usuarioCPF);
+
+      response.status(200).json({ success: true, message: "Visualização registrada com sucesso", data: null });
     } catch (error) {
       next(error);
     }

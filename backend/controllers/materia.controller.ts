@@ -10,6 +10,25 @@ export class MateriaController {
     this.#materiaService = materiaService;
   }
 
+  // GET /api/materia/aluno/:usuarioCPF?EscolaGUID=
+  listarDoAluno = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 MateriaController.listarDoAluno()");
+    try {
+      const { usuarioCPF } = req.params;
+      const escolaGUID = req.query.EscolaGUID as string;
+
+      const materias = await this.#materiaService.listarMateriasDoAluno(usuarioCPF, escolaGUID);
+
+      res.status(200).json({
+        success: true,
+        message: "Matérias do aluno listadas com sucesso",
+        data: { materias },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // POST /api/materia
   // Aceita: { materia: {...} } OU { materias: [...] }
   store = async (

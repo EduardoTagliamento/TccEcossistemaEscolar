@@ -48,7 +48,7 @@ export interface ConteudoDTO {
     ConteudoHtml: string;
   };
   Paginado?: {
-    Arquivos: { Ordem: number; ArquivoUrl: string; ArquivoMimeType: string }[];
+    Arquivos: { ConteudoPaginadoArquivoGUID: string; Ordem: number; ArquivoUrl: string; ArquivoMimeType: string }[];
   };
   CreatedAt: string | null;
   UpdatedAt: string | null;
@@ -56,6 +56,7 @@ export interface ConteudoDTO {
 
 export interface ConteudoCreateDTO {
   MateriaGUID: string;
+  /** @deprecated Categoria agora é por turma — ver CategoriasPorTurma. Mantido só por compatibilidade, ignorado na criação. */
   CategoriaGUID?: string | null;
   ConteudoTitulo: string;
   ConteudoTipo: ConteudoTipo;
@@ -63,6 +64,8 @@ export interface ConteudoCreateDTO {
   TurmasGUID: string[];
   ConteudoDataPublicacao: Date;
   DatasPorTurma?: Record<string, Date>;
+  /** Categoria (por turma) escolhida pra cada linha de distribuição — chave é TurmaGUID. */
+  CategoriasPorTurma?: Record<string, string>;
 
   // tipo "cronometrado"
   OrigemTipo?: ConteudoCronometradoOrigem;
@@ -170,13 +173,21 @@ export default class ConteudoService {
       }
     }
 
-    // Validar categoria (se fornecida) pertence a este professor+matéria
-    if (data.CategoriaGUID) {
-      const categoria = await this.#categoriaDAO.findById(data.CategoriaGUID);
-      if (!categoria || categoria.UsuarioCPF !== usuarioCPF || categoria.MateriaGUID !== data.MateriaGUID) {
-        throw new ErrorResponse(400, "Categoria inválida", {
-          message: "A categoria informada não existe ou não pertence a você/esta matéria.",
-        });
+    // Validar categorias por turma (se fornecidas) — cada uma deve pertencer
+    // a este professor + matéria + à MESMA turma daquela linha de distribuição
+    if (data.CategoriasPorTurma) {
+      for (const [turmaGUID, categoriaGUID] of Object.entries(data.CategoriasPorTurma)) {
+        const categoria = await this.#categoriaDAO.findById(categoriaGUID);
+        if (
+          !categoria ||
+          categoria.UsuarioCPF !== usuarioCPF ||
+          categoria.MateriaGUID !== data.MateriaGUID ||
+          categoria.TurmaGUID !== turmaGUID
+        ) {
+          throw new ErrorResponse(400, "Categoria inválida", {
+            message: `A categoria informada para a turma ${turmaGUID} não existe ou não pertence a você/esta matéria/turma.`,
+          });
+        }
       }
     }
 
@@ -193,7 +204,9 @@ export default class ConteudoService {
     conteudo.ConteudoGUID = uuidv4();
     conteudo.MateriaGUID = data.MateriaGUID;
     conteudo.UsuarioCPF = usuarioCPF;
-    conteudo.CategoriaGUID = data.CategoriaGUID || null;
+    // Categoria agora é por turma (ConteudoTurma.CategoriaGUID) — este campo
+    // no Conteudo em si fica sempre null pra conteúdo novo (ver DTO acima).
+    conteudo.CategoriaGUID = null;
     conteudo.ConteudoTitulo = data.ConteudoTitulo;
     conteudo.ConteudoTipo = data.ConteudoTipo;
     conteudo.ConteudoDescricao = data.ConteudoDescricao || null;
@@ -210,6 +223,7 @@ export default class ConteudoService {
       atribuicao.ConteudoDataPublicacaoTurma = data.DatasPorTurma?.[turmaGUID]
         ? new Date(data.DatasPorTurma[turmaGUID])
         : null;
+      atribuicao.CategoriaGUID = data.CategoriasPorTurma?.[turmaGUID] || null;
       atribuicao.validar();
       return atribuicao;
     });
@@ -474,6 +488,7 @@ export default class ConteudoService {
       const arquivos = await this.#paginadoDAO.findByConteudo(conteudo.ConteudoGUID);
       dto.Paginado = {
         Arquivos: arquivos.map((a) => ({
+          ConteudoPaginadoArquivoGUID: a.ConteudoPaginadoArquivoGUID,
           Ordem: a.Ordem,
           ArquivoUrl: a.ArquivoUrl,
           ArquivoMimeType: a.ArquivoMimeType,

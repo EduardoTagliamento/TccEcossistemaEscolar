@@ -42,6 +42,7 @@ import { auditoriaRoutes } from "../routes/auditoria.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { NotificacaoScheduler } from "./services/notificacao.scheduler";
 import { AuditoriaScheduler } from "./services/auditoria.scheduler";
+import { TarefaAcademicaNotaScheduler } from "./services/tarefaacademicanota.scheduler";
 import { pool } from "./database/mysql";
 
 /**
@@ -66,6 +67,7 @@ export default class Server {
   #scheduler: CleanupScheduler;
   #notificacaoScheduler: NotificacaoScheduler;
   #auditoriaScheduler: AuditoriaScheduler;
+  #tarefaAcademicaNotaScheduler: TarefaAcademicaNotaScheduler;
   #nextHandler: ((req: Request, res: Response) => Promise<void>) | null;
   #isFrontendUnified: boolean;
 
@@ -78,6 +80,7 @@ export default class Server {
     this.#scheduler = new CleanupScheduler();
     this.#notificacaoScheduler = new NotificacaoScheduler();
     this.#auditoriaScheduler = new AuditoriaScheduler();
+    this.#tarefaAcademicaNotaScheduler = new TarefaAcademicaNotaScheduler();
     this.#nextHandler = null;
     this.#isFrontendUnified = false;
   }
@@ -644,6 +647,9 @@ export default class Server {
       this.#auditoriaScheduler.start();
       console.log(`✅ Expurgo de auditoria iniciado: ${this.#auditoriaScheduler.getActiveTasksCount()} tarefa(s) ativa(s)`);
 
+      this.#tarefaAcademicaNotaScheduler.start();
+      console.log(`✅ Nota automática de tarefa iniciada: ${this.#tarefaAcademicaNotaScheduler.getActiveTasksCount()} tarefa(s) ativa(s)`);
+
       // Configurar graceful shutdown para parar agendamentos
       this.setupGracefulShutdown();
 
@@ -668,6 +674,7 @@ export default class Server {
         this.#scheduler.stop();
         this.#notificacaoScheduler.stop();
         this.#auditoriaScheduler.stop();
+        this.#tarefaAcademicaNotaScheduler.stop();
 
         // Fechar conexões com banco
         console.log("   🔹 Fechando conexões com banco...");

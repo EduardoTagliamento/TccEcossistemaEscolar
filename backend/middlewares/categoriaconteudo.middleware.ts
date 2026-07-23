@@ -24,6 +24,14 @@ export class CategoriaConteudoMiddleware {
       );
     }
 
+    if (!categoria.TurmaGUID || !uuidRegex.test(categoria.TurmaGUID)) {
+      return next(
+        new ErrorResponse(400, "TurmaGUID inválido", {
+          message: "TurmaGUID é obrigatório e deve ser um UUID válido",
+        })
+      );
+    }
+
     if (!categoria.CategoriaNome || typeof categoria.CategoriaNome !== "string") {
       return next(
         new ErrorResponse(400, "CategoriaNome inválido", {
@@ -62,6 +70,34 @@ export class CategoriaConteudoMiddleware {
       return next(
         new ErrorResponse(400, "CategoriaNome inválido", {
           message: "CategoriaNome deve ter entre 2 e 100 caracteres",
+        })
+      );
+    }
+
+    next();
+  };
+
+  static validarReordenar = (req: Request, res: Response, next: NextFunction) => {
+    console.log("🟡 CategoriaConteudoMiddleware.validarReordenar()");
+
+    const { MateriaGUID, TurmaGUID, ordem } = req.body;
+
+    if (!MateriaGUID || !uuidRegex.test(MateriaGUID)) {
+      return next(
+        new ErrorResponse(400, "MateriaGUID inválido", { message: "MateriaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+
+    if (!TurmaGUID || !uuidRegex.test(TurmaGUID)) {
+      return next(
+        new ErrorResponse(400, "TurmaGUID inválido", { message: "TurmaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+
+    if (!Array.isArray(ordem) || ordem.length === 0 || !ordem.every((guid) => typeof guid === "string" && uuidRegex.test(guid))) {
+      return next(
+        new ErrorResponse(400, "Ordem inválida", {
+          message: "O campo 'ordem' deve ser uma lista não vazia de UUIDs de categoria",
         })
       );
     }

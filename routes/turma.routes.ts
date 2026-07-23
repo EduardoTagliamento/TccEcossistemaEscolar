@@ -12,6 +12,7 @@ import ConversaGrupoService from "../backend/services/conversa-grupo.service";
 import { ConversaDAO } from "../backend/repositories/conversa.repository";
 import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
+import { uploadCapaMiddleware, handleMulterError } from "../backend/middlewares/upload.middleware";
 
 export default class TurmaRoteador {
   #router: Router;
@@ -52,6 +53,15 @@ export default class TurmaRoteador {
       TurmaMiddleware.validarGUID,
       TurmaMiddleware.validarAtualizacao,
       this.#turmaController.update
+    );
+
+    // PUT /api/turma/:guid/capa
+    this.#router.put(
+      "/:guid/capa",
+      TurmaMiddleware.validarGUID,
+      uploadCapaMiddleware.single("imagem"),
+      handleMulterError,
+      this.#turmaController.atualizarCapa
     );
 
     // DELETE /api/turma/:guid

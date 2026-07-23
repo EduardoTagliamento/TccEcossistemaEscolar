@@ -50,6 +50,21 @@ export const uploadMiddleware = multer({
 });
 
 /**
+ * ---- Capa de Matéria/Turma (módulo Matérias) ----
+ * Mesmos tipos do logo (imagem), mas limite maior (5MB) — é um card de
+ * capa, não um ícone pequeno.
+ */
+const MAX_FILE_SIZE_CAPA = 5 * 1024 * 1024; // 5MB
+
+export const uploadCapaMiddleware = multer({
+  storage: multer.memoryStorage(),
+  fileFilter,
+  limits: {
+    fileSize: MAX_FILE_SIZE_CAPA,
+  },
+});
+
+/**
  * Middleware para validar se arquivo foi enviado
  */
 export const validateFilePresence = (req: Request, res: any, next: any) => {

@@ -12,6 +12,8 @@ import { v4 as uuidv4 } from "uuid";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 import bcrypt from "bcrypt";
+import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repository";
+import { EscolaDAO } from "../repositories/escola.repository";
 
 /**
  * DTOs para transferência de dados
@@ -117,6 +119,8 @@ export default class ProfessorService {
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
   #matriculaDAO: MatriculaDAO;
   #usuarioDAO: UsuarioDAO;
+  #customizacaoDAO?: MateriaCustomizacaoDAO;
+  #escolaDAO?: EscolaDAO;
 
   constructor(
     alocacaoDAO: MaterialProfessorTurmaDAO,
@@ -124,7 +128,9 @@ export default class ProfessorService {
     turmaDAO: TurmaDAO,
     escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO,
     matriculaDAO: MatriculaDAO,
-    usuarioDAO: UsuarioDAO
+    usuarioDAO: UsuarioDAO,
+    customizacaoDAO?: MateriaCustomizacaoDAO,
+    escolaDAO?: EscolaDAO
   ) {
     this.#alocacaoDAO = alocacaoDAO;
     this.#materiaDAO = materiaDAO;
@@ -132,6 +138,76 @@ export default class ProfessorService {
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAO;
     this.#matriculaDAO = matriculaDAO;
     this.#usuarioDAO = usuarioDAO;
+    this.#customizacaoDAO = customizacaoDAO;
+    this.#escolaDAO = escolaDAO;
+  }
+
+  /** Grid de seleção de matéria (professor) — matérias que ele leciona, já com a capa/cor. */
+  async buscarMateriasComCapaProfessor(usuarioCPF: string, escolaGUID: string): Promise<Array<{
+    MatProfTurGUID: string;
+    MateriaGUID: string;
+    MateriaNome: string;
+    ImagemUrl: string | null;
+    CorFundo: string;
+  }>> {
+    console.log("🟣 ProfessorService.buscarMateriasComCapaProfessor()");
+
+    if (!this.#customizacaoDAO || !this.#escolaDAO) {
+      throw new ErrorResponse(500, "Serviço mal configurado");
+    }
+
+    const materias = await this.buscarMateriasProfessor(usuarioCPF, escolaGUID);
+    const materiasUnicas = Array.from(new Map(materias.map((m) => [m.MateriaGUID, m])).values());
+    const escola = await this.#escolaDAO.findById(escolaGUID);
+    const corPadrao = escola?.EscolaCorPriEs ? `#${escola.EscolaCorPriEs.replace(/^#/, "")}` : "#17C077";
+
+    return Promise.all(
+      materiasUnicas.map(async (materia) => {
+        const customizacao = await this.#customizacaoDAO!.findByMateriaEProfessor(materia.MateriaGUID, usuarioCPF);
+        return {
+          MatProfTurGUID: materia.MatProfTurGUID,
+          MateriaGUID: materia.MateriaGUID,
+          MateriaNome: materia.MateriaNome,
+          ImagemUrl: customizacao?.ImagemUrl ?? null,
+          CorFundo: customizacao?.CorFundo || corPadrao,
+        };
+      })
+    );
+  }
+
+  /** Grid de seleção de turma (professor), dado que já escolheu a matéria — já com a capa/cor da turma. */
+  async buscarTurmasComCapaProfessor(usuarioCPF: string, materiaGUID: string): Promise<Array<{
+    MatProfTurGUID: string;
+    TurmaGUID: string;
+    TurmaNome: string;
+    TurmaSerie: string;
+    ImagemUrl: string | null;
+    CorFundo: string | null;
+  }>> {
+    console.log("🟣 ProfessorService.buscarTurmasComCapaProfessor()");
+
+    const alocacoes = await this.#alocacaoDAO.findAll({
+      MateriaGUID: materiaGUID,
+      UsuarioCPF: usuarioCPF,
+      AlocacaoStatus: "Ativa",
+    });
+
+    const turmas = await Promise.all(
+      alocacoes.map(async (alocacao) => {
+        const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
+        if (!turma) return null;
+        return {
+          MatProfTurGUID: alocacao.MatProfTurGUID,
+          TurmaGUID: turma.TurmaGUID,
+          TurmaNome: turma.TurmaNome,
+          TurmaSerie: turma.TurmaSerie,
+          ImagemUrl: turma.TurmaImagemUrl,
+          CorFundo: turma.TurmaCorFundo,
+        };
+      })
+    );
+
+    return turmas.filter((t): t is NonNullable<typeof t> => t !== null);
   }
 
   /**

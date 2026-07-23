@@ -23,16 +23,18 @@ export interface CategoriaConteudo {
   CategoriaGUID: string;
   UsuarioCPF: string;
   MateriaGUID: string;
+  TurmaGUID: string;
   CategoriaNome: string;
+  Ordem: number;
   CreatedAt: string;
   UpdatedAt: string;
 }
 
-export async function criarCategoria(materiaGUID: string, categoriaNome: string): Promise<CategoriaConteudo> {
+export async function criarCategoria(materiaGUID: string, turmaGUID: string, categoriaNome: string): Promise<CategoriaConteudo> {
   const response = await fetch(`${API_URL}/categoria-conteudo`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ categoria: { MateriaGUID: materiaGUID, CategoriaNome: categoriaNome } }),
+    body: JSON.stringify({ categoria: { MateriaGUID: materiaGUID, TurmaGUID: turmaGUID, CategoriaNome: categoriaNome } }),
   });
 
   const result = await response.json();
@@ -42,9 +44,10 @@ export async function criarCategoria(materiaGUID: string, categoriaNome: string)
   return result.data.categoria;
 }
 
-export async function listarCategorias(filters?: { MateriaGUID?: string }): Promise<CategoriaConteudo[]> {
+export async function listarCategorias(filters?: { MateriaGUID?: string; TurmaGUID?: string }): Promise<CategoriaConteudo[]> {
   const params = new URLSearchParams();
   if (filters?.MateriaGUID) params.append('MateriaGUID', filters.MateriaGUID);
+  if (filters?.TurmaGUID) params.append('TurmaGUID', filters.TurmaGUID);
 
   const response = await fetch(`${API_URL}/categoria-conteudo?${params}`, {
     headers: getHeaders(),
@@ -53,6 +56,20 @@ export async function listarCategorias(filters?: { MateriaGUID?: string }): Prom
   const result = await response.json();
   if (!response.ok) {
     throw new Error(result.message || 'Erro ao listar categorias');
+  }
+  return result.data?.categorias || [];
+}
+
+export async function reordenarCategorias(materiaGUID: string, turmaGUID: string, ordem: string[]): Promise<CategoriaConteudo[]> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/reordenar`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID, ordem }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao reordenar categorias');
   }
   return result.data?.categorias || [];
 }

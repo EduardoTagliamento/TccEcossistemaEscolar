@@ -5,6 +5,8 @@ import { CategoriaConteudoMiddleware } from "../backend/middlewares/categoriacon
 import CategoriaConteudoService from "../backend/services/categoriaconteudo.service";
 import { CategoriaConteudoDAO } from "../backend/repositories/categoriaconteudo.repository";
 import { MateriaDAO } from "../backend/repositories/materia.repository";
+import { TurmaDAO } from "../backend/repositories/turma.repository";
+import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class CategoriaConteudoRoteador {
@@ -24,6 +26,9 @@ export default class CategoriaConteudoRoteador {
 
     this.#router.post("/", CategoriaConteudoMiddleware.validarCriacao, this.#controller.store);
     this.#router.get("/", this.#controller.index);
+    this.#router.patch("/reordenar", CategoriaConteudoMiddleware.validarReordenar, this.#controller.reordenar);
+    this.#router.get("/completas/:materiaGUID/:turmaGUID", this.#controller.buscarCategoriasCompletas);
+    this.#router.get("/tem-pendencia/:materiaGUID/:turmaGUID", this.#controller.temPendencia);
     this.#router.put(
       "/:guid",
       CategoriaConteudoMiddleware.validarGUID,
@@ -40,7 +45,9 @@ export const categoriaConteudoRouterFactory = () => {
   const database = new MysqlDatabase();
   const categoriaDAO = new CategoriaConteudoDAO(database);
   const materiaDAO = new MateriaDAO(database);
-  const categoriaService = new CategoriaConteudoService(categoriaDAO, materiaDAO);
+  const turmaDAO = new TurmaDAO(database);
+  const matriculaDAO = new MatriculaDAO(database);
+  const categoriaService = new CategoriaConteudoService(categoriaDAO, materiaDAO, turmaDAO, matriculaDAO);
   const controller = new CategoriaConteudoController(categoriaService);
   const roteador = new CategoriaConteudoRoteador(controller);
 

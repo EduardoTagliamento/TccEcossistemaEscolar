@@ -8,6 +8,9 @@ import ProvaAgendadaTurmaDAO from "../backend/repositories/provaagendada-turma.r
 import { AnexoDAO } from "../backend/repositories/anexo.repository";
 import { TurmaDAO } from "../backend/repositories/turma.repository";
 import { MateriaDAO } from "../backend/repositories/materia.repository";
+import { CategoriaConteudoDAO } from "../backend/repositories/categoriaconteudo.repository";
+import { ProvaAgendadaVisualizacaoDAO } from "../backend/repositories/provaagendadavisualizacao.repository";
+import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { provaRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
@@ -40,6 +43,12 @@ export default class ProvaAgendadaRoteador {
       this.#controle.index
     );
 
+    // POST /api/prova/turma/:ProvaAgendadaTurmaGUID/visualizar (DEVE vir antes de "/:ProvaAgendadaGUID")
+    this.#router.post(
+      "/turma/:ProvaAgendadaTurmaGUID/visualizar",
+      this.#controle.registrarVisualizacao
+    );
+
     this.#router.get(
       "/:ProvaAgendadaGUID",
       this.#middleware.validateIdParam,
@@ -70,7 +79,19 @@ const provaTurmaDAO = new ProvaAgendadaTurmaDAO(db); // Nova tabela intermediár
 const anexoDAO = new AnexoDAO(db);
 const turmaDAO = new TurmaDAO(db);
 const materiaDAO = new MateriaDAO(db);
-const provaService = new ProvaAgendadaService(provaDAO, provaTurmaDAO, anexoDAO, turmaDAO, materiaDAO);
+const categoriaDAO = new CategoriaConteudoDAO(db);
+const visualizacaoDAO = new ProvaAgendadaVisualizacaoDAO(db);
+const matriculaDAO = new MatriculaDAO(db);
+const provaService = new ProvaAgendadaService(
+  provaDAO,
+  provaTurmaDAO,
+  anexoDAO,
+  turmaDAO,
+  materiaDAO,
+  categoriaDAO,
+  visualizacaoDAO,
+  matriculaDAO
+);
 const provaControle = new ProvaAgendadaControl(provaService);
 const provaMiddleware = new ProvaAgendadaMiddleware();
 
