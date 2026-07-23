@@ -97,6 +97,49 @@ export async function atualizarVinculo(
   return resultado.escolaxusuarioxfuncao;
 }
 
+export interface VinculoEmMassaItem {
+  CPF: string;
+  Nome?: string;
+  Email?: string;
+}
+
+export interface VinculoBatchItemResult {
+  cpf: string;
+  sucesso: boolean;
+  mensagem: string;
+  dados?: EscolaxUsuarioxFuncao;
+  contaCriada?: boolean;
+  senhaTemporaria?: string;
+  tipo?: 'criado' | 'duplicado' | 'erro';
+}
+
+export interface VinculoBatchCreateResponse {
+  totalProcessados: number;
+  criados: number;
+  duplicados: number;
+  erros: number;
+  resultados: VinculoBatchItemResult[];
+}
+
+/**
+ * Vincula em massa (via planilha) uma lista de usuários a uma função numa
+ * escola. Se o CPF já existir na plataforma, só vincula; se não existir,
+ * cria a conta (Nome é obrigatório nesse caso) com senha temporária e envia
+ * e-mail de boas-vindas.
+ */
+export async function criarVinculosEmMassa(dados: {
+  EscolaGUID: string;
+  FuncaoId: number;
+  itens: VinculoEmMassaItem[];
+}): Promise<VinculoBatchCreateResponse> {
+  const response = await fetch(`${API_URL}/escolaxusuarioxfuncao/em-massa`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(dados),
+  });
+  return extrairDados(response, 'Erro ao importar planilha');
+}
+
 /** Remove definitivamente o vínculo (registro). Prefira atualizarVinculo com Status='Inativo' se quiser manter histórico. */
 export async function excluirVinculo(escolaxUsuarioxFuncaoId: number): Promise<void> {
   const response = await fetch(`${API_URL}/escolaxusuarioxfuncao/${escolaxUsuarioxFuncaoId}`, {

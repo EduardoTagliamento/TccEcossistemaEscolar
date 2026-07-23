@@ -101,5 +101,25 @@ criarModeloExcel(
   ]
 );
 
+// 6. Modelo de Secretaria (vincula usuário existente por CPF; se não existir, cria a conta com Nome/Email informados)
+criarModeloExcel(
+  'modelo-secretaria.xlsx',
+  ['CPF', 'Nome Completo', 'Email'],
+  [
+    ['123.456.789-01', 'Fernanda Lima Costa', 'fernanda.secretaria@email.com'],
+    ['987.654.321-00', 'Rafael Santos Oliveira', 'rafael.secretaria@email.com']
+  ]
+);
+
+// 7. Modelo de Coordenação (vincula usuário existente por CPF; se não existir, cria a conta com Nome/Email informados)
+criarModeloExcel(
+  'modelo-coordenacao.xlsx',
+  ['CPF', 'Nome Completo', 'Email'],
+  [
+    ['123.456.789-01', 'Juliana Alves Santos', 'juliana.coordenacao@email.com'],
+    ['987.654.321-00', 'Pedro Costa Lima', 'pedro.coordenacao@email.com']
+  ]
+);
+
 console.log('\n🎉 Todos os modelos Excel foram criados com sucesso!');
 console.log(`📂 Localização: ${MODELOS_DIR}`);

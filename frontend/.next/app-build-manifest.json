@@ -1,52 +1,52 @@
 {
   "pages": {
     "/_not-found/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
       "static/chunks/app/_not-found/page-c37b2a7ce39b70e1.js"
     ],
     "/layout": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
       "static/css/7bff586bfa0ae784.css",
       "static/chunks/app/layout-e0250f0217f25649.js"
     ],
-    "/cadastro/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
-      "static/chunks/618f8807-69594dfc8b62e09b.js",
-      "static/chunks/2364-e3ac3976f879e04d.js",
-      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/e2eafc4ad3b85389.css",
-      "static/css/16e752a9500137af.css",
-      "static/chunks/4542-f05222a7e8669457.js",
-      "static/chunks/app/cadastro/page-f7324f2c6a79b837.js"
-    ],
     "/criar-escola/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
       "static/css/87519708bc5f1f03.css",
-      "static/css/e2eafc4ad3b85389.css",
+      "static/css/2d2ba66f6118a96c.css",
       "static/css/e24413d360bbbece.css",
       "static/chunks/app/criar-escola/page-f100eff5852f1b7d.js"
     ],
-    "/login/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+    "/cadastro/page": [
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/e2eafc4ad3b85389.css",
+      "static/css/2d2ba66f6118a96c.css",
+      "static/css/16e752a9500137af.css",
+      "static/chunks/4542-f05222a7e8669457.js",
+      "static/chunks/app/cadastro/page-f7324f2c6a79b837.js"
+    ],
+    "/login/page": [
+      "static/chunks/webpack-801764422308d14b.js",
+      "static/chunks/618f8807-69594dfc8b62e09b.js",
+      "static/chunks/2364-e3ac3976f879e04d.js",
+      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
+      "static/css/2d2ba66f6118a96c.css",
       "static/css/16e752a9500137af.css",
       "static/chunks/4542-f05222a7e8669457.js",
       "static/chunks/app/login/page-234f2366d0831098.js"
     ],
     "/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -55,7 +55,7 @@
       "static/chunks/app/page-93fad1a4aa09bf13.js"
     ],
     "/saiba-mais/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -63,29 +63,29 @@
       "static/chunks/4542-f05222a7e8669457.js",
       "static/chunks/app/saiba-mais/page-faf13d2a55e22ab9.js"
     ],
-    "/selecionar-escola/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
-      "static/chunks/618f8807-69594dfc8b62e09b.js",
-      "static/chunks/2364-e3ac3976f879e04d.js",
-      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/87519708bc5f1f03.css",
-      "static/css/e2eafc4ad3b85389.css",
-      "static/css/16e752a9500137af.css",
-      "static/chunks/4542-f05222a7e8669457.js",
-      "static/chunks/app/selecionar-escola/page-a34729a03b4f4d1b.js"
-    ],
     "/verificar-email/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/e2eafc4ad3b85389.css",
+      "static/css/2d2ba66f6118a96c.css",
       "static/css/e24413d360bbbece.css",
       "static/chunks/4542-f05222a7e8669457.js",
       "static/chunks/app/verificar-email/page-166109f144da8870.js"
     ],
+    "/selecionar-escola/page": [
+      "static/chunks/webpack-801764422308d14b.js",
+      "static/chunks/618f8807-69594dfc8b62e09b.js",
+      "static/chunks/2364-e3ac3976f879e04d.js",
+      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
+      "static/css/87519708bc5f1f03.css",
+      "static/css/2d2ba66f6118a96c.css",
+      "static/css/16e752a9500137af.css",
+      "static/chunks/4542-f05222a7e8669457.js",
+      "static/chunks/app/selecionar-escola/page-a34729a03b4f4d1b.js"
+    ],
     "/dashboard/[escolaGUID]/cadastro-evento/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -94,7 +94,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/cadastro-evento/page-2c07bdab2b1ec43f.js"
     ],
     "/dashboard/[escolaGUID]/layout": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -105,7 +105,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/layout-8963f75d7458c47e.js"
     ],
     "/dashboard/[escolaGUID]/auditoria/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -113,7 +113,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/auditoria/page-1733602cdcd0dff5.js"
     ],
     "/dashboard/[escolaGUID]/cadastro-pendencia/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -121,7 +121,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/cadastro-pendencia/page-2c326dec9f6c4693.js"
     ],
     "/dashboard/[escolaGUID]/cadastro/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -129,7 +129,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/cadastro/page-262f0c6f6510b9f5.js"
     ],
     "/dashboard/[escolaGUID]/chat/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -138,23 +138,8 @@
       "static/chunks/7376-8612c262b406ed62.js",
       "static/chunks/app/dashboard/[escolaGUID]/chat/page-2ce4ffef39ae7f9f.js"
     ],
-    "/dashboard/[escolaGUID]/configuracoes/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
-      "static/chunks/618f8807-69594dfc8b62e09b.js",
-      "static/chunks/2364-e3ac3976f879e04d.js",
-      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/87519708bc5f1f03.css",
-      "static/chunks/app/dashboard/[escolaGUID]/configuracoes/page-5ce21fddcd010184.js"
-    ],
-    "/dashboard/[escolaGUID]/crud-conteudo/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
-      "static/chunks/618f8807-69594dfc8b62e09b.js",
-      "static/chunks/2364-e3ac3976f879e04d.js",
-      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/chunks/app/dashboard/[escolaGUID]/crud-conteudo/page-766213b3548360e9.js"
-    ],
     "/dashboard/[escolaGUID]/calendario/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -162,8 +147,23 @@
       "static/chunks/6992-51aea4baa1073ffc.js",
       "static/chunks/app/dashboard/[escolaGUID]/calendario/page-13f3b70ae34b7c9e.js"
     ],
+    "/dashboard/[escolaGUID]/crud-conteudo/page": [
+      "static/chunks/webpack-801764422308d14b.js",
+      "static/chunks/618f8807-69594dfc8b62e09b.js",
+      "static/chunks/2364-e3ac3976f879e04d.js",
+      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
+      "static/chunks/app/dashboard/[escolaGUID]/crud-conteudo/page-766213b3548360e9.js"
+    ],
+    "/dashboard/[escolaGUID]/configuracoes/page": [
+      "static/chunks/webpack-801764422308d14b.js",
+      "static/chunks/618f8807-69594dfc8b62e09b.js",
+      "static/chunks/2364-e3ac3976f879e04d.js",
+      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
+      "static/css/87519708bc5f1f03.css",
+      "static/chunks/app/dashboard/[escolaGUID]/configuracoes/page-5ce21fddcd010184.js"
+    ],
     "/dashboard/[escolaGUID]/crud-projeto/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -172,42 +172,56 @@
       "static/chunks/9453-c8024b7ae3fdc69b.js",
       "static/chunks/app/dashboard/[escolaGUID]/crud-projeto/page-f061c3de0590fc57.js"
     ],
-    "/dashboard/[escolaGUID]/crud-tarefa/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
-      "static/chunks/618f8807-69594dfc8b62e09b.js",
-      "static/chunks/2364-e3ac3976f879e04d.js",
-      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/chunks/app/dashboard/[escolaGUID]/crud-tarefa/page-10eafdbf762c26c8.js"
-    ],
     "/dashboard/[escolaGUID]/crud-provaagendada/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
       "static/chunks/app/dashboard/[escolaGUID]/crud-provaagendada/page-aca0710950bd3526.js"
     ],
-    "/dashboard/[escolaGUID]/gestao-dados/alunos/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+    "/dashboard/[escolaGUID]/crud-tarefa/page": [
+      "static/chunks/webpack-801764422308d14b.js",
+      "static/chunks/618f8807-69594dfc8b62e09b.js",
+      "static/chunks/2364-e3ac3976f879e04d.js",
+      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
+      "static/chunks/app/dashboard/[escolaGUID]/crud-tarefa/page-10eafdbf762c26c8.js"
+    ],
+    "/dashboard/[escolaGUID]/gestao-dados/materias/page": [
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
       "static/css/75ee212cd0a4ab50.css",
       "static/chunks/2170a4aa-ab119cce3c152c31.js",
       "static/chunks/3649-6aa78e354e0adf39.js",
-      "static/chunks/5229-e52dc59ea4440958.js",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/alunos/page-21c7324d934f79d0.js"
+      "static/chunks/2648-50bbc6ab7eb19df7.js",
+      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/materias/page-7511ab6e9cc5e796.js"
     ],
     "/dashboard/[escolaGUID]/gestao-dados/coordenacao/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/f8c014b32e5219ac.css",
+      "static/css/328de577ede8ca41.css",
       "static/css/75ee212cd0a4ab50.css",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/coordenacao/page-4e9d04dff46853e3.js"
+      "static/chunks/2170a4aa-ab119cce3c152c31.js",
+      "static/chunks/3649-6aa78e354e0adf39.js",
+      "static/chunks/2648-50bbc6ab7eb19df7.js",
+      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/coordenacao/page-069127d72469024b.js"
+    ],
+    "/dashboard/[escolaGUID]/gestao-dados/alunos/page": [
+      "static/chunks/webpack-801764422308d14b.js",
+      "static/chunks/618f8807-69594dfc8b62e09b.js",
+      "static/chunks/2364-e3ac3976f879e04d.js",
+      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
+      "static/css/75ee212cd0a4ab50.css",
+      "static/chunks/2170a4aa-ab119cce3c152c31.js",
+      "static/chunks/3649-6aa78e354e0adf39.js",
+      "static/chunks/2648-50bbc6ab7eb19df7.js",
+      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/alunos/page-9d933cc26b42d706.js"
     ],
     "/dashboard/[escolaGUID]/gestao-dados/cursos/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -215,81 +229,43 @@
       "static/css/75ee212cd0a4ab50.css",
       "static/chunks/2170a4aa-ab119cce3c152c31.js",
       "static/chunks/3649-6aa78e354e0adf39.js",
-      "static/chunks/5229-e52dc59ea4440958.js",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/cursos/page-a1984db42f332136.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/materias/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
-      "static/chunks/618f8807-69594dfc8b62e09b.js",
-      "static/chunks/2364-e3ac3976f879e04d.js",
-      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/75ee212cd0a4ab50.css",
-      "static/chunks/2170a4aa-ab119cce3c152c31.js",
-      "static/chunks/3649-6aa78e354e0adf39.js",
-      "static/chunks/5229-e52dc59ea4440958.js",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/materias/page-08c152ba26778d59.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/professores/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
-      "static/chunks/618f8807-69594dfc8b62e09b.js",
-      "static/chunks/2364-e3ac3976f879e04d.js",
-      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/75ee212cd0a4ab50.css",
-      "static/chunks/2170a4aa-ab119cce3c152c31.js",
-      "static/chunks/3649-6aa78e354e0adf39.js",
-      "static/chunks/5229-e52dc59ea4440958.js",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/professores/page-8685a3e21f267b00.js"
+      "static/chunks/2648-50bbc6ab7eb19df7.js",
+      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/cursos/page-e06d0e2bb1103193.js"
     ],
     "/dashboard/[escolaGUID]/gestao-dados/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
       "static/css/75ee212cd0a4ab50.css",
       "static/chunks/4542-f05222a7e8669457.js",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/page-c950ce742aa2ed99.js"
+      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/page-d712f679448d29df.js"
     ],
-    "/dashboard/[escolaGUID]/gestao-dados/secretaria/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
-      "static/chunks/618f8807-69594dfc8b62e09b.js",
-      "static/chunks/2364-e3ac3976f879e04d.js",
-      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/3e4c24cdf0b250ca.css",
-      "static/css/75ee212cd0a4ab50.css",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/secretaria/page-e78c6baa94bcbc10.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/turmas/[turmaGUID]/cronograma/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
-      "static/chunks/618f8807-69594dfc8b62e09b.js",
-      "static/chunks/2364-e3ac3976f879e04d.js",
-      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/36bf5bd06d32b378.css",
-      "static/chunks/4542-f05222a7e8669457.js",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/turmas/[turmaGUID]/cronograma/page-197b6e5210a07e39.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/turmas/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+    "/dashboard/[escolaGUID]/gestao-dados/professores/page": [
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
       "static/css/75ee212cd0a4ab50.css",
       "static/chunks/2170a4aa-ab119cce3c152c31.js",
-      "static/chunks/4542-f05222a7e8669457.js",
       "static/chunks/3649-6aa78e354e0adf39.js",
-      "static/chunks/5229-e52dc59ea4440958.js",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/turmas/page-23dbe98920060a56.js"
+      "static/chunks/2648-50bbc6ab7eb19df7.js",
+      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/professores/page-23aeb28887276be0.js"
     ],
-    "/dashboard/[escolaGUID]/notificacoes/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+    "/dashboard/[escolaGUID]/gestao-dados/secretaria/page": [
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/d6a6cedd4383f816.css",
-      "static/chunks/4542-f05222a7e8669457.js",
-      "static/chunks/app/dashboard/[escolaGUID]/notificacoes/page-1fc803f20737136c.js"
+      "static/css/a77518e39fb38ea4.css",
+      "static/css/75ee212cd0a4ab50.css",
+      "static/chunks/2170a4aa-ab119cce3c152c31.js",
+      "static/chunks/3649-6aa78e354e0adf39.js",
+      "static/chunks/2648-50bbc6ab7eb19df7.js",
+      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/secretaria/page-255568031dd31ef0.js"
     ],
     "/dashboard/[escolaGUID]/notificacoes/configuracoes/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -297,8 +273,38 @@
       "static/chunks/4542-f05222a7e8669457.js",
       "static/chunks/app/dashboard/[escolaGUID]/notificacoes/configuracoes/page-315f5a931df9b712.js"
     ],
+    "/dashboard/[escolaGUID]/gestao-dados/turmas/[turmaGUID]/cronograma/page": [
+      "static/chunks/webpack-801764422308d14b.js",
+      "static/chunks/618f8807-69594dfc8b62e09b.js",
+      "static/chunks/2364-e3ac3976f879e04d.js",
+      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
+      "static/css/36bf5bd06d32b378.css",
+      "static/chunks/4542-f05222a7e8669457.js",
+      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/turmas/[turmaGUID]/cronograma/page-197b6e5210a07e39.js"
+    ],
+    "/dashboard/[escolaGUID]/notificacoes/page": [
+      "static/chunks/webpack-801764422308d14b.js",
+      "static/chunks/618f8807-69594dfc8b62e09b.js",
+      "static/chunks/2364-e3ac3976f879e04d.js",
+      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
+      "static/css/d6a6cedd4383f816.css",
+      "static/chunks/4542-f05222a7e8669457.js",
+      "static/chunks/app/dashboard/[escolaGUID]/notificacoes/page-1fc803f20737136c.js"
+    ],
+    "/dashboard/[escolaGUID]/gestao-dados/turmas/page": [
+      "static/chunks/webpack-801764422308d14b.js",
+      "static/chunks/618f8807-69594dfc8b62e09b.js",
+      "static/chunks/2364-e3ac3976f879e04d.js",
+      "static/chunks/main-app-91cd8ef0d1a12e9c.js",
+      "static/css/75ee212cd0a4ab50.css",
+      "static/chunks/2170a4aa-ab119cce3c152c31.js",
+      "static/chunks/4542-f05222a7e8669457.js",
+      "static/chunks/3649-6aa78e354e0adf39.js",
+      "static/chunks/2648-50bbc6ab7eb19df7.js",
+      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/turmas/page-05fe1250b1f29eb1.js"
+    ],
     "/dashboard/[escolaGUID]/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -307,7 +313,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/page-c72af6936bb5cafe.js"
     ],
     "/dashboard/[escolaGUID]/pendencias/[pendenciaGUID]/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -316,7 +322,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/pendencias/[pendenciaGUID]/page-80de99664fc2ca34.js"
     ],
     "/dashboard/[escolaGUID]/pendencias/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -325,7 +331,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/pendencias/page-2fbfc92f7167908b.js"
     ],
     "/dashboard/[escolaGUID]/perfil/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -334,7 +340,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/perfil/page-ac8fc0f1889bcb4f.js"
     ],
     "/dashboard/[escolaGUID]/projetos/[projetoGUID]/grupos/[grupoGUID]/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -344,7 +350,7 @@
       "static/chunks/app/dashboard/[escolaGUID]/projetos/[projetoGUID]/grupos/[grupoGUID]/page-e7c523b254ac2e4e.js"
     ],
     "/dashboard/[escolaGUID]/projetos/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -353,17 +359,17 @@
       "static/chunks/9453-c8024b7ae3fdc69b.js",
       "static/chunks/app/dashboard/[escolaGUID]/projetos/page-f4c66ccea2c674e7.js"
     ],
-    "/dashboard/[escolaGUID]/tarefas/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+    "/dashboard/[escolaGUID]/tarefas/[tarefaGUID]/page": [
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/76f98fbd6c338790.css",
+      "static/css/d27362dd27806df6.css",
       "static/chunks/4542-f05222a7e8669457.js",
-      "static/chunks/app/dashboard/[escolaGUID]/tarefas/page-cba1ebe0bebd3ed0.js"
+      "static/chunks/app/dashboard/[escolaGUID]/tarefas/[tarefaGUID]/page-7db2d610ded6d03f.js"
     ],
     "/dashboard/[escolaGUID]/projetos/[projetoGUID]/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
@@ -372,14 +378,14 @@
       "static/chunks/9453-c8024b7ae3fdc69b.js",
       "static/chunks/app/dashboard/[escolaGUID]/projetos/[projetoGUID]/page-c70b6cfd6ae0510c.js"
     ],
-    "/dashboard/[escolaGUID]/tarefas/[tarefaGUID]/page": [
-      "static/chunks/webpack-7f0b71fc2aa2d815.js",
+    "/dashboard/[escolaGUID]/tarefas/page": [
+      "static/chunks/webpack-801764422308d14b.js",
       "static/chunks/618f8807-69594dfc8b62e09b.js",
       "static/chunks/2364-e3ac3976f879e04d.js",
       "static/chunks/main-app-91cd8ef0d1a12e9c.js",
-      "static/css/d27362dd27806df6.css",
+      "static/css/76f98fbd6c338790.css",
       "static/chunks/4542-f05222a7e8669457.js",
-      "static/chunks/app/dashboard/[escolaGUID]/tarefas/[tarefaGUID]/page-7db2d610ded6d03f.js"
+      "static/chunks/app/dashboard/[escolaGUID]/tarefas/page-cba1ebe0bebd3ed0.js"
     ]
   }
 }

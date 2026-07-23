@@ -393,6 +393,118 @@
   background: var(--surface-muted);
 }
 
+/* Preview da importação por planilha */
+.previewContainer {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: var(--surface-50);
+  border-radius: var(--radius-md);
+}
+
+.previewTitulo {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--ink-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.previewLista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.previewItem {
+  padding: 0.75rem;
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--green-500);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.previewMais {
+  padding: 0.75rem;
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  color: var(--slate-500);
+  font-style: italic;
+  text-align: center;
+}
+
+/* Resultado do processamento em massa */
+.resultadoContainer {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: var(--green-50);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--green-500);
+}
+
+.resultadoTitulo {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+  color: var(--green-700);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.resultadoStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: var(--white);
+  border-radius: var(--radius-md);
+}
+
+.statNumero {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--green-600);
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.botaoFechar {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  background: var(--white);
+  color: var(--slate-600);
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+
+.botaoFechar:hover {
+  border-color: var(--slate-400);
+  background: var(--surface-muted);
+}
+
 /* Responsividade Mobile */
 @media (max-width: 768px) {
   .container {

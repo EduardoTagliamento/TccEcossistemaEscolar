@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styles from './page.module.css';
 
 import BaseTabelaDados, { Coluna } from '@/components/gestao-dados/BaseTabelaDados';
+import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
 import { Icon } from '@/components/Icon';
 
 import * as VinculoAPI from '@/lib/api/escolaxusuarioxfuncao.api';
@@ -37,6 +38,12 @@ export default function SecretariaPage() {
   const [erroBusca, setErroBusca] = useState('');
   const [usuarioEncontrado, setUsuarioEncontrado] = useState<UsuarioAPI.UsuarioBusca | null>(null);
   const [vinculando, setVinculando] = useState(false);
+
+  // Modal: importar via planilha
+  const [modalUploadAberto, setModalUploadAberto] = useState(false);
+  const [dadosImportados, setDadosImportados] = useState<DadosPlanilha<any> | null>(null);
+  const [processandoBatch, setProcessandoBatch] = useState(false);
+  const [resultadoBatch, setResultadoBatch] = useState<VinculoAPI.VinculoBatchCreateResponse | null>(null);
 
   useEffect(() => {
     if (escolaGUID) {
@@ -112,6 +119,47 @@ export default function SecretariaPage() {
     }
   };
 
+  // ===== Importar via planilha =====
+  const fecharModalUpload = () => {
+    setModalUploadAberto(false);
+    setDadosImportados(null);
+    setResultadoBatch(null);
+  };
+
+  const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
+    setDadosImportados(dados);
+  };
+
+  const extrairCPF = (linha: any): string => (linha['CPF'] || linha.UsuarioCPF || linha.cpf || '').toString();
+  const extrairItem = (linha: any): VinculoAPI.VinculoEmMassaItem => ({
+    CPF: extrairCPF(linha),
+    Nome: (linha['Nome Completo'] || linha.Nome || linha.nome || '').toString().trim() || undefined,
+    Email: (linha['Email'] || linha.email || '').toString().trim() || undefined,
+  });
+
+  const handleSalvarImportados = async () => {
+    if (!dadosImportados) return;
+    try {
+      setProcessandoBatch(true);
+      const itens = dadosImportados.dados.map(extrairItem).filter((item) => item.CPF.trim() !== '');
+
+      const resultado = await VinculoAPI.criarVinculosEmMassa({
+        EscolaGUID: escolaGUID,
+        FuncaoId: FUNCAO_ID_SECRETARIA,
+        itens,
+      });
+
+      setResultadoBatch(resultado);
+      setDadosImportados(null);
+      carregarVinculos();
+    } catch (erro: any) {
+      console.error('Erro ao importar planilha da Secretaria:', erro);
+      alert('Erro ao importar planilha: ' + erro.message);
+    } finally {
+      setProcessandoBatch(false);
+    }
+  };
+
   const handleRemover = async (vinculo: VinculoAPI.EscolaxUsuarioxFuncao) => {
     if (!confirm(`Remover ${vinculo.UsuarioNome || vinculo.UsuarioCPF} da Secretaria?`)) return;
     try {
@@ -179,6 +227,9 @@ export default function SecretariaPage() {
         <div className={styles.acoes}>
           <button onClick={() => setMostrarInativos((v) => !v)} className={styles.botaoUpload}>
             {mostrarInativos ? 'Ver ativos' : 'Ver histórico (inativos)'}
+          </button>
+          <button onClick={() => setModalUploadAberto(true)} className={styles.botaoUpload}>
+            <Icon name="upload" size={16} /> Importar Planilha
           </button>
           <button onClick={() => setModalAberto(true)} className={styles.botaoNovo}>
             <Icon name="plus" size={16} /> Adicionar à Secretaria
@@ -261,6 +312,92 @@ export default function SecretariaPage() {
               <button onClick={fecharModal} className={styles.botaoCancelar}>
                 Cancelar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Importar via Planilha */}
+      {modalUploadAberto && (
+        <div className={styles.overlay} onClick={fecharModalUpload}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalConteudo}>
+              <h2 className={styles.modalTitulo}>Importar Secretaria via Planilha</h2>
+
+              {!resultadoBatch && (
+                <BaseUploadPlanilha
+                  titulo="Upload de Planilha"
+                  subtitulo="CPF, Nome Completo e Email. Se o CPF já existir na plataforma só é vinculado; se não existir, a conta é criada automaticamente e a pessoa recebe um e-mail com a senha temporária."
+                  modeloUrl="/modelos/modelo-secretaria.xlsx"
+                  onDadosCarregados={handleDadosCarregados}
+                  onErro={(erro) => alert(erro)}
+                  colunasEsperadas={['CPF']}
+                />
+              )}
+
+              {dadosImportados && (
+                <div className={styles.previewContainer}>
+                  <h3 className={styles.previewTitulo}>
+                    <Icon name="file-text" size={18} /> Preview - {dadosImportados.dados.length} linhas encontradas
+                  </h3>
+                  <div className={styles.previewLista}>
+                    {dadosImportados.dados.slice(0, 5).map((linha: any, idx: number) => {
+                      const item = extrairItem(linha);
+                      return (
+                        <div key={idx} className={styles.previewItem}>
+                          <Icon name="check" size={14} /> {formatarCPF(item.CPF)}{item.Nome ? ` — ${item.Nome}` : ''}
+                        </div>
+                      );
+                    })}
+                    {dadosImportados.dados.length > 5 && (
+                      <div className={styles.previewMais}>
+                        + {dadosImportados.dados.length - 5} linhas...
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleSalvarImportados}
+                    disabled={processandoBatch}
+                    className={styles.botaoImportar}
+                  >
+                    {processandoBatch ? 'Processando...' : (<><Icon name="check" size={16} /> Vincular Todos</>)}
+                  </button>
+                </div>
+              )}
+
+              {resultadoBatch && (
+                <div className={styles.resultadoContainer}>
+                  <h3 className={styles.resultadoTitulo}><Icon name="check-circle" size={20} /> Processamento Concluído</h3>
+                  <div className={styles.resultadoStats}>
+                    <div className={styles.stat}>
+                      <span className={styles.statNumero}>{resultadoBatch.criados}</span>
+                      <span className={styles.statLabel}>Vinculados</span>
+                    </div>
+                    <div className={styles.stat}>
+                      <span className={styles.statNumero}>{resultadoBatch.duplicados}</span>
+                      <span className={styles.statLabel}>Já vinculados</span>
+                    </div>
+                    <div className={styles.stat}>
+                      <span className={styles.statNumero}>{resultadoBatch.erros}</span>
+                      <span className={styles.statLabel}>Erros</span>
+                    </div>
+                  </div>
+                  {resultadoBatch.resultados.some((r) => r.contaCriada) && (
+                    <p className={styles.subtitulo} style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                      {resultadoBatch.resultados.filter((r) => r.contaCriada).length} conta(s) nova(s) criada(s) — e-mail com senha temporária enviado para quem tinha e-mail informado na planilha.
+                    </p>
+                  )}
+                  <button onClick={fecharModalUpload} className={styles.botaoFechar}>
+                    Fechar
+                  </button>
+                </div>
+              )}
+
+              {!resultadoBatch && (
+                <button onClick={fecharModalUpload} className={styles.botaoCancelar}>
+                  Cancelar
+                </button>
+              )}
             </div>
           </div>
         </div>

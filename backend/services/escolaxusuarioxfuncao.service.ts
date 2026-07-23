@@ -1,9 +1,41 @@
+import bcrypt from "bcrypt";
 import ErrorResponse from "../utils/ErrorResponse";
 import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
+import Usuario from "../entities/usuario.model";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import { UsuarioxEscolaAcessoDAO } from "../repositories/usuarioxescolaacesso.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
+import { EscolaDAO } from "../repositories/escola.repository";
 import { getAuditoriaService } from "./auditoria.service";
+import { normalizeCPF } from "../utils/helpers/cpf.helper";
+import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
+import { EmailAlunoService } from "./email-aluno.service";
+
+const SALT_ROUNDS = 10;
+
+export interface VinculoEmMassaItem {
+  CPF: string;
+  Nome?: string;
+  Email?: string;
+}
+
+export interface VinculoBatchItemResult {
+  cpf: string;
+  sucesso: boolean;
+  mensagem: string;
+  dados?: EscolaxUsuarioxFuncaoDTO;
+  contaCriada?: boolean;
+  senhaTemporaria?: string;
+  tipo?: "criado" | "duplicado" | "erro";
+}
+
+export interface VinculoBatchCreateResponse {
+  totalProcessados: number;
+  criados: number;
+  duplicados: number;
+  erros: number;
+  resultados: VinculoBatchItemResult[];
+}
 
 export interface EscolaxUsuarioxFuncaoDTO {
   EscolaxUsuarioxFuncaoId: number;
@@ -30,16 +62,19 @@ export default class EscolaxUsuarioxFuncaoService {
   #relacaoDAO: EscolaxUsuarioxFuncaoDAO;
   #acessoDAO: UsuarioxEscolaAcessoDAO;
   #usuarioDAO: UsuarioDAO;
+  #escolaDAO: EscolaDAO;
 
   constructor(
     relacaoDAODependency: EscolaxUsuarioxFuncaoDAO,
     acessoDAODependency: UsuarioxEscolaAcessoDAO,
-    usuarioDAODependency: UsuarioDAO
+    usuarioDAODependency: UsuarioDAO,
+    escolaDAODependency: EscolaDAO
   ) {
     console.log("Service: EscolaxUsuarioxFuncaoService.constructor()");
     this.#relacaoDAO = relacaoDAODependency;
     this.#acessoDAO = acessoDAODependency;
     this.#usuarioDAO = usuarioDAODependency;
+    this.#escolaDAO = escolaDAODependency;
   }
 
   createRelacao = async (
@@ -92,6 +127,189 @@ export default class EscolaxUsuarioxFuncaoService {
     }
 
     return this.toDTO(created);
+  };
+
+  /**
+   * Vincula em massa uma lista de usuários a uma função numa escola — usado
+   * pela importação via planilha das telas de Secretaria/Coordenação. Se o
+   * CPF já existe na plataforma, só cria o vínculo; se não existe, cria a
+   * conta (senha temporária, mesmo padrão de `ProfessorService.criarProfessoresEmMassa`)
+   * e envia e-mail de boas-vindas com a senha antes de vincular.
+   */
+  criarVinculosEmMassa = async (
+    itens: VinculoEmMassaItem[],
+    escolaGUID: string,
+    funcaoId: number,
+    usuarioCPFAtor?: string
+  ): Promise<VinculoBatchCreateResponse> => {
+    console.log("Service: EscolaxUsuarioxFuncaoService.criarVinculosEmMassa()");
+
+    if (itens.length === 0) {
+      throw new ErrorResponse(400, "Nenhum item fornecido", {
+        message: "A lista de itens esta vazia",
+      });
+    }
+
+    const [escola, funcaoExists] = await Promise.all([
+      this.#escolaDAO.findById(escolaGUID),
+      this.#relacaoDAO.funcaoExists(funcaoId),
+    ]);
+
+    if (!escola) {
+      throw new ErrorResponse(404, "Escola nao encontrada", {
+        message: `Nao existe escola com GUID ${escolaGUID}`,
+      });
+    }
+
+    if (!funcaoExists) {
+      throw new ErrorResponse(404, "Funcao nao encontrada", {
+        message: `Nao existe funcao com id ${funcaoId}`,
+      });
+    }
+
+    const resultados: VinculoBatchItemResult[] = [];
+    const emailsParaEnviar: Array<{ tipo: "novo"; dados: Record<string, string> }> = [];
+    let criados = 0;
+    let duplicados = 0;
+    let erros = 0;
+
+    for (const item of itens) {
+      let cpf: string;
+      try {
+        cpf = normalizeCPF(String(item.CPF));
+      } catch {
+        erros++;
+        resultados.push({
+          cpf: String(item.CPF),
+          sucesso: false,
+          mensagem: `CPF "${item.CPF}" invalido.`,
+          tipo: "erro",
+        });
+        continue;
+      }
+
+      try {
+        const duplicated = await this.#relacaoDAO.findByTripla(cpf, escolaGUID, funcaoId);
+        if (duplicated) {
+          duplicados++;
+          resultados.push({
+            cpf,
+            sucesso: true,
+            mensagem: "Ja existe um vinculo para este usuario nesta funcao.",
+            tipo: "duplicado",
+          });
+          continue;
+        }
+
+        let usuario = await this.#usuarioDAO.findById(cpf);
+        let senhaTemporaria: string | undefined;
+        const contaCriada = !usuario;
+
+        if (!usuario) {
+          const nome = item.Nome?.trim();
+          if (!nome) {
+            erros++;
+            resultados.push({
+              cpf,
+              sucesso: false,
+              mensagem: `Nenhum usuario cadastrado com o CPF ${cpf} e o nome nao foi informado na planilha para criar a conta.`,
+              tipo: "erro",
+            });
+            continue;
+          }
+
+          senhaTemporaria = gerarSenhaTemporaria(nome);
+          const senhaHash = await bcrypt.hash(senhaTemporaria, SALT_ROUNDS);
+
+          const novoUsuario = new Usuario();
+          novoUsuario.UsuarioCPF = cpf;
+          novoUsuario.UsuarioNome = nome;
+          novoUsuario.UsuarioEmail = item.Email || null;
+          novoUsuario.UsuarioId = null;
+          novoUsuario.UsuarioTelefone = null;
+          novoUsuario.UsuarioEmailVerificado = false;
+          novoUsuario.UsuarioStatus = "Ativo";
+          novoUsuario.UsuarioSenha = senhaHash;
+
+          await this.#usuarioDAO.create(novoUsuario);
+          usuario = novoUsuario;
+
+          if (usuario.UsuarioEmail) {
+            emailsParaEnviar.push({
+              tipo: "novo",
+              dados: {
+                para: usuario.UsuarioEmail,
+                nomeAluno: usuario.UsuarioNome,
+                nomeEscola: escola.EscolaNome || "Escola",
+                cpf: usuario.UsuarioCPF,
+                senhaTemporaria,
+                linkLogin: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : "http://localhost:3000/login",
+              },
+            });
+          }
+        }
+
+        const relacao = new EscolaxUsuarioxFuncao();
+        relacao.UsuarioCPF = cpf;
+        relacao.EscolaGUID = escolaGUID;
+        relacao.FuncaoId = funcaoId;
+        relacao.DataInicio = null;
+        relacao.DataFim = null;
+        relacao.Status = "Ativo";
+
+        const id = await this.#relacaoDAO.create(relacao);
+        const created = await this.#relacaoDAO.findById(id);
+        if (!created) {
+          throw new Error("Falha ao recuperar registro apos criacao.");
+        }
+
+        if (usuarioCPFAtor) {
+          void getAuditoriaService().registrar({
+            EscolaGUID: created.EscolaGUID,
+            UsuarioCPFAtor: usuarioCPFAtor,
+            AcaoTipo: "Create",
+            EntidadeTipo: "escolaxusuarioxfuncao",
+            EntidadeGUID: String(created.EscolaxUsuarioxFuncaoId),
+            EntidadeDescricao: `Vínculo de ${created.UsuarioCPF} como função ${created.FuncaoId} na escola`,
+            CategoriaAuditoriaId: 3,
+          });
+        }
+
+        criados++;
+        resultados.push({
+          cpf,
+          sucesso: true,
+          mensagem: contaCriada ? "Conta criada e usuario vinculado com sucesso." : "Usuario vinculado com sucesso.",
+          dados: this.toDTO(created, null, usuario.UsuarioNome),
+          contaCriada,
+          senhaTemporaria,
+          tipo: "criado",
+        });
+      } catch (error) {
+        erros++;
+        const mensagem = error instanceof Error ? error.message : "Erro desconhecido";
+        resultados.push({
+          cpf,
+          sucesso: false,
+          mensagem: `Erro: ${mensagem}`,
+          tipo: "erro",
+        });
+      }
+    }
+
+    if (emailsParaEnviar.length > 0) {
+      EmailAlunoService.enviarEmailsEmLote(emailsParaEnviar as any).catch((erro) => {
+        console.error("Erro ao enviar emails em lote (vinculo em massa):", erro);
+      });
+    }
+
+    return {
+      totalProcessados: itens.length,
+      criados,
+      duplicados,
+      erros,
+      resultados,
+    };
   };
 
   findAll = async (filters?: FindFiltersDTO): Promise<EscolaxUsuarioxFuncaoDTO[]> => {

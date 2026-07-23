@@ -26,6 +26,32 @@ export default class EscolaxUsuarioxFuncaoControl {
     }
   };
 
+  /**
+   * POST /api/escolaxusuarioxfuncao/em-massa
+   * Vincula em massa uma lista de CPFs de usuários já cadastrados a uma
+   * função numa escola (importação via planilha em Secretaria/Coordenação).
+   */
+  storeEmMassa = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("Controller: EscolaxUsuarioxFuncaoControl.storeEmMassa()");
+    try {
+      const { EscolaGUID, FuncaoId, itens } = request.body;
+      const resultado = await this.#service.criarVinculosEmMassa(
+        itens,
+        EscolaGUID,
+        Number(FuncaoId),
+        request.user?.UsuarioCPF
+      );
+
+      response.status(201).json({
+        success: true,
+        message: `Processamento concluido: ${resultado.criados} criados, ${resultado.duplicados} duplicados, ${resultado.erros} erros`,
+        data: resultado,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   index = async (request: Request, response: Response, next: NextFunction) => {
     console.log("Controller: EscolaxUsuarioxFuncaoControl.index()");
     try {

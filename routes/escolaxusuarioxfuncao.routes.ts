@@ -5,6 +5,7 @@ import EscolaxUsuarioxFuncaoMiddleware from "../backend/middlewares/escolaxusuar
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
 import { UsuarioxEscolaAcessoDAO } from "../backend/repositories/usuarioxescolaacesso.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
+import { EscolaDAO } from "../backend/repositories/escola.repository";
 import EscolaxUsuarioxFuncaoService from "../backend/services/escolaxusuarioxfuncao.service";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
@@ -31,6 +32,13 @@ export default class EscolaxUsuarioxFuncaoRoteador {
       AuthMiddleware.authenticate,
       this.#middleware.validateCreateBody,
       this.#controller.store
+    );
+
+    this.#router.post(
+      "/em-massa",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateCreateEmMassaBody,
+      this.#controller.storeEmMassa
     );
 
     this.#router.put(
@@ -65,7 +73,8 @@ export const escolaxusuarioxfuncaoRouterFactory = () => {
   const dao = new EscolaxUsuarioxFuncaoDAO(database);
   const acessoDAO = new UsuarioxEscolaAcessoDAO(database);
   const usuarioDAO = new UsuarioDAO(database);
-  const service = new EscolaxUsuarioxFuncaoService(dao, acessoDAO, usuarioDAO);
+  const escolaDAO = new EscolaDAO(database);
+  const service = new EscolaxUsuarioxFuncaoService(dao, acessoDAO, usuarioDAO, escolaDAO);
   const controller = new EscolaxUsuarioxFuncaoControl(service);
   const middleware = new EscolaxUsuarioxFuncaoMiddleware();
   const roteador = new EscolaxUsuarioxFuncaoRoteador(middleware, controller);
