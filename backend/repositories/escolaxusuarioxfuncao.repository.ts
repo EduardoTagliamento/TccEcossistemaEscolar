@@ -347,6 +347,27 @@ export class EscolaxUsuarioxFuncaoDAO {
   };
 
   /**
+   * Representante legal da escola = Direção (FuncaoId=6) ativo há mais tempo
+   * (menor DataInicio). Não é um papel novo no banco — é derivado do vínculo
+   * já existente, sem migration. Se essa pessoa sair do cargo (Status vira
+   * 'Inativo'/'Finalizado'), o próximo Direção mais antigo assume
+   * automaticamente. Usado para restringir a personalização de cores da
+   * escola (ver EscolaService.updateEscola).
+   */
+  findRepresentanteLegal = async (escolaGUID: string): Promise<{ UsuarioCPF: string } | null> => {
+    console.log('🟢 EscolaxUsuarioxFuncaoDAO.findRepresentanteLegal()');
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(
+      `SELECT UsuarioCPF FROM escolaxusuarioxfuncao
+       WHERE EscolaGUID = ? AND FuncaoId = 6 AND Status = 'Ativo'
+       ORDER BY DataInicio ASC LIMIT 1`,
+      [escolaGUID]
+    );
+    const linhas = rows as Array<{ UsuarioCPF: string }>;
+    return linhas.length > 0 ? { UsuarioCPF: linhas[0].UsuarioCPF } : null;
+  };
+
+  /**
    * Verifica se o usuário é Professor (FuncaoId=3) ou Direção (FuncaoId=6)
    * ativo na escola. Usado pelo módulo de Projetos — só Professor/Direção
    * podem criar um Projeto (ver docs/PLANO_IMPLEMENTACAO_PROJETOS.md, Seção 1).
