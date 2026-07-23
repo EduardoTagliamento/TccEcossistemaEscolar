@@ -35,15 +35,16 @@ Pastas-chave: `backend/{controllers,services,repositories,entities,middlewares,d
 
 ## 3. Estado atual — o que falta fazer
 
-Quase todo o backend REST já existe e está registrado em `backend/Server.ts` (30+ módulos). O trabalho restante é majoritariamente **frontend, refinamento de UX e um módulo novo (Matérias)**. Lista abaixo verificada diretamente contra o código em 2026-07-23 (não apenas contra os relatórios antigos, que ficaram parcialmente desatualizados pelos commits de 20–22/07).
+Quase todo o backend REST já existe e está registrado em `backend/Server.ts` (30+ módulos), incluindo agora o módulo Matérias (ver abaixo — implementado, falta validar na prática). Lista abaixo verificada diretamente contra o código em 2026-07-23 (não apenas contra os relatórios antigos, que ficaram parcialmente desatualizados pelos commits de 20–22/07).
 
-### 🔴 Módulo não iniciado: Matérias (visão professor/aluno)
-- Existe apenas o CRUD administrativo básico (`gestao-dados/materias`, cadastro/lookup). **Não existem** as telas reais do módulo:
-  - Tela geral das matérias (card por matéria + filtro)
-  - Tela específica da matéria (materiais/provas/vídeos por data)
-  - Visão do aluno na prova (notas + recomendação de estudo por IA)
-  - Visão do aluno na tarefa (entrega digital de anexo pelo aluno)
-- Tabela `prova_nota` (lançamento de notas) ainda não existe.
+### 🟡 Módulo Matérias (visão professor/aluno) — implementado, falta validar na prática (2026-07-23)
+Spec completo em `docs/PLANO_IMPLEMENTACAO_MATERIAS.md`. Ícone novo na navbar (`isProfessor || isAluno`), com lógica de tela diferente por papel:
+- [x] **Backend completo:** migration nova (`2026-07-24-materias-modulo.sql`) com capa de turma, customização de matéria por professor (upload R2 + cor dominante via `sharp`), categoria com `Ordem`+`TurmaGUID` estendida pra Tarefa/Conteúdo/Prova, progresso de conteúdo (vídeo/imagem/texto) e de prova, nota de tarefa (manual + automática via scheduler novo a cada 5 min alinhado ao relógio), e 7 endpoints de agregação. `tsc --noEmit` do backend limpo.
+- [x] **Frontend completo:** 3 telas novas (`/materias`, `/materias/[materiaGUID]/turmas`, `/materias/[materiaGUID]/turmas/[turmaGUID]`), visualizador unificado dos 6 tipos de item, drag-and-drop nativo pra reordenar categoria (reaproveitando o mesmo padrão HTML5 já usado em `gestao-dados/turmas/[turmaGUID]/cronograma`, sem lib nova), widgets novos no dashboard ("tarefas pendentes" do aluno e "avaliações pendentes" do professor). `tsc --noEmit` e `next build` do frontend limpos.
+- [ ] **Ainda não validado na prática** — só validação de compilação/build, nenhum teste manual navegando pelos dois papéis no navegador ainda.
+- [ ] **Backfill de categoria não executado:** a mudança de escopo de `CategoriaConteudo` (de professor+matéria pra professor+matéria+turma) foi escrita como plano/SQL comentado na migration, mas **não rodou contra produção** — precisa checar volume real via agente `mysql` antes de aplicar (ver seção 4.3 do spec).
+- [ ] Simplificações assumidas (documentadas na seção 9.1 do spec, não são esquecimento): "+" de novo item navega pra `/cadastro` com query params em vez de abrir modal pré-preenchido (os formulários existentes ainda não leem esses params); progresso de vídeo só é preciso em upload direto, não em link do YouTube (precisaria da API do YouTube); badge de pendência (bolinha vermelha) existe no backend (`tem-pendencia`) mas não está ligado a nenhum componente visual ainda.
+- Tabela `prova_nota` (lançamento de notas pra prova) segue **fora de escopo**, por decisão do próprio usuário nesta sessão — prova por ora é só leitura (data + descrição).
 - Recomendação por IA: **adiada deliberadamente** pelo usuário ("veremos futuramente sobre IA") — não é esquecimento, é decisão de escopo. `backend/ai/` só tem `README.txt`.
 
 ### 🟢 Chat — concluído (2026-07-23)
