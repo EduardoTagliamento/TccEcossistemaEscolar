@@ -4,6 +4,7 @@ import EscolaxUsuarioxFuncaoControl from "../backend/controllers/escolaxusuariox
 import EscolaxUsuarioxFuncaoMiddleware from "../backend/middlewares/escolaxusuarioxfuncao.middleware";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
 import { UsuarioxEscolaAcessoDAO } from "../backend/repositories/usuarioxescolaacesso.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import EscolaxUsuarioxFuncaoService from "../backend/services/escolaxusuarioxfuncao.service";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
@@ -63,7 +64,8 @@ export const escolaxusuarioxfuncaoRouterFactory = () => {
   const database = new MysqlDatabase();
   const dao = new EscolaxUsuarioxFuncaoDAO(database);
   const acessoDAO = new UsuarioxEscolaAcessoDAO(database);
-  const service = new EscolaxUsuarioxFuncaoService(dao, acessoDAO);
+  const usuarioDAO = new UsuarioDAO(database);
+  const service = new EscolaxUsuarioxFuncaoService(dao, acessoDAO, usuarioDAO);
   const controller = new EscolaxUsuarioxFuncaoControl(service);
   const middleware = new EscolaxUsuarioxFuncaoMiddleware();
   const roteador = new EscolaxUsuarioxFuncaoRoteador(middleware, controller);

@@ -6,6 +6,8 @@ interface AuthBrandShellProps {
   /** Largura máxima da coluna de formulário (login=400, cadastro é mais largo por ter mais campos). */
   formMaxWidth?: number;
   className?: string;
+  /** Espelha o painel de marca pro lado direito (usado em /cadastro, para alternar com /login). */
+  invertido?: boolean;
 }
 
 /**
@@ -13,9 +15,9 @@ interface AuthBrandShellProps {
  * /login, /cadastro e /verificar-email — fiel ao layout de
  * "Login Escola.dc.html" do Bauá Design System.
  */
-export default function AuthBrandShell({ children, formMaxWidth = 400, className }: AuthBrandShellProps) {
+export default function AuthBrandShell({ children, formMaxWidth = 400, className, invertido }: AuthBrandShellProps) {
   return (
-    <div className={`${styles.shell} ${className || ''}`}>
+    <div className={`${styles.shell} ${invertido ? styles.invertido : ''} ${className || ''}`}>
       <div className={styles.brandPanel}>
         <div className={styles.texture} aria-hidden="true" />
         <div className={styles.blobTop} aria-hidden="true" />

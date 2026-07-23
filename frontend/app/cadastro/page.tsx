@@ -147,6 +147,7 @@ export default function CadastroPage() {
     <AuthBrandShell
       className={`${poppins.variable} ${figtree.variable} ${baloo2.variable}`}
       formMaxWidth={560}
+      invertido
     >
       <BauaLogo size={30} />
       <h1 className={styles.title}>Criar sua conta</h1>

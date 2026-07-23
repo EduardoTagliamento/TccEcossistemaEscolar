@@ -93,6 +93,13 @@
   box-sizing: border-box;
 }
 
+/* Espelha o painel de marca pro lado direito — usado em /cadastro pra
+   alternar com /login (que fica com o padrão, painel à esquerda), conforme
+   post-it do board de planejamento ("cadastro pra direita", "espelhado"). */
+.invertido {
+  flex-direction: row-reverse;
+}
+
 /* ---- Painel de marca (esquerda) ---- */
 .brandPanel {
   display: none;

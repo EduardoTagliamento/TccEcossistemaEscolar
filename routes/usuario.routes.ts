@@ -106,7 +106,7 @@ export const usuarioRouterFactory = () => {
 
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
   const usuarioxEscolaAcessoDAO = new UsuarioxEscolaAcessoDAO(database);
-  const escolaxUsuarioxFuncaoService = new EscolaxUsuarioxFuncaoService(escolaxUsuarioxFuncaoDAO, usuarioxEscolaAcessoDAO);
+  const escolaxUsuarioxFuncaoService = new EscolaxUsuarioxFuncaoService(escolaxUsuarioxFuncaoDAO, usuarioxEscolaAcessoDAO, usuarioDAO);
   const escolaxUsuarioxFuncaoControle = new EscolaxUsuarioxFuncaoControl(escolaxUsuarioxFuncaoService);
   
   const roteador = new UsuarioRoteador(

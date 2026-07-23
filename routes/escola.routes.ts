@@ -44,6 +44,17 @@ export default class EscolaRoteador {
       this.#escolaControle.destroy
     );
 
+    // PUT /api/escola/:EscolaGUID/transferir-direcao — elege um Coordenação
+    // ativo para assumir a Direção; quem chama (Direção atual) passa a
+    // Coordenação (troca simétrica, ver EscolaService.transferirDirecao).
+    this.#router.put(
+      "/:EscolaGUID/transferir-direcao",
+      AuthMiddleware.authenticate,
+      this.#escolaMiddleware.validateIdParam,
+      this.#escolaMiddleware.validateTransferirDirecaoBody,
+      this.#escolaControle.transferirDirecao
+    );
+
     this.#router.get("/", AuthMiddleware.authenticate, this.#escolaControle.index);
 
     this.#router.get(

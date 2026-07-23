@@ -22,6 +22,32 @@ function getHeaders(): HeadersInit {
   return headers;
 }
 
+export interface UsuarioBusca {
+  UsuarioCPF: string;
+  UsuarioNome: string;
+  UsuarioEmail: string | null;
+  UsuarioTelefone: string | null;
+  UsuarioStatus: 'Ativo' | 'Inativo' | 'Bloqueado';
+}
+
+/**
+ * GET /api/usuario/:UsuarioCPF — busca um usuário já cadastrado na plataforma
+ * (precisa ter feito /cadastro) por CPF. Usado em telas que vinculam um
+ * usuário existente a uma função na escola (ex.: Secretaria/Coordenação em
+ * Gestão de Dados) antes de criar o vínculo via escolaxusuarioxfuncao.api.ts.
+ * Lança erro (inclusive 404) se o CPF não existir — sempre trate com try/catch.
+ */
+export async function buscarUsuarioPorCPF(cpf: string): Promise<UsuarioBusca> {
+  const response = await fetch(`${API_URL}/usuario/${cpf}`, {
+    headers: getHeaders(),
+  });
+  const resultado = await response.json();
+  if (!response.ok || resultado?.success === false) {
+    throw new Error(resultado?.message || 'Usuário não encontrado');
+  }
+  return resultado.data.usuario;
+}
+
 export interface UsuarioAtualizado {
   UsuarioCPF: string;
   UsuarioEmail: string | null;

@@ -91,6 +91,35 @@ export async function atualizarEscola(
   return { escola: data.data?.escola ?? data.data };
 }
 
+export interface TransferirDirecaoResultado {
+  NovoDirecaoCPF: string;
+  NovoCoordenacaoCPF: string;
+}
+
+/**
+ * Elege um Coordenação ativo da escola para assumir a Direção — quem chama
+ * (Direção atual) passa a Coordenação, troca simétrica e imediata. Só quem
+ * já é Direção ativa da escola pode chamar (backend valida).
+ */
+export async function transferirDirecao(
+  escolaGUID: string,
+  novoDirecaoCPF: string
+): Promise<TransferirDirecaoResultado> {
+  const response = await fetch(`${API_URL}/escola/${escolaGUID}/transferir-direcao`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ NovoDirecaoCPF: novoDirecaoCPF }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao transferir Direção');
+  }
+
+  const data = await response.json();
+  return data.data;
+}
+
 /**
  * Listar todas as escolas (filtros opcionais)
  */

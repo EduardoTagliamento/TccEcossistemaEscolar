@@ -184,6 +184,20 @@ export class UsuarioDAO {
     return this.findById(UsuarioCPF);
   };
 
+  /** Nomes em lote por CPF — usado para enriquecer listagens (ex.: escolaxusuarioxfuncao) sem N+1. */
+  findNomesByCPFs = async (cpfs: string[]): Promise<Map<string, string>> => {
+    console.log("🟢 UsuarioDAO.findNomesByCPFs()");
+    if (cpfs.length === 0) return new Map();
+
+    const pool = await this.#database.getPool();
+    const placeholders = cpfs.map(() => "?").join(",");
+    const [linhas] = await pool.execute(
+      `SELECT UsuarioCPF, UsuarioNome FROM usuario WHERE UsuarioCPF IN (${placeholders})`,
+      cpfs
+    );
+    return new Map((linhas as Array<{ UsuarioCPF: string; UsuarioNome: string }>).map((r) => [r.UsuarioCPF, r.UsuarioNome]));
+  };
+
   findByField = async (field: string, value: string): Promise<Usuario[]> => {
     console.log("🟢 UsuarioDAO.findByField()");
 
