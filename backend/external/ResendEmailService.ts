@@ -81,35 +81,33 @@ export class ResendEmailService {
     const recipients = Array.isArray(options.to) ? options.to : [options.to];
     const from = options.from || this.#defaultFrom;
 
+    console.log(`📧 [ResendEmailService] Enviando e-mail para: ${recipients.join(', ')}`);
+
+    let data: { id?: string } | null | undefined;
+    let error: { message: string } | null | undefined;
     try {
-      console.log(`📧 [ResendEmailService] Enviando e-mail para: ${recipients.join(', ')}`);
-      
-      const { data, error } = await this.#resend.emails.send({
+      ({ data, error } = await this.#resend.emails.send({
         from,
         to: recipients,
         subject: options.subject,
         html: options.html,
         ...(options.text && { text: options.text }),
         ...(options.replyTo && { reply_to: options.replyTo })
-      });
-
-      if (error) {
-        console.error('❌ [ResendEmailService] Erro ao enviar e-mail:', error);
-        throw new Error(`Falha ao enviar e-mail via Resend: ${error.message}`);
-      }
-
-      console.log(`✅ [ResendEmailService] E-mail enviado com sucesso. ID: ${data?.id}`);
-      return { id: data?.id || '' };
-
-    } catch (error: any) {
-      console.error('❌ [ResendEmailService] Erro ao enviar e-mail:', {
-        message: error.message
-      });
-
-      throw new Error(
-        `Falha ao enviar e-mail via Resend: ${error.message}`
-      );
+      }));
+    } catch (erroInesperado: any) {
+      // Falha na própria chamada HTTP (rede, timeout, etc.) — distinto do
+      // `error` que a API do Resend retorna dentro de uma resposta 2xx.
+      console.error('❌ [ResendEmailService] Erro inesperado ao chamar a API do Resend:', erroInesperado);
+      throw new Error(`Falha ao enviar e-mail via Resend: ${erroInesperado.message}`);
     }
+
+    if (error) {
+      console.error('❌ [ResendEmailService] Erro retornado pela API do Resend:', error);
+      throw new Error(`Falha ao enviar e-mail via Resend: ${error.message}`);
+    }
+
+    console.log(`✅ [ResendEmailService] E-mail enviado com sucesso. ID: ${data?.id}`);
+    return { id: data?.id || '' };
   }
 
   /**

@@ -9,20 +9,29 @@ export interface ToastData {
   titulo?: string;
   mensagem: string;
   duracao?: number;
+  aoClicar?: () => void;
+}
+
+export interface ToastOpcoes {
+  titulo?: string;
+  duracao?: number;
+  /** Se informado, o toast fica clicável (cursor + click navega/executa a ação). */
+  aoClicar?: () => void;
 }
 
 export function useToast() {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const addToast = useCallback(
-    (type: ToastType, mensagem: string, titulo?: string, duracao?: number) => {
+    (type: ToastType, mensagem: string, opcoes?: ToastOpcoes) => {
       const id = Math.random().toString(36).substring(2, 9);
       const newToast: ToastData = {
         id,
         type,
-        titulo,
+        titulo: opcoes?.titulo,
         mensagem,
-        duracao: duracao ?? 5000,
+        duracao: opcoes?.duracao ?? 5000,
+        aoClicar: opcoes?.aoClicar,
       };
 
       setToasts((prev) => [...prev, newToast]);
@@ -36,30 +45,22 @@ export function useToast() {
   }, []);
 
   const success = useCallback(
-    (mensagem: string, titulo?: string, duracao?: number) => {
-      return addToast('success', mensagem, titulo, duracao);
-    },
+    (mensagem: string, opcoes?: ToastOpcoes) => addToast('success', mensagem, opcoes),
     [addToast]
   );
 
   const error = useCallback(
-    (mensagem: string, titulo?: string, duracao?: number) => {
-      return addToast('error', mensagem, titulo, duracao);
-    },
+    (mensagem: string, opcoes?: ToastOpcoes) => addToast('error', mensagem, opcoes),
     [addToast]
   );
 
   const warning = useCallback(
-    (mensagem: string, titulo?: string, duracao?: number) => {
-      return addToast('warning', mensagem, titulo, duracao);
-    },
+    (mensagem: string, opcoes?: ToastOpcoes) => addToast('warning', mensagem, opcoes),
     [addToast]
   );
 
   const info = useCallback(
-    (mensagem: string, titulo?: string, duracao?: number) => {
-      return addToast('info', mensagem, titulo, duracao);
-    },
+    (mensagem: string, opcoes?: ToastOpcoes) => addToast('info', mensagem, opcoes),
     [addToast]
   );
 

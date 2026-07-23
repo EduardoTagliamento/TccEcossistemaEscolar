@@ -11,6 +11,7 @@ export interface ToastProps {
   titulo?: string;
   mensagem: string;
   duracao?: number;
+  aoClicar?: () => void;
   onClose: (id: string) => void;
 }
 
@@ -28,7 +29,7 @@ const titulosPadrao: Record<ToastType, string> = {
   info: 'Informação',
 };
 
-export function Toast({ id, type, titulo, mensagem, duracao = 5000, onClose }: ToastProps) {
+export function Toast({ id, type, titulo, mensagem, duracao = 5000, aoClicar, onClose }: ToastProps) {
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
@@ -49,13 +50,25 @@ export function Toast({ id, type, titulo, mensagem, duracao = 5000, onClose }: T
   };
 
   return (
-    <div className={`${styles.toast} ${styles[type]} ${isClosing ? styles.closing : ''}`}>
+    <div
+      className={`${styles.toast} ${styles[type]} ${isClosing ? styles.closing : ''} ${aoClicar ? styles.clicavel : ''}`}
+      onClick={aoClicar}
+      role={aoClicar ? 'button' : undefined}
+      tabIndex={aoClicar ? 0 : undefined}
+    >
       <div className={styles.icone}>{icones[type]}</div>
       <div className={styles.conteudo}>
         <div className={styles.titulo}>{titulo || titulosPadrao[type]}</div>
         <div className={styles.mensagem}>{mensagem}</div>
       </div>
-      <button className={styles.botaoFechar} onClick={handleClose} aria-label="Fechar">
+      <button
+        className={styles.botaoFechar}
+        onClick={(evento) => {
+          evento.stopPropagation();
+          handleClose();
+        }}
+        aria-label="Fechar"
+      >
         ×
       </button>
       {duracao > 0 && (
@@ -75,6 +88,7 @@ export interface ToastContainerProps {
     titulo?: string;
     mensagem: string;
     duracao?: number;
+    aoClicar?: () => void;
   }>;
   onRemove: (id: string) => void;
 }

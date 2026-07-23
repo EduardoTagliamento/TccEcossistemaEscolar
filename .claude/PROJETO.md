@@ -54,9 +54,10 @@ Quase todo o backend REST já existe e está registrado em `backend/Server.ts` (
 - [x] Recibo de leitura visual — ✓/✓✓ em conversas individuais **e em grupos** (`Leitores[]` no `MensagemDTO`, decisão do usuário — ampliou o escopo original que previa só individual)
 - Pendências residuais de menor impacto (não bloqueiam uso): notificação in-app ao reagir, ordenação de chips por reação mais recente — ver seção 7 de `docs/PLANO_IMPLEMENTACAO_CHAT_MELHORIAS.md`
 
-### 🟡 Notificações (backend/frontend prontos, falta tempo real)
+### 🟢 Notificações — concluído (2026-07-23)
 - [x] Catálogo de tipos, preferências por usuário, e-mail via Resend, tela de notificações + configurações, dropdown no sino da navbar
-- [ ] Toast em tempo real ouvindo `notificacao:nova` via WebSocket em todas as telas (decisão confirmada, não implementado — dropdown hoje só busca ao abrir)
+- [x] Toast em tempo real ouvindo `notificacao:nova` via WebSocket em todas as telas do dashboard (`NotificacaoToastListener`, montado em `layout.tsx`) — clicável, marca como lida e navega pro link; badge do sino (`DashboardNavbar`) também incrementa em tempo real
+- [x] **Bug de e-mail corrigido (2026-07-23):** ~87% dos envios via Resend estavam falhando ("API key is invalid" / "domain not verified") — causa era configuração (chave/domínio no Resend/Railway, resolvida pelo usuário), mas também havia um bug real de mensagem de erro duplicada em `backend/external/ResendEmailService.ts` (throw dentro do try recapturado pelo catch do mesmo bloco) — corrigido.
 - [ ] Canal WhatsApp — **stub proposital** (`notificacaoWhatsapp.channel.ts` não envia nada de verdade); fora de escopo até integrar Evolution API
 - [ ] Paginação/retenção do feed — sem decisão fechada
 
