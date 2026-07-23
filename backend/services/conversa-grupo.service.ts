@@ -19,6 +19,18 @@ export default class ConversaGrupoService {
     this.#matriculaDAO = matriculaDAO;
   }
 
+  /**
+   * Papel do usuário no grupo de chat da turma (Representante/Vice-Representante
+   * etc.) — usado pelo módulo Matérias pra decidir quem pode trocar a capa/cor
+   * da turma. Retorna null se o usuário não é membro ou a turma não tem grupo.
+   */
+  async getFuncaoNaTurma(turmaGUID: string, usuarioCPF: string): Promise<'Membro' | 'Lider' | 'Representante' | 'Vice-Representante' | null> {
+    console.log('🟣 ConversaGrupoService.getFuncaoNaTurma()');
+    const grupo = await this.#conversaGrupoDAO.findByRefGUID(turmaGUID);
+    if (!grupo) return null;
+    return this.#conversaGrupoDAO.getFuncao(grupo.ConversaGUID, usuarioCPF);
+  }
+
   // Chamado após criação de uma Turma
   async criarGrupoTurma(turmaGUID: string, turmaNome: string): Promise<void> {
     console.log('🟣 ConversaGrupoService.criarGrupoTurma()');

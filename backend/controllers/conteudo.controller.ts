@@ -47,15 +47,26 @@ export class ConteudoController {
         }
       }
 
+      let categoriasPorTurma: Record<string, string> | undefined;
+      if (body.CategoriasPorTurma) {
+        try {
+          categoriasPorTurma = JSON.parse(body.CategoriasPorTurma);
+        } catch {
+          throw new ErrorResponse(400, "CategoriasPorTurma inválido", {
+            message: "CategoriasPorTurma deve ser um objeto JSON { TurmaGUID: CategoriaGUID }.",
+          });
+        }
+      }
+
       const createData: ConteudoCreateDTO = {
         MateriaGUID: body.MateriaGUID,
-        CategoriaGUID: body.CategoriaGUID || null,
         ConteudoTitulo: body.ConteudoTitulo,
         ConteudoTipo: body.ConteudoTipo,
         ConteudoDescricao: body.ConteudoDescricao || undefined,
         TurmasGUID: turmasGUID,
         ConteudoDataPublicacao: new Date(body.ConteudoDataPublicacao),
         DatasPorTurma: datasPorTurma,
+        CategoriasPorTurma: categoriasPorTurma,
         OrigemTipo: body.OrigemTipo || undefined,
         LinkUrl: body.LinkUrl || undefined,
         ConteudoHtml: body.ConteudoHtml || undefined,

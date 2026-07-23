@@ -13,6 +13,8 @@ import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuario
 import { RelacaoAnexosDAO } from "../backend/repositories/relacaoanexos.repository";
 import RelacaoAnexosService from "../backend/services/relacaoanexos.service";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import { CategoriaConteudoDAO } from "../backend/repositories/categoriaconteudo.repository";
+import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofessorxturma.repository";
 
 export default class TarefaAcademicaRoteador {
   #router: Router;
@@ -51,6 +53,27 @@ export default class TarefaAcademicaRoteador {
       AuthMiddleware.authenticate,
       this.#middleware.validateFilters,
       this.#controle.index
+    );
+
+    // PATCH /api/tarefa/matricula/:TarefaMatriculaGUID/avaliar - Professor avalia entrega (DEVE vir antes de "/:TarefaGUID")
+    this.#router.patch(
+      "/matricula/:TarefaMatriculaGUID/avaliar",
+      AuthMiddleware.authenticate,
+      this.#controle.avaliar
+    );
+
+    // GET /api/tarefa/pendentes-aluno?UsuarioCPF= (DEVE vir antes de "/:TarefaGUID")
+    this.#router.get(
+      "/pendentes-aluno",
+      AuthMiddleware.authenticate,
+      this.#controle.pendentesAluno
+    );
+
+    // GET /api/tarefa/pendentes-avaliacao-professor?UsuarioCPF= (DEVE vir antes de "/:TarefaGUID")
+    this.#router.get(
+      "/pendentes-avaliacao-professor",
+      AuthMiddleware.authenticate,
+      this.#controle.pendentesAvaliacaoProfessor
     );
 
     // GET /api/tarefa/:TarefaGUID - Buscar tarefa por GUID
@@ -134,8 +157,10 @@ const eventoDAO = new EventoDAO(db);
 const pendenciaDAO = new PendenciaDAO(db);
 const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(db);
 const relacaoAnexosDAO = new RelacaoAnexosDAO(db);
+const categoriaDAO = new CategoriaConteudoDAO(db);
+const alocacaoDAO = new MaterialProfessorTurmaDAO(db);
 
-const tarefaService = new TarefaAcademicaService(tarefaDAO, tarefaMatriculaDAO, anexoDAO, matriculaDAO);
+const tarefaService = new TarefaAcademicaService(tarefaDAO, tarefaMatriculaDAO, anexoDAO, matriculaDAO, categoriaDAO, alocacaoDAO);
 const relacaoAnexosService = new RelacaoAnexosService(relacaoAnexosDAO, anexoDAO, tarefaDAO, eventoDAO, pendenciaDAO, escolaxUsuarioxFuncaoDAO);
 const tarefaControle = new TarefaAcademicaControl(tarefaService, relacaoAnexosService);
 const tarefaMiddleware = new TarefaAcademicaMiddleware();

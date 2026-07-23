@@ -9,8 +9,18 @@ interface TarefaAcademicaMatriculaRow extends RowDataPacket {
   TarefaPrazoDataMatricula: Date | null;
   TarefaFeito: boolean | number;
   TarefaRealizacaoData: Date | null;
+  TarefaNota: number | null;
+  TarefaAvaliadoEm: Date | null;
+  TarefaAvaliadoPorCPF: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
+}
+
+export interface TarefaVencidaSemAvaliacao {
+  TarefaMatriculaGUID: string;
+  TarefaGUID: string;
+  MatriculaGUID: string;
+  UsuarioCPF: string;
 }
 
 /**
@@ -153,7 +163,10 @@ export class TarefaAcademicaMatriculaDAO {
    */
   update = async (
     TarefaMatriculaGUID: string,
-    updates: Partial<Pick<TarefaAcademicaMatricula, "TarefaFeito" | "TarefaRealizacaoData">>
+    updates: Partial<Pick<
+      TarefaAcademicaMatricula,
+      "TarefaFeito" | "TarefaRealizacaoData" | "TarefaNota" | "TarefaAvaliadoEm" | "TarefaAvaliadoPorCPF"
+    >>
   ): Promise<TarefaAcademicaMatricula | null> => {
     console.log("🟢 TarefaAcademicaMatriculaDAO.update()");
 
@@ -168,6 +181,21 @@ export class TarefaAcademicaMatriculaDAO {
       if (updates.TarefaFeito) {
         fields.push("TarefaRealizacaoData = CURRENT_TIMESTAMP");
       }
+    }
+
+    if (updates.TarefaNota !== undefined) {
+      fields.push("TarefaNota = ?");
+      values.push(updates.TarefaNota);
+    }
+
+    if (updates.TarefaAvaliadoEm !== undefined) {
+      fields.push("TarefaAvaliadoEm = ?");
+      values.push(updates.TarefaAvaliadoEm);
+    }
+
+    if (updates.TarefaAvaliadoPorCPF !== undefined) {
+      fields.push("TarefaAvaliadoPorCPF = ?");
+      values.push(updates.TarefaAvaliadoPorCPF);
     }
 
     if (fields.length === 0) {
@@ -194,6 +222,30 @@ export class TarefaAcademicaMatriculaDAO {
     }
 
     return this.mapRowToEntity(rows[0]);
+  };
+
+  /**
+   * Busca atribuições com prazo vencido, sem entrega/checkbox e sem nota
+   * ainda — usado pelo scheduler de nota automática (0) e pelo widget de
+   * "avaliações pendentes" do professor. Considera o prazo por matrícula
+   * (TarefaPrazoDataMatricula) quando existir, senão o prazo geral da tarefa.
+   */
+  findVencidasSemAvaliacao = async (agora: Date): Promise<TarefaVencidaSemAvaliacao[]> => {
+    console.log("🟢 TarefaAcademicaMatriculaDAO.findVencidasSemAvaliacao()");
+
+    const SQL = `
+      SELECT tm.TarefaMatriculaGUID, tm.TarefaGUID, tm.MatriculaGUID, mat.UsuarioCPF
+      FROM tarefaacademica_matricula tm
+      INNER JOIN tarefaacademica t ON t.TarefaGUID = tm.TarefaGUID
+      INNER JOIN matricula mat ON mat.MatriculaGUID = tm.MatriculaGUID
+      WHERE tm.TarefaFeito = FALSE
+        AND tm.TarefaNota IS NULL
+        AND COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) <= ?;
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL, [agora]);
+
+    return rows as TarefaVencidaSemAvaliacao[];
   };
 
   /**
@@ -237,6 +289,9 @@ export class TarefaAcademicaMatriculaDAO {
     atribuicao.TarefaPrazoDataMatricula = row.TarefaPrazoDataMatricula;
     atribuicao.TarefaFeito = Boolean(row.TarefaFeito);
     atribuicao.TarefaRealizacaoData = row.TarefaRealizacaoData;
+    atribuicao.TarefaNota = row.TarefaNota;
+    atribuicao.TarefaAvaliadoEm = row.TarefaAvaliadoEm;
+    atribuicao.TarefaAvaliadoPorCPF = row.TarefaAvaliadoPorCPF;
     atribuicao.CreatedAt = row.CreatedAt;
     atribuicao.UpdatedAt = row.UpdatedAt;
     return atribuicao;

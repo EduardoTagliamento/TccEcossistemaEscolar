@@ -1,0 +1,81 @@
+.container {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.titulo {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--ink-900, #0F1D17);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.subtitulo {
+  font-size: 1rem;
+  color: var(--slate-500, #647268);
+  margin-top: 0.25rem;
+}
+
+.filtro {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.inputFiltro {
+  flex: 1;
+  max-width: 400px;
+  padding: 0.65rem 1rem;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  gap: 1rem;
+  color: var(--slate-500, #647268);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line-200, #E2EAE5);
+  border-top-color: var(--green-500, #17C077);
+  border-radius: 50%;
+  animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+.mensagemVazia {
+  text-align: center;
+  padding: 3rem;
+  color: var(--slate-500, #647268);
+}

@@ -55,6 +55,17 @@ export class ConteudoPaginadoArquivoDAO {
     return this.mapRows(rows as ConteudoPaginadoArquivoRow[]);
   };
 
+  findById = async (conteudoPaginadoArquivoGUID: string): Promise<ConteudoPaginadoArquivo | null> => {
+    console.log("🟢 ConteudoPaginadoArquivoDAO.findById()");
+
+    const SQL = `SELECT * FROM conteudopaginadoarquivo WHERE ConteudoPaginadoArquivoGUID = ? LIMIT 1`;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL, [conteudoPaginadoArquivoGUID]);
+
+    const lista = this.mapRows(rows as ConteudoPaginadoArquivoRow[]);
+    return lista[0] || null;
+  };
+
   private mapRows(rows: ConteudoPaginadoArquivoRow[]): ConteudoPaginadoArquivo[] {
     return rows.map((row) => {
       const arquivo = new ConteudoPaginadoArquivo();

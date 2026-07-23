@@ -17,15 +17,21 @@ import { TurmaDAO } from "../backend/repositories/turma.repository";
 import { CategoriaConteudoDAO } from "../backend/repositories/categoriaconteudo.repository";
 import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofessorxturma.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import { ConteudoProgressoController } from "../backend/controllers/conteudoprogresso.controller";
+import ConteudoProgressoService from "../backend/services/conteudoprogresso.service";
+import { ConteudoProgressoDAO } from "../backend/repositories/conteudoprogresso.repository";
+import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 
 export default class ConteudoRoteador {
   #router: Router;
   #controller: ConteudoController;
+  #progressoController: ConteudoProgressoController;
 
-  constructor(controller: ConteudoController) {
+  constructor(controller: ConteudoController, progressoController: ConteudoProgressoController) {
     console.log("⬆️  ConteudoRoteador.constructor()");
     this.#router = Router();
     this.#controller = controller;
+    this.#progressoController = progressoController;
   }
 
   createRoutes = () => {
@@ -46,6 +52,12 @@ export default class ConteudoRoteador {
     this.#router.get("/:guid", ConteudoMiddleware.validarGUID, this.#controller.show);
 
     this.#router.delete("/:guid", ConteudoMiddleware.validarGUID, this.#controller.destroy);
+
+    // Progresso de consumo (aluno)
+    this.#router.post("/:guid/progresso/video", ConteudoMiddleware.validarGUID, this.#progressoController.registrarVideo);
+    this.#router.post("/:guid/progresso/texto", ConteudoMiddleware.validarGUID, this.#progressoController.registrarTexto);
+    this.#router.get("/:guid/progresso", ConteudoMiddleware.validarGUID, this.#progressoController.buscar);
+    this.#router.post("/pagina/:paginaGuid/progresso", this.#progressoController.registrarPagina);
 
     return this.#router;
   };
@@ -75,7 +87,13 @@ export const conteudoRouterFactory = () => {
     matProfTurDAO
   );
   const controller = new ConteudoController(conteudoService);
-  const roteador = new ConteudoRoteador(controller);
+
+  const progressoDAO = new ConteudoProgressoDAO(database);
+  const matriculaDAO = new MatriculaDAO(database);
+  const progressoService = new ConteudoProgressoService(progressoDAO, conteudoDAO, paginadoDAO, matriculaDAO);
+  const progressoController = new ConteudoProgressoController(progressoService);
+
+  const roteador = new ConteudoRoteador(controller, progressoController);
 
   return roteador.createRoutes();
 };

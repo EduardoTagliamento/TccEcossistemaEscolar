@@ -5,6 +5,10 @@ import { MateriaDAO, MateriaFilters } from "../repositories/materia.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import { CursoDAO } from "../repositories/curso.repository";
+import { MatriculaDAO } from "../repositories/matricula.repository";
+import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
+import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import { getAuditoriaService } from "./auditoria.service";
 
 export interface MateriaDTO {
@@ -56,24 +60,90 @@ export interface BatchCreateResponse {
   resultados: BatchItemResult[];
 }
 
+export interface MateriaDoAlunoDTO {
+  MateriaGUID: string;
+  MateriaNome: string;
+  TurmaGUID: string;
+  ProfessorCPF: string;
+  ProfessorNome: string;
+  ImagemUrl: string | null;
+  CorFundo: string;
+  MensagemBoasVindas: string | null;
+}
+
 export default class MateriaService {
   #materiaDAO: MateriaDAO;
   #escolaDAO: EscolaDAO;
   #escolaxusuarioxfuncaoDAO: EscolaxUsuarioxFuncaoDAO;
   #cursoDAO: CursoDAO;
+  #matriculaDAO?: MatriculaDAO;
+  #alocacaoDAO?: MaterialProfessorTurmaDAO;
+  #customizacaoDAO?: MateriaCustomizacaoDAO;
+  #usuarioDAO?: UsuarioDAO;
 
   constructor(
     materiaDAO: MateriaDAO,
     escolaDAO: EscolaDAO,
     escolaxusuarioxfuncaoDAO: EscolaxUsuarioxFuncaoDAO,
-    cursoDAO: CursoDAO
+    cursoDAO: CursoDAO,
+    matriculaDAO?: MatriculaDAO,
+    alocacaoDAO?: MaterialProfessorTurmaDAO,
+    customizacaoDAO?: MateriaCustomizacaoDAO,
+    usuarioDAO?: UsuarioDAO
   ) {
     console.log("⬆️  MateriaService.constructor()");
     this.#materiaDAO = materiaDAO;
     this.#escolaDAO = escolaDAO;
     this.#escolaxusuarioxfuncaoDAO = escolaxusuarioxfuncaoDAO;
     this.#cursoDAO = cursoDAO;
+    this.#matriculaDAO = matriculaDAO;
+    this.#alocacaoDAO = alocacaoDAO;
+    this.#customizacaoDAO = customizacaoDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
+
+  /**
+   * Grid de matérias do aluno (tela inicial de Matérias) — uma linha por
+   * (matéria, professor responsável) na turma onde ele está matriculado.
+   */
+  listarMateriasDoAluno = async (usuarioCPF: string, escolaGUID: string): Promise<MateriaDoAlunoDTO[]> => {
+    console.log("🟣 MateriaService.listarMateriasDoAluno()");
+
+    if (!this.#matriculaDAO || !this.#alocacaoDAO || !this.#customizacaoDAO || !this.#usuarioDAO) {
+      throw new ErrorResponse(500, "Serviço mal configurado", {
+        message: "MateriaService não recebeu as dependências necessárias para esta operação.",
+      });
+    }
+
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF);
+    if (!matricula) return [];
+
+    const alocacoes = await this.#alocacaoDAO.findByTurma(matricula.TurmaGUID);
+    const alocacoesAtivas = alocacoes.filter((a) => a.AlocacaoStatus === "Ativa");
+
+    const resultado: MateriaDoAlunoDTO[] = [];
+    for (const alocacao of alocacoesAtivas) {
+      const materia = await this.#materiaDAO.findById(alocacao.MateriaGUID);
+      if (!materia || materia.EscolaGUID !== escolaGUID || materia.MateriaStatus !== "Ativa") continue;
+
+      const professor = await this.#usuarioDAO.findById(alocacao.UsuarioCPF);
+      const customizacao = await this.#customizacaoDAO.findByMateriaEProfessor(alocacao.MateriaGUID, alocacao.UsuarioCPF);
+      const escola = customizacao?.CorFundo ? null : await this.#escolaDAO.findById(escolaGUID);
+
+      resultado.push({
+        MateriaGUID: materia.MateriaGUID,
+        MateriaNome: materia.MateriaNome || "",
+        TurmaGUID: matricula.TurmaGUID,
+        ProfessorCPF: alocacao.UsuarioCPF,
+        ProfessorNome: professor?.UsuarioNome ?? "Professor",
+        ImagemUrl: customizacao?.ImagemUrl ?? null,
+        CorFundo: customizacao?.CorFundo || (escola?.EscolaCorPriEs ? `#${escola.EscolaCorPriEs.replace(/^#/, "")}` : "#17C077"),
+        MensagemBoasVindas: customizacao?.MensagemBoasVindas ?? null,
+      });
+    }
+
+    return resultado;
+  };
 
   criarMateria = async (
     data: MateriaCreateDTO,

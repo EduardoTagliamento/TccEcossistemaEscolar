@@ -15,7 +15,7 @@ export default class ConteudoTurmaDAO {
     }
 
     const sql = `
-      INSERT INTO conteudoturma (ConteudoTurmaGUID, ConteudoGUID, TurmaGUID, ConteudoDataPublicacaoTurma)
+      INSERT INTO conteudoturma (ConteudoTurmaGUID, ConteudoGUID, TurmaGUID, ConteudoDataPublicacaoTurma, CategoriaGUID)
       VALUES ?
     `;
     const values = atribuicoes.map((a) => [
@@ -23,6 +23,7 @@ export default class ConteudoTurmaDAO {
       a.ConteudoGUID,
       a.TurmaGUID,
       a.ConteudoDataPublicacaoTurma,
+      a.CategoriaGUID,
     ]);
 
     const pool = await this.#database.getPool();
@@ -63,6 +64,7 @@ export default class ConteudoTurmaDAO {
     atribuicao.ConteudoDataPublicacaoTurma = row.ConteudoDataPublicacaoTurma
       ? new Date(row.ConteudoDataPublicacaoTurma)
       : null;
+    atribuicao.CategoriaGUID = row.CategoriaGUID ?? null;
     atribuicao.CreatedAt = row.CreatedAt ? new Date(row.CreatedAt) : undefined;
     return atribuicao;
   }

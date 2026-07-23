@@ -7,6 +7,8 @@ import { TurmaDAO } from "../backend/repositories/turma.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
+import { MateriaCustomizacaoDAO } from "../backend/repositories/materiacustomizacao.repository";
+import { EscolaDAO } from "../backend/repositories/escola.repository";
 import MysqlDatabase from "../backend/database/MysqlDatabase";
 import { ProfessorMiddleware } from "../backend/middlewares/professor.middleware";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
@@ -39,6 +41,8 @@ export function professorRouterFactory(): Router {
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
   const matriculaDAO = new MatriculaDAO(database);
   const usuarioDAO = new UsuarioDAO(database);
+  const customizacaoDAO = new MateriaCustomizacaoDAO(database);
+  const escolaDAO = new EscolaDAO(database);
 
   const professorService = new ProfessorService(
     alocacaoDAO,
@@ -46,7 +50,9 @@ export function professorRouterFactory(): Router {
     turmaDAO,
     escolaxUsuarioxFuncaoDAO,
     matriculaDAO,
-    usuarioDAO
+    usuarioDAO,
+    customizacaoDAO,
+    escolaDAO
   );
 
   const professorController = new ProfessorController(professorService);
@@ -149,6 +155,24 @@ export function professorRouterFactory(): Router {
     "/materias",
     AuthMiddleware.authenticate,
     professorController.buscarMateriasProfessor
+  );
+
+  /**
+   * GET /api/professor/materias-com-capa?EscolaGUID=X
+   */
+  router.get(
+    "/materias-com-capa",
+    AuthMiddleware.authenticate,
+    professorController.buscarMateriasComCapa
+  );
+
+  /**
+   * GET /api/professor/turmas-com-capa?MateriaGUID=X
+   */
+  router.get(
+    "/turmas-com-capa",
+    AuthMiddleware.authenticate,
+    professorController.buscarTurmasComCapa
   );
 
   /**

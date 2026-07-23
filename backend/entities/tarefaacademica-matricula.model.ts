@@ -25,6 +25,9 @@ export default class TarefaAcademicaMatricula {
   #TarefaPrazoDataMatricula: Date | null = null;
   #TarefaFeito!: boolean;
   #TarefaRealizacaoData!: Date | null;
+  #TarefaNota: number | null = null;
+  #TarefaAvaliadoEm: Date | null = null;
+  #TarefaAvaliadoPorCPF: string | null = null;
   #CreatedAt?: Date;
   #UpdatedAt?: Date;
 
@@ -109,6 +112,52 @@ export default class TarefaAcademicaMatricula {
     this.#TarefaRealizacaoData = value;
   }
 
+  get TarefaNota(): number | null {
+    return this.#TarefaNota;
+  }
+
+  set TarefaNota(value: number | null) {
+    if (value === null || value === undefined) {
+      this.#TarefaNota = null;
+      return;
+    }
+    if (typeof value !== "number" || isNaN(value) || value < 0 || value > 10) {
+      throw new ErrorResponse(400, "TarefaNota inválida", {
+        message: "TarefaNota deve ser um número entre 0 e 10",
+      });
+    }
+    this.#TarefaNota = Math.round(value * 100) / 100;
+  }
+
+  get TarefaAvaliadoEm(): Date | null {
+    return this.#TarefaAvaliadoEm;
+  }
+
+  set TarefaAvaliadoEm(value: Date | null) {
+    if (value === null || value === undefined) {
+      this.#TarefaAvaliadoEm = null;
+      return;
+    }
+    if (!(value instanceof Date) || isNaN(value.getTime())) {
+      throw new ErrorResponse(400, "TarefaAvaliadoEm inválido", {
+        message: "TarefaAvaliadoEm deve ser uma data válida",
+      });
+    }
+    this.#TarefaAvaliadoEm = value;
+  }
+
+  get TarefaAvaliadoPorCPF(): string | null {
+    return this.#TarefaAvaliadoPorCPF;
+  }
+
+  set TarefaAvaliadoPorCPF(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#TarefaAvaliadoPorCPF = null;
+      return;
+    }
+    this.#TarefaAvaliadoPorCPF = value.trim();
+  }
+
   get CreatedAt(): Date | undefined {
     return this.#CreatedAt;
   }
@@ -167,6 +216,9 @@ export default class TarefaAcademicaMatricula {
       TarefaPrazoDataMatricula: this.#TarefaPrazoDataMatricula?.toISOString() || null,
       TarefaFeito: this.#TarefaFeito,
       TarefaRealizacaoData: this.#TarefaRealizacaoData?.toISOString() || null,
+      TarefaNota: this.#TarefaNota,
+      TarefaAvaliadoEm: this.#TarefaAvaliadoEm?.toISOString() || null,
+      TarefaAvaliadoPorCPF: this.#TarefaAvaliadoPorCPF,
       CreatedAt: this.#CreatedAt?.toISOString() || null,
       UpdatedAt: this.#UpdatedAt?.toISOString() || null
     };

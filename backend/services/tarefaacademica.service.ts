@@ -6,6 +6,8 @@ import { TarefaAcademicaDAO, TarefaAcademicaFilters } from "../repositories/tare
 import { TarefaAcademicaMatriculaDAO } from "../repositories/tarefaacademica-matricula.repository";
 import { AnexoDAO } from "../repositories/anexo.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
+import { CategoriaConteudoDAO } from "../repositories/categoriaconteudo.repository";
+import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
@@ -23,6 +25,7 @@ export interface TarefaAcademicaDTO {
   TarefaPostagemData: string;
   TarefaPrazoData: string;
   TarefaTipoEntrega: "digital" | "fisica";
+  CategoriaGUID: string | null;
   TarefaCompartilhada: boolean;
   TarefaMinPessoas: number | null;
   TarefaMaxPessoas: number | null;
@@ -38,6 +41,9 @@ export interface MatriculaAtribuidaDTO {
   TarefaPrazoData: string;
   TarefaFeito: boolean;
   TarefaRealizacaoData: string | null;
+  TarefaNota: number | null;
+  TarefaAvaliadoEm: string | null;
+  TarefaAvaliadoPorCPF: string | null;
 }
 
 export interface TarefaAcademicaCreateDTO {
@@ -47,6 +53,7 @@ export interface TarefaAcademicaCreateDTO {
   TarefaConteudo?: string;
   TarefaPrazoData: Date;
   TarefaTipoEntrega: "digital" | "fisica";
+  CategoriaGUID?: string | null;
   anexosDescricao?: string[]; // GUIDs de anexos já enviados para descrição
   TarefaCompartilhada?: boolean;
   TarefaMinPessoas?: number | null;
@@ -63,6 +70,7 @@ export interface TarefaAcademicaUpdateDTO {
   TarefaConteudo?: string;
   TarefaPrazoData?: Date;
   TarefaTipoEntrega?: "digital" | "fisica";
+  CategoriaGUID?: string | null;
   TarefaMinPessoas?: number | null;
   TarefaMaxPessoas?: number | null;
 }
@@ -94,18 +102,53 @@ export default class TarefaAcademicaService {
   #tarefaMatriculaDAO: TarefaAcademicaMatriculaDAO;
   #anexoDAO: AnexoDAO;
   #matriculaDAO: MatriculaDAO;
+  #categoriaDAO: CategoriaConteudoDAO;
+  #alocacaoDAO: MaterialProfessorTurmaDAO;
   constructor(
     tarefaDAODependency: TarefaAcademicaDAO,
     tarefaMatriculaDAODependency: TarefaAcademicaMatriculaDAO,
     anexoDAODependency: AnexoDAO,
-    matriculaDAODependency: MatriculaDAO
+    matriculaDAODependency: MatriculaDAO,
+    categoriaDAODependency: CategoriaConteudoDAO,
+    alocacaoDAODependency: MaterialProfessorTurmaDAO
   ) {
     console.log("⬆️  TarefaAcademicaService.constructor()");
     this.#tarefaDAO = tarefaDAODependency;
     this.#tarefaMatriculaDAO = tarefaMatriculaDAODependency;
     this.#anexoDAO = anexoDAODependency;
     this.#matriculaDAO = matriculaDAODependency;
+    this.#categoriaDAO = categoriaDAODependency;
+    this.#alocacaoDAO = alocacaoDAODependency;
   }
+
+  /** Valida que a categoria (se informada) pertence ao professor e à mesma turma do alocação da tarefa. */
+  #validarCategoria = async (categoriaGUID: string | null | undefined, matXprofXturxescGUID: string, usuarioCPF: string): Promise<void> => {
+    if (!categoriaGUID) return;
+
+    const categoria = await this.#categoriaDAO.findById(categoriaGUID);
+    if (!categoria) {
+      throw new ErrorResponse(404, "Categoria não encontrada", {
+        message: `Não existe categoria com id ${categoriaGUID}`,
+      });
+    }
+
+    const alocacao = await this.#alocacaoDAO.findById(matXprofXturxescGUID);
+    if (!alocacao) {
+      throw new ErrorResponse(404, "Alocação não encontrada", {
+        message: `Não existe alocação com id ${matXprofXturxescGUID}`,
+      });
+    }
+
+    if (
+      categoria.UsuarioCPF !== usuarioCPF ||
+      categoria.MateriaGUID !== alocacao.MateriaGUID ||
+      categoria.TurmaGUID !== alocacao.TurmaGUID
+    ) {
+      throw new ErrorResponse(403, "Categoria inválida", {
+        message: "Essa categoria não pertence a você para esta matéria/turma.",
+      });
+    }
+  };
 
   /**
    * Criar tarefa e atribuir para múltiplos alunos
@@ -169,6 +212,8 @@ export default class TarefaAcademicaService {
       });
     }
 
+    await this.#validarCategoria(data.CategoriaGUID, data.matXprofXturxescGUID, usuarioCPF);
+
     // PASSO 1: Criar tarefa única (dados compartilhados)
     const tarefa = new TarefaAcademica();
     tarefa.TarefaGUID = uuidv4();
@@ -178,6 +223,7 @@ export default class TarefaAcademicaService {
     tarefa.TarefaPostagemData = new Date();
     tarefa.TarefaPrazoData = prazo;
     tarefa.TarefaTipoEntrega = data.TarefaTipoEntrega;
+    tarefa.CategoriaGUID = data.CategoriaGUID ?? null;
     
     // Campos de tarefa compartilhada
     tarefa.TarefaCompartilhada = data.TarefaCompartilhada || false;
@@ -396,9 +442,13 @@ export default class TarefaAcademicaService {
       }
     }
 
+    if (data.CategoriaGUID !== undefined) {
+      await this.#validarCategoria(data.CategoriaGUID, tarefa.matXprofXturxescGUID, usuarioCPF);
+    }
+
     const updates: Partial<Pick<
       TarefaAcademica,
-      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega" | 
+      "TarefaTitulo" | "TarefaConteudo" | "TarefaPrazoData" | "TarefaTipoEntrega" | "CategoriaGUID" |
       "TarefaMinPessoas" | "TarefaMaxPessoas"
     >> = {};
 
@@ -406,6 +456,7 @@ export default class TarefaAcademicaService {
     if (data.TarefaConteudo !== undefined) updates.TarefaConteudo = data.TarefaConteudo?.trim() ?? null;
     if (data.TarefaPrazoData !== undefined) updates.TarefaPrazoData = new Date(data.TarefaPrazoData);
     if (data.TarefaTipoEntrega !== undefined) updates.TarefaTipoEntrega = data.TarefaTipoEntrega;
+    if (data.CategoriaGUID !== undefined) updates.CategoriaGUID = data.CategoriaGUID;
     if (data.TarefaMinPessoas !== undefined) updates.TarefaMinPessoas = data.TarefaMinPessoas;
     if (data.TarefaMaxPessoas !== undefined) updates.TarefaMaxPessoas = data.TarefaMaxPessoas;
 
@@ -588,6 +639,9 @@ export default class TarefaAcademicaService {
       TarefaRealizacaoData: atribuicaoAtualizada.TarefaRealizacaoData
         ? atribuicaoAtualizada.TarefaRealizacaoData.toISOString()
         : null,
+      TarefaNota: atribuicaoAtualizada.TarefaNota,
+      TarefaAvaliadoEm: atribuicaoAtualizada.TarefaAvaliadoEm ? atribuicaoAtualizada.TarefaAvaliadoEm.toISOString() : null,
+      TarefaAvaliadoPorCPF: atribuicaoAtualizada.TarefaAvaliadoPorCPF,
     };
   };
 
@@ -595,6 +649,178 @@ export default class TarefaAcademicaService {
    * Notifica o professor responsável (via matXprofXturxescGUID) que um aluno
    * entregou/marcou a tarefa como feita (tipo `tarefa_resposta_recebida`).
    */
+  /**
+   * Professor atribui nota (0-10) a uma entrega de tarefa (digital ou
+   * presencial). Dispara `tarefa_avaliada` pro aluno.
+   */
+  avaliarTarefa = async (
+    TarefaMatriculaGUID: string,
+    nota: number,
+    professorCPF: string
+  ): Promise<MatriculaAtribuidaDTO> => {
+    console.log("🟣 TarefaAcademicaService.avaliarTarefa()");
+
+    if (nota < 0 || nota > 10 || isNaN(nota)) {
+      throw new ErrorResponse(400, "Nota inválida", {
+        message: "A nota deve ser um número entre 0 e 10.",
+      });
+    }
+
+    // Buscar a atribuição diretamente pelo seu próprio GUID (não temos TarefaGUID+MatriculaGUID aqui)
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT * FROM tarefaacademica_matricula WHERE TarefaMatriculaGUID = ? LIMIT 1`,
+      [TarefaMatriculaGUID]
+    );
+    if (rows.length === 0) {
+      throw new ErrorResponse(404, "Atribuição não encontrada", {
+        message: `Não existe atribuição de tarefa com id ${TarefaMatriculaGUID}`,
+      });
+    }
+    const linha = rows[0] as any;
+
+    const tarefa = await this.#tarefaDAO.findById(linha.TarefaGUID);
+    if (!tarefa) {
+      throw new ErrorResponse(404, "Tarefa não encontrada", {
+        message: `Não existe tarefa com id ${linha.TarefaGUID}`,
+      });
+    }
+
+    const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
+    if (!alocacao || alocacao.UsuarioCPF !== professorCPF) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Só o professor responsável por esta tarefa pode avaliá-la.",
+      });
+    }
+
+    const atribuicaoAtualizada = await this.#tarefaMatriculaDAO.update(TarefaMatriculaGUID, {
+      TarefaNota: nota,
+      TarefaAvaliadoEm: new Date(),
+      TarefaAvaliadoPorCPF: professorCPF,
+    });
+
+    if (!atribuicaoAtualizada) {
+      throw new ErrorResponse(500, "Erro ao avaliar tarefa");
+    }
+
+    const matricula = await this.#matriculaDAO.findById(atribuicaoAtualizada.MatriculaGUID);
+    if (matricula) {
+      const escolaGUID = await this.#resolverEscolaGUIDPorTurma(matricula.TurmaGUID);
+      if (escolaGUID) {
+        await getNotificacaoService().disparar({
+          tipoSlug: "tarefa_avaliada",
+          destinatarios: [matricula.UsuarioCPF],
+          escolaGUID,
+          titulo: `Sua tarefa "${tarefa.TarefaTitulo}" foi avaliada: nota ${nota.toFixed(2)}`,
+          entidadeTipo: "tarefa",
+          entidadeGUID: tarefa.TarefaGUID,
+          link: `/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`,
+        });
+
+        void getAuditoriaService().registrar({
+          EscolaGUID: escolaGUID,
+          UsuarioCPFAtor: professorCPF,
+          AcaoTipo: "Update",
+          EntidadeTipo: "tarefaacademicamatricula",
+          EntidadeGUID: TarefaMatriculaGUID,
+          EntidadeDescricao: `Nota ${nota.toFixed(2)} atribuída em "${tarefa.TarefaTitulo}"`,
+          CategoriaAuditoriaId: 2,
+        });
+      }
+    }
+
+    return {
+      TarefaMatriculaGUID: atribuicaoAtualizada.TarefaMatriculaGUID,
+      MatriculaGUID: atribuicaoAtualizada.MatriculaGUID,
+      TarefaPrazoData: (atribuicaoAtualizada.TarefaPrazoDataMatricula ?? tarefa.TarefaPrazoData).toISOString(),
+      TarefaFeito: atribuicaoAtualizada.TarefaFeito,
+      TarefaRealizacaoData: atribuicaoAtualizada.TarefaRealizacaoData
+        ? atribuicaoAtualizada.TarefaRealizacaoData.toISOString()
+        : null,
+      TarefaNota: atribuicaoAtualizada.TarefaNota,
+      TarefaAvaliadoEm: atribuicaoAtualizada.TarefaAvaliadoEm ? atribuicaoAtualizada.TarefaAvaliadoEm.toISOString() : null,
+      TarefaAvaliadoPorCPF: atribuicaoAtualizada.TarefaAvaliadoPorCPF,
+    };
+  };
+
+  /**
+   * Dashboard do aluno: tarefas com prazo no futuro e ainda não feitas.
+   * Explicitamente NÃO inclui atrasadas nem já enviadas/marcadas.
+   */
+  listarPendentesAluno = async (usuarioCPF: string): Promise<Array<{
+    TarefaGUID: string;
+    TarefaTitulo: string;
+    TarefaPrazoData: string;
+    MateriaNome: string;
+    TurmaNome: string;
+  }>> => {
+    console.log("🟣 TarefaAcademicaService.listarPendentesAluno()");
+
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT t.TarefaGUID, t.TarefaTitulo,
+              COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS TarefaPrazoData,
+              mat.MateriaNome, tu.TurmaNome
+       FROM tarefaacademica_matricula tm
+       INNER JOIN tarefaacademica t ON t.TarefaGUID = tm.TarefaGUID
+       INNER JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
+       INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+       INNER JOIN materia mat ON mat.MateriaGUID = mpt.MateriaGUID
+       INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
+       WHERE m.UsuarioCPF = ?
+         AND tm.TarefaFeito = FALSE
+         AND COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) > NOW()
+       ORDER BY TarefaPrazoData ASC`,
+      [usuarioCPF]
+    );
+
+    return rows.map((row: any) => ({
+      TarefaGUID: row.TarefaGUID,
+      TarefaTitulo: row.TarefaTitulo,
+      TarefaPrazoData: new Date(row.TarefaPrazoData).toISOString(),
+      MateriaNome: row.MateriaNome,
+      TurmaNome: row.TurmaNome,
+    }));
+  };
+
+  /**
+   * Dashboard do professor: entregas já feitas/marcadas, ainda sem nota.
+   */
+  listarPendentesAvaliacaoProfessor = async (usuarioCPF: string): Promise<Array<{
+    TarefaMatriculaGUID: string;
+    TarefaGUID: string;
+    TarefaTitulo: string;
+    MateriaNome: string;
+    TurmaNome: string;
+    AlunoNome: string;
+  }>> => {
+    console.log("🟣 TarefaAcademicaService.listarPendentesAvaliacaoProfessor()");
+
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT tm.TarefaMatriculaGUID, t.TarefaGUID, t.TarefaTitulo,
+              mat.MateriaNome, tu.TurmaNome, u.UsuarioNome AS AlunoNome
+       FROM tarefaacademica_matricula tm
+       INNER JOIN tarefaacademica t ON t.TarefaGUID = tm.TarefaGUID
+       INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+       INNER JOIN materia mat ON mat.MateriaGUID = mpt.MateriaGUID
+       INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
+       INNER JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
+       INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+       WHERE mpt.UsuarioCPF = ?
+         AND tm.TarefaFeito = TRUE
+         AND tm.TarefaNota IS NULL
+       ORDER BY tm.TarefaRealizacaoData ASC`,
+      [usuarioCPF]
+    );
+
+    return rows.map((row: any) => ({
+      TarefaMatriculaGUID: row.TarefaMatriculaGUID,
+      TarefaGUID: row.TarefaGUID,
+      TarefaTitulo: row.TarefaTitulo,
+      MateriaNome: row.MateriaNome,
+      TurmaNome: row.TurmaNome,
+      AlunoNome: row.AlunoNome,
+    }));
+  };
+
   #notificarTarefaRespostaRecebida = async (tarefa: TarefaAcademica, alunoCPF: string): Promise<void> => {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT mpt.UsuarioCPF AS ProfessorCPF, t.EscolaGUID
@@ -714,6 +940,7 @@ export default class TarefaAcademicaService {
       TarefaPostagemData: tarefa.TarefaPostagemData.toISOString(),
       TarefaPrazoData: tarefa.TarefaPrazoData.toISOString(),
       TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+      CategoriaGUID: tarefa.CategoriaGUID,
       TarefaCompartilhada: tarefa.TarefaCompartilhada,
       TarefaMinPessoas: tarefa.TarefaMinPessoas,
       TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
@@ -725,6 +952,9 @@ export default class TarefaAcademicaService {
         TarefaRealizacaoData: atrib.TarefaRealizacaoData
           ? atrib.TarefaRealizacaoData.toISOString()
           : null,
+        TarefaNota: atrib.TarefaNota,
+        TarefaAvaliadoEm: atrib.TarefaAvaliadoEm ? atrib.TarefaAvaliadoEm.toISOString() : null,
+        TarefaAvaliadoPorCPF: atrib.TarefaAvaliadoPorCPF,
       })),
       CreatedAt: tarefa.CreatedAt ? tarefa.CreatedAt.toISOString() : null,
       UpdatedAt: tarefa.UpdatedAt ? tarefa.UpdatedAt.toISOString() : null,

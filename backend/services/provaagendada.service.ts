@@ -7,6 +7,10 @@ import ProvaAgendadaTurmaDAO from "../repositories/provaagendada-turma.repositor
 import { AnexoDAO } from "../repositories/anexo.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
+import { CategoriaConteudoDAO } from "../repositories/categoriaconteudo.repository";
+import { ProvaAgendadaVisualizacaoDAO } from "../repositories/provaagendadavisualizacao.repository";
+import ProvaAgendadaVisualizacao from "../entities/provaagendadavisualizacao.model";
+import { MatriculaDAO } from "../repositories/matricula.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
@@ -38,6 +42,8 @@ export interface ProvaAgendadaCreateDTO {
   anexosDescricao?: string[];
   /** Agendamento automático: data específica por turma (TurmaGUID -> data). Sobrescreve ProvaData para a turma correspondente. */
   DatasPorTurma?: Record<string, Date>;
+  /** Categoria (por turma) escolhida pra cada linha de distribuição — chave é TurmaGUID. */
+  CategoriasPorTurma?: Record<string, string>;
 }
 
 export interface ProvaAgendadaUpdateDTO {
@@ -67,13 +73,19 @@ export default class ProvaAgendadaService {
   #anexoDAO: AnexoDAO;
   #turmaDAO: TurmaDAO;
   #materiaDAO: MateriaDAO;
+  #categoriaDAO: CategoriaConteudoDAO;
+  #visualizacaoDAO: ProvaAgendadaVisualizacaoDAO;
+  #matriculaDAO: MatriculaDAO;
 
   constructor(
     provaDAODependency: ProvaAgendadaDAO,
     provaTurmaDAODependency: ProvaAgendadaTurmaDAO,
     anexoDAODependency: AnexoDAO,
     turmaDAODependency: TurmaDAO,
-    materiaDAODependency: MateriaDAO
+    materiaDAODependency: MateriaDAO,
+    categoriaDAODependency: CategoriaConteudoDAO,
+    visualizacaoDAODependency: ProvaAgendadaVisualizacaoDAO,
+    matriculaDAODependency: MatriculaDAO
   ) {
     console.log("⬆️  ProvaAgendadaService.constructor()");
     this.#provaDAO = provaDAODependency;
@@ -81,7 +93,32 @@ export default class ProvaAgendadaService {
     this.#anexoDAO = anexoDAODependency;
     this.#turmaDAO = turmaDAODependency;
     this.#materiaDAO = materiaDAODependency;
+    this.#categoriaDAO = categoriaDAODependency;
+    this.#visualizacaoDAO = visualizacaoDAODependency;
+    this.#matriculaDAO = matriculaDAODependency;
   }
+
+  /**
+   * Aluno abre/visualiza uma prova — marca 100% instantâneo, igual conteúdo
+   * tipo texto. Sem relação nenhuma com nota (fora de escopo desta fase).
+   */
+  registrarVisualizacao = async (provaAgendadaTurmaGUID: string, usuarioCPF: string): Promise<void> => {
+    console.log("🟣 ProvaAgendadaService.registrarVisualizacao()");
+
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF);
+    if (!matricula) {
+      throw new ErrorResponse(404, "Matrícula não encontrada", {
+        message: "Usuário não possui matrícula ativa.",
+      });
+    }
+
+    const visualizacao = new ProvaAgendadaVisualizacao();
+    visualizacao.ProvaAgendadaVisualizacaoGUID = uuidv4();
+    visualizacao.ProvaAgendadaTurmaGUID = provaAgendadaTurmaGUID;
+    visualizacao.MatriculaGUID = matricula.MatriculaGUID;
+
+    await this.#visualizacaoDAO.registrar(visualizacao);
+  };
 
   /**
    * Cria uma prova UMA VEZ e atribui a N turmas
@@ -123,6 +160,24 @@ export default class ProvaAgendadaService {
       throw new ErrorResponse(404, "Matéria não encontrada", {
         message: `Não existe matéria com id ${data.MateriaGUID}`,
       });
+    }
+
+    // Validar categorias por turma (se fornecidas) — cada uma deve pertencer
+    // a este professor + matéria + à MESMA turma daquela linha de distribuição
+    if (data.CategoriasPorTurma) {
+      for (const [turmaGUID, categoriaGUID] of Object.entries(data.CategoriasPorTurma)) {
+        const categoria = await this.#categoriaDAO.findById(categoriaGUID);
+        if (
+          !categoria ||
+          categoria.UsuarioCPF !== usuarioCPF ||
+          categoria.MateriaGUID !== data.MateriaGUID ||
+          categoria.TurmaGUID !== turmaGUID
+        ) {
+          throw new ErrorResponse(400, "Categoria inválida", {
+            message: `A categoria informada para a turma ${turmaGUID} não existe ou não pertence a você/esta matéria/turma.`,
+          });
+        }
+      }
     }
 
     const agoraComTolerancia = new Date(Date.now() - DATA_VALIDACAO_TOLERANCIA_MS);
@@ -171,6 +226,7 @@ export default class ProvaAgendadaService {
       atribuicao.ProvaDataTurma = data.DatasPorTurma?.[turmaGUID]
         ? new Date(data.DatasPorTurma[turmaGUID])
         : null;
+      atribuicao.CategoriaGUID = data.CategoriasPorTurma?.[turmaGUID] || null;
       atribuicoes.push(atribuicao);
     }
 

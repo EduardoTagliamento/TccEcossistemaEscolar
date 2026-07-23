@@ -13,7 +13,9 @@ export default class CategoriaConteudo {
   #CategoriaGUID!: string;
   #UsuarioCPF!: string;
   #MateriaGUID!: string;
+  #TurmaGUID!: string;
   #CategoriaNome: string | null = null;
+  #Ordem: number = 0;
   #CreatedAt: Date | null = null;
   #UpdatedAt: Date | null = null;
 
@@ -60,6 +62,34 @@ export default class CategoriaConteudo {
       throw new Error("MateriaGUID deve ter 36 caracteres.");
     }
     this.#MateriaGUID = guid;
+  }
+
+  // ========== TurmaGUID ==========
+  get TurmaGUID(): string {
+    return this.#TurmaGUID;
+  }
+
+  set TurmaGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("TurmaGUID deve ser uma string não vazia.");
+    }
+    const guid = value.trim();
+    if (guid.length !== 36) {
+      throw new Error("TurmaGUID deve ter 36 caracteres.");
+    }
+    this.#TurmaGUID = guid;
+  }
+
+  // ========== Ordem ==========
+  get Ordem(): number {
+    return this.#Ordem;
+  }
+
+  set Ordem(value: number) {
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+      throw new Error("Ordem deve ser um inteiro maior ou igual a zero.");
+    }
+    this.#Ordem = value;
   }
 
   // ========== CategoriaNome ==========

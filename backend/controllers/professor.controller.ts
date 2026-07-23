@@ -431,6 +431,66 @@ export default class ProfessorController {
   };
 
   /**
+   * GET /api/professor/materias-com-capa?EscolaGUID=X
+   * Grid de seleção de matéria (módulo Matérias) — já com capa/cor
+   */
+  buscarMateriasComCapa = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      const { EscolaGUID } = req.query;
+
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
+      }
+      if (!EscolaGUID || typeof EscolaGUID !== "string") {
+        throw new ErrorResponse(400, "EscolaGUID é obrigatório");
+      }
+
+      const materias = await this.#professorService.buscarMateriasComCapaProfessor(usuarioCPF, EscolaGUID);
+
+      res.status(200).json({ success: true, data: materias, total: materias.length });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({ success: false, message: error.message, details: error.details });
+      } else {
+        console.error("❌ Erro ao buscar matérias com capa:", error);
+        res.status(500).json({ success: false, message: "Erro interno ao buscar matérias" });
+      }
+    }
+  };
+
+  /**
+   * GET /api/professor/turmas-com-capa?MateriaGUID=X
+   * Grid de seleção de turma (módulo Matérias), dado que já escolheu a matéria — já com capa/cor
+   */
+  buscarTurmasComCapa = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      const { MateriaGUID } = req.query;
+
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
+      }
+      if (!MateriaGUID || typeof MateriaGUID !== "string") {
+        throw new ErrorResponse(400, "MateriaGUID é obrigatório");
+      }
+
+      const turmas = await this.#professorService.buscarTurmasComCapaProfessor(usuarioCPF, MateriaGUID);
+
+      res.status(200).json({ success: true, data: turmas, total: turmas.length });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({ success: false, message: error.message, details: error.details });
+      } else {
+        console.error("❌ Erro ao buscar turmas com capa:", error);
+        res.status(500).json({ success: false, message: "Erro interno ao buscar turmas" });
+      }
+    }
+  };
+
+  /**
    * GET /api/professor/turmas-alunos?MatProfTurGUID=X
    * Buscar estrutura hierárquica de turmas e alunos para uma alocação
    * Retorna: { series: [{ TurmaSerie, turmas: [{ TurmaGUID, TurmaNome, alunos: [{ MatriculaGUID, UsuarioNome }] }] }] }

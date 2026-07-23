@@ -60,6 +60,7 @@ export default class TarefaAcademicaControl {
         TarefaConteudo: tarefa.TarefaConteudo,
         TarefaPrazoData: new Date(tarefa.TarefaPrazoData),
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+        CategoriaGUID: tarefa.CategoriaGUID,
         anexosDescricao: tarefa.anexosDescricao,
         TarefaCompartilhada: tarefa.TarefaCompartilhada || false,
         TarefaMinPessoas: tarefa.TarefaMinPessoas,
@@ -99,6 +100,7 @@ export default class TarefaAcademicaControl {
         TarefaConteudo: tarefa.TarefaConteudo,
         TarefaPrazoData: new Date(tarefa.TarefaPrazoData),
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+        CategoriaGUID: tarefa.CategoriaGUID,
         anexosDescricao: tarefa.anexosDescricao,
         TarefaCompartilhada: tarefa.TarefaCompartilhada || false,
         TarefaMinPessoas: tarefa.TarefaMinPessoas,
@@ -202,6 +204,7 @@ export default class TarefaAcademicaControl {
         TarefaConteudo: tarefa.TarefaConteudo,
         TarefaPrazoData: tarefa.TarefaPrazoData ? new Date(tarefa.TarefaPrazoData) : undefined,
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
+        CategoriaGUID: tarefa.CategoriaGUID,
         TarefaMinPessoas: tarefa.TarefaMinPessoas,
         TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
       };
@@ -247,6 +250,63 @@ export default class TarefaAcademicaControl {
         message: `Tarefa marcada como ${TarefaFeito ? "feita" : "não feita"}`,
         data: { atribuicao: atribuicaoAtualizada }
       });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PATCH /api/tarefa/matricula/:TarefaMatriculaGUID/avaliar
+   * Professor atribui nota (0-10) a uma entrega
+   * Body: { Nota: number }
+   */
+  avaliar = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.avaliar()");
+    try {
+      const { TarefaMatriculaGUID } = request.params;
+      const { Nota } = request.body;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      if (!usuarioCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const atribuicaoAvaliada = await this.#tarefaService.avaliarTarefa(TarefaMatriculaGUID, Number(Nota), usuarioCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Tarefa avaliada com sucesso",
+        data: { atribuicao: atribuicaoAvaliada },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/tarefa/pendentes-aluno?UsuarioCPF=
+   */
+  pendentesAluno = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.pendentesAluno()");
+    try {
+      const usuarioCPF = (request.query.UsuarioCPF as string) || request.user?.UsuarioCPF || "";
+      const pendentes = await this.#tarefaService.listarPendentesAluno(usuarioCPF);
+      response.status(200).json({ success: true, message: "Pendentes listadas com sucesso", data: { pendentes } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/tarefa/pendentes-avaliacao-professor?UsuarioCPF=
+   */
+  pendentesAvaliacaoProfessor = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.pendentesAvaliacaoProfessor()");
+    try {
+      const usuarioCPF = (request.query.UsuarioCPF as string) || request.user?.UsuarioCPF || "";
+      const pendentes = await this.#tarefaService.listarPendentesAvaliacaoProfessor(usuarioCPF);
+      response.status(200).json({ success: true, message: "Pendentes listadas com sucesso", data: { pendentes } });
     } catch (error) {
       next(error);
     }

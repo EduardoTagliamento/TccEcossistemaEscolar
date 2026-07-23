@@ -23,6 +23,8 @@ interface TurmaRow extends RowDataPacket {
   TurmaIsTecnico: boolean;
   CursoGUID: string | null;
   TurmaStatus: 'Ativa' | 'Inativa' | 'Encerrada';
+  TurmaImagemUrl: string | null;
+  TurmaCorFundo: string | null;
   TurmaCreatedAt: Date;
   TurmaUpdatedAt: Date;
 }
@@ -208,6 +210,16 @@ export class TurmaDAO {
       params.push(updates.TurmaStatus);
     }
 
+    if (updates.TurmaImagemUrl !== undefined) {
+      fields.push('TurmaImagemUrl = ?');
+      params.push(updates.TurmaImagemUrl);
+    }
+
+    if (updates.TurmaCorFundo !== undefined) {
+      fields.push('TurmaCorFundo = ?');
+      params.push(updates.TurmaCorFundo);
+    }
+
     // Sempre atualiza UpdatedAt
     fields.push('TurmaUpdatedAt = ?');
     params.push(new Date());
@@ -276,6 +288,8 @@ export class TurmaDAO {
       turma.TurmaIsTecnico = Boolean(row.TurmaIsTecnico);
       turma.CursoGUID = row.CursoGUID;
       turma.TurmaStatus = row.TurmaStatus;
+      turma.TurmaImagemUrl = row.TurmaImagemUrl ?? null;
+      turma.TurmaCorFundo = row.TurmaCorFundo ?? null;
       turma.TurmaCreatedAt = row.TurmaCreatedAt;
       turma.TurmaUpdatedAt = row.TurmaUpdatedAt;
       return turma;

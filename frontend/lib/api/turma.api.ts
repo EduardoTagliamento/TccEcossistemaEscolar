@@ -35,6 +35,8 @@ export interface Turma {
   TurmaIsTecnico: boolean;
   CursoGUID: string | null;
   TurmaStatus: 'Ativa' | 'Inativa' | 'Encerrada';
+  TurmaImagemUrl?: string | null;
+  TurmaCorFundo?: string | null;
   TurmaCreatedAt: Date | string;
   TurmaUpdatedAt: Date | string;
 }

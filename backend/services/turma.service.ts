@@ -7,6 +7,8 @@ import ErrorResponse from "../utils/ErrorResponse";
 import { v4 as uuidv4 } from "uuid";
 import ConversaGrupoService from "./conversa-grupo.service";
 import { getAuditoriaService } from "./auditoria.service";
+import R2StorageService from "./r2storage.service";
+import { extrairCorDominante } from "../utils/helpers/cor-imagem.helper";
 
 /**
  * DTOs para transferência de dados
@@ -563,6 +565,87 @@ export default class TurmaService {
     // 4. Encerrar grupo de conversa da turma
     if (this.#conversaGrupoService) {
       await this.#conversaGrupoService.encerrarGrupoTurma(turmaGUID);
+    }
+  }
+
+  /**
+   * Atualiza a capa (imagem + cor) da turma — compartilhada entre todas as
+   * matérias dessa turma. Quem pode: Representante/Vice-Representante do
+   * grupo de chat da turma, ou Coordenação/Direção ativa na escola.
+   *
+   * Se enviar imagem e não informar cor explícita, extrai a cor dominante
+   * da imagem via `sharp`; sem imagem nenhuma ainda, o frontend usa a cor
+   * da escola como fallback visual (não persistido aqui).
+   */
+  async atualizarCapa(
+    turmaGUID: string,
+    usuarioCPF: string,
+    dados: { imagem?: { buffer: Buffer; mimetype: string }; cor?: string }
+  ): Promise<TurmaDTO> {
+    const turma = await this.#turmaDAO.findById(turmaGUID);
+    if (!turma) {
+      throw new ErrorResponse(404, 'Turma não encontrada', {
+        message: `Não existe turma com id ${turmaGUID}`,
+      });
+    }
+
+    await this.validarPermissaoCapaTurma(turmaGUID, usuarioCPF, turma.EscolaGUID);
+
+    const updates: { TurmaImagemUrl?: string; TurmaCorFundo?: string } = {};
+
+    if (dados.imagem) {
+      const extensao = dados.imagem.mimetype.split('/')[1] || 'jpg';
+      const chave = `turmas/${turmaGUID}/capa-${Date.now()}.${extensao}`;
+      const novaUrl = await R2StorageService.upload(chave, dados.imagem.buffer, dados.imagem.mimetype);
+
+      if (turma.TurmaImagemUrl) {
+        R2StorageService.removeByUrl(turma.TurmaImagemUrl).catch((erro) =>
+          console.error('Erro ao remover capa antiga da turma:', erro)
+        );
+      }
+
+      updates.TurmaImagemUrl = novaUrl;
+      updates.TurmaCorFundo = dados.cor || (await extrairCorDominante(dados.imagem.buffer));
+    } else if (dados.cor) {
+      updates.TurmaCorFundo = dados.cor;
+    }
+
+    const atualizada = await this.#turmaDAO.update(turmaGUID, updates);
+    if (!atualizada) {
+      throw new ErrorResponse(500, 'Erro ao atualizar capa da turma');
+    }
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: turma.EscolaGUID,
+      UsuarioCPFAtor: usuarioCPF,
+      AcaoTipo: "Update",
+      EntidadeTipo: "turma",
+      EntidadeGUID: turmaGUID,
+      EntidadeDescricao: `Capa/cor de ${turma.TurmaSerie} ${turma.TurmaNome} alterada`,
+      CategoriaAuditoriaId: 2,
+    });
+
+    return this.toDTO(atualizada);
+  }
+
+  /**
+   * Permissão pra trocar capa/cor da turma: Representante/Vice-Representante
+   * do grupo de chat dela, OU Coordenação/Direção ativa na escola.
+   */
+  private async validarPermissaoCapaTurma(turmaGUID: string, usuarioCPF: string, escolaGUID: string): Promise<void> {
+    if (this.#conversaGrupoService) {
+      const funcao = await this.#conversaGrupoService.getFuncaoNaTurma(turmaGUID, usuarioCPF);
+      if (funcao === 'Representante' || funcao === 'Vice-Representante') {
+        return;
+      }
+    }
+
+    try {
+      await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+    } catch {
+      throw new ErrorResponse(403, 'Sem permissão', {
+        message: 'Só o representante/vice-representante da turma ou Coordenação/Direção podem alterar a capa da turma.',
+      });
     }
   }
 

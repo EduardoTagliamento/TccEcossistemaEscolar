@@ -24,6 +24,7 @@ export default class TarefaAcademica {
   #TarefaPostagemData!: Date;
   #TarefaPrazoData!: Date;
   #TarefaTipoEntrega!: "digital" | "fisica";
+  #CategoriaGUID: string | null = null;
   #CreatedAt: Date | null = null;
   #UpdatedAt: Date | null = null;
   
@@ -50,6 +51,22 @@ export default class TarefaAcademica {
       throw new Error("TarefaGUID deve ter 36 caracteres.");
     }
     this.#TarefaGUID = guid;
+  }
+
+  // ========== CategoriaGUID ==========
+  get CategoriaGUID(): string | null {
+    return this.#CategoriaGUID;
+  }
+
+  set CategoriaGUID(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#CategoriaGUID = null;
+      return;
+    }
+    if (typeof value !== "string" || value.trim().length !== 36) {
+      throw new Error("CategoriaGUID deve ser um UUID válido (36 caracteres) ou null.");
+    }
+    this.#CategoriaGUID = value.trim();
   }
 
   // ========== matXprofXturxescGUID ==========

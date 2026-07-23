@@ -503,6 +503,9 @@ export default function DashboardNavbar() {
     ...(isCoordSecretariaOuDirecao
       ? [{ key: 'cadastro-pendencia', href: `/dashboard/${escolaGUID}/cadastro-pendencia`, label: 'Cadastro de Pendências', icon: 'file-text' as IconName }]
       : []),
+    ...(isProfessor || isAluno
+      ? [{ key: 'materias', href: `/dashboard/${escolaGUID}/materias`, label: 'Matérias', icon: 'book-open' as IconName }]
+      : []),
     ...(isProfessor
       ? [{ key: 'cadastro', href: `/dashboard/${escolaGUID}/cadastro`, label: 'Cadastro', icon: 'edit' as IconName }]
       : []),
