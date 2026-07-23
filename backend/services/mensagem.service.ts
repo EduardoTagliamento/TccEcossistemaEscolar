@@ -1,7 +1,14 @@
 import { v4 as uuidv4 } from 'uuid';
 import { RowDataPacket } from 'mysql2';
 import Mensagem from '../entities/mensagem.model';
-import { MensagemDAO } from '../repositories/mensagem.repository';
+import {
+  MensagemDAO,
+  EMOJIS_REACAO_PERMITIDOS,
+  ReacaoEmoji,
+  ReacaoResumo,
+  agruparReacoesPorMensagem,
+  agruparLeitoresPorMensagem,
+} from '../repositories/mensagem.repository';
 import { ConversaGrupoDAO } from '../repositories/conversa-grupo.repository';
 import { ConversaDAO } from '../repositories/conversa.repository';
 import { MensagemFixadaDTO } from './conversa.service';
@@ -17,6 +24,16 @@ export interface MensagemDTO {
   MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
   MensagemCreatedAt: string;
   MensagemEditadaAt: string | null;
+  Reacoes: ReacaoResumo[];
+  Leitores: string[];
+}
+
+export interface ReacaoAtualizadaDTO {
+  ConversaGUID: string;
+  MensagemGUID: string;
+  Reacoes: ReacaoResumo[];
+  AtorCPF: string;
+  Acao: 'adicionada' | 'removida';
 }
 
 export interface HistoricoDTO {
@@ -144,10 +161,56 @@ export default class MensagemService {
     }
 
     const mensagens = await this.#mensagemDAO.findByConversa(conversaGUID, limit, beforeGUID);
+    const guids = mensagens.map((m) => m.MensagemGUID);
+    const reacoesPorMensagem = agruparReacoesPorMensagem(await this.#mensagemDAO.findReacoesPorMensagens(guids));
+    const leitoresPorMensagem = agruparLeitoresPorMensagem(await this.#mensagemDAO.findLeitoresPorMensagens(guids));
+
     return {
-      Mensagens: mensagens.map((m) => this.#toDTO(m)),
+      Mensagens: mensagens.map((m) =>
+        this.#toDTO(m, reacoesPorMensagem[m.MensagemGUID], leitoresPorMensagem[m.MensagemGUID])
+      ),
       HasMore: mensagens.length === limit,
     };
+  }
+
+  async reagir(
+    mensagemGUID: string,
+    conversaGUID: string,
+    usuarioCPF: string,
+    emoji: string
+  ): Promise<ReacaoAtualizadaDTO> {
+    console.log('🟣 MensagemService.reagir()');
+
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    if (!isParticipante) {
+      throw new ErrorResponse(403, 'Você não faz parte desta conversa');
+    }
+
+    const mensagem = await this.#mensagemDAO.findById(mensagemGUID);
+    if (!mensagem || mensagem.ConversaGUID !== conversaGUID || mensagem.MensagemDeletedAt !== null) {
+      throw new ErrorResponse(404, 'Mensagem não encontrada nesta conversa');
+    }
+
+    const emojiTrimmed = emoji.trim();
+    if (!(EMOJIS_REACAO_PERMITIDOS as readonly string[]).includes(emojiTrimmed)) {
+      throw new ErrorResponse(400, `ReacaoEmoji deve ser um dos suportados: ${EMOJIS_REACAO_PERMITIDOS.join(' ')}`);
+    }
+
+    const acao = await this.#mensagemDAO.toggleReacao(mensagemGUID, usuarioCPF, emojiTrimmed as ReacaoEmoji);
+    const reacoesRows = await this.#mensagemDAO.findReacoesPorMensagens([mensagemGUID]);
+    const reacoes = agruparReacoesPorMensagem(reacoesRows)[mensagemGUID] ?? [];
+
+    const payload: ReacaoAtualizadaDTO = {
+      ConversaGUID: conversaGUID,
+      MensagemGUID: mensagemGUID,
+      Reacoes: reacoes,
+      AtorCPF: usuarioCPF,
+      Acao: acao,
+    };
+
+    const { SocketServer } = await import('../websocket/SocketServer');
+    SocketServer.emit(conversaGUID, 'reacao_atualizada', payload);
+    return payload;
   }
 
   async marcarComoLida(conversaGUID: string, usuarioCPF: string): Promise<void> {
@@ -221,6 +284,9 @@ export default class MensagemService {
 
     const { MensagemEditadaAt } = await this.#mensagemDAO.edit(mensagemGUID, conteudoTrimmed);
 
+    const reacoesRows = await this.#mensagemDAO.findReacoesPorMensagens([mensagemGUID]);
+    const leitoresRows = await this.#mensagemDAO.findLeitoresPorMensagens([mensagemGUID]);
+
     const dto: MensagemDTO = {
       MensagemGUID: mensagemGUID,
       ConversaGUID: conversaGUID,
@@ -229,6 +295,8 @@ export default class MensagemService {
       MensagemTipo: mensagem.MensagemTipo,
       MensagemCreatedAt: mensagem.MensagemCreatedAt.toISOString(),
       MensagemEditadaAt: MensagemEditadaAt.toISOString(),
+      Reacoes: agruparReacoesPorMensagem(reacoesRows)[mensagemGUID] ?? [],
+      Leitores: agruparLeitoresPorMensagem(leitoresRows)[mensagemGUID] ?? [],
     };
 
     const { SocketServer } = await import('../websocket/SocketServer');
@@ -333,7 +401,7 @@ export default class MensagemService {
     }));
   }
 
-  #toDTO(m: Mensagem): MensagemDTO {
+  #toDTO(m: Mensagem, reacoes: ReacaoResumo[] = [], leitores: string[] = []): MensagemDTO {
     return {
       MensagemGUID: m.MensagemGUID,
       ConversaGUID: m.ConversaGUID,
@@ -342,6 +410,8 @@ export default class MensagemService {
       MensagemTipo: m.MensagemTipo,
       MensagemCreatedAt: m.MensagemCreatedAt.toISOString(),
       MensagemEditadaAt: m.MensagemEditadaAt?.toISOString() ?? null,
+      Reacoes: reacoes,
+      Leitores: leitores,
     };
   }
 }

@@ -200,4 +200,17 @@ export class ConversaController {
       next(error);
     }
   };
+
+  // POST /api/conversa/:guid/mensagem/:msgGuid/reacao
+  reagirMensagem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log('🔵 ConversaController.reagirMensagem()');
+    try {
+      const { guid, msgGuid } = req.params;
+      const { ReacaoEmoji } = req.body;
+      const dto = await this.#mensagemService.reagir(msgGuid, guid, req.user!.UsuarioCPF, ReacaoEmoji);
+      res.status(200).json({ success: true, message: 'Reação atualizada', data: dto });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

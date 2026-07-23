@@ -392,6 +392,7 @@ Documentação completa da API de conversas individuais e em grupo (Turma/Tarefa
 - **GET** `/api/conversa/:guid/fixadas` - Mensagens fixadas
 - **POST**/**DELETE** `/api/conversa/:guid/mensagem/:msgGuid/fixar` - Fixar/desafixar mensagem
 - **DELETE**/**PATCH** `/api/conversa/:guid/mensagem/:msgGuid` - Deletar/editar mensagem
+- **POST** `/api/conversa/:guid/mensagem/:msgGuid/reacao` - Reagir a mensagem (toggle, múltiplos emojis por usuário)
 - **PUT**/**DELETE** `/api/conversa/:guid/permissao/representante` - Gerenciar Representante (Turma)
 - **PUT**/**DELETE** `/api/conversa/:guid/permissao/vice-representante[/:cpf]` - Gerenciar Vice-Representante
 
@@ -400,6 +401,9 @@ Documentação completa da API de conversas individuais e em grupo (Turma/Tarefa
 - ✅ Papéis de moderação diferem por tipo de grupo (Líder em Tarefa; Representante/Vice em Turma)
 - ✅ Soft delete e edição de mensagens; fixar/desafixar com papel exigido em grupo
 - ✅ Envio de mensagem em tempo real via WebSocket (fora desta API REST)
+- ✅ Reações a mensagens (2026-07-23): múltiplas simultâneas e independentes por usuário (`👍 ❤️ 😂 😮 😢 🙏`), toggle por par (usuário, emoji), sem hierarquia de papel; REST + WebSocket (`reagir_mensagem`/`reacao_atualizada`)
+- ✅ Recibo de leitura visual (2026-07-23): `MensagemDTO.Leitores` (CPFs que já leram, exceto o remetente), em conversas Individuais e em Grupo
+- ✅ Gestão de grupo (2026-07-23): `ConversaDetalheDTO.ConversaGrupoRefGUID` e `MembroDTO.UsuarioNome` novos (enriquecimento aditivo); eventos `permissao_atualizada`/`membro_saiu` agora também consumidos pelo frontend
 
 ### ✅ Categoria de Conteúdo (Content Category)
 **Arquivo:** [categoriaconteudo-api.md](categoriaconteudo-api.md)

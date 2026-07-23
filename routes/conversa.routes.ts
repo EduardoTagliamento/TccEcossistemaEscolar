@@ -98,6 +98,15 @@ export function conversaRouterFactory(): Router {
     controller.editarMensagem
   );
 
+  // POST /api/conversa/:guid/mensagem/:msgGuid/reacao — reage (toggle) a uma mensagem
+  router.post(
+    '/:guid/mensagem/:msgGuid/reacao',
+    ConversaMiddleware.validarGUID,
+    ConversaMiddleware.validarMsgGUID,
+    ConversaMiddleware.validarReacaoBody,
+    controller.reagirMensagem
+  );
+
   // PUT /api/conversa/:guid/permissao/representante — define representante (Turma; Coord/Dir only)
   router.put(
     '/:guid/permissao/representante',

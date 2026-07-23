@@ -28,6 +28,55 @@ export interface MensagemFixadaRow extends RowDataPacket {
   MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
 }
 
+export const EMOJIS_REACAO_PERMITIDOS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
+export type ReacaoEmoji = (typeof EMOJIS_REACAO_PERMITIDOS)[number];
+
+export interface ReacaoResumo {
+  Emoji: string;
+  Quantidade: number;
+  UsuariosCPF: string[];
+}
+
+interface MensagemReacaoRow extends RowDataPacket {
+  MensagemGUID: string;
+  UsuarioCPF: string;
+  ReacaoEmoji: string;
+}
+
+interface MensagemLeituraRow extends RowDataPacket {
+  MensagemGUID: string;
+  UsuarioCPF: string;
+}
+
+/** Agrupa linhas cruas de `mensagem_reacao` em `{Emoji, Quantidade, UsuariosCPF}[]` por MensagemGUID. */
+export function agruparReacoesPorMensagem(rows: MensagemReacaoRow[]): Record<string, ReacaoResumo[]> {
+  const porMensagem: Record<string, Record<string, string[]>> = {};
+  for (const r of rows) {
+    if (!porMensagem[r.MensagemGUID]) porMensagem[r.MensagemGUID] = {};
+    if (!porMensagem[r.MensagemGUID][r.ReacaoEmoji]) porMensagem[r.MensagemGUID][r.ReacaoEmoji] = [];
+    porMensagem[r.MensagemGUID][r.ReacaoEmoji].push(r.UsuarioCPF);
+  }
+  const resultado: Record<string, ReacaoResumo[]> = {};
+  for (const [mensagemGUID, porEmoji] of Object.entries(porMensagem)) {
+    resultado[mensagemGUID] = Object.entries(porEmoji).map(([Emoji, UsuariosCPF]) => ({
+      Emoji,
+      Quantidade: UsuariosCPF.length,
+      UsuariosCPF,
+    }));
+  }
+  return resultado;
+}
+
+/** Agrupa linhas cruas de `mensagem_leitura` (já excluindo o remetente) em CPFs por MensagemGUID. */
+export function agruparLeitoresPorMensagem(rows: MensagemLeituraRow[]): Record<string, string[]> {
+  const resultado: Record<string, string[]> = {};
+  for (const r of rows) {
+    if (!resultado[r.MensagemGUID]) resultado[r.MensagemGUID] = [];
+    resultado[r.MensagemGUID].push(r.UsuarioCPF);
+  }
+  return resultado;
+}
+
 export class MensagemDAO {
   #database: MysqlDatabase;
 
@@ -227,6 +276,61 @@ export class MensagemDAO {
       [mensagemGUID]
     );
     return { MensagemEditadaAt: (rows as RowDataPacket[])[0].MensagemEditadaAt as Date };
+  }
+
+  // Toggle por par (usuário, emoji) — reações múltiplas e independentes por usuário na mesma mensagem.
+  async toggleReacao(
+    mensagemGUID: string,
+    usuarioCPF: string,
+    emoji: ReacaoEmoji
+  ): Promise<'adicionada' | 'removida'> {
+    console.log('🟢 MensagemDAO.toggleReacao()');
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(
+      `SELECT 1 FROM mensagem_reacao WHERE MensagemGUID = ? AND UsuarioCPF = ? AND ReacaoEmoji = ? LIMIT 1`,
+      [mensagemGUID, usuarioCPF, emoji]
+    );
+    if ((rows as RowDataPacket[]).length > 0) {
+      await pool.execute(
+        `DELETE FROM mensagem_reacao WHERE MensagemGUID = ? AND UsuarioCPF = ? AND ReacaoEmoji = ?`,
+        [mensagemGUID, usuarioCPF, emoji]
+      );
+      return 'removida';
+    }
+    await pool.execute(
+      `INSERT INTO mensagem_reacao (MensagemGUID, UsuarioCPF, ReacaoEmoji) VALUES (?, ?, ?)`,
+      [mensagemGUID, usuarioCPF, emoji]
+    );
+    return 'adicionada';
+  }
+
+  async findReacoesPorMensagens(mensagemGUIDs: string[]): Promise<MensagemReacaoRow[]> {
+    console.log('🟢 MensagemDAO.findReacoesPorMensagens()');
+    if (mensagemGUIDs.length === 0) return [];
+    const pool = await this.#database.getPool();
+    const placeholders = mensagemGUIDs.map(() => '?').join(',');
+    const [rows] = await pool.execute(
+      `SELECT MensagemGUID, UsuarioCPF, ReacaoEmoji FROM mensagem_reacao WHERE MensagemGUID IN (${placeholders})`,
+      mensagemGUIDs
+    );
+    return rows as MensagemReacaoRow[];
+  }
+
+  // Leitores por mensagem (excluindo o próprio remetente) — usado no recibo de leitura visual.
+  async findLeitoresPorMensagens(mensagemGUIDs: string[]): Promise<MensagemLeituraRow[]> {
+    console.log('🟢 MensagemDAO.findLeitoresPorMensagens()');
+    if (mensagemGUIDs.length === 0) return [];
+    const pool = await this.#database.getPool();
+    const placeholders = mensagemGUIDs.map(() => '?').join(',');
+    const [rows] = await pool.execute(
+      `SELECT ml.MensagemGUID, ml.UsuarioCPF
+       FROM mensagem_leitura ml
+       INNER JOIN mensagem m ON m.MensagemGUID = ml.MensagemGUID
+       WHERE ml.MensagemGUID IN (${placeholders})
+         AND ml.UsuarioCPF != m.MensagemRemetenteCPF`,
+      mensagemGUIDs
+    );
+    return rows as MensagemLeituraRow[];
   }
 
   async findPinnedMessages(conversaGUID: string): Promise<MensagemFixadaRow[]> {

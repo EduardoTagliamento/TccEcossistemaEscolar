@@ -58,8 +58,18 @@ export interface ConversaListItem {
 
 export interface ConversaMembro {
   UsuarioCPF: string;
+  UsuarioNome: string;
   MembroFuncao: MembroFuncao;
   MembroEntradaAt: string;
+}
+
+export const EMOJIS_REACAO_PERMITIDOS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
+export type ReacaoEmoji = (typeof EMOJIS_REACAO_PERMITIDOS)[number];
+
+export interface ReacaoResumo {
+  Emoji: string;
+  Quantidade: number;
+  UsuariosCPF: string[];
 }
 
 export interface Mensagem {
@@ -71,6 +81,8 @@ export interface Mensagem {
   MensagemCreatedAt: string;
   MensagemDeletedAt?: string | null;
   MensagemEditadaAt?: string | null;
+  Reacoes?: ReacaoResumo[];
+  Leitores?: string[];
 }
 
 export interface MensagemFixada {
@@ -89,6 +101,7 @@ export interface ConversaDetalhe {
   ConversaTipo: ConversaTipo;
   ConversaGrupoNome: string | null;
   ConversaGrupoTipo: ConversaGrupoTipo | null;
+  ConversaGrupoRefGUID: string | null;
   Membros?: ConversaMembro[];
   ParceiroCPF: string | null;
   ParceiroNome: string | null;
@@ -213,4 +226,66 @@ export async function editarMensagem(
     body: JSON.stringify({ MensagemConteudo: mensagemConteudo }),
   });
   return tratarResposta<Mensagem>(response, 'Erro ao editar mensagem');
+}
+
+export interface ReacaoAtualizada {
+  ConversaGUID: string;
+  MensagemGUID: string;
+  Reacoes: ReacaoResumo[];
+  AtorCPF: string;
+  Acao: 'adicionada' | 'removida';
+}
+
+/** Reage (toggle) a uma mensagem com um emoji — usuário pode ter várias reações simultâneas na mesma mensagem. */
+export async function reagirMensagem(
+  conversaGUID: string,
+  mensagemGUID: string,
+  emoji: ReacaoEmoji
+): Promise<ReacaoAtualizada> {
+  const response = await fetch(`${API_URL}/conversa/${conversaGUID}/mensagem/${mensagemGUID}/reacao`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ ReacaoEmoji: emoji }),
+  });
+  return tratarResposta<ReacaoAtualizada>(response, 'Erro ao reagir à mensagem');
+}
+
+// ==================== GESTÃO DE GRUPO (permissões) ====================
+// Só se aplica a ConversaGrupoTipo === 'Turma' — Coordenação/Direção define o
+// Representante; o Representante delega o Vice-Representante. Backend já
+// valida a autorização real (403 se o papel não permitir); estas funções só
+// fazem a chamada.
+
+export async function definirRepresentante(conversaGUID: string, usuarioCPF: string): Promise<void> {
+  const response = await fetch(`${API_URL}/conversa/${conversaGUID}/permissao/representante`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ UsuarioCPF: usuarioCPF }),
+  });
+  return tratarResposta<void>(response, 'Erro ao definir representante');
+}
+
+export async function removerRepresentante(conversaGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/conversa/${conversaGUID}/permissao/representante`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  return tratarResposta<void>(response, 'Erro ao remover representante');
+}
+
+export async function definirViceRepresentante(conversaGUID: string, usuarioCPF: string): Promise<void> {
+  const response = await fetch(`${API_URL}/conversa/${conversaGUID}/permissao/vice-representante`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ UsuarioCPF: usuarioCPF }),
+  });
+  return tratarResposta<void>(response, 'Erro ao definir vice-representante');
+}
+
+export async function removerViceRepresentante(conversaGUID: string, usuarioCPF: string): Promise<void> {
+  const response = await fetch(`${API_URL}/conversa/${conversaGUID}/permissao/vice-representante/${usuarioCPF}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  return tratarResposta<void>(response, 'Erro ao remover vice-representante');
 }
