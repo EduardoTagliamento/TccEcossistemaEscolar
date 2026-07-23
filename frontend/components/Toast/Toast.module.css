@@ -40,6 +40,14 @@
   animation: slideOut 0.3s ease-in forwards;
 }
 
+.toast.clicavel {
+  cursor: pointer;
+}
+
+.toast.clicavel:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
 @keyframes slideOut {
   from {
     transform: translateX(0);

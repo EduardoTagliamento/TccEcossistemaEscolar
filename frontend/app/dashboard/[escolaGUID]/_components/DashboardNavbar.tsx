@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { useSocket } from '@/lib/socket/SocketContext';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import type { Notificacao } from '@/lib/api/notificacao.api';
 import { contarPendencias } from '@/lib/api/pendencia.api';
@@ -233,6 +234,7 @@ export default function DashboardNavbar() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
   const { usuario, token, logout } = useAuth();
+  const { socket } = useSocket();
 
   const [escola, setEscola] = useState<Escola | null>(null);
   const [funcoesEscola, setFuncoesEscola] = useState<number[]>([]);
@@ -303,6 +305,18 @@ export default function DashboardNavbar() {
       .then(setNaoLidas)
       .catch(() => setNaoLidas(0));
   }, [usuario]);
+
+  // Mantém o badge do sino em tempo real (WebSocket `notificacao:nova`) —
+  // a lista em si (`notificacoes`) só é buscada de novo ao abrir o dropdown
+  // (abrirNotificacoes), não precisa ser mantida sincronizada aqui.
+  useEffect(() => {
+    if (!socket) return;
+    const handleNotificacaoNova = () => setNaoLidas((atual) => atual + 1);
+    socket.on('notificacao:nova', handleNotificacaoNova);
+    return () => {
+      socket.off('notificacao:nova', handleNotificacaoNova);
+    };
+  }, [socket]);
 
   useEffect(() => {
     if (!usuario) return;
