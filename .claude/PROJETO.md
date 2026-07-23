@@ -73,19 +73,20 @@ Quase todo o backend REST já existe e está registrado em `backend/Server.ts` (
 
 ### 🟡 Auth / institucional (Login, Cadastro, Saiba mais, Landing, Criar escola)
 - [x] Cores fixas em hex já migradas para CSS Variables do design system em `login`, `cadastro`, `criar-escola` e landing page
-- [ ] `frontend/app/saiba-mais/page.module.css` ainda tem cores fixas (`#1cc47b`/`#169162`) — único arquivo pendente dessa limpeza
-- [ ] Reposicionamento de layout conforme post-its do board (imagem à esquerda/formulário à direita, espelhado em login/cadastro) — ajuste visual, não criação
-- [ ] Revisão de copy/persuasão da landing page (confiança, argumentos de venda, FAQ) — decisão de conteúdo, não de layout
+- [x] ~~`frontend/app/saiba-mais/page.module.css` com cores fixas~~ — corrigido em 2026-07-23: gradiente hardcoded (`#1cc47b`/`#169162`) trocado por `var(--color-primary)`/`var(--color-primary-dark)`.
+- [x] **Revisão de copy/persuasão da landing page (2026-07-23):** 3 seções novas em `frontend/app/page.tsx` — "Segurança e Confiança" (autenticação JWT+bcrypt, e-mail verificado, controle de acesso por papel, isolamento de dados por escola), "Por que escolher o Bauá?" (4 comparações problema→solução) e FAQ (6 perguntas, acordeão). Copy honesto, sem números/depoimentos fabricados — grounded em funcionalidades reais já implementadas.
+- [x] **`/saiba-mais` reformulada (2026-07-23, via agente `frontend`):** migrou de `react-icons` para o padrão de ícone SVG local do projeto; conteúdo revisado pra não duplicar as novas seções da landing (foco em detalhe que a landing só resume: funcionalidades específicas, stack tecnológica, origem do projeto como TCC); cobertura completa de tema escuro/daltônico/alto-contraste adicionada ao novo `page.module.css`. Nenhum mock dedicado de design encontrado (mcp `claude_design` indisponível na sessão) — fallback documentado no próprio CSS (mesmos tokens da landing page).
+- [ ] Reposicionamento de layout conforme post-its do board (imagem à esquerda/formulário à direita, espelhado em login/cadastro) — ajuste visual, não criação — **ainda pendente, não tocado nesta rodada**
 
-### 🟢 Gestão de Dados da Escola — praticamente concluído
+### 🟢 Gestão de Dados da Escola — concluído
 - [x] Filtro de busca já implementado em `gestao-dados/alunos` e `gestao-dados/turmas`
-- [ ] Confirmar se os cards da home de Gestão de Dados já são dinâmicos (ainda não verificado em detalhe)
+- [x] ~~Confirmar se os cards da home são dinâmicos~~ — confirmado em 2026-07-23: `gestao-dados/page.tsx` busca contadores reais via `Promise.all` (Curso/Matéria/Turma/Aluno/Professor), com loading state — não é estático.
 
 ### ⚪ Itens em aberto sem dono claro
 - [x] ~~Migrations com execução não confirmada~~ — confirmado em 2026-07-23 via agente `mysql`: todas as migrations até `2026-07-22` já estavam aplicadas em produção; a migration nova de chat (`2026-07-23-chat-melhorias.sql`, tabela `mensagem_reacao`) também já foi aplicada. **Nota:** `SHOW CREATE TABLE`/`INFORMATION_SCHEMA` exibem `?` para 5 dos 6 emojis do ENUM `ReacaoEmoji` — confirmado, por teste funcional de INSERT/SELECT, que é só um bug cosmético de exibição do MySQL 9.4 para caracteres de 4 bytes, não corrupção de dado real.
 - [ ] "Módulo em standby" (pág. 11 do board original): anotação ilegível ("a mimir, volte mais tarde nesse módulo") — só a equipe consegue esclarecer o escopo
 - [ ] `frontend/refs/Dashboard_ref.png` parece ser de outro projeto ("Ferretto") — confirmar se é o arquivo errado antes de reusar como referência de design
-- [ ] Cobertura de CSS para tema escuro/daltônico/alto-contraste está limitada a `globals.css` + navbar + home do dashboard + perfil + config. da escola — resto do app (gestão de dados, calendário, tarefas, chat, projetos) ainda não coberto
+- [x] ~~Cobertura de CSS para tema escuro/daltônico/alto-contraste limitada a poucas telas~~ — **nota estava desatualizada** (investigado e corrigido em 2026-07-23): auditoria dos 16 `.module.css` de gestão de dados, calendário, tarefas, chat e projetos mostrou que 11 já tinham o padrão completo de override e 3 nunca precisaram (só tokens globais). Os únicos 2 arquivos com gap real eram os modais flutuantes do chat (`NovaConversaModal.module.css` e `GerenciarGrupoModal.module.css`, este último criado nesta mesma sessão) — corrigidos com o mesmo padrão de 5 blocos de override já usado em `perfil/page.module.css`.
 
 ## 4. Onde olhar para mais detalhe
 

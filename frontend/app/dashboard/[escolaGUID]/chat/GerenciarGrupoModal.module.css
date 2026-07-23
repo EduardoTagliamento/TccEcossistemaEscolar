@@ -31,6 +31,60 @@
   padding: 1rem;
 }
 
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   Mesmo padrão de frontend/app/dashboard/[escolaGUID]/perfil/page.module.css
+   — só os tokens realmente declarados acima em `.overlay` (este modal não
+   usa --green-50/--slate-300/--radius-pill/--shadow-sm/--shadow-focus).
+   ============================================================ */
+:global(html[data-theme="dark"]) .overlay {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+}
+
+:global(html[data-daltonico="true"]) .overlay {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --green-700: #1D46A3;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .overlay {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --green-700: #2558C7;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+}
+
+:global(html[data-alto-contraste="true"]) .overlay {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .overlay {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+  --line-100: #647268;
+}
+
 .modal {
   width: 100%;
   max-width: 460px;
