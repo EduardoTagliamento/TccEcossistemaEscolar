@@ -1,4 +1,4 @@
-// File: C:\Users\ContaSelf\Desktop\tcc\TccEcossistemaEscolar\frontend\app\dashboard\[escolaGUID]\gestao-dados\turmas\[turmaGUID]\cronograma\page.tsx
+// File: F:\Area de Trabalho\EcossistemaEscolar\frontend\app\dashboard\[escolaGUID]\gestao-dados\turmas\[turmaGUID]\cronograma\page.tsx
 import * as entry from '../../../../../../../../../app/dashboard/[escolaGUID]/gestao-dados/turmas/[turmaGUID]/cronograma/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

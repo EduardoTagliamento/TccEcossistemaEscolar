@@ -11,10 +11,12 @@ import * as AlunoAPI from '@/lib/api/aluno.api';
 import * as ProfessorAPI from '@/lib/api/professor.api';
 import * as VinculoAPI from '@/lib/api/escolaxusuarioxfuncao.api';
 import { Icon, IconName } from '@/components/Icon';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 // FuncaoId: 1=Coordenação 2=Secretaria 3=Professor 4=Responsável 5=Aluno 6=Direção
 const FUNCAO_ID_COORDENACAO = 1;
 const FUNCAO_ID_SECRETARIA = 2;
+const FUNCAO_ID_DIRECAO = 6;
 
 interface Modulo {
   id: string;
@@ -24,25 +26,63 @@ interface Modulo {
   contador?: number;
 }
 
+interface EscolaComFuncoes {
+  escola: { EscolaGUID: string };
+  funcoes: Array<{ FuncaoId: number; Status: 'Ativo' | 'Inativo' | 'Finalizado' }>;
+}
+
+const MODULOS_BASE: Modulo[] = [
+  { id: 'cursos', nome: 'Cursos', descricao: 'Gerencie cursos técnicos', icone: 'layers' },
+  { id: 'materias', nome: 'Matérias', descricao: 'Gerencie disciplinas', icone: 'book-open' },
+  { id: 'turmas', nome: 'Turmas', descricao: 'Gerencie turmas/classes', icone: 'grid' },
+  { id: 'alunos', nome: 'Alunos', descricao: 'Gerencie matrículas', icone: 'users' },
+  { id: 'professores', nome: 'Professores', descricao: 'Gerencie corpo docente', icone: 'award' },
+  { id: 'secretaria', nome: 'Secretaria', descricao: 'Gerencie a equipe de secretaria', icone: 'file-text' },
+  { id: 'coordenacao', nome: 'Coordenação', descricao: 'Gerencie a coordenação', icone: 'star' },
+];
+
 export default function GestaoDadosPage() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
-  const [modulos, setModulos] = useState<Modulo[]>([
-    { id: 'cursos', nome: 'Cursos', descricao: 'Gerencie cursos técnicos', icone: 'layers' },
-    { id: 'materias', nome: 'Matérias', descricao: 'Gerencie disciplinas', icone: 'book-open' },
-    { id: 'turmas', nome: 'Turmas', descricao: 'Gerencie turmas/classes', icone: 'grid' },
-    { id: 'alunos', nome: 'Alunos', descricao: 'Gerencie matrículas', icone: 'users' },
-    { id: 'professores', nome: 'Professores', descricao: 'Gerencie corpo docente', icone: 'award' },
-    { id: 'secretaria', nome: 'Secretaria', descricao: 'Gerencie a equipe de secretaria', icone: 'file-text' },
-    { id: 'coordenacao', nome: 'Coordenação', descricao: 'Gerencie a coordenação', icone: 'star' },
-  ]);
+  const { usuario, token } = useAuth();
+  const [modulos, setModulos] = useState<Modulo[]>(MODULOS_BASE);
   const [loading, setLoading] = useState(true);
+  const [ehDirecaoAtiva, setEhDirecaoAtiva] = useState(false);
+
+  useEffect(() => {
+    if (escolaGUID && usuario) {
+      verificarDirecao();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escolaGUID, usuario]);
 
   useEffect(() => {
     if (escolaGUID) {
       carregarContadores();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [escolaGUID]);
+
+  const verificarDirecao = async () => {
+    if (!usuario) return;
+    try {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) return;
+
+      const escolas: EscolaComFuncoes[] = data?.data?.escolas || [];
+      const escolaSelecionada = escolas.find((item) => item.escola.EscolaGUID === escolaGUID);
+      const funcoesAtivas = (escolaSelecionada?.funcoes || [])
+        .filter((funcao) => funcao.Status === 'Ativo')
+        .map((funcao) => funcao.FuncaoId);
+
+      setEhDirecaoAtiva(funcoesAtivas.includes(FUNCAO_ID_DIRECAO));
+    } catch (error) {
+      console.error('Erro ao verificar função de Direção:', error);
+    }
+  };
 
   const carregarContadores = async () => {
     try {
@@ -105,7 +145,9 @@ export default function GestaoDadosPage() {
         </div>
       ) : (
         <div className={styles.grid}>
-          {modulos.map((modulo) => (
+          {modulos
+            .filter((modulo) => modulo.id !== 'coordenacao' || ehDirecaoAtiva)
+            .map((modulo) => (
             <Link
               key={modulo.id}
               href={`/dashboard/${escolaGUID}/gestao-dados/${modulo.id}`}

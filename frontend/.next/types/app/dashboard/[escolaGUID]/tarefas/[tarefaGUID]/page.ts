@@ -1,4 +1,4 @@
-// File: C:\Users\ContaSelf\Desktop\tcc\TccEcossistemaEscolar\frontend\app\dashboard\[escolaGUID]\tarefas\[tarefaGUID]\page.tsx
+// File: F:\Area de Trabalho\EcossistemaEscolar\frontend\app\dashboard\[escolaGUID]\tarefas\[tarefaGUID]\page.tsx
 import * as entry from '../../../../../../../app/dashboard/[escolaGUID]/tarefas/[tarefaGUID]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
