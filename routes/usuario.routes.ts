@@ -102,11 +102,13 @@ export const usuarioRouterFactory = () => {
   // EscolaxUsuarioxFuncao dependencies (para rota de escolas do usuário)
   const { EscolaxUsuarioxFuncaoDAO } = require("../backend/repositories/escolaxusuarioxfuncao.repository");
   const { UsuarioxEscolaAcessoDAO } = require("../backend/repositories/usuarioxescolaacesso.repository");
+  const { EscolaDAO } = require("../backend/repositories/escola.repository");
   const EscolaxUsuarioxFuncaoService = require("../backend/services/escolaxusuarioxfuncao.service").default;
 
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
   const usuarioxEscolaAcessoDAO = new UsuarioxEscolaAcessoDAO(database);
-  const escolaxUsuarioxFuncaoService = new EscolaxUsuarioxFuncaoService(escolaxUsuarioxFuncaoDAO, usuarioxEscolaAcessoDAO, usuarioDAO);
+  const escolaDAOParaVinculo = new EscolaDAO(database);
+  const escolaxUsuarioxFuncaoService = new EscolaxUsuarioxFuncaoService(escolaxUsuarioxFuncaoDAO, usuarioxEscolaAcessoDAO, usuarioDAO, escolaDAOParaVinculo);
   const escolaxUsuarioxFuncaoControle = new EscolaxUsuarioxFuncaoControl(escolaxUsuarioxFuncaoService);
   
   const roteador = new UsuarioRoteador(

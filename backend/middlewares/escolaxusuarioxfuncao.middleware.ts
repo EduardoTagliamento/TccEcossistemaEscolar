@@ -30,6 +30,48 @@ export default class EscolaxUsuarioxFuncaoMiddleware {
     next();
   };
 
+  validateCreateEmMassaBody = (request: Request, _response: Response, next: NextFunction) => {
+    console.log("Middleware: EscolaxUsuarioxFuncao.validateCreateEmMassaBody()");
+    const { EscolaGUID, FuncaoId, itens } = request.body;
+
+    if (!EscolaGUID || typeof EscolaGUID !== "string") {
+      throw new ErrorResponse(400, "Erro na validacao de dados", {
+        message: "O campo 'EscolaGUID' e obrigatorio!",
+      });
+    }
+
+    const funcaoId = Number(FuncaoId);
+    if (!Number.isInteger(funcaoId) || funcaoId < 1) {
+      throw new ErrorResponse(400, "Erro na validacao de dados", {
+        message: "O campo 'FuncaoId' deve ser um inteiro positivo.",
+      });
+    }
+
+    if (!Array.isArray(itens) || itens.length === 0) {
+      throw new ErrorResponse(400, "Erro na validacao de dados", {
+        message: "O campo 'itens' e obrigatorio e deve ser uma lista nao vazia.",
+      });
+    }
+
+    const itensValidos = itens.every(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        typeof item.CPF === "string" &&
+        item.CPF.trim() !== "" &&
+        (item.Nome === undefined || typeof item.Nome === "string") &&
+        (item.Email === undefined || typeof item.Email === "string")
+    );
+
+    if (!itensValidos) {
+      throw new ErrorResponse(400, "Erro na validacao de dados", {
+        message: "Cada item de 'itens' deve ter 'CPF' (string nao vazia) e opcionalmente 'Nome'/'Email' (strings).",
+      });
+    }
+
+    next();
+  };
+
   validateIdParam = (request: Request, _response: Response, next: NextFunction) => {
     console.log("Middleware: EscolaxUsuarioxFuncao.validateIdParam()");
     const { EscolaxUsuarioxFuncaoId } = request.params;
