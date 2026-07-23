@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
 import { useAuth } from '@/lib/auth/AuthContext';
 import styles from './page.module.css';
@@ -41,7 +41,8 @@ type IconName =
   | 'message-circle'
   | 'lock'
   | 'mail'
-  | 'edit';
+  | 'edit'
+  | 'shield';
 
 // Glifos Feather-style extraídos literalmente de components/core/Icon.jsx
 // (Bauá Design System) — mesmo conjunto de ícones usado em "Landing Page.dc.html".
@@ -146,6 +147,12 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
         </svg>
       );
+    case 'shield':
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -235,8 +242,83 @@ const RECURSOS = [
 
 const TECNOLOGIAS = ['TypeScript', 'Node.js + Express', 'MySQL', 'Next.js 14', 'React 18', 'Resend API'];
 
+const CONFIANCA_ITENS = [
+  {
+    icon: 'lock' as IconName,
+    title: 'Autenticação criptografada',
+    text: 'Senhas protegidas com hash bcrypt e sessões autenticadas via JWT — sua senha nunca fica visível, nem para a nossa equipe.',
+  },
+  {
+    icon: 'mail' as IconName,
+    title: 'E-mail verificado',
+    text: 'Todo cadastro passa por verificação de e-mail antes de liberar o acesso, o que reduz contas falsas e reforça quem realmente usa a plataforma.',
+  },
+  {
+    icon: 'users' as IconName,
+    title: 'Acesso por papel',
+    text: 'Coordenação, secretaria, professor, responsável e aluno enxergam só o que faz sentido pra sua função — sem excesso de permissão.',
+  },
+  {
+    icon: 'shield' as IconName,
+    title: 'Dados isolados por escola',
+    text: 'Cada escola tem seu próprio espaço de dados, temas e usuários — nada se mistura entre instituições diferentes.',
+  },
+];
+
+const DIFERENCIAIS = [
+  {
+    problema: 'Informação espalhada entre e-mail, grupo de WhatsApp e recado de papel.',
+    solucao: 'Comunicação, calendário e avisos centralizados num só lugar, com notificação em tempo real.',
+  },
+  {
+    problema: 'Planilha solta pra controlar turma, matrícula e nota.',
+    solucao: 'Importe os dados que sua escola já usa direto de uma planilha Excel — sem recadastrar nada na mão.',
+  },
+  {
+    problema: 'Sistema genérico que não parece com a sua escola.',
+    solucao: 'Personalize cores e logotipo: cada escola tem a própria identidade visual dentro da plataforma.',
+  },
+  {
+    problema: 'Contrato caro só pra testar se a ferramenta funciona pra você.',
+    solucao: 'Comece gratuitamente e conheça a plataforma no seu ritmo, sem compromisso.',
+  },
+];
+
+const FAQ_ITENS = [
+  {
+    pergunta: 'O Bauá substitui o Google Classroom?',
+    resposta:
+      'Não necessariamente substitui — o Bauá foi inspirado nele, mas pensado para a realidade de escolas brasileiras, unindo gestão administrativa, comunicação e conteúdo acadêmico numa única plataforma.',
+  },
+  {
+    pergunta: 'Preciso instalar algum programa?',
+    resposta:
+      'Não. O Bauá funciona direto do navegador, em computador, tablet ou celular — não é necessário instalar nada.',
+  },
+  {
+    pergunta: 'Meus dados e os dos alunos estão seguros?',
+    resposta:
+      'Sim. Toda senha é armazenada com hash bcrypt, o acesso é autenticado via JWT, e cada escola tem seus dados isolados das demais — veja mais na seção de Segurança e Confiança acima.',
+  },
+  {
+    pergunta: 'Dá pra migrar os dados da minha escola atual?',
+    resposta:
+      'Sim — o módulo de Gestão de Dados permite importar alunos, professores e turmas em massa a partir de planilhas Excel, sem precisar recadastrar tudo manualmente.',
+  },
+  {
+    pergunta: 'O Bauá é gratuito?',
+    resposta: 'Sim, você pode criar sua conta e configurar sua escola gratuitamente.',
+  },
+  {
+    pergunta: 'O Bauá funciona para escolas técnicas?',
+    resposta:
+      'Sim — o sistema já contempla cursos técnicos, com cadastro específico para turmas e disciplinas desse tipo de formação.',
+  },
+];
+
 export default function HomePage() {
   const { token, isLoading } = useAuth();
+  const [faqAbertaIndex, setFaqAbertaIndex] = useState<number | null>(null);
 
   useEffect(() => {
     // Redireciona automaticamente se já estiver autenticado.
@@ -392,6 +474,29 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* SEGURANÇA E CONFIANÇA */}
+        <section className={styles.confiancaSection}>
+          <div className={styles.confiancaInner}>
+            <h2 className={styles.sectionTitle}>
+              Segurança e <span className={styles.accentGreen}>confiança</span> em cada detalhe
+            </h2>
+            <p className={styles.confiancaSubtitle}>
+              Pensado desde o início para proteger os dados da sua escola, dos alunos e das famílias.
+            </p>
+            <div className={styles.confiancaGrid}>
+              {CONFIANCA_ITENS.map((item) => (
+                <div key={item.title} className={`${styles.confiancaCard} ${styles.reveal}`}>
+                  <span className={styles.confiancaIcon}>
+                    <Icon name={item.icon} size={22} />
+                  </span>
+                  <h3 className={styles.confiancaTitle}>{item.title}</h3>
+                  <p className={styles.confiancaText}>{item.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* RECURSOS PRINCIPAIS */}
         <section id="recursos" className={styles.recursosSection}>
           <div className={styles.recursosInner}>
@@ -412,6 +517,32 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* DIFERENCIAIS */}
+        <section className={styles.diferenciaisSection}>
+          <div className={styles.diferenciaisInner}>
+            <h2 className={styles.sectionTitle}>
+              Por que escolher o <span className={styles.accentGreen}>Bauá</span>?
+            </h2>
+            <p className={styles.diferenciaisSubtitle}>
+              Feito para resolver problemas reais do dia a dia escolar — não só mais um sistema de cadastro.
+            </p>
+            <div className={styles.diferenciaisList}>
+              {DIFERENCIAIS.map((item) => (
+                <div key={item.problema} className={`${styles.diferencialRow} ${styles.reveal}`}>
+                  <div className={styles.diferencialProblema}>
+                    <span className={`${styles.diferencialBadge} ${styles.diferencialBadgeProblema}`}>✕</span>
+                    <p>{item.problema}</p>
+                  </div>
+                  <div className={styles.diferencialSolucao}>
+                    <span className={`${styles.diferencialBadge} ${styles.diferencialBadgeSolucao}`}>✓</span>
+                    <p>{item.solucao}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* TECNOLOGIAS */}
         <section className={`${styles.mintBand} ${styles.techSection}`}>
           <div className={styles.techInner}>
@@ -422,6 +553,36 @@ export default function HomePage() {
                   {tech}
                 </span>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className={styles.faqSection}>
+          <div className={styles.faqInner}>
+            <h2 className={styles.sectionTitle}>
+              Perguntas <span className={styles.accentGreen}>frequentes</span>
+            </h2>
+            <div className={styles.faqList}>
+              {FAQ_ITENS.map((item, indice) => {
+                const aberta = faqAbertaIndex === indice;
+                return (
+                  <div key={item.pergunta} className={styles.faqItem}>
+                    <button
+                      type="button"
+                      className={styles.faqQuestion}
+                      onClick={() => setFaqAbertaIndex(aberta ? null : indice)}
+                      aria-expanded={aberta}
+                    >
+                      <span className={styles.faqQuestionText}>{item.pergunta}</span>
+                      <span className={`${styles.faqIcon} ${aberta ? styles.faqIconAberto : ''}`}>
+                        <Icon name="arrow-right" size={18} />
+                      </span>
+                    </button>
+                    {aberta && <p className={styles.faqAnswer}>{item.resposta}</p>}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
