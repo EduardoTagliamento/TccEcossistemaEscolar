@@ -418,6 +418,26 @@ CREATE TABLE `railway`.`mensagem_fixada` (
     FOREIGN KEY (`FixadaPorCPF`) REFERENCES `railway`.`usuario` (`UsuarioCPF`)
 );
 
+-- TABELA: mensagem_reacao
+-- Reações (emoji) a mensagens do chat. Um usuário pode ter várias reações
+-- simultâneas e independentes na mesma mensagem (estilo Discord) — reagir de
+-- novo com o mesmo emoji remove só essa reação específica.
+-- Ver backend/database/migrations/2026-07-23-chat-melhorias.sql
+CREATE TABLE `railway`.`mensagem_reacao` (
+  `MensagemGUID`     CHAR(36)                                        NOT NULL,
+  `UsuarioCPF`       VARCHAR(14)                                     NOT NULL,
+  `ReacaoEmoji`      ENUM('👍', '❤️', '😂', '😮', '😢', '🙏')        NOT NULL,
+  `ReacaoCreatedAt`  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`MensagemGUID`, `UsuarioCPF`, `ReacaoEmoji`),
+  INDEX `idx_mensagemreacao_mensagem` (`MensagemGUID`),
+  CONSTRAINT `FK_MensagemReacao_Mensagem`
+    FOREIGN KEY (`MensagemGUID`) REFERENCES `railway`.`mensagem` (`MensagemGUID`)
+    ON DELETE CASCADE,
+  CONSTRAINT `FK_MensagemReacao_Usuario`
+    FOREIGN KEY (`UsuarioCPF`) REFERENCES `railway`.`usuario` (`UsuarioCPF`)
+    ON DELETE CASCADE
+);
+
 -- =====================================================
 -- NOTAS IMPORTANTES
 -- =====================================================

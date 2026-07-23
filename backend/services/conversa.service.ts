@@ -1,7 +1,7 @@
 import { ConversaDAO } from '../repositories/conversa.repository';
 import { ConversaGrupoDAO } from '../repositories/conversa-grupo.repository';
 import { ConversaIndividualDAO } from '../repositories/conversa-individual.repository';
-import { MensagemDAO } from '../repositories/mensagem.repository';
+import { MensagemDAO, agruparReacoesPorMensagem, agruparLeitoresPorMensagem } from '../repositories/mensagem.repository';
 import ErrorResponse from '../utils/ErrorResponse';
 
 export interface MensagemFixadaDTO {
@@ -38,6 +38,7 @@ export interface ConversaListItemDTO {
 
 export interface MembroDTO {
   UsuarioCPF: string;
+  UsuarioNome: string;
   MembroFuncao: 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante';
   MembroEntradaAt: string;
 }
@@ -48,6 +49,7 @@ export interface ConversaDetalheDTO {
   // Grupo
   ConversaGrupoNome: string | null;
   ConversaGrupoTipo: 'Turma' | 'Tarefa' | null;
+  ConversaGrupoRefGUID: string | null;
   Membros: MembroDTO[];
   // Individual
   ParceiroCPF: string | null;
@@ -135,6 +137,15 @@ export default class ConversaService {
     const hasMore = mensagens.length === 30;
     const fixadas = await this.#mensagemDAO.findPinnedMessages(conversaGUID);
 
+    const mensagemGUIDs = mensagens.map((m) => m.MensagemGUID);
+    const reacoesPorMensagem = agruparReacoesPorMensagem(await this.#mensagemDAO.findReacoesPorMensagens(mensagemGUIDs));
+    const leitoresPorMensagem = agruparLeitoresPorMensagem(await this.#mensagemDAO.findLeitoresPorMensagens(mensagemGUIDs));
+    const mensagensDTO = mensagens.map((m) => ({
+      ...m.toJSON(),
+      Reacoes: reacoesPorMensagem[m.MensagemGUID] ?? [],
+      Leitores: leitoresPorMensagem[m.MensagemGUID] ?? [],
+    }));
+
     const mensagensFixadasDTO: MensagemFixadaDTO[] = fixadas.map((f) => ({
       MensagemGUID: f.MensagemGUID,
       ConversaGUID: f.ConversaGUID,
@@ -148,15 +159,17 @@ export default class ConversaService {
 
     if (conversa.ConversaTipo === 'Grupo') {
       const grupo = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
-      const membros = await this.#conversaGrupoDAO.findMembros(conversaGUID);
+      const membros = await this.#conversaGrupoDAO.findMembrosComNome(conversaGUID);
 
       return {
         ConversaGUID: conversa.ConversaGUID,
         ConversaTipo: 'Grupo',
         ConversaGrupoNome: grupo?.ConversaGrupoNome ?? null,
         ConversaGrupoTipo: grupo?.ConversaGrupoTipo ?? null,
+        ConversaGrupoRefGUID: grupo?.ConversaGrupoRefGUID ?? null,
         Membros: membros.map((m) => ({
           UsuarioCPF: m.MembroUsuarioCPF,
+          UsuarioNome: m.UsuarioNome,
           MembroFuncao: m.MembroFuncao,
           MembroEntradaAt: m.MembroEntradaAt.toISOString(),
         })),
@@ -164,7 +177,7 @@ export default class ConversaService {
         ParceiroNome: null,
         TagContextual: null,
         MensagensFixadas: mensagensFixadasDTO,
-        Mensagens: mensagens.map((m) => m.toJSON()),
+        Mensagens: mensagensDTO,
         HasMore: hasMore,
       };
     } else {
@@ -175,12 +188,13 @@ export default class ConversaService {
         ConversaTipo: 'Individual',
         ConversaGrupoNome: null,
         ConversaGrupoTipo: null,
+        ConversaGrupoRefGUID: null,
         Membros: [],
         ParceiroCPF: parceiro?.ParceiroCPF ?? null,
         ParceiroNome: parceiro?.ParceiroNome ?? null,
         TagContextual: null,
         MensagensFixadas: mensagensFixadasDTO,
-        Mensagens: mensagens.map((m) => m.toJSON()),
+        Mensagens: mensagensDTO,
         HasMore: hasMore,
       };
     }

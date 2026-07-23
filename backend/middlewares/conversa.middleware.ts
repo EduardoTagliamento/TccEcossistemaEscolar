@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import ErrorResponse from '../utils/ErrorResponse';
+import { EMOJIS_REACAO_PERMITIDOS } from '../repositories/mensagem.repository';
 
 export class ConversaMiddleware {
   static validarGUID = (req: Request, _res: Response, next: NextFunction): void => {
@@ -65,6 +66,15 @@ export class ConversaMiddleware {
     }
     if (MensagemConteudo.trim().length > 4000) {
       return next(new ErrorResponse(400, 'MensagemConteudo não pode exceder 4000 caracteres'));
+    }
+    next();
+  };
+
+  static validarReacaoBody = (req: Request, _res: Response, next: NextFunction): void => {
+    console.log('🔷 ConversaMiddleware.validarReacaoBody()');
+    const { ReacaoEmoji } = req.body;
+    if (!ReacaoEmoji || typeof ReacaoEmoji !== 'string' || !(EMOJIS_REACAO_PERMITIDOS as readonly string[]).includes(ReacaoEmoji.trim())) {
+      return next(new ErrorResponse(400, `ReacaoEmoji deve ser um dos suportados: ${EMOJIS_REACAO_PERMITIDOS.join(' ')}`));
     }
     next();
   };

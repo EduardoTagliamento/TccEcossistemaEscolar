@@ -117,6 +117,24 @@ export class ConversaGrupoDAO {
     return (rows as ConversaGrupoMembroRow[]).map((r) => ConversaGrupoMembro.fromDatabase(r));
   }
 
+  // Rows cruas com nome do usuário via JOIN — só para exibição (não é a entidade ConversaGrupoMembro,
+  // que espelha 1:1 a tabela conversa_grupo_membro e não tem coluna de nome).
+  async findMembrosComNome(conversaGUID: string): Promise<
+    { MembroUsuarioCPF: string; UsuarioNome: string; MembroFuncao: MembroFuncaoType; MembroEntradaAt: Date }[]
+  > {
+    console.log('🟢 ConversaGrupoDAO.findMembrosComNome()');
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(
+      `SELECT cgm.MembroUsuarioCPF, u.UsuarioNome, cgm.MembroFuncao, cgm.MembroEntradaAt
+       FROM conversa_grupo_membro cgm
+       INNER JOIN usuario u ON u.UsuarioCPF = cgm.MembroUsuarioCPF
+       WHERE cgm.ConversaGUID = ? AND cgm.MembroStatus = 'Ativo'
+       ORDER BY cgm.MembroEntradaAt ASC`,
+      [conversaGUID]
+    );
+    return rows as any[];
+  }
+
   async isMembro(conversaGUID: string, usuarioCPF: string): Promise<boolean> {
     console.log('🟢 ConversaGrupoDAO.isMembro()');
     const pool = await this.#database.getPool();

@@ -156,4 +156,26 @@ export function registerConversaHandlers(
       }
     }
   );
+
+  // reagir_mensagem: adiciona/remove (toggle) a reação do usuário a uma mensagem
+  // mensagemService emite 'reacao_atualizada' via SocketServer.emit
+  socket.on(
+    'reagir_mensagem',
+    async ({
+      ConversaGUID,
+      MensagemGUID,
+      ReacaoEmoji,
+    }: {
+      ConversaGUID: string;
+      MensagemGUID: string;
+      ReacaoEmoji: string;
+    }) => {
+      console.log(`🔵 [WS] reagir_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID} (${ReacaoEmoji})`);
+      try {
+        await mensagemService.reagir(MensagemGUID, ConversaGUID, usuario.UsuarioCPF, ReacaoEmoji);
+      } catch (err: any) {
+        socket.emit('erro', { message: err.message || 'Erro ao reagir à mensagem' });
+      }
+    }
+  );
 }

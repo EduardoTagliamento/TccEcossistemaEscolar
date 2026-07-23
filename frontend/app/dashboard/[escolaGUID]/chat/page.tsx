@@ -10,6 +10,7 @@ import * as ConversaAPI from '@/lib/api/conversa.api';
 import * as UploadAPI from '@/lib/api/upload.api';
 import { Icon } from './icons';
 import NovaConversaModal from './NovaConversaModal';
+import GerenciarGrupoModal from './GerenciarGrupoModal';
 import styles from './page.module.css';
 
 type AbaFiltro = 'todas' | 'grupo' | 'individual';
@@ -100,7 +101,7 @@ function nomeDaConversa(conversa: ConversaAPI.ConversaListItem): string {
 export default function ChatPage() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
-  const { usuario } = useAuth();
+  const { usuario, token } = useAuth();
   const { socket, conectado } = useSocket();
   const { conversaAbertaGUID, definirConversaAberta } = useChatUI();
 
@@ -137,6 +138,9 @@ export default function ChatPage() {
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
   const [erroAnexo, setErroAnexo] = useState('');
 
+  const [gerenciarGrupoAberto, setGerenciarGrupoAberto] = useState(false);
+  const [funcoesEscola, setFuncoesEscola] = useState<number[]>([]);
+
   const conversaAtivaGUIDRef = useRef<string | null>(null);
   const joinedRoomsRef = useRef<Set<string>>(new Set());
   const digitandoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -151,6 +155,32 @@ export default function ChatPage() {
     void carregarConversas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [escolaGUID]);
+
+  // ---------- Funções do usuário na escola (gate de "Gerenciar grupo") ----------
+  // Mesmo padrão de DashboardNavbar.buscarFuncoesDaEscola — duplicado de propósito
+  // (convenção do projeto, sem hook compartilhado). 1=Coordenação 6=Direção.
+  useEffect(() => {
+    if (!escolaGUID || !usuario) return;
+    (async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/usuario/${usuario.UsuarioCPF}/escolas`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (!response.ok) return;
+        const escolas: any[] = data?.data?.escolas || [];
+        const escolaSelecionada = escolas.find((item) => item.escola.EscolaGUID === escolaGUID);
+        const funcoesAtivas = (escolaSelecionada?.funcoes || [])
+          .filter((funcao: any) => funcao.Status === 'Ativo')
+          .map((funcao: any) => funcao.FuncaoId);
+        setFuncoesEscola(funcoesAtivas);
+      } catch {
+        setFuncoesEscola([]);
+      }
+    })();
+  }, [escolaGUID, usuario, token]);
+
+  const isCoordenacaoOuDirecao = funcoesEscola.includes(1) || funcoesEscola.includes(6);
 
   const carregarConversas = async () => {
     setCarregandoConversas(true);
@@ -276,12 +306,47 @@ export default function ChatPage() {
       setErroConversaAtiva(payload?.message || 'Ocorreu um erro no chat.');
     };
 
+    const handleReacaoAtualizada = (payload: ConversaAPI.ReacaoAtualizada) => {
+      if (conversaAtivaGUIDRef.current !== payload.ConversaGUID) return;
+      setMensagens((prev) =>
+        prev.map((m) => (m.MensagemGUID === payload.MensagemGUID ? { ...m, Reacoes: payload.Reacoes } : m))
+      );
+    };
+
+    // mensagem_lida: markAllAsRead já marcou, no banco, tudo até LidaAt como lido
+    // por esse UsuarioCPF — replica isso localmente sem nova requisição.
+    const handleMensagemLida = (payload: { ConversaGUID: string; UsuarioCPF: string; LidaAt: string }) => {
+      if (conversaAtivaGUIDRef.current !== payload.ConversaGUID) return;
+      if (payload.UsuarioCPF === usuario?.UsuarioCPF) return;
+      const lidaAtMs = new Date(payload.LidaAt).getTime();
+      setMensagens((prev) =>
+        prev.map((m) => {
+          if (m.MensagemRemetenteCPF === payload.UsuarioCPF) return m;
+          if (new Date(m.MensagemCreatedAt).getTime() > lidaAtMs) return m;
+          if (m.Leitores?.includes(payload.UsuarioCPF)) return m;
+          return { ...m, Leitores: [...(m.Leitores || []), payload.UsuarioCPF] };
+        })
+      );
+    };
+
+    // permissao_atualizada / membro_saiu: o backend não emite eventos para os
+    // efeitos colaterais (ex.: Representante anterior rebaixado em silêncio),
+    // então resync completo em vez de patch pontual — ver Seção 4.2 da spec.
+    const handlePrecisaResync = (payload: { ConversaGUID: string }) => {
+      if (conversaAtivaGUIDRef.current !== payload.ConversaGUID) return;
+      void carregarConversaAtiva(payload.ConversaGUID);
+    };
+
     socket.on('nova_mensagem', handleNovaMensagem);
     socket.on('mensagem_editada', handleMensagemEditada);
     socket.on('mensagem_deletada', handleMensagemDeletada);
     socket.on('mensagem_fixada', handleMensagemFixada);
     socket.on('mensagem_desafixada', handleMensagemDesafixada);
     socket.on('usuario_digitando', handleUsuarioDigitando);
+    socket.on('reacao_atualizada', handleReacaoAtualizada);
+    socket.on('mensagem_lida', handleMensagemLida);
+    socket.on('permissao_atualizada', handlePrecisaResync);
+    socket.on('membro_saiu', handlePrecisaResync);
     socket.on('erro', handleErro);
 
     return () => {
@@ -291,6 +356,10 @@ export default function ChatPage() {
       socket.off('mensagem_fixada', handleMensagemFixada);
       socket.off('mensagem_desafixada', handleMensagemDesafixada);
       socket.off('usuario_digitando', handleUsuarioDigitando);
+      socket.off('reacao_atualizada', handleReacaoAtualizada);
+      socket.off('mensagem_lida', handleMensagemLida);
+      socket.off('permissao_atualizada', handlePrecisaResync);
+      socket.off('membro_saiu', handlePrecisaResync);
       socket.off('erro', handleErro);
     };
   }, [socket, usuario]);
@@ -463,6 +532,16 @@ export default function ChatPage() {
     return meuPapelNoGrupo === 'Lider' || meuPapelNoGrupo === 'Representante' || meuPapelNoGrupo === 'Vice-Representante';
   }, [conversaAtiva, meuPapelNoGrupo]);
 
+  // Gate visual do botão "Gerenciar grupo" — a autorização real de cada ação
+  // continua sendo aplicada pelo backend (403 se o papel não permitir).
+  const podeGerenciarGrupo = useMemo(() => {
+    if (!conversaAtiva || conversaAtiva.ConversaTipo !== 'Grupo') return false;
+    if (conversaAtiva.ConversaGrupoTipo === 'Turma') {
+      return isCoordenacaoOuDirecao || meuPapelNoGrupo === 'Representante';
+    }
+    return meuPapelNoGrupo === 'Lider';
+  }, [conversaAtiva, isCoordenacaoOuDirecao, meuPapelNoGrupo]);
+
   const podeApagar = (mensagem: ConversaAPI.Mensagem): boolean => {
     if (!conversaAtiva) return false;
     if (mensagem.MensagemRemetenteCPF === usuario?.UsuarioCPF) return true;
@@ -495,6 +574,16 @@ export default function ChatPage() {
     } catch (erro: any) {
       setErroConversaAtiva(erro?.message || 'Erro ao apagar mensagem');
     }
+  };
+
+  const handleReagir = (mensagem: ConversaAPI.Mensagem, emoji: ConversaAPI.ReacaoEmoji) => {
+    if (!conversaAtivaGUID || !socket) return;
+    setMenuAbertoGUID(null);
+    socket.emit('reagir_mensagem', {
+      ConversaGUID: conversaAtivaGUID,
+      MensagemGUID: mensagem.MensagemGUID,
+      ReacaoEmoji: emoji,
+    });
   };
 
   const handleIniciarEdicao = (mensagem: ConversaAPI.Mensagem) => {
@@ -681,6 +770,17 @@ export default function ChatPage() {
                       : 'Conversa individual'}
                   </span>
                 </div>
+                {podeGerenciarGrupo && (
+                  <button
+                    type="button"
+                    className={styles.gerenciarGrupoButton}
+                    onClick={() => setGerenciarGrupoAberto(true)}
+                    aria-label="Gerenciar grupo"
+                    title="Gerenciar grupo"
+                  >
+                    <Icon name="settings" size={18} />
+                  </button>
+                )}
               </div>
 
               {conversaAtiva && conversaAtiva.MensagensFixadas.length > 0 && (
@@ -780,15 +880,52 @@ export default function ChatPage() {
                                   <p className={styles.bolhaTexto}>{mensagem.MensagemConteudo}</p>
                                 )}
 
+                                {!editandoEsta && mensagem.Reacoes && mensagem.Reacoes.length > 0 && (
+                                  <div className={styles.reacoesLinha}>
+                                    {mensagem.Reacoes.map((reacao) => {
+                                      const euReagi = usuario ? reacao.UsuariosCPF.includes(usuario.UsuarioCPF) : false;
+                                      return (
+                                        <button
+                                          type="button"
+                                          key={reacao.Emoji}
+                                          className={`${styles.reacaoChip} ${euReagi ? styles.reacaoChipAtiva : ''}`}
+                                          onClick={() => handleReagir(mensagem, reacao.Emoji as ConversaAPI.ReacaoEmoji)}
+                                          title={reacao.UsuariosCPF.length + ' reação(ões)'}
+                                        >
+                                          {reacao.Emoji} {reacao.Quantidade}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
                                 {!editandoEsta && (
                                   <span className={styles.bolhaMeta}>
                                     {fixada && <Icon name="star" size={11} />}
                                     {mensagem.MensagemEditadaAt && !apagada && <span>editada · </span>}
                                     {formatarHora(mensagem.MensagemCreatedAt)}
+                                    {mine && !apagada && conversaAtiva && (
+                                      <span
+                                        className={styles.reciboLeitura}
+                                        title={
+                                          conversaAtiva.ConversaTipo === 'Grupo'
+                                            ? `Lida por ${mensagem.Leitores?.length || 0} de ${Math.max((conversaAtiva.Membros?.length || 1) - 1, 0)}`
+                                            : (mensagem.Leitores?.length || 0) > 0
+                                            ? 'Lida'
+                                            : 'Enviada'
+                                        }
+                                      >
+                                        <Icon name="check" size={11} />
+                                        {(mensagem.Leitores?.length || 0) > 0 && <Icon name="check" size={11} />}
+                                        {conversaAtiva.ConversaTipo === 'Grupo' && (mensagem.Leitores?.length || 0) > 0 && (
+                                          <span className={styles.reciboLeituraContador}>{mensagem.Leitores?.length}</span>
+                                        )}
+                                      </span>
+                                    )}
                                   </span>
                                 )}
 
-                                {!apagada && !editandoEsta && (podeFixarNaConversa || podeApagar(mensagem) || mensagem.MensagemTipo === 'Texto') && (
+                                {!apagada && !editandoEsta && (
                                   <div className={styles.bolhaAcoesWrap}>
                                     <button
                                       type="button"
@@ -802,6 +939,19 @@ export default function ChatPage() {
                                     </button>
                                     {menuAbertoGUID === mensagem.MensagemGUID && (
                                       <div className={styles.bolhaAcoesMenu}>
+                                        <div className={styles.reacaoPickerLinha}>
+                                          {ConversaAPI.EMOJIS_REACAO_PERMITIDOS.map((emoji) => (
+                                            <button
+                                              type="button"
+                                              key={emoji}
+                                              className={styles.reacaoPickerBotao}
+                                              onClick={() => handleReagir(mensagem, emoji)}
+                                              aria-label={`Reagir com ${emoji}`}
+                                            >
+                                              {emoji}
+                                            </button>
+                                          ))}
+                                        </div>
                                         {podeFixarNaConversa && (
                                           <button type="button" onClick={() => void handleFixarToggle(mensagem)}>
                                             <Icon name="star" size={14} /> {fixada ? 'Desafixar' : 'Fixar'}
@@ -914,6 +1064,18 @@ export default function ChatPage() {
         onClose={() => setModalNovaConversaAberto(false)}
         onConversaIniciada={(guid) => void handleConversaIniciada(guid)}
       />
+
+      {conversaAtiva && conversaAtivaGUID && (
+        <GerenciarGrupoModal
+          aberto={gerenciarGrupoAberto}
+          conversa={conversaAtiva}
+          meuCPF={usuario?.UsuarioCPF || ''}
+          meuPapelNoGrupo={meuPapelNoGrupo}
+          isCoordenacaoOuDirecao={isCoordenacaoOuDirecao}
+          onClose={() => setGerenciarGrupoAberto(false)}
+          onAtualizado={() => void carregarConversaAtiva(conversaAtivaGUID)}
+        />
+      )}
     </div>
   );
 }

@@ -480,6 +480,25 @@
   color: var(--slate-500);
 }
 
+.gerenciarGrupoButton {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--slate-500);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.gerenciarGrupoButton:hover {
+  background: var(--surface-50);
+}
+
 .fixadasBar {
   display: flex;
   align-items: center;
@@ -639,6 +658,71 @@
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.reciboLeitura {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  margin-left: 2px;
+}
+
+.reciboLeitura svg + svg {
+  margin-left: -6px;
+}
+
+.reciboLeituraContador {
+  margin-left: 3px;
+  font-weight: 700;
+}
+
+.reacoesLinha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.reacaoChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--line-200);
+  background: var(--white);
+  color: var(--slate-600);
+  border-radius: var(--radius-pill);
+  padding: 1px 7px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.reacaoChipAtiva {
+  border-color: var(--green-500);
+  background: var(--green-50, #E7F9F0);
+  color: var(--green-700);
+}
+
+.reacaoPickerLinha {
+  display: flex;
+  gap: 2px;
+  padding: 4px 6px 6px;
+  border-bottom: 1px solid var(--line-100);
+  margin-bottom: 2px;
+}
+
+.reacaoPickerBotao {
+  border: none;
+  background: transparent;
+  font-size: 1.0625rem;
+  line-height: 1;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.reacaoPickerBotao:hover {
+  background: var(--surface-50);
 }
 
 .bolhaAcoesWrap {

@@ -21,11 +21,13 @@
   - [Unpin Mensagem](#unpin-mensagem)
   - [Delete Mensagem](#delete-mensagem)
   - [Edit Mensagem](#edit-mensagem)
+  - [React to Mensagem (toggle)](#react-to-mensagem-toggle)
   - [Set Representante (Turma)](#set-representante-turma)
   - [Remove Representante (Turma)](#remove-representante-turma)
   - [Set Vice-Representante](#set-vice-representante)
   - [Remove Vice-Representante](#remove-vice-representante)
 - [Data Models](#data-models)
+- [WebSocket Events](#websocket-events)
 - [Business Rules](#business-rules)
 - [Error Codes](#error-codes)
 - [Examples](#examples)
@@ -47,7 +49,13 @@ API de **mensagens/chat** do Ecossistema Escolar, com dois tipos de conversa:
 **Conceito:**
 - Toda conversa de Grupo tem membros com uma `MembroFuncao`: `Membro`, `Lider` (grupos de Tarefa), `Representante`/`Vice-Representante` (grupos de Turma).
 - Conversas de grupo são criadas automaticamente por outros módulos (ex.: `ConversaGrupoService` a partir de [grupotarefa-api.md](grupotarefa-api.md)), não por um `POST` direto nesta API.
-- Mensagens têm soft delete (`MensagemDeletedAt`) e podem ser editadas (`MensagemEditadaAt`) e fixadas (`mensagem_fixada`).
+- Mensagens têm soft delete (`MensagemDeletedAt`) e podem ser editadas (`MensagemEditadaAt`), fixadas (`mensagem_fixada`) e **reagidas** (`mensagem_reacao`, novo — ver abaixo).
+
+**Reações a mensagens (atualizado 2026-07-23):** qualquer participante pode reagir a uma mensagem com um dos 6 emojis de uma paleta fixa (`👍 ❤️ 😂 😮 😢 🙏`). Um mesmo usuário pode ter várias reações simultâneas e independentes na mesma mensagem (ex.: 👍 e ❤️ ao mesmo tempo) — não é "uma reação por usuário". Reagir de novo com o **mesmo** emoji remove só aquela reação (toggle por par usuário+emoji). Endpoint REST (`POST .../reacao`) e evento WebSocket (`reagir_mensagem`/`reacao_atualizada`) seguem o mesmo padrão das demais ações de mensagem (fixar/editar/deletar): as duas vias chamam o mesmo `MensagemService.reagir()` e emitem o mesmo evento de broadcast.
+
+**Recibo de leitura visual (atualizado 2026-07-23):** o `MensagemDTO` (retornado em toda listagem/histórico/detalhe de mensagem) ganhou o campo `Leitores: string[]` — CPFs de quem já leu aquela mensagem, excluindo o próprio remetente. Aplica-se tanto a conversas individuais quanto a grupos (o front usa isso para renderizar ✓/✓✓ em individuais e "✓✓ lida por N de M" em grupos). Não há endpoint novo — é reaproveitamento agregado da tabela `mensagem_leitura`, que já era granular por mensagem×leitor. O evento WebSocket `mensagem_lida` não mudou de payload; o frontend passou a escutá-lo para atualizar `Leitores` localmente (patch client-side), sem requisição adicional.
+
+**Gestão de grupo — UI nova sobre endpoints já existentes (atualizado 2026-07-23):** os 4 endpoints de permissão (Representante/Vice-Representante, abaixo) não mudaram. O que mudou foram dois campos novos em DTOs já existentes, necessários para a tela de gestão de grupo do chat: `ConversaDetalheDTO.ConversaGrupoRefGUID` (GUID da Turma ou do GrupoTarefa por trás do grupo) e `MembroDTO.UsuarioNome` (nome do membro, antes só havia `UsuarioCPF`). "Expulsar membro" continua **não sendo** um endpoint desta API — em grupos de Tarefa, o frontend chama `DELETE /api/grupotarefa/:grupoGUID/membros/:cpf` (ver [grupotarefa-api.md](grupotarefa-api.md)); grupos de Turma nunca têm expulsão via chat. Os eventos WebSocket `permissao_atualizada` e `membro_saiu` já existiam no backend e agora também são consumidos pelo frontend do chat (ver [WebSocket Events](#websocket-events)).
 
 **Permissões:**
 - Todas as rotas exigem que o usuário seja **participante** da conversa (`ConversaDAO.isParticipante`).
@@ -228,8 +236,9 @@ Retorna os detalhes de uma conversa: dados de grupo/parceiro, membros (se grupo)
     "ConversaTipo": "Grupo",
     "ConversaGrupoNome": "1º Ano A",
     "ConversaGrupoTipo": "Turma",
+    "ConversaGrupoRefGUID": "aa0e8400-e29b-41d4-a716-446655440099",
     "Membros": [
-      { "UsuarioCPF": "12345678901", "MembroFuncao": "Representante", "MembroEntradaAt": "2026-02-01T08:00:00.000Z" }
+      { "UsuarioCPF": "12345678901", "UsuarioNome": "Prof. João", "MembroFuncao": "Representante", "MembroEntradaAt": "2026-02-01T08:00:00.000Z" }
     ],
     "ParceiroCPF": null,
     "ParceiroNome": null,
@@ -244,13 +253,19 @@ Retorna os detalhes de uma conversa: dados de grupo/parceiro, membros (se grupo)
         "MensagemTipo": "Texto",
         "MensagemCreatedAt": "2026-07-17T09:00:00.000Z",
         "MensagemDeletedAt": null,
-        "MensagemEditadaAt": null
+        "MensagemEditadaAt": null,
+        "Reacoes": [
+          { "Emoji": "👍", "Quantidade": 2, "UsuariosCPF": ["111.111.111-11", "222.222.222-22"] }
+        ],
+        "Leitores": ["111.111.111-11"]
       }
     ],
     "HasMore": false
   }
 }
 ```
+
+> `ConversaGrupoRefGUID` (novo) só é preenchido para `ConversaTipo='Grupo'` (`null` em conversas Individuais) — aponta para `TurmaGUID` ou `GrupoTarefaGUID` conforme `ConversaGrupoTipo`, e é usado pelo frontend para acionar ações do domínio de origem (ex.: expulsar membro de Grupo de Tarefa) a partir da tela de chat. `UsuarioNome` em `Membros[]` e `Reacoes`/`Leitores` em cada mensagem também são novos — ver [Data Models](#data-models).
 
 **Error Responses:**
 
@@ -304,13 +319,17 @@ Retorna o histórico de mensagens da conversa, paginado por cursor (`before`).
         "MensagemConteudo": "Bom dia, turma!",
         "MensagemTipo": "Texto",
         "MensagemCreatedAt": "2026-07-17T09:00:00.000Z",
-        "MensagemEditadaAt": null
+        "MensagemEditadaAt": null,
+        "Reacoes": [],
+        "Leitores": []
       }
     ],
     "HasMore": true
   }
 }
 ```
+
+> `Reacoes` e `Leitores` (novos) são sempre presentes em todo `MensagemDTO` — `[]` quando não há reação/leitura ainda, nunca `undefined`.
 
 **Error Responses:**
 
@@ -502,7 +521,9 @@ Edita o conteúdo de uma mensagem própria. Emite evento WebSocket `mensagem_edi
     "MensagemConteudo": "Bom dia, turma! (correção: prova dia 26/07)",
     "MensagemTipo": "Texto",
     "MensagemCreatedAt": "2026-07-17T09:00:00.000Z",
-    "MensagemEditadaAt": "2026-07-17T10:10:00.000Z"
+    "MensagemEditadaAt": "2026-07-17T10:10:00.000Z",
+    "Reacoes": [],
+    "Leitores": []
   }
 }
 ```
@@ -530,6 +551,81 @@ curl -X PATCH https://api.example.com/api/conversa/660e8400-e29b-41d4-a716-44665
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -H "Content-Type: application/json" \
   -d '{ "MensagemConteudo": "Bom dia, turma! (correção: prova dia 26/07)" }'
+```
+
+---
+
+### React to Mensagem (toggle)
+
+Reage (ou remove a própria reação) a uma mensagem com um emoji da paleta fixa. **Toggle por par (usuário, emoji)**: se o usuário autenticado ainda não reagiu com aquele emoji nessa mensagem, adiciona; se já reagiu com o mesmo emoji, remove. Um mesmo usuário pode ter múltiplas reações simultâneas e independentes na mesma mensagem (ex.: 👍 e ❤️ ao mesmo tempo) — não existe limite de 1 reação por usuário, nem "troca" de emoji. Disponível também via WebSocket (evento `reagir_mensagem`, ver [WebSocket Events](#websocket-events)), chamando o mesmo `MensagemService.reagir()` e emitindo o mesmo evento `reacao_atualizada`.
+
+**Endpoint:** `POST /api/conversa/:guid/mensagem/:msgGuid/reacao`
+
+**Headers:**
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**URL Parameters:**
+
+| Parameter | Type | Required | Description | Validation |
+|-----------|------|----------|-------------|------------|
+| `guid` | string | ✅ Yes | UUID da conversa | 36 caracteres |
+| `msgGuid` | string | ✅ Yes | UUID da mensagem | 36 caracteres |
+
+**Request Body:**
+```json
+{ "ReacaoEmoji": "👍" }
+```
+
+**Request Parameters:**
+
+| Field | Type | Required | Description | Validation |
+|-------|------|----------|-------------|------------|
+| `ReacaoEmoji` | string | ✅ Yes | Emoji da reação | Um dos 6 suportados: `👍 ❤️ 😂 😮 😢 🙏` (`EMOJIS_REACAO_PERMITIDOS`, `backend/repositories/mensagem.repository.ts`) |
+
+**Success Response (200 OK — mesmo quando o resultado é remoção):**
+```json
+{
+  "success": true,
+  "message": "Reação atualizada",
+  "data": {
+    "ConversaGUID": "660e8400-e29b-41d4-a716-446655440001",
+    "MensagemGUID": "770e8400-e29b-41d4-a716-446655440002",
+    "Reacoes": [
+      { "Emoji": "👍", "Quantidade": 2, "UsuariosCPF": ["111.111.111-11", "222.222.222-22"] }
+    ],
+    "AtorCPF": "222.222.222-22",
+    "Acao": "adicionada"
+  }
+}
+```
+`Acao` é `"adicionada"` ou `"removida"` (nunca `"trocada"` — cada par usuário+emoji é independente, ver regra de negócio acima).
+
+**Error Responses:**
+
+**400 Bad Request** - `ReacaoEmoji` ausente ou fora da paleta permitida (validado em `ConversaMiddleware.validarReacaoBody`, e novamente no service — defesa em profundidade para o caminho WebSocket, que não passa pelo middleware Express)
+```json
+{ "success": false, "message": "ReacaoEmoji deve ser um dos suportados: 👍 ❤️ 😂 😮 😢 🙏" }
+```
+
+**403 Forbidden** - Não é participante da conversa
+```json
+{ "success": false, "message": "Você não faz parte desta conversa" }
+```
+
+**404 Not Found** - Mensagem não pertence a esta conversa, ou está deletada
+```json
+{ "success": false, "message": "Mensagem não encontrada nesta conversa" }
+```
+
+**cURL Example:**
+```bash
+curl -X POST https://api.example.com/api/conversa/660e8400-e29b-41d4-a716-446655440001/mensagem/770e8400-e29b-41d4-a716-446655440002/reacao \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{ "ReacaoEmoji": "👍" }'
 ```
 
 ---
@@ -738,6 +834,34 @@ interface ConversaGrupoMembro {
 }
 ```
 
+### `MembroDTO` / `ConversaDetalheDTO` — resposta enriquecida (não são tabelas)
+
+`GET /:guid` (grupo) retorna `Membros: MembroDTO[]` — enriquecido com o nome do usuário via `ConversaGrupoDAO.findMembrosComNome()` (`JOIN usuario`, `backend/repositories/conversa-grupo.repository.ts`), **não** um campo da tabela `conversa_grupo_membro` (que não tem coluna de nome):
+
+```typescript
+interface MembroDTO {
+  UsuarioCPF: string;
+  UsuarioNome: string; // NOVO (2026-07-23) — via JOIN, não é coluna de conversa_grupo_membro
+  MembroFuncao: MembroFuncao;
+  MembroEntradaAt: string; // ISO 8601
+}
+
+interface ConversaDetalheDTO {
+  ConversaGUID: string;
+  ConversaTipo: 'Individual' | 'Grupo';
+  ConversaGrupoNome: string | null;
+  ConversaGrupoTipo: 'Turma' | 'Tarefa' | null;
+  ConversaGrupoRefGUID: string | null; // NOVO (2026-07-23) — TurmaGUID ou GrupoTarefaGUID; null em conversa Individual
+  Membros: MembroDTO[];
+  ParceiroCPF: string | null;
+  ParceiroNome: string | null;
+  TagContextual: string | null;
+  MensagensFixadas: MensagemFixadaDTO[];
+  Mensagens: MensagemDTO[];
+  HasMore: boolean;
+}
+```
+
 ### Mensagem / MensagemLeitura / MensagemFixada
 
 ```typescript
@@ -763,6 +887,40 @@ interface MensagemFixada {
   ConversaGUID: string;
   FixadaPorCPF: string;
   FixadaAt: Date;
+}
+
+// NOVO (2026-07-23) — reação (emoji) de um usuário a uma mensagem.
+// Múltiplas reações simultâneas e independentes por usuário na mesma
+// mensagem (PK composta pelos 3 campos, não só MensagemGUID+UsuarioCPF).
+interface MensagemReacao {
+  MensagemGUID: string;
+  UsuarioCPF: string;
+  ReacaoEmoji: '👍' | '❤️' | '😂' | '😮' | '😢' | '🙏';
+  ReacaoCreatedAt: Date;
+}
+```
+
+### `MensagemDTO` — resposta enriquecida (não é uma tabela)
+
+`GET /:guid`, `GET /:guid/mensagem`, `PATCH /:guid/mensagem/:msgGuid` e o evento `nova_mensagem`/`mensagem_editada` retornam a mensagem já enriquecida com os agregados de `mensagem_reacao` e `mensagem_leitura` — calculados em batch no service (`backend/services/mensagem.service.ts`, `backend/services/conversa.service.ts`), nunca colunas persistidas em `mensagem`:
+
+```typescript
+interface MensagemReacaoResumo {
+  Emoji: string;
+  Quantidade: number;
+  UsuariosCPF: string[]; // quem reagiu com este emoji
+}
+
+interface MensagemDTO {
+  MensagemGUID: string;
+  ConversaGUID: string;
+  MensagemRemetenteCPF: string;
+  MensagemConteudo: string;
+  MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
+  MensagemCreatedAt: string;      // ISO 8601
+  MensagemEditadaAt: string | null;
+  Reacoes: MensagemReacaoResumo[]; // NOVO — sempre presente, [] se não houver reação
+  Leitores: string[];              // NOVO — CPFs que já leram, excluindo o remetente; sempre presente, [] se ninguém leu ainda
 }
 ```
 
@@ -846,9 +1004,39 @@ CREATE TABLE `mensagem_fixada` (
   CONSTRAINT `FK_MensagemFixada_Conversa` FOREIGN KEY (`ConversaGUID`) REFERENCES `conversa` (`ConversaGUID`) ON DELETE CASCADE,
   CONSTRAINT `FK_MensagemFixada_Usuario` FOREIGN KEY (`FixadaPorCPF`) REFERENCES `usuario` (`UsuarioCPF`)
 );
+
+-- NOVO (2026-07-23) — migration backend/database/migrations/2026-07-23-chat-melhorias.sql.
+-- Reações múltiplas e independentes por usuário na mesma mensagem — toggle
+-- é feito por par (MensagemGUID, UsuarioCPF, ReacaoEmoji), não por usuário só.
+CREATE TABLE `mensagem_reacao` (
+  `MensagemGUID`     CHAR(36)                                   NOT NULL,
+  `UsuarioCPF`       VARCHAR(14)                                NOT NULL,
+  `ReacaoEmoji`      ENUM('👍', '❤️', '😂', '😮', '😢', '🙏')   NOT NULL,
+  `ReacaoCreatedAt`  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`MensagemGUID`, `UsuarioCPF`, `ReacaoEmoji`),
+  INDEX `idx_mensagemreacao_mensagem` (`MensagemGUID`),
+  CONSTRAINT `FK_MensagemReacao_Mensagem` FOREIGN KEY (`MensagemGUID`) REFERENCES `mensagem` (`MensagemGUID`) ON DELETE CASCADE,
+  CONSTRAINT `FK_MensagemReacao_Usuario` FOREIGN KEY (`UsuarioCPF`) REFERENCES `usuario` (`UsuarioCPF`) ON DELETE CASCADE
+);
 ```
 
-Fonte: `backend/database/sql.txt`.
+Fonte: `backend/database/sql.txt:421-439` e `backend/database/migrations/2026-07-23-chat-melhorias.sql` (tabela `mensagem_reacao`, PK composta `(MensagemGUID, UsuarioCPF, ReacaoEmoji)` — reflete múltiplas reações simultâneas e independentes por usuário na mesma mensagem); demais tabelas em `backend/database/sql.txt`.
+
+---
+
+## WebSocket Events
+
+Este módulo REST convive com uma camada WebSocket (`backend/websocket/conversa.handler.ts`, registrado via `backend/websocket/SocketServer`) responsável pelo envio de mensagens em tempo real e pela emissão de eventos de broadcast para os clientes conectados à room da conversa (`io.to(ConversaGUID)`/`SocketServer.emit(conversaGUID, ...)`). A tabela abaixo cobre os eventos relevantes para este recurso — não é uma documentação completa da camada WS (fora do escopo de rotas HTTP), mas os eventos ligados a Reações, Recibo de Leitura e Gestão de Grupo passaram a ser tratados explicitamente aqui porque **são regra de negócio, não detalhe de implementação**.
+
+| Direção | Evento | Payload | Emitido por | Consumo no frontend |
+|---|---|---|---|---|
+| Client → Server | `reagir_mensagem` | `{ ConversaGUID, MensagemGUID, ReacaoEmoji }` | — (recebido) | **NOVO (2026-07-23)** — equivalente WebSocket do `POST .../reacao`; chama o mesmo `MensagemService.reagir()` |
+| Server → Client | `reacao_atualizada` | `{ ConversaGUID, MensagemGUID, Reacoes: MensagemReacaoResumo[], AtorCPF, Acao: 'adicionada' \| 'removida' }` | `MensagemService.reagir()` (tanto via REST quanto via WS) | **NOVO (2026-07-23)** — consumido pelo chat para atualizar os chips de reação da mensagem em tempo real |
+| Server → Client | `mensagem_lida` | `{ ConversaGUID, UsuarioCPF, LidaAt }` | `conversa.handler.ts` (handler `mark_as_read`), sem mudança de payload | Já existia no backend; **agora também consumido pelo frontend (atualizado 2026-07-23)** — ao receber, o chat aplica um patch client-side: toda mensagem já carregada com remetente diferente de `UsuarioCPF` e `MensagemCreatedAt <= LidaAt` ganha esse CPF em `Leitores`, sem nova requisição |
+| Server → Client | `permissao_atualizada` | `{ ConversaGUID, UsuarioCPF, NovaFuncao }` | `ConversaPermissaoService` (4 métodos de Representante/Vice-Representante) | Já existia no backend; **agora também consumido pelo frontend (atualizado 2026-07-23)** — a tela de gestão de grupo re-busca a conversa inteira (`GET /:guid`) ao receber, em vez de aplicar patch pontual (o backend não emite evento para os efeitos colaterais de rebaixamento, ver Business Rules #7) |
+| Server → Client | `membro_saiu` | `{ ConversaGUID, UsuarioCPF }` | `ConversaGrupoService` (emitido quando um membro é expulso de Grupo de Tarefa via `DELETE /api/grupotarefa/:grupoGUID/membros/:cpf`, ou sai do grupo) | Já existia no backend; **agora também consumido pelo frontend (atualizado 2026-07-23)** — a tela de gestão de grupo re-busca a lista de membros ao receber |
+| Server → Client | `mensagem_deletada` / `mensagem_editada` / `mensagem_fixada` / `mensagem_desafixada` | Ver Business Rules #10 | `MensagemService` | Já existia e já era consumido |
+| Server → Client | `nova_mensagem` | `MensagemDTO` (com `Reacoes`/`Leitores` já presentes, ambos `[]` para mensagem recém-criada) | `conversa.handler.ts` (handler `send_mensagem` → `MensagemService.enviar()`) | Já existia e já era consumido |
 
 ---
 
@@ -863,8 +1051,15 @@ Fonte: `backend/database/sql.txt`.
 7. **Definir novo Representante substitui o atual** — o Representante anterior (e todos os Vice-Representantes) voltam a `Membro` antes do novo assumir (`ConversaPermissaoService.definirRepresentante`).
 8. **Delegação de Vice-Representante depende do papel do delegante**: em Turma, só o Representante delega; em Tarefa, só o Líder (`#assertRepresentanteOuLider`).
 9. **Líder/Representante não pode virar Vice-Representante** — checagem explícita em `definirViceRepresentante`.
-10. **Todas as mudanças de estado emitem eventos WebSocket** (`mensagem_deletada`, `mensagem_editada`, `mensagem_fixada`, `mensagem_desafixada`, `permissao_atualizada`) para os clientes conectados àquela conversa via `SocketServer.emit`.
+10. **Todas as mudanças de estado emitem eventos WebSocket** (`mensagem_deletada`, `mensagem_editada`, `mensagem_fixada`, `mensagem_desafixada`, `permissao_atualizada`, `reacao_atualizada`, `mensagem_lida`, `membro_saiu`) para os clientes conectados àquela conversa via `SocketServer.emit`/`io.to(ConversaGUID)` — ver [WebSocket Events](#websocket-events).
 11. **Envio de mensagem de texto não é REST** — não existe `POST /:guid/mensagem`; `MensagemService.enviar` é chamado a partir do handler de WebSocket (fora do escopo desta documentação de rotas HTTP).
+12. **Reagir a mensagem é ação de qualquer participante, sem hierarquia** (`MensagemService.reagir()`) — diferente de fixar/desafixar/deletar mensagem de terceiro, que exigem papel (Líder/Representante/Vice-Representante) em grupo. Só exige `ConversaDAO.isParticipante` e mensagem existente/não deletada, mesma checagem usada em editar/deletar/fixar.
+13. **Reação — múltiplas simultâneas, toggle por par (usuário, emoji)** — um usuário pode reagir com vários emojis diferentes na mesma mensagem ao mesmo tempo (`mensagem_reacao`, PK composta `(MensagemGUID, UsuarioCPF, ReacaoEmoji)`). Reagir de novo com o mesmo emoji remove só aquela reação (`MensagemDAO.toggleReacao`); não existe "trocar" de emoji (cada par é independente).
+14. **Emoji restrito à paleta fixa** (`👍 ❤️ 😂 😮 😢 🙏`), validado em duas camadas: `ConversaMiddleware.validarReacaoBody` (400, caminho REST) e novamente no service/`ENUM` do MySQL (defesa em profundidade — protege também o caminho WebSocket, que não passa pelo middleware Express).
+15. **Reagir não exige `ConversaStatus='Ativa'`** — por paridade com fixar/editar/deletar (nenhuma dessas ações valida o status da conversa; só `enviar()` faz essa checagem). Reagir a mensagem de conversa/grupo já encerrado permanece possível.
+16. **Reagir não dispara notificação in-app** — por paridade com fixar/desafixar (que também não chamam `getNotificacaoService().disparar()`); só `enviar()` notifica.
+17. **`Leitores` é agregado de `mensagem_leitura`, não um cursor por conversa** — `mensagem_leitura` já era granular por par `(MensagemGUID, UsuarioCPF)`; `MensagemDTO.Leitores` é o resultado de agregar essas linhas por mensagem, excluindo o remetente (`MensagemDAO.findLeitoresPorMensagens`/`agruparLeitoresPorMensagem`). Aplica-se tanto a conversas Individuais quanto a Grupo (sem distinção de `ConversaTipo` no backend — a distinção de renderização, se houver, é decisão de frontend).
+18. **`ConversaGrupoRefGUID` e `UsuarioNome` são enriquecimentos aditivos, sem regra de autorização nova** — só passam a ser expostos por `ConversaService.buscarConversa()`; a autorização de quem pode ver a conversa continua sendo a mesma checagem de `isParticipante` (regra #2).
 
 ---
 
@@ -880,6 +1075,7 @@ Fonte: `backend/database/sql.txt`.
 | 400 | Usuário não é membro desta conversa | Alvo de Representante/Vice não pertence ao grupo |
 | 400 | Líder ou Representante não pode ser Vice-Representante | Conflito de papel |
 | 400 | Usuário não é Vice-Representante desta conversa | Remoção de Vice em quem não tem o papel |
+| 400 | `ReacaoEmoji` deve ser um dos suportados: 👍 ❤️ 😂 😮 😢 🙏 | Emoji ausente ou fora da paleta fixa (`validarReacaoBody`, e novamente no service) |
 | 403 | Você não faz parte desta conversa | Ação em conversa da qual não é participante |
 | 403 | Você só pode deletar/editar suas próprias mensagens (...) | Ação sobre mensagem de outro sem o papel exigido |
 | 403 | Apenas o Líder/Representante/Vice-Representante pode... | Fixar/desafixar/deletar em grupo sem papel adequado |
@@ -921,6 +1117,26 @@ Response 403:
 { "success": false, "message": "Apenas o Líder, Representante ou Vice-Representante pode fixar mensagens em grupos" }
 ```
 
+### Cenário 4: Reagir e depois remover a mesma reação (toggle)
+```bash
+POST /api/conversa/660e8400-e29b-41d4-a716-446655440001/mensagem/770e8400-e29b-41d4-a716-446655440002/reacao
+{ "ReacaoEmoji": "👍" }
+# Response 200, Acao="adicionada", Reacoes=[{ "Emoji": "👍", "Quantidade": 1, "UsuariosCPF": ["222.222.222-22"] }]
+
+POST /api/conversa/660e8400-e29b-41d4-a716-446655440001/mensagem/770e8400-e29b-41d4-a716-446655440002/reacao
+{ "ReacaoEmoji": "👍" }
+# Response 200, Acao="removida", Reacoes=[]
+```
+
+### Cenário 5: Emoji fora da paleta suportada (❌ Erro)
+```bash
+POST /api/conversa/660e8400-e29b-41d4-a716-446655440001/mensagem/770e8400-e29b-41d4-a716-446655440002/reacao
+{ "ReacaoEmoji": "🔥" }
+
+Response 400:
+{ "success": false, "message": "ReacaoEmoji deve ser um dos suportados: 👍 ❤️ 😂 😮 😢 🙏" }
+```
+
 ---
 
 ## Integration with Other Entities
@@ -933,6 +1149,9 @@ Response 403:
 
 ## Notes
 
-- Este módulo tem uma camada WebSocket paralela (`backend/websocket/SocketServer`) responsável pelo envio de mensagens em tempo real e pela emissão dos eventos citados nas Business Rules — não documentada aqui (fora do escopo de rotas HTTP/REST).
+- Este módulo tem uma camada WebSocket paralela (`backend/websocket/SocketServer`, handlers em `backend/websocket/conversa.handler.ts`) responsável pelo envio de mensagens em tempo real e pela emissão dos eventos citados nas Business Rules — cobertura resumida em [WebSocket Events](#websocket-events) (não é documentação completa da camada WS, que segue fora do escopo de rotas HTTP/REST).
 - `MembroFuncao` no schema de referência (`sql.txt`) só lista `Membro`/`Lider`; o código usa também `Representante`/`Vice-Representante` — ver nota ⚠️ no schema acima.
 - Datas retornadas em ISO 8601.
+- **Reações (2026-07-23):** modelo é múltiplas reações simultâneas por usuário (estilo Discord), não single-reaction — decisão de negócio confirmada pelo usuário, documentada em `docs/PLANO_IMPLEMENTACAO_CHAT_MELHORIAS.md`, seção 1.1, item 1 (substitui a recomendação original da seção 1, que era single-reaction).
+- **Recibo de leitura (2026-07-23):** `MensagemDTO.Leitores` cobre Individual **e** Grupo (decisão de negócio confirmada pelo usuário, `docs/PLANO_IMPLEMENTACAO_CHAT_MELHORIAS.md`, seção 1.1, item 2 — diverge da recomendação original da seção 1, que restringia a Individual e usava um campo de cursor `UltimaLeituraParceiro` no `ConversaDetalheDTO`, nunca implementado).
+- **"Kick" de membro de grupo (2026-07-23):** já existia antes desta rodada de melhorias (`GrupoTarefaService.expulsarMembro`, só em Grupo de Tarefa, só o Líder) e não é endpoint desta API — ver `docs/PLANO_IMPLEMENTACAO_CHAT_MELHORIAS.md`, seção 1.1, item 3, e [grupotarefa-api.md](grupotarefa-api.md). Grupos de Turma nunca têm expulsão via chat.
