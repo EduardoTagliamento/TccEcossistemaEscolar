@@ -9,6 +9,7 @@ import { DIAS_SEMANA, DIA_SEMANA_LABEL, DiaSemana, Intervalo } from '@/lib/api/e
 import * as EscolaAPI from '@/lib/api/escola.api';
 import { useAuth } from '@/lib/auth/AuthContext';
 import ColorPicker from '@/components/ColorPicker';
+import { validarEmail } from '@/lib/validators/email';
 
 interface IntervaloLinha {
   IntervaloInicio: string;
@@ -38,6 +39,7 @@ export default function ConfiguracoesEscolaPage() {
   // ===== Seção "Identidade da Escola" (apenas Direção — FuncaoId 6) =====
   const [isDirecao, setIsDirecao] = useState(false);
   const [escolaNome, setEscolaNome] = useState('');
+  const [escolaEmail, setEscolaEmail] = useState('');
   const [corPriEs, setCorPriEs] = useState('#1E3A8A');
   const [corPriCl, setCorPriCl] = useState('#FFFFFF');
   const [corSecEs, setCorSecEs] = useState('#FF5733');
@@ -112,6 +114,7 @@ export default function ConfiguracoesEscolaPage() {
     try {
       const { escola } = await EscolaAPI.buscarEscola(escolaGUID);
       setEscolaNome(escola.EscolaNome || '');
+      setEscolaEmail(escola.EscolaEmail || '');
       setCorPriEs(escola.EscolaCorPriEs || '#1E3A8A');
       setCorPriCl(escola.EscolaCorPriCl || '#FFFFFF');
       setCorSecEs(escola.EscolaCorSecEs || '#FF5733');
@@ -168,8 +171,14 @@ export default function ConfiguracoesEscolaPage() {
         return;
       }
 
+      if (escolaEmail.trim() && !validarEmail(escolaEmail.trim())) {
+        setErroIdentidade('E-mail da escola inválido');
+        return;
+      }
+
       const dados: EscolaAPI.AtualizarEscolaDados = {
         EscolaNome: escolaNome.trim(),
+        EscolaEmail: escolaEmail.trim() || null,
         EscolaCorPriEs: corPriEs,
         EscolaCorPriCl: corPriCl,
         EscolaCorSecEs: corSecEs,
@@ -187,6 +196,7 @@ export default function ConfiguracoesEscolaPage() {
       const { escola } = await EscolaAPI.atualizarEscola(escolaGUID, dados);
 
       setEscolaNome(escola.EscolaNome || '');
+      setEscolaEmail(escola.EscolaEmail || '');
       setCorPriEs(escola.EscolaCorPriEs || corPriEs);
       setCorPriCl(escola.EscolaCorPriCl || corPriCl);
       setCorSecEs(escola.EscolaCorSecEs || corSecEs);
@@ -425,6 +435,19 @@ export default function ConfiguracoesEscolaPage() {
               style={{ maxWidth: '360px' }}
               value={escolaNome}
               onChange={(e) => setEscolaNome(e.target.value)}
+              disabled={salvandoIdentidade}
+            />
+          </div>
+
+          <div className={styles.campoContainer}>
+            <label className={styles.label}>E-mail da escola</label>
+            <input
+              type="email"
+              className={styles.input}
+              style={{ maxWidth: '360px' }}
+              value={escolaEmail}
+              onChange={(e) => setEscolaEmail(e.target.value)}
+              placeholder="contato@suaescola.com.br"
               disabled={salvandoIdentidade}
             />
           </div>

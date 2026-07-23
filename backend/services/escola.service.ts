@@ -159,6 +159,19 @@ export default class EscolaService {
       });
     }
 
+    // O frontend reenvia as 4 cores atuais em todo salvamento (mesmo sem
+    // mudança) — por isso a checagem extra do representante legal só dispara
+    // quando o valor recebido realmente DIFERE do já salvo, nunca só por o
+    // campo estar presente no payload. Assim, quem não é representante legal
+    // continua podendo salvar nome/logo sem esbarrar nessa restrição.
+    const camposCor = ["EscolaCorPriEs", "EscolaCorPriCl", "EscolaCorSecEs", "EscolaCorSecCl"] as const;
+    const alterandoCores = camposCor.some(
+      (campo) => jsonEscola[campo] !== undefined && jsonEscola[campo] !== existente[campo]
+    );
+    if (alterandoCores) {
+      await this.validarPermissaoRepresentanteLegal(usuarioCPF!, EscolaGUID);
+    }
+
     const escola = new Escola();
     escola.EscolaGUID = EscolaGUID;
     escola.EscolaNome =
@@ -271,6 +284,22 @@ export default class EscolaService {
     throw new ErrorResponse(403, "Sem permissão", {
       message: "Você não tem permissão para realizar esta operação. Apenas a Direção pode alterar os dados da escola.",
     });
+  }
+
+  /**
+   * Personalização de cores é restrita ao representante legal da escola —
+   * o Direção ativo há mais tempo (ver EscolaxUsuarioxFuncaoDAO.findRepresentanteLegal).
+   * Demais campos da escola continuam liberados para qualquer Direção
+   * (validarPermissaoDirecao), só as 4 cores exigem essa checagem extra.
+   */
+  private async validarPermissaoRepresentanteLegal(usuarioCPF: string, escolaGUID: string): Promise<void> {
+    const representanteLegal = await this.#escolaxusuarioxfuncaoDAO.findRepresentanteLegal(escolaGUID);
+
+    if (!representanteLegal || representanteLegal.UsuarioCPF !== usuarioCPF) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "A personalização de cores é restrita ao representante legal da escola (Direção ativo há mais tempo).",
+      });
+    }
   }
 
   private toDTO(escola: Escola): EscolaDTO {

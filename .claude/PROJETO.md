@@ -65,11 +65,11 @@ Quase todo o backend REST já existe e está registrado em `backend/Server.ts` (
 - [x] Cadastro de eventos (`cadastro-evento`) e gestão de pendências (`cadastro-pendencia`, `pendencias`) já têm tela
 - [x] Registro de Auditoria — implementado ponta a ponta (controller/service/migration + tela `auditoria/page.tsx`, 404 linhas)
 
-### 🟡 Configurações
+### 🟢 Configurações — concluído
 - **Usuário:** [x] dados cadastrais, foto, senha, preferências de acessibilidade (tema/daltônico/fonte/movimento/contraste) — tela `/perfil` completa
 - **Escola:** [x] cronograma de turmas/grade horária e edição de nome já existem em `configuracoes/page.tsx`
-  - [ ] Restringir customização de cor ao representante legal da escola (regra de permissão ainda não avaliada/implementada)
-  - [ ] Confirmar se edição de e-mail/logo da escola está coberta fora do cronograma
+  - [x] **Restringir cor ao representante legal (2026-07-23):** conceito de "representante legal" não existia no banco — decisão do usuário: derivar do vínculo já existente, sem migration (o Direção com `Status='Ativo'` há mais tempo na escola, `EscolaxUsuarioxFuncaoDAO.findRepresentanteLegal()`, `ORDER BY DataInicio ASC LIMIT 1`). `EscolaService.updateEscola()` só exige essa checagem extra quando o valor de cor recebido **difere** do já salvo (não só por o campo estar presente) — evita quebrar o salvamento de nome/logo por outros membros da Direção, já que o frontend sempre reenvia as 4 cores atuais a cada save.
+  - [x] **Campo de e-mail da escola (2026-07-23):** `EscolaEmail` já era aceito pelo backend (`updateEscola`) mas não existia no frontend — adicionado à seção "Identidade da Escola" em `configuracoes/page.tsx`, com validação via `lib/validators/email.ts` (opcional, pode ficar vazio).
 
 ### 🟡 Auth / institucional (Login, Cadastro, Saiba mais, Landing, Criar escola)
 - [x] Cores fixas em hex já migradas para CSS Variables do design system em `login`, `cadastro`, `criar-escola` e landing page
@@ -78,9 +78,10 @@ Quase todo o backend REST já existe e está registrado em `backend/Server.ts` (
 - [x] **`/saiba-mais` reformulada (2026-07-23, via agente `frontend`):** migrou de `react-icons` para o padrão de ícone SVG local do projeto; conteúdo revisado pra não duplicar as novas seções da landing (foco em detalhe que a landing só resume: funcionalidades específicas, stack tecnológica, origem do projeto como TCC); cobertura completa de tema escuro/daltônico/alto-contraste adicionada ao novo `page.module.css`. Nenhum mock dedicado de design encontrado (mcp `claude_design` indisponível na sessão) — fallback documentado no próprio CSS (mesmos tokens da landing page).
 - [ ] Reposicionamento de layout conforme post-its do board (imagem à esquerda/formulário à direita, espelhado em login/cadastro) — ajuste visual, não criação — **ainda pendente, não tocado nesta rodada**
 
-### 🟢 Gestão de Dados da Escola — concluído
+### 🟡 Gestão de Dados da Escola
 - [x] Filtro de busca já implementado em `gestao-dados/alunos` e `gestao-dados/turmas`
 - [x] ~~Confirmar se os cards da home são dinâmicos~~ — confirmado em 2026-07-23: `gestao-dados/page.tsx` busca contadores reais via `Promise.all` (Curso/Matéria/Turma/Aluno/Professor), com loading state — não é estático.
+- [ ] **Falta módulo de Secretaria/Coordenação (2026-07-23, apontado pelo usuário):** `gestao-dados/` só tem telas para `cursos`, `materias`, `turmas`, `alunos`, `professores` — não existe uma tela equivalente para gerenciar usuários com papel Secretaria (FuncaoId=2) ou Coordenação (FuncaoId=1), diferente de "professores" que já tem CRUD dedicado. O backend genérico (`/api/escolaxusuarioxfuncao`) já suporta essas funções — falta só a tela específica no frontend.
 
 ### ⚪ Itens em aberto sem dono claro
 - [x] ~~Migrations com execução não confirmada~~ — confirmado em 2026-07-23 via agente `mysql`: todas as migrations até `2026-07-22` já estavam aplicadas em produção; a migration nova de chat (`2026-07-23-chat-melhorias.sql`, tabela `mensagem_reacao`) também já foi aplicada. **Nota:** `SHOW CREATE TABLE`/`INFORMATION_SCHEMA` exibem `?` para 5 dos 6 emojis do ENUM `ReacaoEmoji` — confirmado, por teste funcional de INSERT/SELECT, que é só um bug cosmético de exibição do MySQL 9.4 para caracteres de 4 bytes, não corrupção de dado real.
