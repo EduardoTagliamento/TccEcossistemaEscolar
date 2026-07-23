@@ -1,10 +1,18 @@
 import { v4 as uuidv4 } from "uuid";
+import { RowDataPacket } from "mysql2";
 import ErrorResponse from "../utils/ErrorResponse";
 import Escola from "../entities/escola.model";
 import { EscolaDAO } from "../repositories/escola.repository";
 import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import { getAuditoriaService } from "./auditoria.service";
+import { getNotificacaoService } from "./notificacao.service";
+import { pool } from "../database/mysql";
+
+export interface TransferirDirecaoResultadoDTO {
+  NovoDirecaoCPF: string;
+  NovoCoordenacaoCPF: string;
+}
 
 export interface EscolaDTO {
   EscolaGUID: string;
@@ -262,6 +270,158 @@ export default class EscolaService {
     }
 
     return deletado;
+  };
+
+  /**
+   * Elege um Coordenação ativo da escola para assumir a Direção — troca
+   * simétrica e imediata: quem chama (Direção atual) passa a Coordenação, o
+   * eleito passa a Direção. Sem migration nova de schema — reaproveita
+   * escolaxusuarioxfuncao (FuncaoId 1=Coordenação, 6=Direção), respeitando a
+   * UNIQUE KEY (UsuarioCPF, EscolaGUID, FuncaoId): se qualquer um dos dois já
+   * teve um vínculo anterior com a função de destino (ativo ou não), esse
+   * vínculo é reativado em vez de duplicado.
+   *
+   * Tudo numa transação — uma falha no meio não pode deixar a escola sem
+   * nenhum Direção ativo.
+   */
+  transferirDirecao = async (
+    EscolaGUID: string,
+    novoDirecaoCPF: string,
+    direcaoAtualCPF?: string
+  ): Promise<TransferirDirecaoResultadoDTO> => {
+    console.log("🟣 EscolaService.transferirDirecao()");
+
+    await this.validarPermissaoDirecao(direcaoAtualCPF, EscolaGUID);
+
+    if (!direcaoAtualCPF) {
+      throw new ErrorResponse(401, "Usuário não autenticado");
+    }
+
+    if (novoDirecaoCPF === direcaoAtualCPF) {
+      throw new ErrorResponse(400, "Sem alteração", {
+        message: "Você já é a Direção desta escola.",
+      });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [direcaoRows] = await connection.execute<RowDataPacket[]>(
+        `SELECT EscolaxUsuarioxFuncaoId FROM escolaxusuarioxfuncao
+         WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId = 6 AND Status = 'Ativo' LIMIT 1`,
+        [direcaoAtualCPF, EscolaGUID]
+      );
+      if (direcaoRows.length === 0) {
+        throw new ErrorResponse(403, "Sem permissão", {
+          message: "Você não é a Direção ativa desta escola.",
+        });
+      }
+      const direcaoAtualId = direcaoRows[0].EscolaxUsuarioxFuncaoId;
+
+      const [coordenacaoRows] = await connection.execute<RowDataPacket[]>(
+        `SELECT EscolaxUsuarioxFuncaoId FROM escolaxusuarioxfuncao
+         WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId = 1 AND Status = 'Ativo' LIMIT 1`,
+        [novoDirecaoCPF, EscolaGUID]
+      );
+      if (coordenacaoRows.length === 0) {
+        throw new ErrorResponse(400, "Usuário inválido", {
+          message: "O usuário eleito precisa ser Coordenação ativo(a) desta escola.",
+        });
+      }
+      const novoDirecaoVinculoAtualId = coordenacaoRows[0].EscolaxUsuarioxFuncaoId;
+
+      // Desativa os dois vínculos atuais (Direção de quem sai, Coordenação de quem assume).
+      await connection.execute(
+        `UPDATE escolaxusuarioxfuncao SET Status = 'Inativo', DataFim = CURDATE() WHERE EscolaxUsuarioxFuncaoId = ?`,
+        [direcaoAtualId]
+      );
+      await connection.execute(
+        `UPDATE escolaxusuarioxfuncao SET Status = 'Inativo', DataFim = CURDATE() WHERE EscolaxUsuarioxFuncaoId = ?`,
+        [novoDirecaoVinculoAtualId]
+      );
+
+      // Quem sai da Direção assume (ou reassume) Coordenação.
+      const [coordenacaoExistenteRows] = await connection.execute<RowDataPacket[]>(
+        `SELECT EscolaxUsuarioxFuncaoId FROM escolaxusuarioxfuncao
+         WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId = 1 LIMIT 1`,
+        [direcaoAtualCPF, EscolaGUID]
+      );
+      if (coordenacaoExistenteRows.length > 0) {
+        await connection.execute(
+          `UPDATE escolaxusuarioxfuncao SET Status = 'Ativo', DataInicio = CURDATE(), DataFim = NULL WHERE EscolaxUsuarioxFuncaoId = ?`,
+          [coordenacaoExistenteRows[0].EscolaxUsuarioxFuncaoId]
+        );
+      } else {
+        await connection.execute(
+          `INSERT INTO escolaxusuarioxfuncao (UsuarioCPF, EscolaGUID, FuncaoId, DataInicio, Status)
+           VALUES (?, ?, 1, CURDATE(), 'Ativo')`,
+          [direcaoAtualCPF, EscolaGUID]
+        );
+      }
+
+      // Quem era Coordenação assume (ou reassume) Direção.
+      const [direcaoExistenteRows] = await connection.execute<RowDataPacket[]>(
+        `SELECT EscolaxUsuarioxFuncaoId FROM escolaxusuarioxfuncao
+         WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId = 6 LIMIT 1`,
+        [novoDirecaoCPF, EscolaGUID]
+      );
+      if (direcaoExistenteRows.length > 0) {
+        await connection.execute(
+          `UPDATE escolaxusuarioxfuncao SET Status = 'Ativo', DataInicio = CURDATE(), DataFim = NULL WHERE EscolaxUsuarioxFuncaoId = ?`,
+          [direcaoExistenteRows[0].EscolaxUsuarioxFuncaoId]
+        );
+      } else {
+        await connection.execute(
+          `INSERT INTO escolaxusuarioxfuncao (UsuarioCPF, EscolaGUID, FuncaoId, DataInicio, Status)
+           VALUES (?, ?, 6, CURDATE(), 'Ativo')`,
+          [novoDirecaoCPF, EscolaGUID]
+        );
+      }
+
+      const [nomesRows] = await connection.execute<RowDataPacket[]>(
+        `SELECT UsuarioCPF, UsuarioNome FROM usuario WHERE UsuarioCPF IN (?, ?)`,
+        [direcaoAtualCPF, novoDirecaoCPF]
+      );
+      const nomePorCPF = new Map(nomesRows.map((r) => [r.UsuarioCPF as string, r.UsuarioNome as string]));
+
+      await connection.commit();
+
+      void getAuditoriaService().registrar({
+        EscolaGUID,
+        UsuarioCPFAtor: direcaoAtualCPF,
+        AcaoTipo: "Update",
+        EntidadeTipo: "escolaxusuarioxfuncao",
+        EntidadeGUID: EscolaGUID,
+        EntidadeDescricao: `Direção transferida de ${nomePorCPF.get(direcaoAtualCPF) ?? direcaoAtualCPF} para ${nomePorCPF.get(novoDirecaoCPF) ?? novoDirecaoCPF}`,
+        CategoriaAuditoriaId: 5, // SegurancaConta — mudança de função/permissão
+      });
+
+      getNotificacaoService()
+        .disparar({
+          tipoSlug: "promovido_direcao",
+          destinatarios: [novoDirecaoCPF],
+          escolaGUID: EscolaGUID,
+          titulo: "Você foi eleito(a) para a Direção da escola",
+        })
+        .catch((error) => console.error("🔴 EscolaService.transferirDirecao() falhou ao notificar novo Direção:", error));
+
+      getNotificacaoService()
+        .disparar({
+          tipoSlug: "rebaixado_coordenacao",
+          destinatarios: [direcaoAtualCPF],
+          escolaGUID: EscolaGUID,
+          titulo: `Você passou a Coordenação — ${nomePorCPF.get(novoDirecaoCPF) ?? "outro usuário"} assumiu a Direção`,
+        })
+        .catch((error) => console.error("🔴 EscolaService.transferirDirecao() falhou ao notificar antigo Direção:", error));
+
+      return { NovoDirecaoCPF: novoDirecaoCPF, NovoCoordenacaoCPF: direcaoAtualCPF };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   };
 
   /**

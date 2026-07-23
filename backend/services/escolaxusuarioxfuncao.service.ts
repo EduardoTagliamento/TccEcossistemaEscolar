@@ -2,11 +2,13 @@ import ErrorResponse from "../utils/ErrorResponse";
 import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import { UsuarioxEscolaAcessoDAO } from "../repositories/usuarioxescolaacesso.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import { getAuditoriaService } from "./auditoria.service";
 
 export interface EscolaxUsuarioxFuncaoDTO {
   EscolaxUsuarioxFuncaoId: number;
   UsuarioCPF: string;
+  UsuarioNome: string | null;
   EscolaGUID: string;
   FuncaoId: number;
   FuncaoNome: string | null;
@@ -27,11 +29,17 @@ interface FindFiltersDTO {
 export default class EscolaxUsuarioxFuncaoService {
   #relacaoDAO: EscolaxUsuarioxFuncaoDAO;
   #acessoDAO: UsuarioxEscolaAcessoDAO;
+  #usuarioDAO: UsuarioDAO;
 
-  constructor(relacaoDAODependency: EscolaxUsuarioxFuncaoDAO, acessoDAODependency: UsuarioxEscolaAcessoDAO) {
+  constructor(
+    relacaoDAODependency: EscolaxUsuarioxFuncaoDAO,
+    acessoDAODependency: UsuarioxEscolaAcessoDAO,
+    usuarioDAODependency: UsuarioDAO
+  ) {
     console.log("Service: EscolaxUsuarioxFuncaoService.constructor()");
     this.#relacaoDAO = relacaoDAODependency;
     this.#acessoDAO = acessoDAODependency;
+    this.#usuarioDAO = usuarioDAODependency;
   }
 
   createRelacao = async (
@@ -97,7 +105,11 @@ export default class EscolaxUsuarioxFuncaoService {
       ? await this.#acessoDAO.findByEscola(filters.EscolaGUID)
       : new Map<string, Date>();
 
-    return relacoes.map((item) => this.toDTO(item, acessoMap.get(item.UsuarioCPF) ?? null));
+    const nomesMap = await this.#usuarioDAO.findNomesByCPFs([...new Set(relacoes.map((r) => r.UsuarioCPF))]);
+
+    return relacoes.map((item) =>
+      this.toDTO(item, acessoMap.get(item.UsuarioCPF) ?? null, nomesMap.get(item.UsuarioCPF) ?? null)
+    );
   };
 
   findById = async (EscolaxUsuarioxFuncaoId: number): Promise<EscolaxUsuarioxFuncaoDTO> => {
@@ -110,7 +122,8 @@ export default class EscolaxUsuarioxFuncaoService {
       });
     }
 
-    return this.toDTO(relacao);
+    const nomesMap = await this.#usuarioDAO.findNomesByCPFs([relacao.UsuarioCPF]);
+    return this.toDTO(relacao, null, nomesMap.get(relacao.UsuarioCPF) ?? null);
   };
 
   updateRelacao = async (
@@ -328,7 +341,11 @@ export default class EscolaxUsuarioxFuncaoService {
     await this.#acessoDAO.upsert(usuarioCPF, escolaGUID);
   };
 
-  private toDTO = (relacao: EscolaxUsuarioxFuncao, ultimoAcessoEm: Date | null = null): EscolaxUsuarioxFuncaoDTO => {
+  private toDTO = (
+    relacao: EscolaxUsuarioxFuncao,
+    ultimoAcessoEm: Date | null = null,
+    usuarioNome: string | null = null
+  ): EscolaxUsuarioxFuncaoDTO => {
     const id = relacao.EscolaxUsuarioxFuncaoId;
     if (id === null) {
       throw new Error("EscolaxUsuarioxFuncaoId nao pode ser nulo ao converter para DTO.");
@@ -341,6 +358,7 @@ export default class EscolaxUsuarioxFuncaoService {
     return {
       EscolaxUsuarioxFuncaoId: id,
       UsuarioCPF: relacao.UsuarioCPF,
+      UsuarioNome: usuarioNome,
       EscolaGUID: relacao.EscolaGUID,
       FuncaoId: relacao.FuncaoId,
       FuncaoNome: relacao.FuncaoNome,

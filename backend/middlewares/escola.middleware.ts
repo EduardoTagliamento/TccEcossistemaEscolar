@@ -24,6 +24,19 @@ export default class EscolaMiddleware {
     next();
   };
 
+  validateTransferirDirecaoBody = (request: Request, _response: Response, next: NextFunction) => {
+    console.log("🔷 EscolaMiddleware.validateTransferirDirecaoBody()");
+    const { NovoDirecaoCPF } = request.body;
+
+    if (!NovoDirecaoCPF || typeof NovoDirecaoCPF !== "string" || NovoDirecaoCPF.trim() === "") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'NovoDirecaoCPF' é obrigatório.",
+      });
+    }
+
+    next();
+  };
+
   validateIdParam = (request: Request, _response: Response, next: NextFunction) => {
     console.log("🔷 EscolaMiddleware.validateIdParam()");
     const { EscolaGUID } = request.params;

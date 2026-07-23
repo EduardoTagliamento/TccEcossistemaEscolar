@@ -98,4 +98,22 @@ export default class EscolaControl {
       return next(error);
     }
   };
+
+  transferirDirecao = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("🔵 EscolaControl.transferirDirecao()");
+    try {
+      const { EscolaGUID } = request.params;
+      const { NovoDirecaoCPF } = request.body;
+      const usuarioCPF = request.user?.UsuarioCPF;
+      const resultado = await this.#escolaService.transferirDirecao(EscolaGUID, NovoDirecaoCPF, usuarioCPF);
+
+      return response.status(200).json({
+        success: true,
+        message: "Direção transferida com sucesso",
+        data: resultado,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  };
 }
