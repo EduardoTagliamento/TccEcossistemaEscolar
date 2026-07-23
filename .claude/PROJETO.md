@@ -2,53 +2,6 @@
 
 > Última atualização: 2026-07-23. Este arquivo é um resumo vivo para orientar sessões do Claude Code neste repositório — não repete o que já está em `.github/claude-instructions.md` (fonte canônica de padrões) nem em `docs/RELATORIO_BAUA_CODIGO.md` / `docs/PENDENCIAS_BAUA.md` (histórico detalhado do levantamento feito contra o board de planejamento). Consulte esses três arquivos quando precisar de mais profundidade.
 
-## 🔴 SESSÃO INTERROMPIDA (2026-07-23) — leia isto primeiro
-
-A janela de contexto da sessão anterior encerrou no meio de uma tarefa com 3 partes. Estado exato abaixo — **verifique o estado real dos arquivos antes de assumir qualquer coisa como certa**, principalmente a parte 3 (rodava em agente de background sem confirmação de término).
-
-### Tarefa original (pedido do usuário, literal)
-"comece implementando o espelhamento cadastro/login e as duas telas secretaria e coordenação (aparece só para a direção este), quando vai para a tela coordenação como direção, vai aparecer a opção de eligir alguem da coordenação como direção, abrindo um modal de confirmação digitando o nome da escola, assim, a direção passa a ser coordenação e o eligido passa a ser direção"
-
-### ✅ Parte 1 — Espelhamento login/cadastro: CONCLUÍDO e validado
-- `frontend/components/auth/AuthBrandShell.tsx` + `.module.css`: novo prop `invertido` (classe `.invertido { flex-direction: row-reverse }`).
-- Aplicado em `frontend/app/cadastro/page.tsx` (prop `invertido` no `<AuthBrandShell>`). `/login` continua com o padrão (painel de marca à esquerda).
-- `tsc --noEmit` e `next build` validados limpos.
-
-### ✅ Parte 2 (backend) — Eleição de Direção: CONCLUÍDO e validado
-- **Migration aplicada em produção** (confirmado via agente `mysql`): `backend/database/migrations/2026-07-23-transferencia-direcao.sql` — 2 tipos de notificação novos (`promovido_direcao`, `rebaixado_coordenacao`), IDs 26/27 confirmados no banco real.
-- `backend/services/escola.service.ts`: método novo `transferirDirecao(EscolaGUID, novoDirecaoCPF, direcaoAtualCPF)` — transação atômica (via `pool.getConnection()` + `beginTransaction`), troca simétrica Direção↔Coordenação respeitando a `UNIQUE KEY (UsuarioCPF, EscolaGUID, FuncaoId)` de `escolaxusuarioxfuncao` (reativa vínculo antigo se existir, em vez de duplicar). Dispara as 2 notificações + 1 auditoria (`CategoriaAuditoriaId: 5`, SegurancaConta).
-- `backend/controllers/escola.controller.ts`: método `transferirDirecao`. `backend/middlewares/escola.middleware.ts`: `validateTransferirDirecaoBody`. `routes/escola.routes.ts`: `PUT /api/escola/:EscolaGUID/transferir-direcao`.
-- **Bônus relacionado (mesma sessão, item anterior "corrija 1 e 2")**: `EscolaService.validarPermissaoRepresentanteLegal` já existia — restringe customização de COR ao Direção ativo há mais tempo (`EscolaxUsuarioxFuncaoDAO.findRepresentanteLegal`, `ORDER BY DataInicio ASC`). Isso é uma feature DIFERENTE da eleição de Direção — não confundir os dois métodos.
-- **Enriquecimento de dados**: `EscolaxUsuarioxFuncaoDTO` ganhou campo `UsuarioNome` (via `UsuarioDAO.findNomesByCPFs`, novo método em lote). `EscolaxUsuarioxFuncaoService` agora recebe `UsuarioDAO` no construtor — **2 factories atualizadas**: `routes/escolaxusuarioxfuncao.routes.ts` e `routes/usuario.routes.ts` (ambas instanciam esse service).
-- `tsc --noEmit` do backend limpo após todas essas mudanças.
-
-### ✅ APIs de frontend prontas (mesma sessão, pré-requisito da parte 3): CONCLUÍDO
-- `frontend/lib/api/escolaxusuarioxfuncao.api.ts` — **arquivo novo**. `listarVinculos/criarVinculo/atualizarVinculo/excluirVinculo`. Atenção: o backend exige o body de create/update **envelopado** (`{escolaxusuarioxfuncao: {...}}`) e o `index` retorna `{escolaxusuarioxfuncaos: [...]}` (plural estranho, é assim mesmo) — já tratado dentro do client, não precisa saber disso pra consumir.
-- `frontend/lib/api/usuario.api.ts` — função nova `buscarUsuarioPorCPF(cpf)`.
-- `frontend/lib/api/escola.api.ts` — função nova `transferirDirecao(escolaGUID, novoDirecaoCPF)`.
-- `tsc --noEmit` do frontend limpo.
-
-### 🟡 Parte 3 — Telas Secretaria/Coordenação + modal de eleição: **EM ANDAMENTO, PROVAVELMENTE INCOMPLETO**
-
-Delegado a um agente `frontend` em background (prompt completo com todo o contexto/decisões abaixo). **Não houve notificação de término antes da janela de contexto encerrar.** Última checagem via `git status`:
-- ✅ `frontend/app/dashboard/[escolaGUID]/gestao-dados/secretaria/page.tsx` + `page.module.css` **já existiam** (criados pelo agente).
-- ❌ `frontend/app/dashboard/[escolaGUID]/gestao-dados/coordenacao/` **ainda não existia**.
-- ❌ Home de Gestão de Dados (`gestao-dados/page.tsx`, array `modulos`) **ainda não tinha** as entradas `secretaria`/`coordenacao` adicionadas.
-
-**Passo 1 ao retomar:** rodar `git status` de novo e comparar com a lista acima — o agente pode ter continuado e terminado depois que a sessão anterior perdeu a janela (o processo em si não é necessariamente interrompido só porque o contexto do coordenador encerrou). Se `coordenacao/` já existir, ler o que foi feito, rodar `tsc --noEmit` + `next build` pra confirmar, e revisar contra as decisões de escopo abaixo antes de considerar concluído. Se não existir, retomar a implementação do zero usando o mesmo briefing.
-
-**Decisões de escopo já tomadas** (não re-perguntar ao usuário, só implementar):
-1. Tela Secretaria: mesma visibilidade do resto de Gestão de Dados (Coordenação/Secretaria/Direção). Tela Coordenação: **só Direção** — gate adicional além do padrão (usuário foi explícito: "aparece só para a direção este").
-2. Criação em Secretaria/Coordenação = **vincular usuário já existente** (busca por CPF via `buscarUsuarioPorCPF`), **não** criar conta nova com senha temporária/e-mail (diferente do fluxo de professor/aluno) — simplificação deliberada pra não replicar lógica de import em massa.
-3. Remoção = soft (`atualizarVinculo(id, {Status:'Inativo', DataFim: hoje})`), não hard delete.
-4. Modal de eleição na tela Coordenação: exige digitar o **nome exato da escola** (`EscolaAPI.buscarEscola(escolaGUID).escola.EscolaNome`, trim, comparação exata) antes de habilitar o botão de confirmar. Ao confirmar → `EscolaAPI.transferirDirecao(escolaGUID, cpfDoEleito)`.
-5. Pós-transferência: quem chamou perde a Direção (vira Coordenação) e **precisa ser redirecionado** pra fora da tela de Coordenação (ela não tem mais permissão) — não deixar a UI "grudada" numa tela que ela não pode mais ver.
-6. Referência de estilo: `gestao-dados/cursos/page.tsx` (368 linhas, simples) — **não** `professores/page.tsx` (846 linhas, tem complexidade de alocação que não se aplica aqui).
-
-**Validação obrigatória antes de dar como concluído:** `npx tsc --noEmit` (dentro de `frontend/`) e `npx next build frontend` (raiz do projeto), os dois sem erro.
-
----
-
 ## 1. Do que se trata o projeto
 
 **Bauá — Ecossistema Escolar** é um TCC: uma plataforma educacional inspirada no Google Classroom, para gestão de escolas, turmas, conteúdo acadêmico, comunicação e (futuramente) recomendações via IA. Atende três perfis: alunos, professores/coordenação/secretaria e a escola como entidade multi-tenant (cada escola tem tema de cores e dados próprios, isolados por `EscolaGUID`).
@@ -128,7 +81,7 @@ Quase todo o backend REST já existe e está registrado em `backend/Server.ts` (
 ### 🟡 Gestão de Dados da Escola
 - [x] Filtro de busca já implementado em `gestao-dados/alunos` e `gestao-dados/turmas`
 - [x] ~~Confirmar se os cards da home são dinâmicos~~ — confirmado em 2026-07-23: `gestao-dados/page.tsx` busca contadores reais via `Promise.all` (Curso/Matéria/Turma/Aluno/Professor), com loading state — não é estático.
-- [ ] **Falta módulo de Secretaria/Coordenação (2026-07-23, apontado pelo usuário):** `gestao-dados/` só tem telas para `cursos`, `materias`, `turmas`, `alunos`, `professores` — não existe uma tela equivalente para gerenciar usuários com papel Secretaria (FuncaoId=2) ou Coordenação (FuncaoId=1), diferente de "professores" que já tem CRUD dedicado. O backend genérico (`/api/escolaxusuarioxfuncao`) já suporta essas funções — falta só a tela específica no frontend.
+- [x] **Módulo de Secretaria/Coordenação + eleição de Direção (2026-07-23): CONCLUÍDO.** Telas `gestao-dados/secretaria` e `gestao-dados/coordenacao` (vínculo de usuário já cadastrado via busca por CPF, remoção soft). Coordenação inclui modal "Tornar Direção" com confirmação por nome exato da escola, chamando `EscolaService.transferirDirecao` (troca simétrica Direção↔Coordenação, transação atômica, 2 notificações + auditoria). Espelhamento login/cadastro (`AuthBrandShell` prop `invertido`) também concluído na mesma leva. Card "Coordenação" na home de Gestão de Dados é visível **só para Direção ativa** (checagem via `/api/usuario/{cpf}/escolas`, mesmo padrão de `dashboard/[escolaGUID]/page.tsx`) — gap encontrado e corrigido numa revisão pós-implementação. `tsc --noEmit` e `next build` validados limpos.
 
 ### ⚪ Itens em aberto sem dono claro
 - [x] ~~Migrations com execução não confirmada~~ — confirmado em 2026-07-23 via agente `mysql`: todas as migrations até `2026-07-22` já estavam aplicadas em produção; a migration nova de chat (`2026-07-23-chat-melhorias.sql`, tabela `mensagem_reacao`) também já foi aplicada. **Nota:** `SHOW CREATE TABLE`/`INFORMATION_SCHEMA` exibem `?` para 5 dos 6 emojis do ENUM `ReacaoEmoji` — confirmado, por teste funcional de INSERT/SELECT, que é só um bug cosmético de exibição do MySQL 9.4 para caracteres de 4 bytes, não corrupção de dado real.
