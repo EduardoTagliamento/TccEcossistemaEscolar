@@ -24,7 +24,7 @@ ALTER TABLE categoriaconteudo
 -- Tarefa é de turma única (matXprofXturxescGUID já fixa 1 turma) — categoria
 -- direto nela, sem mudança de escopo.
 ALTER TABLE tarefaacademica
-  ADD COLUMN CategoriaGUID CHAR(36) NULL AFTER matXprofXturxescGUID,
+  ADD COLUMN CategoriaGUID CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL AFTER matXprofXturxescGUID,
   ADD CONSTRAINT FK_TarefaAcademica_Categoria FOREIGN KEY (CategoriaGUID) REFERENCES categoriaconteudo(CategoriaGUID);
 
 -- Conteudo e Prova são fan-out (1 item → N turmas via *Turma) — categoria
@@ -45,7 +45,7 @@ ALTER TABLE provaagendada_turma
 ALTER TABLE tarefaacademica_matricula
   ADD COLUMN TarefaNota DECIMAL(4,2) NULL AFTER TarefaFeito,
   ADD COLUMN TarefaAvaliadoEm DATETIME NULL AFTER TarefaNota,
-  ADD COLUMN TarefaAvaliadoPorCPF VARCHAR(14) NULL AFTER TarefaAvaliadoEm,
+  ADD COLUMN TarefaAvaliadoPorCPF VARCHAR(14) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL AFTER TarefaAvaliadoEm,
   ADD CONSTRAINT FK_TarefaAcademicaMatricula_Avaliador FOREIGN KEY (TarefaAvaliadoPorCPF) REFERENCES usuario(UsuarioCPF);
 
 -- ---------- 4.1 Novas tabelas ----------
