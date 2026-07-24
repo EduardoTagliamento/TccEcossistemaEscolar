@@ -27,6 +27,8 @@ export interface ItemCategoriaDTO {
   Nota: number | null;
   /** Só pra prova: ProvaAgendadaTurmaGUID (necessário pra registrar visualização/pendência) */
   RefTurmaGUID?: string;
+  /** Posição do item dentro da categoria — drag-and-drop de item (não confundir com Ordem, que é da categoria) */
+  ItemOrdem: number;
 }
 
 export interface CategoriaCompletaDTO {
@@ -93,7 +95,7 @@ export default class CategoriaConteudoService {
 
     // ---- Tarefas (digital/presencial) ----
     const [tarefaRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT t.TarefaGUID, t.TarefaTitulo, t.TarefaTipoEntrega, t.CategoriaGUID,
+      `SELECT t.TarefaGUID, t.TarefaTitulo, t.TarefaTipoEntrega, t.CategoriaGUID, t.ItemOrdem,
               COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS Prazo,
               tm.TarefaFeito, tm.TarefaNota
        FROM tarefaacademica t
@@ -127,12 +129,13 @@ export default class CategoriaConteudoService {
         Percentual: percentual,
         Estado: estado,
         Nota: nota,
+        ItemOrdem: row.ItemOrdem ?? 0,
       });
     }
 
     // ---- Conteúdo (vídeo/texto/imagem) ----
     const [conteudoRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT c.ConteudoGUID, c.ConteudoTitulo, c.ConteudoTipo, ct.CategoriaGUID,
+      `SELECT c.ConteudoGUID, c.ConteudoTitulo, c.ConteudoTipo, ct.CategoriaGUID, ct.ItemOrdem,
               cp.PercentualConcluido
        FROM conteudo c
        INNER JOIN conteudoturma ct ON ct.ConteudoGUID = c.ConteudoGUID
@@ -154,12 +157,13 @@ export default class CategoriaConteudoService {
         Percentual: percentual,
         Estado: percentual === 100 ? "concluido" : percentual && percentual > 0 ? "parcial" : "sem_progresso",
         Nota: null,
+        ItemOrdem: row.ItemOrdem ?? 0,
       });
     }
 
     // ---- Provas ----
     const [provaRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT p.ProvaAgendadaGUID, p.ProvaDescricao, pt.CategoriaGUID, pt.ProvaAgendadaTurmaGUID, pv.ProvaAgendadaVisualizacaoGUID
+      `SELECT p.ProvaAgendadaGUID, p.ProvaDescricao, pt.CategoriaGUID, pt.ItemOrdem, pt.ProvaAgendadaTurmaGUID, pv.ProvaAgendadaVisualizacaoGUID
        FROM provaagendada p
        INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
        LEFT JOIN provaagendadavisualizacao pv ON pv.ProvaAgendadaTurmaGUID = pt.ProvaAgendadaTurmaGUID AND pv.MatriculaGUID = ?
@@ -176,6 +180,7 @@ export default class CategoriaConteudoService {
         Estado: visto ? "concluido" : "sem_progresso",
         Nota: null,
         RefTurmaGUID: row.ProvaAgendadaTurmaGUID,
+        ItemOrdem: row.ItemOrdem ?? 0,
       });
     }
 
@@ -183,8 +188,105 @@ export default class CategoriaConteudoService {
       CategoriaGUID: categoria.CategoriaGUID,
       CategoriaNome: categoria.CategoriaNome || "",
       Ordem: categoria.Ordem,
-      Itens: mapaItens.get(categoria.CategoriaGUID) ?? [],
+      Itens: (mapaItens.get(categoria.CategoriaGUID) ?? []).sort((a, b) => a.ItemOrdem - b.ItemOrdem),
     }));
+  };
+
+  /**
+   * Move um item (tarefa/conteúdo/prova) pra uma categoria (pode ser a mesma
+   * de origem, no caso de só reordenar dentro dela) e grava a nova posição
+   * de cada item da lista — drag-and-drop de item na tela de categorias.
+   * A lista deve vir na ordem final desejada (índice = ItemOrdem).
+   */
+  reordenarItens = async (
+    usuarioCPF: string,
+    materiaGUID: string,
+    turmaGUID: string,
+    categoriaDestinoGUID: string,
+    itens: { ItemGUID: string; Tipo: ItemTipo }[]
+  ): Promise<CategoriaCompletaDTO[]> => {
+    console.log("🟣 CategoriaConteudoService.reordenarItens()");
+
+    const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT 1 FROM materiaxprofessorxturma
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [materiaGUID, turmaGUID, usuarioCPF]
+    );
+    if (alocacaoRows.length === 0) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está alocado nesta matéria/turma.",
+      });
+    }
+
+    const categoriasDoProfessor = await this.#categoriaDAO.findAll({
+      UsuarioCPF: usuarioCPF,
+      MateriaGUID: materiaGUID,
+      TurmaGUID: turmaGUID,
+    });
+    if (!categoriasDoProfessor.some((c) => c.CategoriaGUID === categoriaDestinoGUID)) {
+      throw new ErrorResponse(404, "Categoria não encontrada", {
+        message: "A categoria de destino não existe ou não pertence a você nesta matéria/turma.",
+      });
+    }
+
+    for (let indice = 0; indice < itens.length; indice++) {
+      const { ItemGUID, Tipo } = itens[indice];
+
+      if (Tipo === "tarefa_digital" || Tipo === "tarefa_presencial") {
+        const [rows] = await pool.execute<RowDataPacket[]>(
+          `SELECT 1 FROM tarefaacademica t
+           INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+           WHERE t.TarefaGUID = ? AND mpt.MateriaGUID = ? AND mpt.TurmaGUID = ? LIMIT 1`,
+          [ItemGUID, materiaGUID, turmaGUID]
+        );
+        if (rows.length === 0) {
+          throw new ErrorResponse(403, "Item inválido", {
+            message: `A tarefa ${ItemGUID} não pertence a esta matéria/turma.`,
+          });
+        }
+        await pool.execute(`UPDATE tarefaacademica SET CategoriaGUID = ?, ItemOrdem = ? WHERE TarefaGUID = ?`, [
+          categoriaDestinoGUID,
+          indice,
+          ItemGUID,
+        ]);
+      } else if (Tipo === "conteudo_video" || Tipo === "conteudo_texto" || Tipo === "conteudo_imagem") {
+        const [rows] = await pool.execute<RowDataPacket[]>(
+          `SELECT 1 FROM conteudo c
+           INNER JOIN conteudoturma ct ON ct.ConteudoGUID = c.ConteudoGUID
+           WHERE c.ConteudoGUID = ? AND c.MateriaGUID = ? AND ct.TurmaGUID = ? LIMIT 1`,
+          [ItemGUID, materiaGUID, turmaGUID]
+        );
+        if (rows.length === 0) {
+          throw new ErrorResponse(403, "Item inválido", {
+            message: `O conteúdo ${ItemGUID} não pertence a esta matéria/turma.`,
+          });
+        }
+        await pool.execute(
+          `UPDATE conteudoturma SET CategoriaGUID = ?, ItemOrdem = ? WHERE ConteudoGUID = ? AND TurmaGUID = ?`,
+          [categoriaDestinoGUID, indice, ItemGUID, turmaGUID]
+        );
+      } else if (Tipo === "prova") {
+        const [rows] = await pool.execute<RowDataPacket[]>(
+          `SELECT 1 FROM provaagendada p
+           INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
+           WHERE p.ProvaAgendadaGUID = ? AND p.MateriaGUID = ? AND pt.TurmaGUID = ? LIMIT 1`,
+          [ItemGUID, materiaGUID, turmaGUID]
+        );
+        if (rows.length === 0) {
+          throw new ErrorResponse(403, "Item inválido", {
+            message: `A prova ${ItemGUID} não pertence a esta matéria/turma.`,
+          });
+        }
+        await pool.execute(
+          `UPDATE provaagendada_turma SET CategoriaGUID = ?, ItemOrdem = ? WHERE ProvaAgendadaGUID = ? AND TurmaGUID = ?`,
+          [categoriaDestinoGUID, indice, ItemGUID, turmaGUID]
+        );
+      } else {
+        throw new ErrorResponse(400, "Tipo de item inválido", { message: `Tipo desconhecido: ${Tipo}` });
+      }
+    }
+
+    return this.buscarCategoriasCompletas(materiaGUID, turmaGUID, usuarioCPF);
   };
 
   criarCategoria = async (

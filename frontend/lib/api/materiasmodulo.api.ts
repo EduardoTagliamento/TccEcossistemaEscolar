@@ -145,6 +145,7 @@ export interface ItemCategoria {
   Estado: 'sem_progresso' | 'parcial' | 'concluido' | 'atrasado' | 'aguardando_avaliacao' | 'avaliado';
   Nota: number | null;
   RefTurmaGUID?: string;
+  ItemOrdem: number;
 }
 
 export interface CategoriaCompleta {

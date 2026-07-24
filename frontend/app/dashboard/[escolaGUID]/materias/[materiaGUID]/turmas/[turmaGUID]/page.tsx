@@ -44,6 +44,8 @@ export default function CategoriaPage() {
   const [categorias, setCategorias] = useState<MateriasModuloAPI.CategoriaCompleta[]>([]);
   const [itemSelecionado, setItemSelecionado] = useState<ItemCategoria | null>(null);
   const [categoriaArrastando, setCategoriaArrastando] = useState<string | null>(null);
+  const [popoverAberto, setPopoverAberto] = useState<string | null>(null);
+  const [itemArrastando, setItemArrastando] = useState<string | null>(null);
 
   useEffect(() => {
     if (escolaGUID && usuario) void inicializar();
@@ -104,9 +106,10 @@ export default function CategoriaPage() {
     }
   };
 
-  const abrirNovoItem = (categoriaGUID: string) => {
+  const abrirNovoItem = (categoriaGUID: string, tipo: 'conteudo' | 'tarefa' | 'prova') => {
+    setPopoverAberto(null);
     router.push(
-      `/dashboard/${escolaGUID}/cadastro?MateriaGUID=${materiaGUID}&TurmaGUID=${turmaGUID}&CategoriaGUID=${categoriaGUID}`
+      `/dashboard/${escolaGUID}/cadastro?aba=${tipo}&MateriaGUID=${materiaGUID}&TurmaGUID=${turmaGUID}&CategoriaGUID=${categoriaGUID}`
     );
   };
 
@@ -134,6 +137,59 @@ export default function CategoriaPage() {
       await CategoriaConteudoAPI.reordenarCategorias(materiaGUID, turmaGUID, ordemAtual);
     } catch (erro) {
       console.error('Erro ao reordenar categorias:', erro);
+      await carregarCategorias();
+    }
+  };
+
+  // Drag-and-drop de item: move pra outra categoria (ou reordena dentro da
+  // mesma) — itemDestinoGUID null significa "soltou no fim/vazio da categoria".
+  const handleItemDragStart = (e: React.DragEvent, itemGUID: string) => {
+    e.stopPropagation(); // não deixa o drag do item também disparar o drag da categoria (pai)
+    setItemArrastando(itemGUID);
+  };
+
+  const moverItem = async (categoriaDestinoGUID: string, itemDestinoGUID: string | null) => {
+    if (!itemArrastando) return;
+    const arrastadoGUID = itemArrastando;
+    setItemArrastando(null);
+    if (arrastadoGUID === itemDestinoGUID) return;
+
+    let itemMovido: ItemCategoria | undefined;
+    const semOrigem = categorias.map((c) => {
+      const idx = c.Itens.findIndex((i) => i.ItemGUID === arrastadoGUID);
+      if (idx === -1) return c;
+      itemMovido = c.Itens[idx];
+      return { ...c, Itens: c.Itens.filter((i) => i.ItemGUID !== arrastadoGUID) };
+    });
+    if (!itemMovido) return;
+
+    const itemMovidoFinal = itemMovido;
+    const novasCategorias = semOrigem.map((c) => {
+      if (c.CategoriaGUID !== categoriaDestinoGUID) return c;
+      const itens = [...c.Itens];
+      const destinoIdx = itemDestinoGUID ? itens.findIndex((i) => i.ItemGUID === itemDestinoGUID) : -1;
+      if (destinoIdx === -1) {
+        itens.push(itemMovidoFinal);
+      } else {
+        itens.splice(destinoIdx, 0, itemMovidoFinal);
+      }
+      return { ...c, Itens: itens };
+    });
+
+    setCategorias(novasCategorias);
+
+    const categoriaDestino = novasCategorias.find((c) => c.CategoriaGUID === categoriaDestinoGUID);
+    if (!categoriaDestino) return;
+
+    try {
+      await CategoriaConteudoAPI.reordenarItens(
+        materiaGUID,
+        turmaGUID,
+        categoriaDestinoGUID,
+        categoriaDestino.Itens.map((i) => ({ ItemGUID: i.ItemGUID, Tipo: i.Tipo }))
+      );
+    } catch (erro) {
+      console.error('Erro ao reordenar itens:', erro);
       await carregarCategorias();
     }
   };
@@ -176,26 +232,80 @@ export default function CategoriaPage() {
               <span className={styles.categoriaNome}>{categoria.CategoriaNome}</span>
               {ehProfessor && (
                 <div className={styles.categoriaAcoes}>
-                  <button className={styles.botaoAddItem} onClick={() => abrirNovoItem(categoria.CategoriaGUID)} title="Novo item">
-                    <Icon name="plus" size={16} />
-                  </button>
+                  <div className={styles.acoesWrapper}>
+                    <button
+                      className={styles.botaoAddItem}
+                      onClick={() =>
+                        setPopoverAberto((atual) => (atual === categoria.CategoriaGUID ? null : categoria.CategoriaGUID))
+                      }
+                      title="Novo item"
+                    >
+                      <Icon name="plus" size={16} />
+                    </button>
+                    {popoverAberto === categoria.CategoriaGUID && (
+                      <div className={styles.popoverNovoItem}>
+                        <button onClick={() => abrirNovoItem(categoria.CategoriaGUID, 'conteudo')}>
+                          <Icon name="camera" size={16} /> Conteúdo
+                        </button>
+                        <button onClick={() => abrirNovoItem(categoria.CategoriaGUID, 'tarefa')}>
+                          <Icon name="edit" size={16} /> Tarefa
+                        </button>
+                        <button onClick={() => abrirNovoItem(categoria.CategoriaGUID, 'prova')}>
+                          <Icon name="award" size={16} /> Prova
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {categoria.Itens.length === 0 ? (
-              <p className={styles.mensagemVazia}>Nenhum item nesta categoria ainda.</p>
-            ) : (
-              categoria.Itens.map((item) => (
-                <div key={item.ItemGUID} className={styles.itemLinha} onClick={() => setItemSelecionado(item)}>
-                  <div className={styles.itemEsquerda}>
-                    <Icon name={ICONE_POR_TIPO[item.Tipo]} size={16} />
-                    <span className={styles.itemTitulo}>{item.Titulo}</span>
+            <div
+              className={styles.categoriaItens}
+              onDragOver={(e) => {
+                if (ehProfessor && itemArrastando) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              onDrop={(e) => {
+                if (!ehProfessor || !itemArrastando) return;
+                e.stopPropagation();
+                void moverItem(categoria.CategoriaGUID, null);
+              }}
+            >
+              {categoria.Itens.length === 0 ? (
+                <p className={styles.mensagemVazia}>Nenhum item nesta categoria ainda.</p>
+              ) : (
+                categoria.Itens.map((item) => (
+                  <div
+                    key={item.ItemGUID}
+                    className={styles.itemLinha}
+                    onClick={() => setItemSelecionado(item)}
+                    draggable={ehProfessor}
+                    onDragStart={(e) => handleItemDragStart(e, item.ItemGUID)}
+                    onDragEnd={() => setItemArrastando(null)}
+                    onDragOver={(e) => {
+                      if (ehProfessor && itemArrastando) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                    onDrop={(e) => {
+                      if (!ehProfessor || !itemArrastando) return;
+                      e.stopPropagation();
+                      void moverItem(categoria.CategoriaGUID, item.ItemGUID);
+                    }}
+                  >
+                    <div className={styles.itemEsquerda}>
+                      <Icon name={ICONE_POR_TIPO[item.Tipo]} size={16} />
+                      <span className={styles.itemTitulo}>{item.Titulo}</span>
+                    </div>
+                    <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />
                   </div>
-                  <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         ))}
       </div>

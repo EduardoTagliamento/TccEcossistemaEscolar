@@ -8,11 +8,12 @@
  * dashboard já é persistente via layout.tsx).
  */
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
+import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
 import { DiaSemana, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
 import { Icon } from '@/components/Icon';
 import styles from './TarefaForm.module.css';
@@ -21,6 +22,7 @@ interface Tarefa {
   TarefaGUID: string;
   MatriculaGUID: string;
   matXprofXturxescGUID: string;
+  CategoriaGUID?: string | null;
   TarefaTitulo: string;
   TarefaConteudo: string | null;
   TarefaPrazoData: string;
@@ -65,9 +67,19 @@ interface SerieItem {
 export default function TarefaForm() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { usuario, token, isLoading: authLoading } = useAuth();
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
+
+  // Pré-preenchimento vindo do "+" da tela de categorias — aplicado uma vez
+  // cada (refs), pra não sobrescrever se o professor trocar manualmente depois.
+  const materiaGUIDQuery = searchParams?.get('MateriaGUID') || '';
+  const turmaGUIDQuery = searchParams?.get('TurmaGUID') || '';
+  const categoriaGUIDQuery = searchParams?.get('CategoriaGUID') || '';
+  const materiaPreenchidaRef = useRef(false);
+  const turmaPreenchidaRef = useRef(false);
+  const categoriaPreenchidaRef = useRef(false);
 
   // Calculado só no cliente (useEffect) — chamar usuarioForaDoBrasil() direto
   // no corpo do render causa mismatch de hidratação: o timezone do servidor
@@ -80,6 +92,7 @@ export default function TarefaForm() {
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [series, setSeries] = useState<SerieItem[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaConteudoAPI.CategoriaConteudo[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingGUID, setEditingGUID] = useState<string | null>(null);
@@ -94,6 +107,7 @@ export default function TarefaForm() {
   const [resultadosCalculo, setResultadosCalculo] = useState<Record<string, ResultadoCalculoUI>>({});
   const [form, setForm] = useState({
     matXprofXturxescGUID: '',
+    CategoriaGUID: '',
     TarefaTitulo: '',
     TarefaConteudo: '',
     TarefaPrazoData: '',
@@ -180,6 +194,35 @@ export default function TarefaForm() {
     }
   };
 
+  const buscarSeriesAlunos = async (matProfTurGUID: string, turmaGUIDPreSelecionada?: string): Promise<SerieItem[]> => {
+    const url = `/api/professor/turmas-alunos?MatProfTurGUID=${matProfTurGUID}`;
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.message || 'Erro ao carregar alunos');
+
+    return (data?.data?.series || []).map((serie: any) => ({
+      TurmaSerie: serie.TurmaSerie,
+      checked: false,
+      expanded: serie.turmas.some((t: any) => t.TurmaGUID === turmaGUIDPreSelecionada),
+      turmas: serie.turmas.map((turma: any) => {
+        const preSelecionada = turma.TurmaGUID === turmaGUIDPreSelecionada;
+        return {
+          TurmaGUID: turma.TurmaGUID,
+          TurmaNome: turma.TurmaNome,
+          checked: preSelecionada,
+          expanded: preSelecionada,
+          alunos: turma.alunos.map((aluno: any) => ({
+            MatriculaGUID: aluno.MatriculaGUID,
+            UsuarioNome: aluno.UsuarioNome,
+            checked: preSelecionada
+          }))
+        };
+      })
+    }));
+  };
+
   const abrirModalAlunos = async () => {
     if (!form.matXprofXturxescGUID) {
       alert('Por favor, selecione uma matéria primeiro.');
@@ -192,35 +235,7 @@ export default function TarefaForm() {
     setResultadosCalculo({});
 
     try {
-      const url = `/api/professor/turmas-alunos?MatProfTurGUID=${form.matXprofXturxescGUID}`;
-
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data?.message || 'Erro ao carregar alunos');
-
-      // Transformar dados para estrutura com checkboxes
-      const seriesData: SerieItem[] = (data?.data?.series || []).map((serie: any) => ({
-        TurmaSerie: serie.TurmaSerie,
-        checked: false,
-        expanded: false,
-        turmas: serie.turmas.map((turma: any) => ({
-          TurmaGUID: turma.TurmaGUID,
-          TurmaNome: turma.TurmaNome,
-          checked: false,
-          expanded: false,
-          alunos: turma.alunos.map((aluno: any) => ({
-            MatriculaGUID: aluno.MatriculaGUID,
-            UsuarioNome: aluno.UsuarioNome,
-            checked: false
-          }))
-        }))
-      }));
-
-      setSeries(seriesData);
+      setSeries(await buscarSeriesAlunos(form.matXprofXturxescGUID));
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar alunos');
     } finally {
@@ -350,6 +365,65 @@ export default function TarefaForm() {
     return turmas;
   };
 
+  // Categoria é escopada por turma — só dá pra escolher quando exatamente 1
+  // turma tem aluno(s) marcado(s) (mesmo critério do ConteudoForm).
+  const turmaUnicaSelecionada = (() => {
+    const turmasComAlunos = obterTurmasComAlunosSelecionados();
+    return turmasComAlunos.length === 1 ? turmasComAlunos[0].TurmaGUID : null;
+  })();
+
+  const carregarCategorias = async (materiaGUID: string, turmaGUID: string) => {
+    try {
+      const lista = await CategoriaConteudoAPI.listarCategorias({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
+      setCategorias(lista);
+    } catch (err: any) {
+      setErro(err?.message || 'Falha ao carregar categorias');
+    }
+  };
+
+  useEffect(() => {
+    const materiaAtual = materiasUnicas.find((m) => m.MatProfTurGUID === form.matXprofXturxescGUID);
+    if (materiaAtual && turmaUnicaSelecionada) {
+      void carregarCategorias(materiaAtual.MateriaGUID, turmaUnicaSelecionada);
+    } else {
+      setCategorias([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.matXprofXturxescGUID, turmaUnicaSelecionada]);
+
+  // Pré-preenchimento: matéria vinda da URL, assim que a lista carregar
+  useEffect(() => {
+    if (materiaPreenchidaRef.current || !materiaGUIDQuery || materiasUnicas.length === 0) return;
+    const match = materiasUnicas.find((m) => m.MateriaGUID === materiaGUIDQuery);
+    if (match) {
+      materiaPreenchidaRef.current = true;
+      setForm((prev) => ({ ...prev, matXprofXturxescGUID: match.MatProfTurGUID }));
+    }
+  }, [materiaGUIDQuery, materiasUnicas]);
+
+  // Pré-preenchimento: turma vinda da URL — marca a turma (e todos os alunos
+  // dela) automaticamente, assim que a matéria acima já estiver resolvida.
+  useEffect(() => {
+    if (turmaPreenchidaRef.current || !turmaGUIDQuery || !form.matXprofXturxescGUID) return;
+    turmaPreenchidaRef.current = true;
+    buscarSeriesAlunos(form.matXprofXturxescGUID, turmaGUIDQuery)
+      .then(setSeries)
+      .catch(() => {
+        // pré-preenchimento é best-effort — o professor ainda pode selecionar manualmente
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turmaGUIDQuery, form.matXprofXturxescGUID]);
+
+  // Pré-preenchimento: categoria vinda da URL, assim que a lista carregar
+  useEffect(() => {
+    if (categoriaPreenchidaRef.current || !categoriaGUIDQuery || categorias.length === 0) return;
+    const match = categorias.find((c) => c.CategoriaGUID === categoriaGUIDQuery);
+    if (match) {
+      categoriaPreenchidaRef.current = true;
+      setForm((prev) => ({ ...prev, CategoriaGUID: match.CategoriaGUID }));
+    }
+  }, [categoriaGUIDQuery, categorias]);
+
   const turmaDoAluno = (matriculaGUID: string): string | null => {
     for (const serie of series) {
       for (const turma of serie.turmas) {
@@ -466,6 +540,7 @@ export default function TarefaForm() {
     setCompartilhadaReadonly(false);
     setForm({
       matXprofXturxescGUID: materiasUnicas.length === 1 ? materiasUnicas[0].MatProfTurGUID : '',
+      CategoriaGUID: '',
       TarefaTitulo: '',
       TarefaConteudo: '',
       TarefaPrazoData: obterDataPadraoFimDoDia(),
@@ -562,6 +637,7 @@ export default function TarefaForm() {
         tarefa: {
           MatriculasGUID: matriculasSelecionadas, // Array de GUIDs
           matXprofXturxescGUID: form.matXprofXturxescGUID,
+          CategoriaGUID: form.CategoriaGUID || undefined,
           TarefaTitulo: form.TarefaTitulo,
           TarefaConteudo: form.TarefaConteudo || undefined,
           TarefaPrazoData: prazoParaEnvio, // Já em GMT-3 (manual: convertido do navegador; automático: calculado no servidor)
@@ -603,6 +679,7 @@ export default function TarefaForm() {
     setCompartilhadaReadonly(!!tarefa.TarefaCompartilhada);
     setForm({
       matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
+      CategoriaGUID: tarefa.CategoriaGUID || '',
       TarefaTitulo: tarefa.TarefaTitulo,
       TarefaConteudo: tarefa.TarefaConteudo || '',
       TarefaPrazoData: converterDoBrasil(tarefa.TarefaPrazoData), // Converte GMT-3 para timezone do usuário
@@ -691,6 +768,30 @@ export default function TarefaForm() {
             {!form.matXprofXturxescGUID && (
               <p className={styles.hint}>Selecione uma matéria primeiro</p>
             )}
+          </div>
+        )}
+
+        {/* Categoria — só disponível com exatamente 1 turma selecionada acima, já que categoria é por turma */}
+        {!editingGUID && (
+          <div className={styles.formGroup}>
+            <label>Categoria</label>
+            {!turmaUnicaSelecionada && (
+              <p className={styles.hint}>
+                Marque os alunos de exatamente 1 turma acima para escolher uma categoria.
+              </p>
+            )}
+            <select
+              value={form.CategoriaGUID}
+              onChange={(e) => setForm((prev) => ({ ...prev, CategoriaGUID: e.target.value }))}
+              disabled={!turmaUnicaSelecionada}
+            >
+              <option value="">Sem categoria</option>
+              {categorias.map((categoria) => (
+                <option key={categoria.CategoriaGUID} value={categoria.CategoriaGUID}>
+                  {categoria.CategoriaNome}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 

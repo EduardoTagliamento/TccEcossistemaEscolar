@@ -105,6 +105,60 @@ export class CategoriaConteudoMiddleware {
     next();
   };
 
+  static validarReordenarItens = (req: Request, res: Response, next: NextFunction) => {
+    console.log("🟡 CategoriaConteudoMiddleware.validarReordenarItens()");
+
+    const { MateriaGUID, TurmaGUID, CategoriaGUID, itens } = req.body;
+    const tiposValidos = new Set([
+      "prova",
+      "tarefa_digital",
+      "tarefa_presencial",
+      "conteudo_video",
+      "conteudo_texto",
+      "conteudo_imagem",
+    ]);
+
+    if (!MateriaGUID || !uuidRegex.test(MateriaGUID)) {
+      return next(
+        new ErrorResponse(400, "MateriaGUID inválido", { message: "MateriaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+
+    if (!TurmaGUID || !uuidRegex.test(TurmaGUID)) {
+      return next(
+        new ErrorResponse(400, "TurmaGUID inválido", { message: "TurmaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+
+    if (!CategoriaGUID || !uuidRegex.test(CategoriaGUID)) {
+      return next(
+        new ErrorResponse(400, "CategoriaGUID inválido", {
+          message: "CategoriaGUID (destino) é obrigatório e deve ser um UUID válido",
+        })
+      );
+    }
+
+    if (
+      !Array.isArray(itens) ||
+      !itens.every(
+        (item) =>
+          item &&
+          typeof item.ItemGUID === "string" &&
+          uuidRegex.test(item.ItemGUID) &&
+          typeof item.Tipo === "string" &&
+          tiposValidos.has(item.Tipo)
+      )
+    ) {
+      return next(
+        new ErrorResponse(400, "Itens inválidos", {
+          message: "O campo 'itens' deve ser uma lista de { ItemGUID, Tipo }, com Tipo em um dos tipos válidos",
+        })
+      );
+    }
+
+    next();
+  };
+
   static validarGUID = (req: Request, res: Response, next: NextFunction) => {
     console.log("🟡 CategoriaConteudoMiddleware.validarGUID()");
 

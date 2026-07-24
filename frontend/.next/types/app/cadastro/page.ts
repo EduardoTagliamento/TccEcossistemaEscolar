@@ -1,4 +1,4 @@
-// File: F:\Area de Trabalho\EcossistemaEscolar\frontend\app\cadastro\page.tsx
+// File: C:\Users\ContaSelf\Desktop\tcc\TccEcossistemaEscolar\frontend\app\cadastro\page.tsx
 import * as entry from '../../../../app/cadastro/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

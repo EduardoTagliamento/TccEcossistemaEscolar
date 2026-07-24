@@ -74,6 +74,24 @@ export async function reordenarCategorias(materiaGUID: string, turmaGUID: string
   return result.data?.categorias || [];
 }
 
+export async function reordenarItens(
+  materiaGUID: string,
+  turmaGUID: string,
+  categoriaDestinoGUID: string,
+  itens: Array<{ ItemGUID: string; Tipo: string }>
+): Promise<void> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/reordenar-itens`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID, CategoriaGUID: categoriaDestinoGUID, itens }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao reordenar itens');
+  }
+}
+
 export async function atualizarCategoria(categoriaGUID: string, categoriaNome: string): Promise<CategoriaConteudo> {
   const response = await fetch(`${API_URL}/categoria-conteudo/${categoriaGUID}`, {
     method: 'PUT',

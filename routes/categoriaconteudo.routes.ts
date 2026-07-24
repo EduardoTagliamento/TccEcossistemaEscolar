@@ -27,6 +27,11 @@ export default class CategoriaConteudoRoteador {
     this.#router.post("/", CategoriaConteudoMiddleware.validarCriacao, this.#controller.store);
     this.#router.get("/", this.#controller.index);
     this.#router.patch("/reordenar", CategoriaConteudoMiddleware.validarReordenar, this.#controller.reordenar);
+    this.#router.patch(
+      "/reordenar-itens",
+      CategoriaConteudoMiddleware.validarReordenarItens,
+      this.#controller.reordenarItens
+    );
     this.#router.get("/completas/:materiaGUID/:turmaGUID", this.#controller.buscarCategoriasCompletas);
     this.#router.get("/tem-pendencia/:materiaGUID/:turmaGUID", this.#controller.temPendencia);
     this.#router.put(
