@@ -233,15 +233,6 @@ export class TarefaAcademicaDAO {
    * Mapeia uma linha do banco para uma instância de TarefaAcademica
    */
   private mapRowToTarefa(row: TarefaAcademicaRow): TarefaAcademica {
-    // DEBUG: Verificar valor vindo do banco
-    console.log('🔍 DEBUG Repository - Row do banco:', {
-      TarefaGUID: row.TarefaGUID,
-      TarefaTitulo: row.TarefaTitulo,
-      TarefaCompartilhada_raw: row.TarefaCompartilhada,
-      tipo_raw: typeof row.TarefaCompartilhada,
-      aposBoolean: Boolean(row.TarefaCompartilhada)
-    });
-    
     const tarefa = new TarefaAcademica();
     tarefa.TarefaGUID = row.TarefaGUID;
     tarefa.matXprofXturxescGUID = row.matXprofXturxescGUID;

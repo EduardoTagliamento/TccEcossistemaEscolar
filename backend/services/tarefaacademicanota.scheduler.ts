@@ -68,6 +68,7 @@ export class TarefaAcademicaNotaScheduler {
 
     console.log(`[SCHEDULER] 📝 ${vencidas.length} entrega(s) de tarefa vencida(s) sem avaliação — zerando...`);
 
+    let zeradas = 0;
     for (const item of vencidas) {
       try {
         await this.#tarefaMatriculaDAO.update(item.TarefaMatriculaGUID, {
@@ -97,12 +98,13 @@ export class TarefaAcademicaNotaScheduler {
         // humano (`UsuarioCPFAtor` não é nullable) e essa é uma ação de
         // sistema. O rastro fica no próprio dado: `TarefaAvaliadoPorCPF IS
         // NULL` + `TarefaAvaliadoEm` já distingue "automático" de "manual".
+        zeradas++;
       } catch (error) {
         console.error(`[SCHEDULER] ❌ Erro ao zerar atribuição ${item.TarefaMatriculaGUID}:`, error);
       }
     }
 
-    console.log(`[SCHEDULER] ✅ ${vencidas.length} entrega(s) zerada(s) automaticamente`);
-    return vencidas.length;
+    console.log(`[SCHEDULER] ✅ ${zeradas}/${vencidas.length} entrega(s) zerada(s) automaticamente`);
+    return zeradas;
   }
 }

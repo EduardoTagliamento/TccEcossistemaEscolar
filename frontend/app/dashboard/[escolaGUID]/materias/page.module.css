@@ -30,6 +30,29 @@
   margin-top: 0.25rem;
 }
 
+.acoes {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.botaoIcone {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--slate-600, #46564D);
+}
+
+.botaoIcone:hover {
+  border-color: var(--green-500, #17C077);
+  color: var(--green-500, #17C077);
+}
+
 .filtro {
   display: flex;
   gap: 0.75rem;

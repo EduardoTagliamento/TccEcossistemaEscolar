@@ -289,7 +289,7 @@ export class TarefaAcademicaMatriculaDAO {
     atribuicao.TarefaPrazoDataMatricula = row.TarefaPrazoDataMatricula;
     atribuicao.TarefaFeito = Boolean(row.TarefaFeito);
     atribuicao.TarefaRealizacaoData = row.TarefaRealizacaoData;
-    atribuicao.TarefaNota = row.TarefaNota;
+    atribuicao.TarefaNota = row.TarefaNota !== null && row.TarefaNota !== undefined ? Number(row.TarefaNota) : null;
     atribuicao.TarefaAvaliadoEm = row.TarefaAvaliadoEm;
     atribuicao.TarefaAvaliadoPorCPF = row.TarefaAvaliadoPorCPF;
     atribuicao.CreatedAt = row.CreatedAt;
