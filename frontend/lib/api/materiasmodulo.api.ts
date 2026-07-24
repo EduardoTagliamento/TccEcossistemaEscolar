@@ -228,7 +228,9 @@ export interface TarefaPendenteAluno {
   TarefaGUID: string;
   TarefaTitulo: string;
   TarefaPrazoData: string;
+  MateriaGUID: string;
   MateriaNome: string;
+  TurmaGUID: string;
   TurmaNome: string;
 }
 
@@ -242,7 +244,9 @@ export interface TarefaPendenteAvaliacao {
   TarefaMatriculaGUID: string;
   TarefaGUID: string;
   TarefaTitulo: string;
+  MateriaGUID: string;
   MateriaNome: string;
+  TurmaGUID: string;
   TurmaNome: string;
   AlunoNome: string;
 }

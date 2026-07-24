@@ -64,7 +64,21 @@ interface SerieItem {
   expanded: boolean;
 }
 
-export default function TarefaForm() {
+interface TarefaFormProps {
+  materiaGUIDInicial?: string;
+  turmaGUIDInicial?: string;
+  categoriaGUIDInicial?: string;
+  ocultarListagem?: boolean;
+  onCriado?: () => void;
+}
+
+export default function TarefaForm({
+  materiaGUIDInicial,
+  turmaGUIDInicial,
+  categoriaGUIDInicial,
+  ocultarListagem = false,
+  onCriado,
+}: TarefaFormProps = {}) {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -72,11 +86,12 @@ export default function TarefaForm() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
-  // Pré-preenchimento vindo do "+" da tela de categorias — aplicado uma vez
-  // cada (refs), pra não sobrescrever se o professor trocar manualmente depois.
-  const materiaGUIDQuery = searchParams?.get('MateriaGUID') || '';
-  const turmaGUIDQuery = searchParams?.get('TurmaGUID') || '';
-  const categoriaGUIDQuery = searchParams?.get('CategoriaGUID') || '';
+  // Pré-preenchimento vindo do "+" da tela de categorias — por prop quando
+  // embutido como modal, ou por query string na tela /cadastro standalone.
+  // Aplicado uma vez cada (refs), pra não sobrescrever se o professor trocar manualmente depois.
+  const materiaGUIDQuery = materiaGUIDInicial ?? (searchParams?.get('MateriaGUID') || '');
+  const turmaGUIDQuery = turmaGUIDInicial ?? (searchParams?.get('TurmaGUID') || '');
+  const categoriaGUIDQuery = categoriaGUIDInicial ?? (searchParams?.get('CategoriaGUID') || '');
   const materiaPreenchidaRef = useRef(false);
   const turmaPreenchidaRef = useRef(false);
   const categoriaPreenchidaRef = useRef(false);
@@ -667,6 +682,7 @@ export default function TarefaForm() {
       limparFormulario();
       await carregarTarefas();
       setModalAberto(false);
+      onCriado?.();
     } catch (err: any) {
       setErro(err?.message || 'Falha ao salvar tarefas');
     } finally {
@@ -1185,28 +1201,30 @@ export default function TarefaForm() {
         </div>
       )}
 
-      <section className={styles.listSection}>
-        <h2>Tarefas cadastradas</h2>
-        {loading ? (
-          <p>Carregando...</p>
-        ) : (
-          <ul className={styles.list}>
-            {tarefas.map((tarefa) => (
-              <li key={tarefa.TarefaGUID} className={styles.card}>
-                <div>
-                  <strong>{tarefa.TarefaTitulo}</strong>
-                  <p>Prazo: {new Date(tarefa.TarefaPrazoData).toLocaleString('pt-BR')}</p>
-                  <p>Entrega: {tarefa.TarefaTipoEntrega}</p>
-                </div>
-                <div className={styles.cardActions}>
-                  <button type="button" onClick={() => editarTarefa(tarefa)}>Editar</button>
-                  <button type="button" onClick={() => excluirTarefa(tarefa.TarefaGUID)}>Excluir</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {!ocultarListagem && (
+        <section className={styles.listSection}>
+          <h2>Tarefas cadastradas</h2>
+          {loading ? (
+            <p>Carregando...</p>
+          ) : (
+            <ul className={styles.list}>
+              {tarefas.map((tarefa) => (
+                <li key={tarefa.TarefaGUID} className={styles.card}>
+                  <div>
+                    <strong>{tarefa.TarefaTitulo}</strong>
+                    <p>Prazo: {new Date(tarefa.TarefaPrazoData).toLocaleString('pt-BR')}</p>
+                    <p>Entrega: {tarefa.TarefaTipoEntrega}</p>
+                  </div>
+                  <div className={styles.cardActions}>
+                    <button type="button" onClick={() => editarTarefa(tarefa)}>Editar</button>
+                    <button type="button" onClick={() => excluirTarefa(tarefa.TarefaGUID)}>Excluir</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </div>
   );
 }

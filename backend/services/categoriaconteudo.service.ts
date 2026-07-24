@@ -458,6 +458,44 @@ export default class CategoriaConteudoService {
     return rows.length > 0;
   };
 
+  /**
+   * Indicador agregado pra navbar: existe QUALQUER pendência em qualquer
+   * matéria/turma do usuário? Mesma regra de verificarPendencia, sem
+   * escopar por matéria/turma específica.
+   */
+  verificarPendenciaAgregada = async (usuarioCPF: string, ehProfessor: boolean): Promise<boolean> => {
+    console.log("🟣 CategoriaConteudoService.verificarPendenciaAgregada()");
+
+    if (ehProfessor) {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT 1
+         FROM tarefaacademica t
+         INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+         INNER JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID
+         WHERE mpt.UsuarioCPF = ?
+           AND tm.TarefaFeito = TRUE AND tm.TarefaNota IS NULL
+         LIMIT 1`,
+        [usuarioCPF]
+      );
+      return rows.length > 0;
+    }
+
+    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF) : null;
+    if (!matricula) return false;
+
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT 1
+       FROM tarefaacademica t
+       INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+       INNER JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID
+       WHERE tm.MatriculaGUID = ?
+         AND tm.TarefaFeito = FALSE AND tm.TarefaNota IS NULL
+       LIMIT 1`,
+      [matricula.MatriculaGUID]
+    );
+    return rows.length > 0;
+  };
+
   excluirCategoria = async (guid: string, usuarioCPF: string): Promise<void> => {
     console.log("🟣 CategoriaConteudoService.excluirCategoria()");
 

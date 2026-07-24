@@ -26,6 +26,7 @@ export default function MateriasPage() {
   const [materiasAluno, setMateriasAluno] = useState<MateriasModuloAPI.MateriaDoAluno[]>([]);
   const [materiasProfessor, setMateriasProfessor] = useState<MateriasModuloAPI.MateriaComCapa[]>([]);
   const [filtro, setFiltro] = useState('');
+  const [pendencias, setPendencias] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (escolaGUID && usuario) {
@@ -57,6 +58,7 @@ export default function MateriasPage() {
       if (aluno) {
         const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioCPF, escolaGUID);
         setMateriasAluno(materias);
+        void carregarPendenciasAluno(materias);
       }
       if (professor) {
         const materias = await MateriasModuloAPI.listarMateriasComCapaProfessor(escolaGUID);
@@ -68,11 +70,51 @@ export default function MateriasPage() {
           return;
         }
         setMateriasProfessor(materias);
+        void carregarPendenciasProfessor(materias);
       }
     } catch (erro) {
       console.error('Erro ao carregar matérias:', erro);
     } finally {
       setCarregando(false);
+    }
+  };
+
+  // Indicador vermelho por card — aluno já sabe a turma (1 por matéria).
+  const carregarPendenciasAluno = async (materias: MateriasModuloAPI.MateriaDoAluno[]) => {
+    try {
+      const resultados = await Promise.all(
+        materias.map((m) => MateriasModuloAPI.temPendencia(m.MateriaGUID, m.TurmaGUID, false).catch(() => false))
+      );
+      setPendencias((prev) => {
+        const mapa = { ...prev };
+        materias.forEach((m, i) => { mapa[m.MateriaGUID] = resultados[i]; });
+        return mapa;
+      });
+    } catch (erro) {
+      console.error('Erro ao verificar pendências:', erro);
+    }
+  };
+
+  // Indicador vermelho por card — professor ainda não escolheu turma aqui,
+  // então o card "acende" se QUALQUER turma daquela matéria tiver pendência.
+  const carregarPendenciasProfessor = async (materias: MateriasModuloAPI.MateriaComCapa[]) => {
+    try {
+      const entradas = await Promise.all(
+        materias.map(async (m): Promise<[string, boolean]> => {
+          try {
+            const turmas = await MateriasModuloAPI.listarTurmasComCapaProfessor(m.MateriaGUID);
+            const resultados = await Promise.all(
+              turmas.map((t) => MateriasModuloAPI.temPendencia(m.MateriaGUID, t.TurmaGUID, true).catch(() => false))
+            );
+            return [m.MateriaGUID, resultados.some(Boolean)];
+          } catch {
+            return [m.MateriaGUID, false];
+          }
+        })
+      );
+      setPendencias((prev) => ({ ...prev, ...Object.fromEntries(entradas) }));
+    } catch (erro) {
+      console.error('Erro ao verificar pendências:', erro);
     }
   };
 
@@ -136,6 +178,7 @@ export default function MateriasPage() {
               subtitulo={materia.ProfessorNome}
               imagemUrl={materia.ImagemUrl}
               corFundo={materia.CorFundo}
+              temPendencia={pendencias[materia.MateriaGUID]}
             />
           ))}
           {materiasAlunoFiltradas.length === 0 && (
@@ -153,6 +196,7 @@ export default function MateriasPage() {
               titulo={materia.MateriaNome}
               imagemUrl={materia.ImagemUrl}
               corFundo={materia.CorFundo}
+              temPendencia={pendencias[materia.MateriaGUID]}
             />
           ))}
           {materiasProfessorFiltradas.length === 0 && (

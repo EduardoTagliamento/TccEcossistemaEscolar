@@ -92,6 +92,18 @@ export async function reordenarItens(
   }
 }
 
+export async function verificarPendenciaAgregada(ehProfessor: boolean): Promise<boolean> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/tem-pendencia-agregado?EhProfessor=${ehProfessor}`, {
+    headers: getHeaders(),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao verificar pendência');
+  }
+  return Boolean(result.data?.pendencia);
+}
+
 export async function atualizarCategoria(categoriaGUID: string, categoriaNome: string): Promise<CategoriaConteudo> {
   const response = await fetch(`${API_URL}/categoria-conteudo/${categoriaGUID}`, {
     method: 'PUT',

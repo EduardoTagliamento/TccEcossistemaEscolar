@@ -105,6 +105,21 @@ export class CategoriaConteudoController {
     }
   };
 
+  // GET /api/categoria-conteudo/tem-pendencia-agregado?EhProfessor=true|false
+  temPendenciaAgregada = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.temPendenciaAgregada()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF || "";
+      const ehProfessor = req.query.EhProfessor === "true";
+
+      const pendencia = await this.#categoriaService.verificarPendenciaAgregada(usuarioCPF, ehProfessor);
+
+      res.json({ success: true, message: "Verificado com sucesso", data: { pendencia } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // PATCH /api/categoria-conteudo/reordenar-itens
   reordenarItens = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.reordenarItens()");

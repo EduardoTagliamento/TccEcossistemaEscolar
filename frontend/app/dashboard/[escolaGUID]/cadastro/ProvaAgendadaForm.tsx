@@ -53,7 +53,21 @@ interface SerieItem {
   expanded: boolean;
 }
 
-export default function ProvaAgendadaForm() {
+interface ProvaAgendadaFormProps {
+  materiaGUIDInicial?: string;
+  turmaGUIDInicial?: string;
+  categoriaGUIDInicial?: string;
+  ocultarListagem?: boolean;
+  onCriado?: () => void;
+}
+
+export default function ProvaAgendadaForm({
+  materiaGUIDInicial,
+  turmaGUIDInicial,
+  categoriaGUIDInicial,
+  ocultarListagem = false,
+  onCriado,
+}: ProvaAgendadaFormProps = {}) {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -61,11 +75,12 @@ export default function ProvaAgendadaForm() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
-  // Pré-preenchimento vindo do "+" da tela de categorias — aplicado uma vez
-  // cada (refs), pra não sobrescrever se o professor trocar manualmente depois.
-  const materiaGUIDQuery = searchParams?.get('MateriaGUID') || '';
-  const turmaGUIDQuery = searchParams?.get('TurmaGUID') || '';
-  const categoriaGUIDQuery = searchParams?.get('CategoriaGUID') || '';
+  // Pré-preenchimento vindo do "+" da tela de categorias — por prop quando
+  // embutido como modal, ou por query string na tela /cadastro standalone.
+  // Aplicado uma vez cada (refs), pra não sobrescrever se o professor trocar manualmente depois.
+  const materiaGUIDQuery = materiaGUIDInicial ?? (searchParams?.get('MateriaGUID') || '');
+  const turmaGUIDQuery = turmaGUIDInicial ?? (searchParams?.get('TurmaGUID') || '');
+  const categoriaGUIDQuery = categoriaGUIDInicial ?? (searchParams?.get('CategoriaGUID') || '');
   const materiaPreenchidaRef = useRef(false);
   const turmaPreenchidaRef = useRef(false);
   const categoriaPreenchidaRef = useRef(false);
@@ -551,6 +566,7 @@ export default function ProvaAgendadaForm() {
       limparFormulario();
       await carregarProvas();
       setModalAberto(false);
+      onCriado?.();
     } catch (err: any) {
       setErro(err?.message || 'Falha ao salvar prova');
     } finally {
@@ -953,6 +969,7 @@ export default function ProvaAgendadaForm() {
         </div>
       )}
 
+      {!ocultarListagem && (
       <section className={styles.listSection}>
         <h2>Provas cadastradas</h2>
         {loading ? (
@@ -977,6 +994,7 @@ export default function ProvaAgendadaForm() {
           </ul>
         )}
       </section>
+      )}
     </div>
   );
 }
