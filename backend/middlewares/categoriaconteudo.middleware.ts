@@ -105,6 +105,84 @@ export class CategoriaConteudoMiddleware {
     next();
   };
 
+  static validarCriarCategoriaGeral = (req: Request, res: Response, next: NextFunction) => {
+    console.log("🟡 CategoriaConteudoMiddleware.validarCriarCategoriaGeral()");
+
+    const { MateriaGUID, CategoriaNome } = req.body;
+
+    if (!MateriaGUID || !uuidRegex.test(MateriaGUID)) {
+      return next(
+        new ErrorResponse(400, "MateriaGUID inválido", { message: "MateriaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+
+    if (!CategoriaNome || typeof CategoriaNome !== "string" || CategoriaNome.trim().length < 2 || CategoriaNome.trim().length > 100) {
+      return next(
+        new ErrorResponse(400, "CategoriaNome inválido", { message: "CategoriaNome deve ter entre 2 e 100 caracteres" })
+      );
+    }
+
+    next();
+  };
+
+  static validarReordenarCategoriasGerais = (req: Request, res: Response, next: NextFunction) => {
+    console.log("🟡 CategoriaConteudoMiddleware.validarReordenarCategoriasGerais()");
+
+    const { MateriaGUID, ordem } = req.body;
+
+    if (!MateriaGUID || !uuidRegex.test(MateriaGUID)) {
+      return next(
+        new ErrorResponse(400, "MateriaGUID inválido", { message: "MateriaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+
+    if (!Array.isArray(ordem) || !ordem.every((nome) => typeof nome === "string" && nome.trim().length > 0)) {
+      return next(
+        new ErrorResponse(400, "Ordem inválida", { message: "O campo 'ordem' deve ser uma lista de nomes de categoria" })
+      );
+    }
+
+    next();
+  };
+
+  static validarMoverItemBoardGeral = (req: Request, res: Response, next: NextFunction) => {
+    console.log("🟡 CategoriaConteudoMiddleware.validarMoverItemBoardGeral()");
+
+    const { MateriaGUID, ItemGUID, Tipo, TurmaGUID, CategoriaNome } = req.body;
+    const tiposValidos = new Set([
+      "prova",
+      "tarefa_digital",
+      "tarefa_presencial",
+      "conteudo_video",
+      "conteudo_texto",
+      "conteudo_imagem",
+    ]);
+
+    if (!MateriaGUID || !uuidRegex.test(MateriaGUID)) {
+      return next(
+        new ErrorResponse(400, "MateriaGUID inválido", { message: "MateriaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+    if (!TurmaGUID || !uuidRegex.test(TurmaGUID)) {
+      return next(
+        new ErrorResponse(400, "TurmaGUID inválido", { message: "TurmaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+    if (!ItemGUID || typeof ItemGUID !== "string" || !uuidRegex.test(ItemGUID)) {
+      return next(
+        new ErrorResponse(400, "ItemGUID inválido", { message: "ItemGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+    if (!Tipo || typeof Tipo !== "string" || !tiposValidos.has(Tipo)) {
+      return next(new ErrorResponse(400, "Tipo inválido", { message: "Tipo de item inválido" }));
+    }
+    if (CategoriaNome !== undefined && CategoriaNome !== null && typeof CategoriaNome !== "string") {
+      return next(new ErrorResponse(400, "CategoriaNome inválido", { message: "CategoriaNome deve ser string ou null" }));
+    }
+
+    next();
+  };
+
   static validarReordenarItens = (req: Request, res: Response, next: NextFunction) => {
     console.log("🟡 CategoriaConteudoMiddleware.validarReordenarItens()");
 
