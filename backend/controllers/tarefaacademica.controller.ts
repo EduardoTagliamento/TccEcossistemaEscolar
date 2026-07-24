@@ -139,14 +139,6 @@ export default class TarefaAcademicaControl {
       };
 
       const tarefas = await this.#tarefaService.listarTarefas(filters);
-      
-      // DEBUG: Verificar valores de TarefaCompartilhada
-      console.log('🔍 DEBUG - Tarefas retornadas:', tarefas.map(t => ({
-        TarefaGUID: t.TarefaGUID,
-        TarefaTitulo: t.TarefaTitulo,
-        TarefaCompartilhada: t.TarefaCompartilhada,
-        tipo: typeof t.TarefaCompartilhada
-      })));
 
       response.status(200).json({
         success: true,
@@ -167,14 +159,6 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID } = request.params;
       const tarefa = await this.#tarefaService.buscarTarefa(TarefaGUID);
-      
-      // DEBUG: Verificar valor de TarefaCompartilhada
-      console.log('🔍 DEBUG - Tarefa específica:', {
-        TarefaGUID: tarefa.TarefaGUID,
-        TarefaTitulo: tarefa.TarefaTitulo,
-        TarefaCompartilhada: tarefa.TarefaCompartilhada,
-        tipo: typeof tarefa.TarefaCompartilhada
-      });
 
       response.status(200).json({
         success: true,

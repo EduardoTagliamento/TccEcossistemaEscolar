@@ -22,6 +22,7 @@ export default function MateriasPage() {
   const [carregando, setCarregando] = useState(true);
   const [ehProfessor, setEhProfessor] = useState(false);
   const [ehAluno, setEhAluno] = useState(false);
+  const [modo, setModo] = useState<'aluno' | 'professor'>('aluno');
   const [materiasAluno, setMateriasAluno] = useState<MateriasModuloAPI.MateriaDoAluno[]>([]);
   const [materiasProfessor, setMateriasProfessor] = useState<MateriasModuloAPI.MateriaComCapa[]>([]);
   const [filtro, setFiltro] = useState('');
@@ -51,13 +52,18 @@ export default function MateriasPage() {
       const aluno = funcoesAtivas.includes(5);
       setEhProfessor(professor);
       setEhAluno(aluno);
+      setModo(aluno ? 'aluno' : 'professor');
 
       if (aluno) {
         const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioCPF, escolaGUID);
         setMateriasAluno(materias);
-      } else if (professor) {
+      }
+      if (professor) {
         const materias = await MateriasModuloAPI.listarMateriasComCapaProfessor(escolaGUID);
-        if (materias.length === 1) {
+        // Redireciona direto pra turmas só quando o usuário é professor "puro" —
+        // com os dois papéis ativos, isso quebraria o botão de alternar (o
+        // usuário nunca conseguiria ver a grade de professor pra trocar de volta).
+        if (materias.length === 1 && !aluno) {
           router.replace(`/dashboard/${escolaGUID}/materias/${materias[0].MateriaGUID}/turmas`);
           return;
         }
@@ -95,9 +101,20 @@ export default function MateriasPage() {
             <Icon name="book-open" size={26} /> Matérias
           </h1>
           <p className={styles.subtitulo}>
-            {ehAluno ? 'Suas matérias e o que o professor postou nelas' : 'Escolha a matéria pra ver as turmas'}
+            {modo === 'aluno' ? 'Suas matérias e o que o professor postou nelas' : 'Escolha a matéria pra ver as turmas'}
           </p>
         </div>
+        {ehAluno && ehProfessor && (
+          <div className={styles.acoes}>
+            <button
+              className={styles.botaoIcone}
+              onClick={() => setModo((m) => (m === 'aluno' ? 'professor' : 'aluno'))}
+              title={modo === 'aluno' ? 'Ver como professor' : 'Ver como aluno'}
+            >
+              <Icon name="repeat" size={18} />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className={styles.filtro}>
@@ -109,7 +126,7 @@ export default function MateriasPage() {
         />
       </div>
 
-      {ehAluno && (
+      {modo === 'aluno' && ehAluno && (
         <div className={styles.grid}>
           {materiasAlunoFiltradas.map((materia) => (
             <MateriaTurmaCard
@@ -127,7 +144,7 @@ export default function MateriasPage() {
         </div>
       )}
 
-      {ehProfessor && !ehAluno && (
+      {modo === 'professor' && ehProfessor && (
         <div className={styles.grid}>
           {materiasProfessorFiltradas.map((materia) => (
             <MateriaTurmaCard
