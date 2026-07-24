@@ -89,3 +89,12 @@
   font-size: 0.75rem;
   font-weight: 700;
 }
+
+.avatarFoto {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+}

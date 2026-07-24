@@ -66,6 +66,7 @@ export interface MateriaDoAlunoDTO {
   TurmaGUID: string;
   ProfessorCPF: string;
   ProfessorNome: string;
+  ProfessorFotoUrl: string | null;
   ImagemUrl: string | null;
   CorFundo: string;
   MensagemBoasVindas: string | null;
@@ -136,6 +137,7 @@ export default class MateriaService {
         TurmaGUID: matricula.TurmaGUID,
         ProfessorCPF: alocacao.UsuarioCPF,
         ProfessorNome: professor?.UsuarioNome ?? "Professor",
+        ProfessorFotoUrl: professor?.UsuarioFotoUrl ?? null,
         ImagemUrl: customizacao?.ImagemUrl ?? null,
         CorFundo: customizacao?.CorFundo || (escola?.EscolaCorPriEs ? `#${escola.EscolaCorPriEs.replace(/^#/, "")}` : "#17C077"),
         MensagemBoasVindas: customizacao?.MensagemBoasVindas ?? null,

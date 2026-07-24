@@ -22,8 +22,15 @@ export default function TurmasDaMateriaPage() {
   const [modalNovoItemAba, setModalNovoItemAba] = useState<NovoItemAba | null>(null);
 
   const [cor, setCor] = useState('#17C077');
+  // true = ainda não há cor "escolhida pelo usuário" pra essa imagem — deixa
+  // o backend extrair a cor dominante da capa (sharp) no upload; vira false
+  // assim que o professor mexe manualmente no seletor de cor.
+  const [corAutomatica, setCorAutomatica] = useState(false);
   const [mensagem, setMensagem] = useState('');
   const [imagem, setImagem] = useState<File | null>(null);
+  const [imagemPreviewUrl, setImagemPreviewUrl] = useState<string | null>(null);
+  const [imagemAtualUrl, setImagemAtualUrl] = useState<string | null>(null);
+  const [carregandoCustomizacao, setCarregandoCustomizacao] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
@@ -64,14 +71,53 @@ export default function TurmasDaMateriaPage() {
     setModalNovoItemAba(aba);
   };
 
+  const abrirModalEditar = async () => {
+    setModalEditarAberto(true);
+    setCarregandoCustomizacao(true);
+    try {
+      const atual = await MateriasModuloAPI.buscarCustomizacaoMateria(materiaGUID);
+      setCor(atual.CorFundo || '#17C077');
+      setMensagem(atual.MensagemBoasVindas || '');
+      setImagemAtualUrl(atual.ImagemUrl);
+    } catch (erro) {
+      console.error('Erro ao carregar customização atual:', erro);
+    } finally {
+      setCarregandoCustomizacao(false);
+    }
+    setImagem(null);
+    setImagemPreviewUrl(null);
+    setCorAutomatica(false);
+  };
+
+  const fecharModalEditar = () => {
+    if (imagemPreviewUrl) URL.revokeObjectURL(imagemPreviewUrl);
+    setImagemPreviewUrl(null);
+    setModalEditarAberto(false);
+  };
+
+  const escolherImagem = (file: File | null) => {
+    if (imagemPreviewUrl) URL.revokeObjectURL(imagemPreviewUrl);
+    setImagem(file);
+    setImagemPreviewUrl(file ? URL.createObjectURL(file) : null);
+    // Nova imagem: até o professor mexer na cor manualmente, deixa o
+    // backend extrair a cor dominante dela automaticamente ao salvar.
+    if (file) setCorAutomatica(true);
+  };
+
   const salvarCustomizacao = async () => {
     try {
       setSalvando(true);
-      await MateriasModuloAPI.salvarCustomizacaoMateria(materiaGUID, {
+      const resultado = await MateriasModuloAPI.salvarCustomizacaoMateria(materiaGUID, {
         imagem: imagem || undefined,
-        cor,
+        cor: corAutomatica ? undefined : cor,
         mensagem,
       });
+      setCor(resultado.CorFundo || '#17C077');
+      setCorAutomatica(false);
+      setImagemAtualUrl(resultado.ImagemUrl);
+      if (imagemPreviewUrl) URL.revokeObjectURL(imagemPreviewUrl);
+      setImagem(null);
+      setImagemPreviewUrl(null);
       alert('Customização salva com sucesso!');
       setModalEditarAberto(false);
     } catch (erro: any) {
@@ -100,7 +146,7 @@ export default function TurmasDaMateriaPage() {
           <Icon name="grid" size={26} /> Turmas
         </h1>
         <div className={styles.acoes}>
-          <button className={styles.botaoIcone} onClick={() => setModalEditarAberto(true)} title="Editar matéria">
+          <button className={styles.botaoIcone} onClick={() => void abrirModalEditar()} title="Editar matéria">
             <Icon name="edit" size={18} />
           </button>
           <div className={styles.acoesWrapper}>
@@ -137,33 +183,65 @@ export default function TurmasDaMateriaPage() {
       </div>
 
       {modalEditarAberto && (
-        <div className={styles.overlay} onClick={() => setModalEditarAberto(false)}>
+        <div className={styles.overlay} onClick={fecharModalEditar}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitulo}>Editar Matéria</h2>
 
-            <div className={styles.campo}>
-              <label>Capa (imagem)</label>
-              <input type="file" accept="image/png,image/jpeg,image/jpg" onChange={(e) => setImagem(e.target.files?.[0] || null)} />
-            </div>
+            {carregandoCustomizacao ? (
+              <p className={styles.hint}>Carregando...</p>
+            ) : (
+              <>
+                <div className={styles.campo}>
+                  <label>Capa (imagem)</label>
+                  {(imagemPreviewUrl || imagemAtualUrl) && (
+                    <img
+                      src={imagemPreviewUrl || imagemAtualUrl || undefined}
+                      alt="Prévia da capa"
+                      className={styles.previewImagem}
+                    />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    onChange={(e) => escolherImagem(e.target.files?.[0] || null)}
+                  />
+                  {imagem && (
+                    <p className={styles.hint}>
+                      {corAutomatica
+                        ? 'A cor abaixo vai ser definida automaticamente a partir dessa imagem ao salvar — mas você ainda pode escolher outra.'
+                        : 'Cor definida manualmente — não será sobrescrita pela imagem.'}
+                    </p>
+                  )}
+                </div>
 
-            <div className={styles.campo}>
-              <label>Cor</label>
-              <input type="color" className={styles.corInput} value={cor} onChange={(e) => setCor(e.target.value)} />
-            </div>
+                <div className={styles.campo}>
+                  <label>Cor</label>
+                  <input
+                    type="color"
+                    className={styles.corInput}
+                    value={cor}
+                    onChange={(e) => {
+                      setCor(e.target.value);
+                      setCorAutomatica(false);
+                    }}
+                  />
+                </div>
 
-            <div className={styles.campo}>
-              <label>Mensagem de boas-vindas pros alunos</label>
-              <textarea rows={3} value={mensagem} onChange={(e) => setMensagem(e.target.value)} placeholder="Ex: Bem-vindos à matéria!" />
-            </div>
+                <div className={styles.campo}>
+                  <label>Mensagem de boas-vindas pros alunos</label>
+                  <textarea rows={3} value={mensagem} onChange={(e) => setMensagem(e.target.value)} placeholder="Ex: Bem-vindos à matéria!" />
+                </div>
 
-            <div className={styles.botoes}>
-              <button className={styles.botaoSalvar} onClick={salvarCustomizacao} disabled={salvando}>
-                {salvando ? 'Salvando...' : 'Salvar'}
-              </button>
-              <button className={styles.botaoCancelar} onClick={() => setModalEditarAberto(false)}>
-                Cancelar
-              </button>
-            </div>
+                <div className={styles.botoes}>
+                  <button className={styles.botaoSalvar} onClick={salvarCustomizacao} disabled={salvando}>
+                    {salvando ? 'Salvando...' : 'Salvar'}
+                  </button>
+                  <button className={styles.botaoCancelar} onClick={fecharModalEditar}>
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

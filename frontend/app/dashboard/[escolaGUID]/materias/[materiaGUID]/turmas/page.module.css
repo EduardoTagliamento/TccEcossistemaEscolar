@@ -121,6 +121,22 @@
   font-family: inherit;
 }
 
+.previewImagem {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 0.6rem;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--slate-500, #647268);
+  margin-top: 0.4rem;
+}
+
 .corInput {
   width: 60px;
   height: 40px;

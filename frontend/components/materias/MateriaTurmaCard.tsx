@@ -10,6 +10,8 @@ interface MateriaTurmaCardProps {
   imagemUrl?: string | null;
   corFundo?: string | null;
   temPendencia?: boolean;
+  /** Foto de quem aparece no avatar circular (ex.: professor da matéria) — sem isso, cai pras iniciais do subtítulo. */
+  avatarFotoUrl?: string | null;
 }
 
 function iniciais(nome: string): string {
@@ -19,7 +21,7 @@ function iniciais(nome: string): string {
   return (primeira + ultima).toUpperCase();
 }
 
-export default function MateriaTurmaCard({ href, titulo, subtitulo, imagemUrl, corFundo, temPendencia }: MateriaTurmaCardProps) {
+export default function MateriaTurmaCard({ href, titulo, subtitulo, imagemUrl, corFundo, temPendencia, avatarFotoUrl }: MateriaTurmaCardProps) {
   const cor = corFundo || '#17C077';
 
   return (
@@ -36,7 +38,13 @@ export default function MateriaTurmaCard({ href, titulo, subtitulo, imagemUrl, c
           <span className={styles.titulo}>{titulo}</span>
           {subtitulo && <span className={styles.subtitulo}>{subtitulo}</span>}
         </div>
-        {subtitulo && <span className={styles.avatar}>{iniciais(subtitulo)}</span>}
+        {subtitulo && (
+          avatarFotoUrl ? (
+            <img src={avatarFotoUrl} alt={subtitulo} className={styles.avatarFoto} />
+          ) : (
+            <span className={styles.avatar}>{iniciais(subtitulo)}</span>
+          )
+        )}
       </div>
     </Link>
   );

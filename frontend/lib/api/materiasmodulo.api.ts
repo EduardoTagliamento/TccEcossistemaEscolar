@@ -34,6 +34,7 @@ export interface MateriaDoAluno {
   TurmaGUID: string;
   ProfessorCPF: string;
   ProfessorNome: string;
+  ProfessorFotoUrl: string | null;
   ImagemUrl: string | null;
   CorFundo: string;
   MensagemBoasVindas: string | null;
@@ -90,6 +91,13 @@ export interface MateriaCustomizacao {
   ImagemUrl: string | null;
   CorFundo: string;
   MensagemBoasVindas: string | null;
+}
+
+export async function buscarCustomizacaoMateria(materiaGUID: string): Promise<MateriaCustomizacao> {
+  const response = await fetch(`${API_URL}/materia/${materiaGUID}/customizacao`, {
+    headers: getHeaders(),
+  });
+  return extrairDados(response, 'Erro ao buscar customização');
 }
 
 export async function salvarCustomizacaoMateria(
