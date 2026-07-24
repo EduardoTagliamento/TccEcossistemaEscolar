@@ -179,6 +179,7 @@ export default function MateriasPage() {
               imagemUrl={materia.ImagemUrl}
               corFundo={materia.CorFundo}
               temPendencia={pendencias[materia.MateriaGUID]}
+              avatarFotoUrl={materia.ProfessorFotoUrl}
             />
           ))}
           {materiasAlunoFiltradas.length === 0 && (
