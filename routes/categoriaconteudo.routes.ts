@@ -32,6 +32,18 @@ export default class CategoriaConteudoRoteador {
       CategoriaConteudoMiddleware.validarReordenarItens,
       this.#controller.reordenarItens
     );
+    this.#router.get("/geral/:materiaGUID", this.#controller.buscarBoardGeral);
+    this.#router.post("/geral", CategoriaConteudoMiddleware.validarCriarCategoriaGeral, this.#controller.criarCategoriaGeral);
+    this.#router.patch(
+      "/geral/reordenar",
+      CategoriaConteudoMiddleware.validarReordenarCategoriasGerais,
+      this.#controller.reordenarCategoriasGerais
+    );
+    this.#router.patch(
+      "/geral/mover-item",
+      CategoriaConteudoMiddleware.validarMoverItemBoardGeral,
+      this.#controller.moverItemBoardGeral
+    );
     this.#router.get("/completas/:materiaGUID/:turmaGUID", this.#controller.buscarCategoriasCompletas);
     this.#router.get("/tem-pendencia/:materiaGUID/:turmaGUID", this.#controller.temPendencia);
     this.#router.get("/tem-pendencia-agregado", this.#controller.temPendenciaAgregada);

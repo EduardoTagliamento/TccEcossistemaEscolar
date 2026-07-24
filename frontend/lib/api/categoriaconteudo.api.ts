@@ -104,6 +104,100 @@ export async function verificarPendenciaAgregada(ehProfessor: boolean): Promise<
   return Boolean(result.data?.pendencia);
 }
 
+// ==================== Board geral (categoria aplicada em massa) ====================
+// Sem categoria própria de "geral" no banco — é o mesmo categoriaconteudo,
+// só que uma linha por turma compartilhando o mesmo nome (ver seção 4 do
+// PLANO_IMPLEMENTACAO_MATERIAS.md e a decisão do usuário de não criar tabela nova).
+
+export type ItemTipoBoardGeral =
+  | 'prova'
+  | 'tarefa_digital'
+  | 'tarefa_presencial'
+  | 'conteudo_video'
+  | 'conteudo_texto'
+  | 'conteudo_imagem';
+
+export interface ItemBoardGeral {
+  ItemGUID: string;
+  Tipo: ItemTipoBoardGeral;
+  Titulo: string;
+  TurmaGUID: string;
+  TurmaNome: string;
+  TurmaSerie: string;
+  ItemOrdem: number;
+}
+
+export interface CategoriaGeral {
+  CategoriaNome: string;
+  Ordem: number;
+  Itens: ItemBoardGeral[];
+}
+
+export interface BoardGeral {
+  Categorias: CategoriaGeral[];
+  ItensSemCategoria: ItemBoardGeral[];
+}
+
+export async function buscarBoardGeral(materiaGUID: string): Promise<BoardGeral> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/geral/${materiaGUID}`, {
+    headers: getHeaders(),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao buscar board geral');
+  }
+  return result.data.board;
+}
+
+export async function criarCategoriaGeral(materiaGUID: string, categoriaNome: string): Promise<BoardGeral> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/geral`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ MateriaGUID: materiaGUID, CategoriaNome: categoriaNome }),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao criar categoria geral');
+  }
+  return result.data.board;
+}
+
+export async function reordenarCategoriasGerais(materiaGUID: string, ordemNomes: string[]): Promise<BoardGeral> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/geral/reordenar`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ MateriaGUID: materiaGUID, ordem: ordemNomes }),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao reordenar categorias gerais');
+  }
+  return result.data.board;
+}
+
+export async function moverItemBoardGeral(
+  materiaGUID: string,
+  item: { ItemGUID: string; Tipo: ItemTipoBoardGeral; TurmaGUID: string },
+  categoriaNomeDestino: string | null
+): Promise<BoardGeral> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/geral/mover-item`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      MateriaGUID: materiaGUID,
+      ItemGUID: item.ItemGUID,
+      Tipo: item.Tipo,
+      TurmaGUID: item.TurmaGUID,
+      CategoriaNome: categoriaNomeDestino,
+    }),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao mover item');
+  }
+  return result.data.board;
+}
+
 export async function atualizarCategoria(categoriaGUID: string, categoriaNome: string): Promise<CategoriaConteudo> {
   const response = await fetch(`${API_URL}/categoria-conteudo/${categoriaGUID}`, {
     method: 'PUT',

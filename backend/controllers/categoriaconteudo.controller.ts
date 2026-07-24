@@ -105,6 +105,90 @@ export class CategoriaConteudoController {
     }
   };
 
+  // GET /api/categoria-conteudo/geral/:materiaGUID — board geral (categorias por nome, todas as turmas)
+  buscarBoardGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.buscarBoardGeral()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { materiaGUID } = req.params;
+      const board = await this.#categoriaService.buscarBoardGeral(usuarioCPF, materiaGUID);
+
+      res.json({ success: true, message: "Board geral obtido com sucesso", data: { board } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // POST /api/categoria-conteudo/geral — cria/aplica categoria em todas as turmas da matéria
+  criarCategoriaGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.criarCategoriaGeral()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { MateriaGUID, CategoriaNome } = req.body;
+      await this.#categoriaService.criarCategoriaGeral(usuarioCPF, MateriaGUID, CategoriaNome);
+      const board = await this.#categoriaService.buscarBoardGeral(usuarioCPF, MateriaGUID);
+
+      res.status(201).json({ success: true, message: "Categoria aplicada a todas as turmas com sucesso", data: { board } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // PATCH /api/categoria-conteudo/geral/reordenar
+  reordenarCategoriasGerais = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.reordenarCategoriasGerais()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { MateriaGUID, ordem } = req.body;
+      const board = await this.#categoriaService.reordenarCategoriasGerais(usuarioCPF, MateriaGUID, ordem);
+
+      res.json({ success: true, message: "Categorias gerais reordenadas com sucesso", data: { board } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // PATCH /api/categoria-conteudo/geral/mover-item
+  moverItemBoardGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.moverItemBoardGeral()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { MateriaGUID, ItemGUID, Tipo, TurmaGUID, CategoriaNome } = req.body;
+      const board = await this.#categoriaService.moverItemBoardGeral(
+        usuarioCPF,
+        MateriaGUID,
+        ItemGUID,
+        Tipo,
+        TurmaGUID,
+        CategoriaNome ?? null
+      );
+
+      res.json({ success: true, message: "Item movido com sucesso", data: { board } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // GET /api/categoria-conteudo/tem-pendencia-agregado?EhProfessor=true|false
   temPendenciaAgregada = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.temPendenciaAgregada()");

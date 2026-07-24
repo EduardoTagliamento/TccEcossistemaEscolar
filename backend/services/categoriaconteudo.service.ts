@@ -38,6 +38,27 @@ export interface CategoriaCompletaDTO {
   Itens: ItemCategoriaDTO[];
 }
 
+export interface ItemBoardGeralDTO {
+  ItemGUID: string;
+  Tipo: ItemTipo;
+  Titulo: string;
+  TurmaGUID: string;
+  TurmaNome: string;
+  TurmaSerie: string;
+  ItemOrdem: number;
+}
+
+export interface CategoriaGeralDTO {
+  CategoriaNome: string;
+  Ordem: number;
+  Itens: ItemBoardGeralDTO[];
+}
+
+export interface BoardGeralDTO {
+  Categorias: CategoriaGeralDTO[];
+  ItensSemCategoria: ItemBoardGeralDTO[];
+}
+
 export interface CategoriaConteudoDTO {
   CategoriaGUID: string;
   UsuarioCPF: string;
@@ -414,6 +435,287 @@ export default class CategoriaConteudoService {
     );
 
     return this.listarCategorias({ UsuarioCPF: usuarioCPF, MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
+  };
+
+  // ==================== Board geral (categoria aplicada em massa) ====================
+  //
+  // Sem tabela nova: uma "categoria geral" é só o conjunto de linhas de
+  // `categoriaconteudo` que compartilham o mesmo (UsuarioCPF, MateriaGUID,
+  // CategoriaNome) — uma por turma onde o professor leciona a matéria.
+  // Criar/reordenar "em massa" é só criar/atualizar essas N linhas de uma vez.
+
+  /** Turmas ativas onde esse professor leciona essa matéria — base de todo o board geral. */
+  #turmasAtivasDoProfessor = async (usuarioCPF: string, materiaGUID: string): Promise<{ TurmaGUID: string; TurmaNome: string; TurmaSerie: string }[]> => {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT DISTINCT mpt.TurmaGUID, tu.TurmaNome, tu.TurmaSerie
+       FROM materiaxprofessorxturma mpt
+       INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
+       WHERE mpt.MateriaGUID = ? AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'`,
+      [materiaGUID, usuarioCPF]
+    );
+    return rows as any[];
+  };
+
+  /**
+   * Cria (ou aplica em turmas que ainda não tinham) uma categoria com esse
+   * nome em TODAS as turmas ativas do professor nessa matéria de uma vez.
+   */
+  criarCategoriaGeral = async (usuarioCPF: string, materiaGUID: string, categoriaNome: string): Promise<void> => {
+    console.log("🟣 CategoriaConteudoService.criarCategoriaGeral()");
+
+    const nome = categoriaNome.trim();
+    if (nome.length < 2 || nome.length > 100) {
+      throw new ErrorResponse(400, "CategoriaNome inválido", {
+        message: "CategoriaNome deve ter entre 2 e 100 caracteres",
+      });
+    }
+
+    const turmas = await this.#turmasAtivasDoProfessor(usuarioCPF, materiaGUID);
+    if (turmas.length === 0) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está alocado em nenhuma turma ativa nesta matéria.",
+      });
+    }
+
+    for (const turma of turmas) {
+      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nome);
+      if (existente) continue;
+
+      const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, materiaGUID, turma.TurmaGUID);
+      const categoria = new CategoriaConteudo();
+      categoria.CategoriaGUID = uuidv4();
+      categoria.UsuarioCPF = usuarioCPF;
+      categoria.MateriaGUID = materiaGUID;
+      categoria.TurmaGUID = turma.TurmaGUID;
+      categoria.CategoriaNome = nome;
+      categoria.Ordem = maiorOrdem + 1;
+      await this.#categoriaDAO.create(categoria);
+    }
+  };
+
+  /**
+   * Board geral: categorias (por nome, consolidadas entre turmas) + itens de
+   * tarefa/conteúdo/prova de TODAS as turmas dessa matéria, agrupados por
+   * categoria (ou "sem categoria"), cada item já dizendo de qual turma é.
+   */
+  buscarBoardGeral = async (usuarioCPF: string, materiaGUID: string): Promise<BoardGeralDTO> => {
+    console.log("🟣 CategoriaConteudoService.buscarBoardGeral()");
+
+    const categoriasRows = await this.#categoriaDAO.findAll({ UsuarioCPF: usuarioCPF, MateriaGUID: materiaGUID });
+    const nomeParaOrdem = new Map<string, number>();
+    categoriasRows.forEach((c) => {
+      if (c.CategoriaNome && !nomeParaOrdem.has(c.CategoriaNome)) nomeParaOrdem.set(c.CategoriaNome, c.Ordem);
+    });
+
+    const mapaItens = new Map<string, ItemBoardGeralDTO[]>();
+    const adicionar = (categoriaNome: string | null, item: ItemBoardGeralDTO) => {
+      const chave = categoriaNome ?? "__sem_categoria__";
+      if (!mapaItens.has(chave)) mapaItens.set(chave, []);
+      mapaItens.get(chave)!.push(item);
+    };
+
+    const [tarefaRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT t.TarefaGUID, t.TarefaTitulo, t.TarefaTipoEntrega, t.ItemOrdem,
+              mpt.TurmaGUID, tu.TurmaNome, tu.TurmaSerie, cc.CategoriaNome
+       FROM tarefaacademica t
+       INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+       INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
+       LEFT JOIN categoriaconteudo cc ON cc.CategoriaGUID = t.CategoriaGUID
+       WHERE mpt.MateriaGUID = ? AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'`,
+      [materiaGUID, usuarioCPF]
+    );
+    for (const row of tarefaRows as any[]) {
+      adicionar(row.CategoriaNome ?? null, {
+        ItemGUID: row.TarefaGUID,
+        Tipo: row.TarefaTipoEntrega === "digital" ? "tarefa_digital" : "tarefa_presencial",
+        Titulo: row.TarefaTitulo,
+        TurmaGUID: row.TurmaGUID,
+        TurmaNome: row.TurmaNome,
+        TurmaSerie: row.TurmaSerie,
+        ItemOrdem: row.ItemOrdem ?? 0,
+      });
+    }
+
+    const [conteudoRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT c.ConteudoGUID, c.ConteudoTitulo, c.ConteudoTipo, ct.ItemOrdem,
+              ct.TurmaGUID, tu.TurmaNome, tu.TurmaSerie, cc.CategoriaNome
+       FROM conteudo c
+       INNER JOIN conteudoturma ct ON ct.ConteudoGUID = c.ConteudoGUID
+       INNER JOIN turma tu ON tu.TurmaGUID = ct.TurmaGUID
+       INNER JOIN materiaxprofessorxturma mpt
+         ON mpt.MateriaGUID = c.MateriaGUID AND mpt.TurmaGUID = ct.TurmaGUID AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'
+       LEFT JOIN categoriaconteudo cc ON cc.CategoriaGUID = ct.CategoriaGUID
+       WHERE c.MateriaGUID = ?`,
+      [usuarioCPF, materiaGUID]
+    );
+    const tipoConteudoMap: Record<string, ItemTipo> = {
+      cronometrado: "conteudo_video",
+      texto: "conteudo_texto",
+      paginado: "conteudo_imagem",
+    };
+    for (const row of conteudoRows as any[]) {
+      adicionar(row.CategoriaNome ?? null, {
+        ItemGUID: row.ConteudoGUID,
+        Tipo: tipoConteudoMap[row.ConteudoTipo] ?? "conteudo_texto",
+        Titulo: row.ConteudoTitulo,
+        TurmaGUID: row.TurmaGUID,
+        TurmaNome: row.TurmaNome,
+        TurmaSerie: row.TurmaSerie,
+        ItemOrdem: row.ItemOrdem ?? 0,
+      });
+    }
+
+    const [provaRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT p.ProvaAgendadaGUID, p.ProvaDescricao, pt.ItemOrdem,
+              pt.TurmaGUID, tu.TurmaNome, tu.TurmaSerie, cc.CategoriaNome
+       FROM provaagendada p
+       INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
+       INNER JOIN turma tu ON tu.TurmaGUID = pt.TurmaGUID
+       INNER JOIN materiaxprofessorxturma mpt
+         ON mpt.MateriaGUID = p.MateriaGUID AND mpt.TurmaGUID = pt.TurmaGUID AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'
+       LEFT JOIN categoriaconteudo cc ON cc.CategoriaGUID = pt.CategoriaGUID
+       WHERE p.MateriaGUID = ?`,
+      [usuarioCPF, materiaGUID]
+    );
+    for (const row of provaRows as any[]) {
+      adicionar(row.CategoriaNome ?? null, {
+        ItemGUID: row.ProvaAgendadaGUID,
+        Tipo: "prova",
+        Titulo: row.ProvaDescricao || "Prova",
+        TurmaGUID: row.TurmaGUID,
+        TurmaNome: row.TurmaNome,
+        TurmaSerie: row.TurmaSerie,
+        ItemOrdem: row.ItemOrdem ?? 0,
+      });
+    }
+
+    const nomesOrdenados = Array.from(nomeParaOrdem.entries()).sort((a, b) => a[1] - b[1]);
+
+    return {
+      Categorias: nomesOrdenados.map(([nome, ordem]) => ({
+        CategoriaNome: nome,
+        Ordem: ordem,
+        Itens: (mapaItens.get(nome) ?? []).sort((a, b) => a.ItemOrdem - b.ItemOrdem),
+      })),
+      ItensSemCategoria: mapaItens.get("__sem_categoria__") ?? [],
+    };
+  };
+
+  /** Reordena as categorias gerais (por nome) — aplica a mesma Ordem em todas as turmas de uma vez. */
+  reordenarCategoriasGerais = async (usuarioCPF: string, materiaGUID: string, ordemNomes: string[]): Promise<BoardGeralDTO> => {
+    console.log("🟣 CategoriaConteudoService.reordenarCategoriasGerais()");
+
+    const categoriasAtuais = await this.#categoriaDAO.findAll({ UsuarioCPF: usuarioCPF, MateriaGUID: materiaGUID });
+    const nomesValidos = new Set(categoriasAtuais.map((c) => c.CategoriaNome));
+    if (ordemNomes.length !== nomesValidos.size || !ordemNomes.every((nome) => nomesValidos.has(nome))) {
+      throw new ErrorResponse(400, "Lista de ordenação inválida", {
+        message: "A lista enviada deve conter exatamente os nomes de categoria geral existentes nesta matéria.",
+      });
+    }
+
+    const ordemPorNome = new Map(ordemNomes.map((nome, indice) => [nome, indice]));
+    await this.#categoriaDAO.updateOrdemEmLote(
+      categoriasAtuais.map((c) => ({ CategoriaGUID: c.CategoriaGUID, Ordem: ordemPorNome.get(c.CategoriaNome || "")! }))
+    );
+
+    return this.buscarBoardGeral(usuarioCPF, materiaGUID);
+  };
+
+  /**
+   * Move um item (tarefa/conteúdo/prova) — de qualquer turma — pra uma
+   * categoria geral (por nome) ou de volta pra "sem categoria" (nome null).
+   * Se a turma daquele item ainda não tinha essa categoria aplicada (ex.:
+   * turma nova depois da categoria criada), cria na hora — mantém o "em massa".
+   */
+  moverItemBoardGeral = async (
+    usuarioCPF: string,
+    materiaGUID: string,
+    itemGUID: string,
+    tipo: ItemTipo,
+    turmaGUID: string,
+    categoriaNomeDestino: string | null
+  ): Promise<BoardGeralDTO> => {
+    console.log("🟣 CategoriaConteudoService.moverItemBoardGeral()");
+
+    const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT 1 FROM materiaxprofessorxturma
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [materiaGUID, turmaGUID, usuarioCPF]
+    );
+    if (alocacaoRows.length === 0) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está alocado nesta matéria/turma.",
+      });
+    }
+
+    let categoriaGUIDDestino: string | null = null;
+    if (categoriaNomeDestino) {
+      const nome = categoriaNomeDestino.trim();
+      let categoria = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turmaGUID, nome);
+      if (!categoria) {
+        const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, materiaGUID, turmaGUID);
+        const nova = new CategoriaConteudo();
+        nova.CategoriaGUID = uuidv4();
+        nova.UsuarioCPF = usuarioCPF;
+        nova.MateriaGUID = materiaGUID;
+        nova.TurmaGUID = turmaGUID;
+        nova.CategoriaNome = nome;
+        nova.Ordem = maiorOrdem + 1;
+        await this.#categoriaDAO.create(nova);
+        categoria = nova;
+      }
+      categoriaGUIDDestino = categoria.CategoriaGUID;
+    }
+
+    if (tipo === "tarefa_digital" || tipo === "tarefa_presencial") {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT 1 FROM tarefaacademica t
+         INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+         WHERE t.TarefaGUID = ? AND mpt.MateriaGUID = ? AND mpt.TurmaGUID = ? LIMIT 1`,
+        [itemGUID, materiaGUID, turmaGUID]
+      );
+      if (rows.length === 0) {
+        throw new ErrorResponse(403, "Item inválido", { message: `A tarefa ${itemGUID} não pertence a esta matéria/turma.` });
+      }
+      await pool.execute(`UPDATE tarefaacademica SET CategoriaGUID = ?, ItemOrdem = 0 WHERE TarefaGUID = ?`, [
+        categoriaGUIDDestino,
+        itemGUID,
+      ]);
+    } else if (tipo === "conteudo_video" || tipo === "conteudo_texto" || tipo === "conteudo_imagem") {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT 1 FROM conteudo c
+         INNER JOIN conteudoturma ct ON ct.ConteudoGUID = c.ConteudoGUID
+         WHERE c.ConteudoGUID = ? AND c.MateriaGUID = ? AND ct.TurmaGUID = ? LIMIT 1`,
+        [itemGUID, materiaGUID, turmaGUID]
+      );
+      if (rows.length === 0) {
+        throw new ErrorResponse(403, "Item inválido", { message: `O conteúdo ${itemGUID} não pertence a esta matéria/turma.` });
+      }
+      await pool.execute(`UPDATE conteudoturma SET CategoriaGUID = ?, ItemOrdem = 0 WHERE ConteudoGUID = ? AND TurmaGUID = ?`, [
+        categoriaGUIDDestino,
+        itemGUID,
+        turmaGUID,
+      ]);
+    } else if (tipo === "prova") {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT 1 FROM provaagendada p
+         INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
+         WHERE p.ProvaAgendadaGUID = ? AND p.MateriaGUID = ? AND pt.TurmaGUID = ? LIMIT 1`,
+        [itemGUID, materiaGUID, turmaGUID]
+      );
+      if (rows.length === 0) {
+        throw new ErrorResponse(403, "Item inválido", { message: `A prova ${itemGUID} não pertence a esta matéria/turma.` });
+      }
+      await pool.execute(`UPDATE provaagendada_turma SET CategoriaGUID = ?, ItemOrdem = 0 WHERE ProvaAgendadaGUID = ? AND TurmaGUID = ?`, [
+        categoriaGUIDDestino,
+        itemGUID,
+        turmaGUID,
+      ]);
+    } else {
+      throw new ErrorResponse(400, "Tipo de item inválido", { message: `Tipo desconhecido: ${tipo}` });
+    }
+
+    return this.buscarBoardGeral(usuarioCPF, materiaGUID);
   };
 
   /**
