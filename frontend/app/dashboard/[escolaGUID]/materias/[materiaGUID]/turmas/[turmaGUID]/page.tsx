@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Icon, IconName } from '@/components/Icon';
 import ItemProgressoBar from '@/components/materias/ItemProgressoBar';
 import VisualizadorItemModal from '@/components/materias/VisualizadorItemModal';
+import NovoItemModal, { NovoItemAba } from '@/components/materias/NovoItemModal';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
@@ -26,9 +27,9 @@ const ICONE_POR_TIPO: Record<ItemCategoria['Tipo'], IconName> = {
   conteudo_imagem: 'layers',
 };
 
-export default function CategoriaPage() {
+function CategoriaPageConteudo() {
   const params = useParams();
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
   const materiaGUID = (params?.materiaGUID as string) || '';
   const turmaGUID = (params?.turmaGUID as string) || '';
@@ -46,6 +47,14 @@ export default function CategoriaPage() {
   const [categoriaArrastando, setCategoriaArrastando] = useState<string | null>(null);
   const [popoverAberto, setPopoverAberto] = useState<string | null>(null);
   const [itemArrastando, setItemArrastando] = useState<string | null>(null);
+  const [modalNovoItem, setModalNovoItem] = useState<{ categoriaGUID: string; aba: NovoItemAba } | null>(null);
+
+  // Outras telas (ex.: "tarefas a se esgotar"/"avaliações pendentes" do
+  // dashboard) linkam pra cá com ?abrirItem=GUID — abre o visualizador do
+  // item automaticamente assim que a lista carregar. O módulo Matérias é
+  // quem "recebe" essa navegação, nunca o contrário.
+  const abrirItemGUID = searchParams?.get('abrirItem') || '';
+  const itemAutoAbertoRef = useRef(false);
 
   useEffect(() => {
     if (escolaGUID && usuario) void inicializar();
@@ -106,11 +115,21 @@ export default function CategoriaPage() {
     }
   };
 
-  const abrirNovoItem = (categoriaGUID: string, tipo: 'conteudo' | 'tarefa' | 'prova') => {
+  useEffect(() => {
+    if (itemAutoAbertoRef.current || !abrirItemGUID || categorias.length === 0) return;
+    for (const categoria of categorias) {
+      const item = categoria.Itens.find((i) => i.ItemGUID === abrirItemGUID);
+      if (item) {
+        itemAutoAbertoRef.current = true;
+        setItemSelecionado(item);
+        break;
+      }
+    }
+  }, [abrirItemGUID, categorias]);
+
+  const abrirNovoItem = (categoriaGUID: string, aba: NovoItemAba) => {
     setPopoverAberto(null);
-    router.push(
-      `/dashboard/${escolaGUID}/cadastro?aba=${tipo}&MateriaGUID=${materiaGUID}&TurmaGUID=${turmaGUID}&CategoriaGUID=${categoriaGUID}`
-    );
+    setModalNovoItem({ categoriaGUID, aba });
   };
 
   const handleDragStart = (categoriaGUID: string) => setCategoriaArrastando(categoriaGUID);
@@ -318,6 +337,28 @@ export default function CategoriaPage() {
           onProgressoAtualizado={() => void carregarCategorias()}
         />
       )}
+
+      {modalNovoItem && (
+        <NovoItemModal
+          aba={modalNovoItem.aba}
+          materiaGUID={materiaGUID}
+          turmaGUID={turmaGUID}
+          categoriaGUID={modalNovoItem.categoriaGUID}
+          onFechar={() => setModalNovoItem(null)}
+          onCriado={() => {
+            setModalNovoItem(null);
+            void carregarCategorias();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+export default function CategoriaPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '2rem' }}>Carregando...</div>}>
+      <CategoriaPageConteudo />
+    </Suspense>
   );
 }

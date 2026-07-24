@@ -22,6 +22,7 @@ import { useSocket } from '@/lib/socket/SocketContext';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import type { Notificacao } from '@/lib/api/notificacao.api';
 import { contarPendencias } from '@/lib/api/pendencia.api';
+import { verificarPendenciaAgregada } from '@/lib/api/categoriaconteudo.api';
 import styles from './DashboardNavbar.module.css';
 
 interface Escola {
@@ -248,6 +249,7 @@ export default function DashboardNavbar() {
   const notifRef = useRef<HTMLDivElement>(null);
 
   const [pendenciasPendentesCount, setPendenciasPendentesCount] = useState(0);
+  const [temPendenciaMaterias, setTemPendenciaMaterias] = useState(false);
 
   // Setas de rolagem da nav de módulos — só aparecem quando os itens não
   // cabem na largura disponível (ex. usuário com muitos papéis/módulos
@@ -324,6 +326,21 @@ export default function DashboardNavbar() {
       .then(setPendenciasPendentesCount)
       .catch(() => setPendenciasPendentesCount(0));
   }, [usuario, escolaGUID]);
+
+  // Badge vermelho agregado no ícone "Matérias" — mesma regra usada por
+  // matéria/turma (ver categoriaconteudo.service.ts), só que sem escopo.
+  useEffect(() => {
+    if (!usuario) return;
+    const ehProfessor = funcoesEscola.includes(3);
+    const ehAluno = funcoesEscola.includes(5);
+    if (!ehProfessor && !ehAluno) {
+      setTemPendenciaMaterias(false);
+      return;
+    }
+    verificarPendenciaAgregada(ehProfessor)
+      .then(setTemPendenciaMaterias)
+      .catch(() => setTemPendenciaMaterias(false));
+  }, [usuario, funcoesEscola]);
 
   useEffect(() => {
     // Disparado pela tela de configurações (`/configuracoes`) após salvar a
@@ -582,7 +599,10 @@ export default function DashboardNavbar() {
                   href={modulo.href}
                   className={`${styles.moduleItem} ${ativo ? styles.moduleItemActive : ''}`}
                 >
-                  <Icon name={modulo.icon} size={20} />
+                  <span className={styles.moduleIconWrap}>
+                    <Icon name={modulo.icon} size={20} />
+                    {modulo.key === 'materias' && temPendenciaMaterias && <span className={styles.moduleItemDot} />}
+                  </span>
                   <span>{modulo.label}</span>
                 </Link>
               );

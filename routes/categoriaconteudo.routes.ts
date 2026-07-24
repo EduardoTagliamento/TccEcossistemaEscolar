@@ -34,6 +34,7 @@ export default class CategoriaConteudoRoteador {
     );
     this.#router.get("/completas/:materiaGUID/:turmaGUID", this.#controller.buscarCategoriasCompletas);
     this.#router.get("/tem-pendencia/:materiaGUID/:turmaGUID", this.#controller.temPendencia);
+    this.#router.get("/tem-pendencia-agregado", this.#controller.temPendenciaAgregada);
     this.#router.put(
       "/:guid",
       CategoriaConteudoMiddleware.validarGUID,

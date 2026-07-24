@@ -305,6 +305,22 @@
   font-weight: 700;
 }
 
+.moduleIconWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.moduleItemDot {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger-500);
+  border: 2px solid var(--white);
+}
+
 .navActions {
   display: flex;
   align-items: center;

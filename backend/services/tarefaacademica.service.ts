@@ -750,7 +750,9 @@ export default class TarefaAcademicaService {
     TarefaGUID: string;
     TarefaTitulo: string;
     TarefaPrazoData: string;
+    MateriaGUID: string;
     MateriaNome: string;
+    TurmaGUID: string;
     TurmaNome: string;
   }>> => {
     console.log("🟣 TarefaAcademicaService.listarPendentesAluno()");
@@ -758,7 +760,7 @@ export default class TarefaAcademicaService {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT t.TarefaGUID, t.TarefaTitulo,
               COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS TarefaPrazoData,
-              mat.MateriaNome, tu.TurmaNome
+              mat.MateriaGUID, mat.MateriaNome, tu.TurmaGUID, tu.TurmaNome
        FROM tarefaacademica_matricula tm
        INNER JOIN tarefaacademica t ON t.TarefaGUID = tm.TarefaGUID
        INNER JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
@@ -776,7 +778,9 @@ export default class TarefaAcademicaService {
       TarefaGUID: row.TarefaGUID,
       TarefaTitulo: row.TarefaTitulo,
       TarefaPrazoData: new Date(row.TarefaPrazoData).toISOString(),
+      MateriaGUID: row.MateriaGUID,
       MateriaNome: row.MateriaNome,
+      TurmaGUID: row.TurmaGUID,
       TurmaNome: row.TurmaNome,
     }));
   };
@@ -788,7 +792,9 @@ export default class TarefaAcademicaService {
     TarefaMatriculaGUID: string;
     TarefaGUID: string;
     TarefaTitulo: string;
+    MateriaGUID: string;
     MateriaNome: string;
+    TurmaGUID: string;
     TurmaNome: string;
     AlunoNome: string;
   }>> => {
@@ -796,7 +802,7 @@ export default class TarefaAcademicaService {
 
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT tm.TarefaMatriculaGUID, t.TarefaGUID, t.TarefaTitulo,
-              mat.MateriaNome, tu.TurmaNome, u.UsuarioNome AS AlunoNome
+              mat.MateriaGUID, mat.MateriaNome, tu.TurmaGUID, tu.TurmaNome, u.UsuarioNome AS AlunoNome
        FROM tarefaacademica_matricula tm
        INNER JOIN tarefaacademica t ON t.TarefaGUID = tm.TarefaGUID
        INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
@@ -815,7 +821,9 @@ export default class TarefaAcademicaService {
       TarefaMatriculaGUID: row.TarefaMatriculaGUID,
       TarefaGUID: row.TarefaGUID,
       TarefaTitulo: row.TarefaTitulo,
+      MateriaGUID: row.MateriaGUID,
       MateriaNome: row.MateriaNome,
+      TurmaGUID: row.TurmaGUID,
       TurmaNome: row.TurmaNome,
       AlunoNome: row.AlunoNome,
     }));

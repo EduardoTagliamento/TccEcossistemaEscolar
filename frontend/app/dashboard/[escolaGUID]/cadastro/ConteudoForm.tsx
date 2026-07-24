@@ -45,7 +45,24 @@ const TAMANHO_FONTE_OPCOES: { valor: string; label: string }[] = [
   { valor: '7', label: 'Enorme' },
 ];
 
-export default function ConteudoForm() {
+interface ConteudoFormProps {
+  /** Pré-preenchimento direto via prop (uso como modal embutido) — tem prioridade sobre a query string. */
+  materiaGUIDInicial?: string;
+  turmaGUIDInicial?: string;
+  categoriaGUIDInicial?: string;
+  /** Esconde a seção "Conteúdos publicados" — usado quando embutido no modal do "+". */
+  ocultarListagem?: boolean;
+  /** Chamado após criar com sucesso — usado pelo modal do "+" pra fechar e atualizar a tela de categorias. */
+  onCriado?: () => void;
+}
+
+export default function ConteudoForm({
+  materiaGUIDInicial,
+  turmaGUIDInicial,
+  categoriaGUIDInicial,
+  ocultarListagem = false,
+  onCriado,
+}: ConteudoFormProps = {}) {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -54,10 +71,11 @@ export default function ConteudoForm() {
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
   // Pré-preenchimento vindo do "+" da tela de categorias (materias/.../turmas/[turmaGUID]) —
-  // aplicado uma vez cada (refs), pra não sobrescrever se o usuário trocar manualmente depois.
-  const materiaGUIDQuery = searchParams?.get('MateriaGUID') || '';
-  const turmaGUIDQuery = searchParams?.get('TurmaGUID') || '';
-  const categoriaGUIDQuery = searchParams?.get('CategoriaGUID') || '';
+  // por prop quando embutido como modal, ou por query string na tela /cadastro standalone.
+  // Aplicado uma vez cada (refs), pra não sobrescrever se o usuário trocar manualmente depois.
+  const materiaGUIDQuery = materiaGUIDInicial ?? (searchParams?.get('MateriaGUID') || '');
+  const turmaGUIDQuery = turmaGUIDInicial ?? (searchParams?.get('TurmaGUID') || '');
+  const categoriaGUIDQuery = categoriaGUIDInicial ?? (searchParams?.get('CategoriaGUID') || '');
   const materiaPreenchidaRef = useRef(false);
   const turmaPreenchidaRef = useRef(false);
   const categoriaPreenchidaRef = useRef(false);
@@ -433,6 +451,7 @@ export default function ConteudoForm() {
       alert('Conteúdo publicado com sucesso!');
       limparFormulario();
       if (materiaSelecionada) await carregarConteudos(materiaSelecionada.MateriaGUID);
+      onCriado?.();
     } catch (err: any) {
       setErro(err?.message || 'Falha ao publicar conteúdo');
     } finally {
@@ -794,32 +813,34 @@ export default function ConteudoForm() {
         </div>
       )}
 
-      <section className={styles.listSection}>
-        <h2>Conteúdos publicados</h2>
-        {!materiaSelecionada ? (
-          <p className={styles.hint}>Selecione uma matéria para ver os conteúdos.</p>
-        ) : (
-          <ul className={styles.list}>
-            {conteudos.map((conteudo) => (
-              <li key={conteudo.ConteudoGUID} className={styles.card}>
-                <div>
-                  <span className={styles.badge}>
-                    <Icon name={rotuloTipo[conteudo.ConteudoTipo].icon} size={14} /> {rotuloTipo[conteudo.ConteudoTipo].label}
-                  </span>
-                  <strong>{conteudo.ConteudoTitulo}</strong>
-                  {conteudo.ConteudoDescricao && <p>{conteudo.ConteudoDescricao}</p>}
-                  <p>Turmas: {conteudo.Turmas.length}</p>
-                  <p>Publicação: {new Date(conteudo.ConteudoDataPublicacao).toLocaleString('pt-BR')}</p>
-                </div>
-                <div className={styles.cardActions}>
-                  <button type="button" onClick={() => excluirConteudoAtual(conteudo.ConteudoGUID)}>Excluir</button>
-                </div>
-              </li>
-            ))}
-            {conteudos.length === 0 && <p className={styles.hint}>Nenhum conteúdo publicado ainda.</p>}
-          </ul>
-        )}
-      </section>
+      {!ocultarListagem && (
+        <section className={styles.listSection}>
+          <h2>Conteúdos publicados</h2>
+          {!materiaSelecionada ? (
+            <p className={styles.hint}>Selecione uma matéria para ver os conteúdos.</p>
+          ) : (
+            <ul className={styles.list}>
+              {conteudos.map((conteudo) => (
+                <li key={conteudo.ConteudoGUID} className={styles.card}>
+                  <div>
+                    <span className={styles.badge}>
+                      <Icon name={rotuloTipo[conteudo.ConteudoTipo].icon} size={14} /> {rotuloTipo[conteudo.ConteudoTipo].label}
+                    </span>
+                    <strong>{conteudo.ConteudoTitulo}</strong>
+                    {conteudo.ConteudoDescricao && <p>{conteudo.ConteudoDescricao}</p>}
+                    <p>Turmas: {conteudo.Turmas.length}</p>
+                    <p>Publicação: {new Date(conteudo.ConteudoDataPublicacao).toLocaleString('pt-BR')}</p>
+                  </div>
+                  <div className={styles.cardActions}>
+                    <button type="button" onClick={() => excluirConteudoAtual(conteudo.ConteudoGUID)}>Excluir</button>
+                  </div>
+                </li>
+              ))}
+              {conteudos.length === 0 && <p className={styles.hint}>Nenhum conteúdo publicado ainda.</p>}
+            </ul>
+          )}
+        </section>
+      )}
     </div>
   );
 }

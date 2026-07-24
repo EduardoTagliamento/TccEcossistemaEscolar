@@ -1,23 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import MateriaTurmaCard from '@/components/materias/MateriaTurmaCard';
+import NovoItemModal, { NovoItemAba } from '@/components/materias/NovoItemModal';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import styles from './page.module.css';
 
 export default function TurmasDaMateriaPage() {
   const params = useParams();
-  const router = useRouter();
   const escolaGUID = (params?.escolaGUID as string) || '';
   const materiaGUID = (params?.materiaGUID as string) || '';
 
   const [turmas, setTurmas] = useState<MateriasModuloAPI.TurmaComCapa[]>([]);
+  const [pendencias, setPendencias] = useState<Record<string, boolean>>({});
   const [carregando, setCarregando] = useState(true);
   const [filtro, setFiltro] = useState('');
   const [popoverAberto, setPopoverAberto] = useState(false);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
+  const [modalNovoItemAba, setModalNovoItemAba] = useState<NovoItemAba | null>(null);
 
   const [cor, setCor] = useState('#17C077');
   const [mensagem, setMensagem] = useState('');
@@ -34,6 +36,7 @@ export default function TurmasDaMateriaPage() {
       setCarregando(true);
       const lista = await MateriasModuloAPI.listarTurmasComCapaProfessor(materiaGUID);
       setTurmas(lista);
+      void carregarPendencias(lista);
     } catch (erro) {
       console.error('Erro ao carregar turmas:', erro);
     } finally {
@@ -41,9 +44,24 @@ export default function TurmasDaMateriaPage() {
     }
   };
 
-  const abrirCadastro = (tipo: 'conteudo' | 'tarefa' | 'prova') => {
+  const carregarPendencias = async (lista: MateriasModuloAPI.TurmaComCapa[]) => {
+    try {
+      const resultados = await Promise.all(
+        lista.map((t) => MateriasModuloAPI.temPendencia(materiaGUID, t.TurmaGUID, true).catch(() => false))
+      );
+      setPendencias((prev) => {
+        const mapa = { ...prev };
+        lista.forEach((t, i) => { mapa[t.TurmaGUID] = resultados[i]; });
+        return mapa;
+      });
+    } catch (erro) {
+      console.error('Erro ao verificar pendências:', erro);
+    }
+  };
+
+  const abrirCadastro = (aba: NovoItemAba) => {
     setPopoverAberto(false);
-    router.push(`/dashboard/${escolaGUID}/cadastro?aba=${tipo}&MateriaGUID=${materiaGUID}`);
+    setModalNovoItemAba(aba);
   };
 
   const salvarCustomizacao = async () => {
@@ -112,6 +130,7 @@ export default function TurmasDaMateriaPage() {
             titulo={`${turma.TurmaSerie} ${turma.TurmaNome}`}
             imagemUrl={turma.ImagemUrl}
             corFundo={turma.CorFundo}
+            temPendencia={pendencias[turma.TurmaGUID]}
           />
         ))}
         {turmasFiltradas.length === 0 && <p className={styles.mensagemVazia}>Nenhuma turma encontrada.</p>}
@@ -147,6 +166,15 @@ export default function TurmasDaMateriaPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {modalNovoItemAba && (
+        <NovoItemModal
+          aba={modalNovoItemAba}
+          materiaGUID={materiaGUID}
+          onFechar={() => setModalNovoItemAba(null)}
+          onCriado={() => setModalNovoItemAba(null)}
+        />
       )}
     </div>
   );

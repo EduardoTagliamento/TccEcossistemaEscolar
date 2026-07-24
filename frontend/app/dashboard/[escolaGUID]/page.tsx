@@ -276,7 +276,7 @@ export default function DashboardPage() {
               <div className={styles.widgetCard}>
                 <div className={styles.widgetHeader}>
                   <h3>Tarefas a se esgotar</h3>
-                  <Link href={`/dashboard/${escolaGUID}/tarefas`} className={styles.widgetVerTodas}>
+                  <Link href={`/dashboard/${escolaGUID}/materias`} className={styles.widgetVerTodas}>
                     Ver todas
                   </Link>
                 </div>
@@ -291,7 +291,7 @@ export default function DashboardPage() {
                     {tarefas.map((tarefa) => (
                       <li key={tarefa.TarefaGUID}>
                         <Link
-                          href={`/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`}
+                          href={`/dashboard/${escolaGUID}/materias/${tarefa.MateriaGUID}/turmas/${tarefa.TurmaGUID}?abrirItem=${tarefa.TarefaGUID}`}
                           className={styles.widgetItem}
                         >
                           <span className={styles.widgetItemTitulo}>{tarefa.TarefaTitulo}</span>
@@ -310,6 +310,9 @@ export default function DashboardPage() {
               <div className={styles.widgetCard}>
                 <div className={styles.widgetHeader}>
                   <h3>Avaliações pendentes</h3>
+                  <Link href={`/dashboard/${escolaGUID}/materias`} className={styles.widgetVerTodas}>
+                    Ver todas
+                  </Link>
                 </div>
                 {carregandoAvaliacoes ? (
                   <p className={styles.widgetEstado}>Carregando...</p>
@@ -321,7 +324,10 @@ export default function DashboardPage() {
                   <ul className={styles.widgetLista}>
                     {avaliacoesPendentes.map((item) => (
                       <li key={item.TarefaMatriculaGUID}>
-                        <Link href={`/dashboard/${escolaGUID}/tarefas/${item.TarefaGUID}`} className={styles.widgetItem}>
+                        <Link
+                          href={`/dashboard/${escolaGUID}/materias/${item.MateriaGUID}/turmas/${item.TurmaGUID}?abrirItem=${item.TarefaGUID}`}
+                          className={styles.widgetItem}
+                        >
                           <span className={styles.widgetItemTitulo}>{item.TarefaTitulo}</span>
                           <span className={styles.widgetItemData}>
                             {item.AlunoNome} · {item.MateriaNome} · {item.TurmaNome}
