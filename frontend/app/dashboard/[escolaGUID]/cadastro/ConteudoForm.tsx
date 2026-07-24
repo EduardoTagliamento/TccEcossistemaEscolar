@@ -9,7 +9,7 @@
  */
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import * as ConteudoAPI from '@/lib/api/conteudo.api';
@@ -48,9 +48,19 @@ const TAMANHO_FONTE_OPCOES: { valor: string; label: string }[] = [
 export default function ConteudoForm() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { usuario, token, isLoading: authLoading } = useAuth();
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
+
+  // Pré-preenchimento vindo do "+" da tela de categorias (materias/.../turmas/[turmaGUID]) —
+  // aplicado uma vez cada (refs), pra não sobrescrever se o usuário trocar manualmente depois.
+  const materiaGUIDQuery = searchParams?.get('MateriaGUID') || '';
+  const turmaGUIDQuery = searchParams?.get('TurmaGUID') || '';
+  const categoriaGUIDQuery = searchParams?.get('CategoriaGUID') || '';
+  const materiaPreenchidaRef = useRef(false);
+  const turmaPreenchidaRef = useRef(false);
+  const categoriaPreenchidaRef = useRef(false);
 
   // Calculado só no cliente (useEffect) — chamar usuarioForaDoBrasil() direto
   // no corpo do render causa mismatch de hidratação: o timezone do servidor
@@ -187,6 +197,25 @@ export default function ConteudoForm() {
   };
 
   // ===== Modal de turmas =====
+  const buscarSeries = async (matProfTurGUID: string, turmaGUIDPreSelecionada?: string): Promise<SerieItem[]> => {
+    const response = await fetch(`/api/professor/turmas-alunos?MatProfTurGUID=${matProfTurGUID}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.message || 'Erro ao carregar turmas');
+
+    return (data?.data?.series || []).map((serie: any) => ({
+      TurmaSerie: serie.TurmaSerie,
+      checked: false,
+      expanded: serie.turmas.some((t: any) => t.TurmaGUID === turmaGUIDPreSelecionada),
+      turmas: serie.turmas.map((turma: any) => ({
+        TurmaGUID: turma.TurmaGUID,
+        TurmaNome: turma.TurmaNome,
+        checked: turma.TurmaGUID === turmaGUIDPreSelecionada,
+      })),
+    }));
+  };
+
   const abrirModalTurmas = async () => {
     if (!form.MatProfTurGUID) {
       alert('Selecione uma matéria primeiro.');
@@ -197,29 +226,45 @@ export default function ConteudoForm() {
     setErro(null);
 
     try {
-      const response = await fetch(`/api/professor/turmas-alunos?MatProfTurGUID=${form.MatProfTurGUID}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.message || 'Erro ao carregar turmas');
-
-      const seriesData: SerieItem[] = (data?.data?.series || []).map((serie: any) => ({
-        TurmaSerie: serie.TurmaSerie,
-        checked: false,
-        expanded: false,
-        turmas: serie.turmas.map((turma: any) => ({
-          TurmaGUID: turma.TurmaGUID,
-          TurmaNome: turma.TurmaNome,
-          checked: false,
-        })),
-      }));
-      setSeries(seriesData);
+      setSeries(await buscarSeries(form.MatProfTurGUID));
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar turmas');
     } finally {
       setLoadingModal(false);
     }
   };
+
+  // Pré-preenchimento: matéria vinda da URL (query param) assim que a lista carregar
+  useEffect(() => {
+    if (materiaPreenchidaRef.current || !materiaGUIDQuery || materiasUnicas.length === 0) return;
+    const match = materiasUnicas.find((m) => m.MateriaGUID === materiaGUIDQuery);
+    if (match) {
+      materiaPreenchidaRef.current = true;
+      setForm((prev) => ({ ...prev, MatProfTurGUID: match.MatProfTurGUID }));
+    }
+  }, [materiaGUIDQuery, materiasUnicas]);
+
+  // Pré-preenchimento: turma vinda da URL, assim que a matéria (acima) já estiver resolvida
+  useEffect(() => {
+    if (turmaPreenchidaRef.current || !turmaGUIDQuery || !form.MatProfTurGUID) return;
+    turmaPreenchidaRef.current = true;
+    buscarSeries(form.MatProfTurGUID, turmaGUIDQuery)
+      .then(setSeries)
+      .catch(() => {
+        // pré-preenchimento é best-effort — o professor ainda pode selecionar a turma manualmente
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turmaGUIDQuery, form.MatProfTurGUID]);
+
+  // Pré-preenchimento: categoria vinda da URL, assim que a lista de categorias da turma carregar
+  useEffect(() => {
+    if (categoriaPreenchidaRef.current || !categoriaGUIDQuery || categorias.length === 0) return;
+    const match = categorias.find((c) => c.CategoriaGUID === categoriaGUIDQuery);
+    if (match) {
+      categoriaPreenchidaRef.current = true;
+      setForm((prev) => ({ ...prev, CategoriaGUID: match.CategoriaGUID }));
+    }
+  }, [categoriaGUIDQuery, categorias]);
 
   const toggleSerie = (serieIndex: number) => {
     setSeries((prev) => prev.map((serie, idx) => (idx === serieIndex ? { ...serie, expanded: !serie.expanded } : serie)));

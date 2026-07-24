@@ -105,6 +105,35 @@ export class CategoriaConteudoController {
     }
   };
 
+  // PATCH /api/categoria-conteudo/reordenar-itens
+  reordenarItens = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.reordenarItens()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { MateriaGUID, TurmaGUID, CategoriaGUID, itens } = req.body;
+      const categorias = await this.#categoriaService.reordenarItens(
+        usuarioCPF,
+        MateriaGUID,
+        TurmaGUID,
+        CategoriaGUID,
+        itens
+      );
+
+      res.json({
+        success: true,
+        message: "Itens reordenados com sucesso",
+        data: { categorias },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // PUT /api/categoria-conteudo/:guid
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.update()");

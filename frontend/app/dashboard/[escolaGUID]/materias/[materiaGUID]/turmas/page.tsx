@@ -43,7 +43,7 @@ export default function TurmasDaMateriaPage() {
 
   const abrirCadastro = (tipo: 'conteudo' | 'tarefa' | 'prova') => {
     setPopoverAberto(false);
-    router.push(`/dashboard/${escolaGUID}/cadastro?tipo=${tipo}&MateriaGUID=${materiaGUID}`);
+    router.push(`/dashboard/${escolaGUID}/cadastro?aba=${tipo}&MateriaGUID=${materiaGUID}`);
   };
 
   const salvarCustomizacao = async () => {

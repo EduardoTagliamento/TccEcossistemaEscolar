@@ -110,6 +110,47 @@
   justify-content: center;
 }
 
+.acoesWrapper {
+  position: relative;
+}
+
+.popoverNovoItem {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 29, 23, 0.2);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 180px;
+  z-index: 50;
+}
+
+.popoverNovoItem button {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #0F1D17;
+}
+
+.popoverNovoItem button:hover {
+  background: var(--surface-muted, #F0F4F1);
+}
+
+.categoriaItens {
+  min-height: 2rem;
+}
+
 .itemLinha {
   display: flex;
   align-items: center;
