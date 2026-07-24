@@ -21,6 +21,14 @@ ALTER TABLE categoriaconteudo
   ADD COLUMN TurmaGUID CHAR(36) NULL AFTER MateriaGUID,
   ADD CONSTRAINT FK_CategoriaConteudo_Turma FOREIGN KEY (TurmaGUID) REFERENCES turma(TurmaGUID);
 
+-- A unique key original (2026-07-15-add-conteudo.sql) era só
+-- (UsuarioCPF, MateriaGUID, CategoriaNome) — de antes do escopo por turma.
+-- Sem esse ajuste, o backfill abaixo (duplicar a mesma categoria em N turmas)
+-- é fisicamente impossível: a 2ª cópia do mesmo nome vira "duplicate entry".
+ALTER TABLE categoriaconteudo
+  DROP KEY uq_categoriaconteudo,
+  ADD UNIQUE KEY uq_categoriaconteudo (UsuarioCPF, MateriaGUID, TurmaGUID, CategoriaNome);
+
 -- Tarefa é de turma única (matXprofXturxescGUID já fixa 1 turma) — categoria
 -- direto nela, sem mudança de escopo.
 ALTER TABLE tarefaacademica
