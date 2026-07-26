@@ -1,0 +1,177 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 29, 23, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 1rem;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  max-width: 640px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.5rem 0;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.titulo {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #0F1D17;
+}
+
+.botaoFechar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: #F0F4F1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.corpo {
+  padding: 0.75rem 1.5rem 1.5rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--slate-500, #647268);
+  margin-bottom: 1rem;
+}
+
+.erro {
+  font-size: 0.85rem;
+  color: #D64545;
+  margin: -0.5rem 0 1rem;
+}
+
+.formNovaCategoria {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.formNovaCategoria input {
+  flex: 1;
+  padding: 0.65rem 0.9rem;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.formNovaCategoria button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1rem;
+  background: var(--green-500, #17C077);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.formNovaCategoria button:disabled {
+  background: var(--slate-400, #8A968E);
+  cursor: not-allowed;
+}
+
+.listaCategorias {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.mensagemVazia {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--slate-500, #647268);
+  font-size: 0.9rem;
+}
+
+.categoria {
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 10px;
+  padding: 0.75rem;
+  cursor: grab;
+  background: #fff;
+}
+
+.categoriaHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #0F1D17;
+  margin-bottom: 0.5rem;
+}
+
+.categoriaItens {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 40px;
+}
+
+.mensagemVaziaItens {
+  font-size: 0.8rem;
+  color: var(--slate-500, #647268);
+  padding: 0.5rem;
+  border: 1px dashed var(--line-200, #E2EAE5);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--surface-muted, #F0F4F1);
+  border-radius: 6px;
+  cursor: grab;
+  font-size: 0.85rem;
+}
+
+.itemTitulo {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemTurma {
+  font-size: 0.75rem;
+  color: var(--slate-500, #647268);
+  flex-shrink: 0;
+}
+
+.semCategoria {
+  margin-top: 1rem;
+  border: 1.5px dashed var(--line-200, #E2EAE5);
+  border-radius: 10px;
+  padding: 0.75rem;
+}

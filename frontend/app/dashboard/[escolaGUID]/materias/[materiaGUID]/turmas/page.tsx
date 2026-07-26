@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import MateriaTurmaCard from '@/components/materias/MateriaTurmaCard';
 import NovoItemModal, { NovoItemAba } from '@/components/materias/NovoItemModal';
+import GerenciarCategoriasModal from '@/components/materias/GerenciarCategoriasModal';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import styles from './page.module.css';
 
@@ -20,6 +21,7 @@ export default function TurmasDaMateriaPage() {
   const [popoverAberto, setPopoverAberto] = useState(false);
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
   const [modalNovoItemAba, setModalNovoItemAba] = useState<NovoItemAba | null>(null);
+  const [modalCategoriasAberto, setModalCategoriasAberto] = useState(false);
 
   const [cor, setCor] = useState('#17C077');
   // true = ainda não há cor "escolhida pelo usuário" pra essa imagem — deixa
@@ -149,6 +151,9 @@ export default function TurmasDaMateriaPage() {
           <button className={styles.botaoIcone} onClick={() => void abrirModalEditar()} title="Editar matéria">
             <Icon name="edit" size={18} />
           </button>
+          <button className={styles.botaoIcone} onClick={() => setModalCategoriasAberto(true)} title="Gerenciar categorias">
+            <Icon name="folder" size={18} />
+          </button>
           <div className={styles.acoesWrapper}>
             <button className={styles.botaoIcone} onClick={() => setPopoverAberto((v) => !v)} title="Novo conteúdo/tarefa/prova">
               <Icon name="plus" size={18} />
@@ -253,6 +258,10 @@ export default function TurmasDaMateriaPage() {
           onFechar={() => setModalNovoItemAba(null)}
           onCriado={() => setModalNovoItemAba(null)}
         />
+      )}
+
+      {modalCategoriasAberto && (
+        <GerenciarCategoriasModal materiaGUID={materiaGUID} onFechar={() => setModalCategoriasAberto(false)} />
       )}
     </div>
   );
