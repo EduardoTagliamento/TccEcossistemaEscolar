@@ -1069,6 +1069,11 @@ export default class ProfessorService {
       turmas: Array<{
         TurmaGUID: string;
         TurmaNome: string;
+        /** Alocação (materia+professor+turma) DESTA turma — necessário pro
+         * frontend enviar o matXprofXturxescGUID correto ao criar uma tarefa
+         * pra alunos desta turma específica (cada turma tem sua própria
+         * alocação, mesmo lecionando a mesma matéria). */
+        MatProfTurGUID: string;
         alunos: Array<{
           MatriculaGUID: string;
           UsuarioNome: string;
@@ -1108,11 +1113,13 @@ export default class ProfessorService {
     });
 
     // 5. Buscar turmas relacionadas às alocações
+    const matProfTurGUIDPorTurma = new Map<string, string>();
     const turmasPromises = todasAlocacoes.map(async (alocacao) => {
       const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
       if (!turma || turma.EscolaGUID !== turmaBase.EscolaGUID) {
         return null;
       }
+      matProfTurGUIDPorTurma.set(turma.TurmaGUID, alocacao.MatProfTurGUID);
       return turma;
     });
 
@@ -1152,6 +1159,7 @@ export default class ProfessorService {
       seriesMap.get(turma.TurmaSerie)!.push({
         TurmaGUID: turma.TurmaGUID,
         TurmaNome: turma.TurmaNome,
+        MatProfTurGUID: matProfTurGUIDPorTurma.get(turma.TurmaGUID)!,
         alunos
       });
     }

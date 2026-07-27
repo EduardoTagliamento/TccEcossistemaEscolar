@@ -52,6 +52,14 @@ interface AlunoItem {
 interface TurmaItem {
   TurmaGUID: string;
   TurmaNome: string;
+  /** Alocação (matéria+professor+TURMA) desta turma específica — cada turma
+   * tem a sua própria, mesmo lecionando a mesma matéria; é o que precisa ir
+   * em `matXprofXturxescGUID` na criação, já que Tarefa é sempre de 1 turma
+   * só (ver decisão #4 do PLANO_IMPLEMENTACAO_MATERIAS.md). Usar o
+   * MatProfTurGUID "genérico" do seletor de matéria aqui era o bug: ele
+   * corresponde a uma turma arbitrária (a primeira encontrada), não
+   * necessariamente à turma de quem foi marcado. */
+  MatProfTurGUID: string;
   alunos: AlunoItem[];
   checked: boolean;
   expanded: boolean;
@@ -107,7 +115,7 @@ export default function TarefaForm({
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [series, setSeries] = useState<SerieItem[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaConteudoAPI.CategoriaConteudo[]>([]);
+  const [categoriaNomes, setCategoriaNomes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingGUID, setEditingGUID] = useState<string | null>(null);
@@ -122,7 +130,7 @@ export default function TarefaForm({
   const [resultadosCalculo, setResultadosCalculo] = useState<Record<string, ResultadoCalculoUI>>({});
   const [form, setForm] = useState({
     matXprofXturxescGUID: '',
-    CategoriaGUID: '',
+    CategoriaNome: '',
     TarefaTitulo: '',
     TarefaConteudo: '',
     TarefaPrazoData: '',
@@ -226,6 +234,7 @@ export default function TarefaForm({
         return {
           TurmaGUID: turma.TurmaGUID,
           TurmaNome: turma.TurmaNome,
+          MatProfTurGUID: turma.MatProfTurGUID,
           checked: preSelecionada,
           expanded: preSelecionada,
           alunos: turma.alunos.map((aluno: any) => ({
@@ -367,30 +376,48 @@ export default function TarefaForm({
 
   // Turmas que têm ao menos 1 aluno selecionado (o cronograma é por turma,
   // não por aluno — o prazo calculado para uma turma vale para todos os
-  // alunos marcados dentro dela)
-  const obterTurmasComAlunosSelecionados = (): { TurmaGUID: string; TurmaNome: string }[] => {
-    const turmas: { TurmaGUID: string; TurmaNome: string }[] = [];
+  // alunos marcados dentro dela). Carrega junto o MatProfTurGUID PRÓPRIO de
+  // cada turma — cada turma tem sua própria alocação, mesmo lecionando a
+  // mesma matéria (esse é o dado que faltava e causava o 403 de categoria:
+  // antes se enviava o MatProfTurGUID "genérico" do seletor de matéria,
+  // que corresponde a uma turma arbitrária, não à turma de quem foi marcado).
+  const obterTurmasComAlunosSelecionados = (): { TurmaGUID: string; TurmaNome: string; MatProfTurGUID: string }[] => {
+    const turmas: { TurmaGUID: string; TurmaNome: string; MatProfTurGUID: string }[] = [];
     series.forEach(serie => {
       serie.turmas.forEach(turma => {
         if (turma.alunos.some(a => a.checked)) {
-          turmas.push({ TurmaGUID: turma.TurmaGUID, TurmaNome: turma.TurmaNome });
+          turmas.push({ TurmaGUID: turma.TurmaGUID, TurmaNome: turma.TurmaNome, MatProfTurGUID: turma.MatProfTurGUID });
         }
       });
     });
     return turmas;
   };
 
-  // Categoria é escopada por turma — só dá pra escolher quando exatamente 1
-  // turma tem aluno(s) marcado(s) (mesmo critério do ConteudoForm).
-  const turmaUnicaSelecionada = (() => {
-    const turmasComAlunos = obterTurmasComAlunosSelecionados();
-    return turmasComAlunos.length === 1 ? turmasComAlunos[0].TurmaGUID : null;
-  })();
+  // Uma tarefa é sempre de 1 turma só (decisão de arquitetura) — quando os
+  // alunos marcados abrangem N turmas, a criação vira N chamadas separadas
+  // (uma por turma, cada uma com seu próprio matXprofXturxescGUID e alunos).
+  const obterGruposPorTurma = (): { TurmaGUID: string; TurmaNome: string; MatProfTurGUID: string; matriculas: string[] }[] => {
+    const grupos: { TurmaGUID: string; TurmaNome: string; MatProfTurGUID: string; matriculas: string[] }[] = [];
+    series.forEach((serie) => {
+      serie.turmas.forEach((turma) => {
+        const matriculas = turma.alunos.filter((a) => a.checked).map((a) => a.MatriculaGUID);
+        if (matriculas.length > 0) {
+          grupos.push({ TurmaGUID: turma.TurmaGUID, TurmaNome: turma.TurmaNome, MatProfTurGUID: turma.MatProfTurGUID, matriculas });
+        }
+      });
+    });
+    return grupos;
+  };
 
-  const carregarCategorias = async (materiaGUID: string, turmaGUID: string) => {
+  // Nomes de categoria "geral" já usados pelo professor nessa matéria (em
+  // qualquer turma onde leciona) — mesma fonte do "Gerenciar categorias".
+  // Serve só de sugestão (datalist); no submit, o nome escolhido/digitado é
+  // resolvido/criado exatamente nas turmas que têm aluno marcado, via
+  // resolverCategoriaPorNomeParaTurmas.
+  const carregarCategoriaNomes = async (materiaGUID: string) => {
     try {
-      const lista = await CategoriaConteudoAPI.listarCategorias({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
-      setCategorias(lista);
+      const board = await CategoriaConteudoAPI.buscarBoardGeral(materiaGUID);
+      setCategoriaNomes(board.Categorias.map((c) => c.CategoriaNome));
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar categorias');
     }
@@ -398,13 +425,13 @@ export default function TarefaForm({
 
   useEffect(() => {
     const materiaAtual = materiasUnicas.find((m) => m.MatProfTurGUID === form.matXprofXturxescGUID);
-    if (materiaAtual && turmaUnicaSelecionada) {
-      void carregarCategorias(materiaAtual.MateriaGUID, turmaUnicaSelecionada);
+    if (materiaAtual) {
+      void carregarCategoriaNomes(materiaAtual.MateriaGUID);
     } else {
-      setCategorias([]);
+      setCategoriaNomes([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.matXprofXturxescGUID, turmaUnicaSelecionada]);
+  }, [form.matXprofXturxescGUID]);
 
   // Pré-preenchimento: matéria vinda da URL, assim que a lista carregar
   useEffect(() => {
@@ -429,26 +456,23 @@ export default function TarefaForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turmaGUIDQuery, form.matXprofXturxescGUID]);
 
-  // Pré-preenchimento: categoria vinda da URL, assim que a lista carregar
+  // Pré-preenchimento: categoria vinda da URL (GUID de uma turma específica,
+  // vindo do "+" da tela de categorias) — resolvido pro NOME, já que o campo
+  // do formulário agora trabalha por nome (ver carregarCategoriaNomes acima).
   useEffect(() => {
-    if (categoriaPreenchidaRef.current || !categoriaGUIDQuery || categorias.length === 0) return;
-    const match = categorias.find((c) => c.CategoriaGUID === categoriaGUIDQuery);
-    if (match) {
-      categoriaPreenchidaRef.current = true;
-      setForm((prev) => ({ ...prev, CategoriaGUID: match.CategoriaGUID }));
-    }
-  }, [categoriaGUIDQuery, categorias]);
-
-  const turmaDoAluno = (matriculaGUID: string): string | null => {
-    for (const serie of series) {
-      for (const turma of serie.turmas) {
-        if (turma.alunos.some(a => a.MatriculaGUID === matriculaGUID)) {
-          return turma.TurmaGUID;
-        }
-      }
-    }
-    return null;
-  };
+    const materiaAtual = materiasUnicas.find((m) => m.MatProfTurGUID === form.matXprofXturxescGUID);
+    if (categoriaPreenchidaRef.current || !categoriaGUIDQuery || !turmaGUIDQuery || !materiaAtual) return;
+    categoriaPreenchidaRef.current = true;
+    CategoriaConteudoAPI.listarCategorias({ MateriaGUID: materiaAtual.MateriaGUID, TurmaGUID: turmaGUIDQuery })
+      .then((lista) => {
+        const match = lista.find((c) => c.CategoriaGUID === categoriaGUIDQuery);
+        if (match) setForm((prev) => ({ ...prev, CategoriaNome: match.CategoriaNome }));
+      })
+      .catch(() => {
+        // pré-preenchimento é best-effort — o professor ainda pode escolher a categoria manualmente
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoriaGUIDQuery, turmaGUIDQuery, form.matXprofXturxescGUID, materiasUnicas]);
 
   // diasOverride permite passar o dia escolhido sem depender do state (que
   // ainda não teria sido atualizado se chamado logo após um setResultadosCalculo)
@@ -555,7 +579,7 @@ export default function TarefaForm({
     setCompartilhadaReadonly(false);
     setForm({
       matXprofXturxescGUID: materiasUnicas.length === 1 ? materiasUnicas[0].MatProfTurGUID : '',
-      CategoriaGUID: '',
+      CategoriaNome: '',
       TarefaTitulo: '',
       TarefaConteudo: '',
       TarefaPrazoData: obterDataPadraoFimDoDia(),
@@ -610,75 +634,96 @@ export default function TarefaForm({
         return;
       }
 
-      // MODO CRIAÇÃO: Criar tarefas em lote
-      const matriculasSelecionadas = obterMatriculasSelecionadas();
+      // MODO CRIAÇÃO: Tarefa é sempre de 1 turma só (decisão de arquitetura,
+      // ver PLANO_IMPLEMENTACAO_MATERIAS.md) — quando os alunos marcados
+      // abrangem N turmas, viram N chamadas separadas (uma por turma), cada
+      // uma com o matXprofXturxescGUID e a categoria certos daquela turma.
+      const grupos = obterGruposPorTurma();
 
-      if (matriculasSelecionadas.length === 0) {
+      if (grupos.length === 0) {
         throw new Error('Selecione pelo menos um aluno');
       }
 
-      let datasPorMatricula: Record<string, string> | undefined;
-      let prazoParaEnvio = form.TarefaPrazoData ? converterParaBrasil(form.TarefaPrazoData) : '';
+      const materiaAtual = materiasUnicas.find((m) => m.MatProfTurGUID === form.matXprofXturxescGUID);
+      if (!materiaAtual) {
+        throw new Error('Selecione uma matéria.');
+      }
 
-      if (agendamentoAutomatico) {
-        datasPorMatricula = {};
-        for (const matriculaGUID of matriculasSelecionadas) {
-          const turmaGUID = turmaDoAluno(matriculaGUID);
-          const resultado = turmaGUID ? resultadosCalculo[turmaGUID] : undefined;
+      const categoriaNome = form.CategoriaNome.trim();
+      const categoriasPorTurma = categoriaNome
+        ? await CategoriaConteudoAPI.resolverCategoriaPorNomeParaTurmas(
+            materiaAtual.MateriaGUID,
+            grupos.map((g) => g.TurmaGUID),
+            categoriaNome
+          )
+        : {};
 
+      let totalCriadas = 0;
+
+      for (const grupo of grupos) {
+        let datasPorMatricula: Record<string, string> | undefined;
+        let prazoParaEnvio = form.TarefaPrazoData ? converterParaBrasil(form.TarefaPrazoData) : '';
+
+        if (agendamentoAutomatico) {
+          const resultado = resultadosCalculo[grupo.TurmaGUID];
           if (!resultado) {
             throw new Error('Clique em "Calcular Datas" antes de salvar.');
           }
 
+          let dataResolvida: string;
           if (resultado.status === 'ok' && resultado.DataCalculada) {
-            datasPorMatricula[matriculaGUID] = resultado.DataCalculada;
+            dataResolvida = resultado.DataCalculada;
           } else if (resultado.status === 'semCronograma') {
             if (!resultado.dataManual) {
-              throw new Error('Uma das turmas selecionadas não tem cronograma configurado — defina o prazo manualmente para ela.');
+              throw new Error(`A turma ${grupo.TurmaNome} não tem cronograma configurado — defina o prazo manualmente para ela.`);
             }
-            datasPorMatricula[matriculaGUID] = converterParaBrasil(resultado.dataManual);
+            dataResolvida = converterParaBrasil(resultado.dataManual);
           } else if (resultado.status === 'escolherDia') {
-            throw new Error('Escolha o dia da semana para a(s) turma(s) com mais de uma aula por semana antes de salvar.');
+            throw new Error(`Escolha o dia da semana pra turma ${grupo.TurmaNome} (tem mais de uma aula por semana) antes de salvar.`);
           } else {
-            throw new Error(resultado.mensagem || 'Não foi possível calcular o prazo para uma das turmas selecionadas.');
+            throw new Error(resultado.mensagem || `Não foi possível calcular o prazo pra turma ${grupo.TurmaNome}.`);
           }
+
+          datasPorMatricula = {};
+          for (const matriculaGUID of grupo.matriculas) {
+            datasPorMatricula[matriculaGUID] = dataResolvida;
+          }
+          prazoParaEnvio = dataResolvida;
         }
 
-        prazoParaEnvio = Object.values(datasPorMatricula)[0] || prazoParaEnvio;
+        const payload = {
+          tarefa: {
+            MatriculasGUID: grupo.matriculas,
+            matXprofXturxescGUID: grupo.MatProfTurGUID,
+            CategoriaGUID: categoriasPorTurma[grupo.TurmaGUID],
+            TarefaTitulo: form.TarefaTitulo,
+            TarefaConteudo: form.TarefaConteudo || undefined,
+            TarefaPrazoData: prazoParaEnvio, // Já em GMT-3 (manual: convertido do navegador; automático: calculado no servidor)
+            TarefaTipoEntrega: form.TarefaTipoEntrega,
+            TarefaCompartilhada: form.TarefaCompartilhada,
+            TarefaMinPessoas: form.TarefaCompartilhada ? form.TarefaMinPessoas : null,
+            TarefaMaxPessoas: form.TarefaCompartilhada ? form.TarefaMaxPessoas : null,
+            DatasPorMatricula: datasPorMatricula,
+          },
+        };
+
+        const response = await fetch('/api/tarefa/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(`Turma ${grupo.TurmaNome}: ${data?.message || 'erro ao salvar tarefa'}`);
+        }
+        totalCriadas += data.data.count;
       }
 
-      // Criar todas as tarefas em uma única requisição batch
-      const payload = {
-        tarefa: {
-          MatriculasGUID: matriculasSelecionadas, // Array de GUIDs
-          matXprofXturxescGUID: form.matXprofXturxescGUID,
-          CategoriaGUID: form.CategoriaGUID || undefined,
-          TarefaTitulo: form.TarefaTitulo,
-          TarefaConteudo: form.TarefaConteudo || undefined,
-          TarefaPrazoData: prazoParaEnvio, // Já em GMT-3 (manual: convertido do navegador; automático: calculado no servidor)
-          TarefaTipoEntrega: form.TarefaTipoEntrega,
-          TarefaCompartilhada: form.TarefaCompartilhada,
-          TarefaMinPessoas: form.TarefaCompartilhada ? form.TarefaMinPessoas : null,
-          TarefaMaxPessoas: form.TarefaCompartilhada ? form.TarefaMaxPessoas : null,
-          DatasPorMatricula: datasPorMatricula,
-        },
-      };
-
-      const response = await fetch('/api/tarefa/batch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data?.message || 'Erro ao salvar tarefas');
-      }
-
-      alert(`${data.data.count} tarefa(s) criada(s) com sucesso!`);
+      alert(`${totalCriadas} tarefa(s) criada(s) com sucesso!`);
       limparFormulario();
       await carregarTarefas();
       setModalAberto(false);
@@ -695,7 +740,7 @@ export default function TarefaForm({
     setCompartilhadaReadonly(!!tarefa.TarefaCompartilhada);
     setForm({
       matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
-      CategoriaGUID: tarefa.CategoriaGUID || '',
+      CategoriaNome: '',
       TarefaTitulo: tarefa.TarefaTitulo,
       TarefaConteudo: tarefa.TarefaConteudo || '',
       TarefaPrazoData: converterDoBrasil(tarefa.TarefaPrazoData), // Converte GMT-3 para timezone do usuário
@@ -787,27 +832,27 @@ export default function TarefaForm({
           </div>
         )}
 
-        {/* Categoria — só disponível com exatamente 1 turma selecionada acima, já que categoria é por turma */}
+        {/* Categoria — por nome (não por turma): reaproveita uma categoria já
+            usada em outra turma sua, ou cria uma nova, aplicada exatamente
+            nas turmas de quem foi marcado acima (mesmo se forem várias). */}
         {!editingGUID && (
           <div className={styles.formGroup}>
             <label>Categoria</label>
-            {!turmaUnicaSelecionada && (
-              <p className={styles.hint}>
-                Marque os alunos de exatamente 1 turma acima para escolher uma categoria.
-              </p>
-            )}
-            <select
-              value={form.CategoriaGUID}
-              onChange={(e) => setForm((prev) => ({ ...prev, CategoriaGUID: e.target.value }))}
-              disabled={!turmaUnicaSelecionada}
-            >
-              <option value="">Sem categoria</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.CategoriaGUID} value={categoria.CategoriaGUID}>
-                  {categoria.CategoriaNome}
-                </option>
+            <input
+              list="categoria-nomes-lista"
+              placeholder="Sem categoria (opcional)"
+              value={form.CategoriaNome}
+              onChange={(e) => setForm((prev) => ({ ...prev, CategoriaNome: e.target.value }))}
+              disabled={!form.matXprofXturxescGUID}
+            />
+            <datalist id="categoria-nomes-lista">
+              {categoriaNomes.map((nome) => (
+                <option key={nome} value={nome} />
               ))}
-            </select>
+            </datalist>
+            <p className={styles.hint}>
+              Escolha um nome já usado ou digite um novo — a categoria é aplicada nas turmas de quem foi marcado acima.
+            </p>
           </div>
         )}
 
