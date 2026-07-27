@@ -10,6 +10,12 @@
  * Categorias criadas aqui são sempre as "do professor" (generalizadas pra
  * todas as turmas) — futuramente, categorias criadas por representantes de
  * turma serão por-turma e não aparecerão nesta tela.
+ *
+ * Itens de conteúdo/prova aparecem condensados numa linha só quando estão em
+ * 2+ turmas (mesmo item, fan-out); o que só 1 turma tem fica de fora — é
+ * organização daquela turma específica, não "geral" (ver tela de categorias
+ * da própria turma). Tarefa é sempre de 1 turma só, então continua aparecendo
+ * normalmente, sem condensar.
  */
 
 import { useEffect, useState } from 'react';
@@ -117,7 +123,7 @@ export default function GerenciarCategoriasModal({ materiaGUID, onFechar }: Gere
     try {
       const resultado = await CategoriaConteudoAPI.moverItemBoardGeral(
         materiaGUID,
-        { ItemGUID: item.ItemGUID, Tipo: item.Tipo, TurmaGUID: item.TurmaGUID },
+        { ItemGUID: item.ItemGUID, Tipo: item.Tipo, TurmaGUID: item.Turmas[0].TurmaGUID },
         categoriaNomeDestino
       );
       setBoard(resultado);
@@ -127,19 +133,27 @@ export default function GerenciarCategoriasModal({ materiaGUID, onFechar }: Gere
     }
   };
 
-  const renderItem = (item: ItemBoardGeral) => (
-    <div
-      key={`${item.Tipo}-${item.ItemGUID}`}
-      className={styles.item}
-      draggable
-      onDragStart={(e) => handleItemDragStart(e, item)}
-      onDragEnd={() => setItemArrastando(null)}
-    >
-      <Icon name={ICONE_POR_TIPO[item.Tipo]} size={15} />
-      <span className={styles.itemTitulo}>{item.Titulo}</span>
-      <span className={styles.itemTurma}>{item.TurmaSerie} {item.TurmaNome}</span>
-    </div>
-  );
+  const renderItem = (item: ItemBoardGeral) => {
+    const rotuloTurmas =
+      item.Turmas.length === 1
+        ? `${item.Turmas[0].TurmaSerie} ${item.Turmas[0].TurmaNome}`
+        : `${item.Turmas.length} turmas`;
+    const tituloTurmas = item.Turmas.map((t) => `${t.TurmaSerie} ${t.TurmaNome}`).join(', ');
+
+    return (
+      <div
+        key={`${item.Tipo}-${item.ItemGUID}`}
+        className={styles.item}
+        draggable
+        onDragStart={(e) => handleItemDragStart(e, item)}
+        onDragEnd={() => setItemArrastando(null)}
+      >
+        <Icon name={ICONE_POR_TIPO[item.Tipo]} size={15} />
+        <span className={styles.itemTitulo}>{item.Titulo}</span>
+        <span className={styles.itemTurma} title={tituloTurmas}>{rotuloTurmas}</span>
+      </div>
+    );
+  };
 
   return (
     <div className={styles.overlay} onClick={onFechar}>
