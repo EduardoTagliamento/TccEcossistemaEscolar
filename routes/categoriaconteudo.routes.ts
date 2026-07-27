@@ -44,6 +44,11 @@ export default class CategoriaConteudoRoteador {
       CategoriaConteudoMiddleware.validarMoverItemBoardGeral,
       this.#controller.moverItemBoardGeral
     );
+    this.#router.post(
+      "/geral/resolver",
+      CategoriaConteudoMiddleware.validarResolverCategoriaPorNome,
+      this.#controller.resolverCategoriaPorNome
+    );
     this.#router.get("/completas/:materiaGUID/:turmaGUID", this.#controller.buscarCategoriasCompletas);
     this.#router.get("/tem-pendencia/:materiaGUID/:turmaGUID", this.#controller.temPendencia);
     this.#router.get("/tem-pendencia-agregado", this.#controller.temPendenciaAgregada);

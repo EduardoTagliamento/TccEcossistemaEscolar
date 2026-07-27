@@ -163,6 +163,30 @@ export class CategoriaConteudoController {
     }
   };
 
+  // POST /api/categoria-conteudo/geral/resolver — resolve/cria categoria por nome pra uma lista de turmas
+  resolverCategoriaPorNome = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.resolverCategoriaPorNome()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { MateriaGUID, TurmasGUID, CategoriaNome } = req.body;
+      const categoriasPorTurma = await this.#categoriaService.resolverCategoriaPorNomeParaTurmas(
+        usuarioCPF,
+        MateriaGUID,
+        TurmasGUID,
+        CategoriaNome
+      );
+
+      res.json({ success: true, message: "Categoria resolvida com sucesso", data: { categoriasPorTurma } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // PATCH /api/categoria-conteudo/geral/mover-item
   moverItemBoardGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.moverItemBoardGeral()");

@@ -89,7 +89,7 @@ export default function ConteudoForm({
   }, []);
 
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaConteudoAPI.CategoriaConteudo[]>([]);
+  const [categoriaNomes, setCategoriaNomes] = useState<string[]>([]);
   const [conteudos, setConteudos] = useState<ConteudoAPI.Conteudo[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -97,7 +97,7 @@ export default function ConteudoForm({
 
   const [form, setForm] = useState({
     MatProfTurGUID: '',
-    CategoriaGUID: '',
+    CategoriaNome: '',
     ConteudoTitulo: '',
     ConteudoTipo: 'texto' as ConteudoAPI.ConteudoTipo,
     ConteudoDescricao: '',
@@ -109,9 +109,6 @@ export default function ConteudoForm({
   const [arquivosPaginado, setArquivosPaginado] = useState<File[]>([]);
   const [conteudoHtml, setConteudoHtml] = useState('');
   const editorRef = useRef<HTMLDivElement>(null);
-
-  const [novaCategoriaAberta, setNovaCategoriaAberta] = useState(false);
-  const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
 
   const [agendarPublicacao, setAgendarPublicacao] = useState(false); // false = postar agora
   const [dataPublicacaoManual, setDataPublicacaoManual] = useState('');
@@ -166,10 +163,15 @@ export default function ConteudoForm({
     }
   }, [materiaSelecionada?.MateriaGUID]);
 
-  const carregarCategorias = async (materiaGUID: string, turmaGUID: string) => {
+  // Nomes de categoria "geral" já usados pelo professor nessa matéria (em
+  // qualquer turma onde leciona) — mesma fonte do "Gerenciar categorias".
+  // Serve só de sugestão (datalist); no submit, o nome escolhido/digitado é
+  // resolvido/criado exatamente nas turmas selecionadas abaixo, via
+  // resolverCategoriaPorNomeParaTurmas.
+  const carregarCategoriaNomes = async (materiaGUID: string) => {
     try {
-      const lista = await CategoriaConteudoAPI.listarCategorias({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
-      setCategorias(lista);
+      const board = await CategoriaConteudoAPI.buscarBoardGeral(materiaGUID);
+      setCategoriaNomes(board.Categorias.map((c) => c.CategoriaNome));
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar categorias');
     }
@@ -181,36 +183,6 @@ export default function ConteudoForm({
       setConteudos(lista);
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar conteúdos');
-    }
-  };
-
-  const handleCriarCategoria = async () => {
-    if (!materiaSelecionada || !turmaUnicaGUID) return;
-    if (!novaCategoriaNome.trim()) {
-      setErro('Informe o nome da categoria.');
-      return;
-    }
-    try {
-      const categoria = await CategoriaConteudoAPI.criarCategoria(materiaSelecionada.MateriaGUID, turmaUnicaGUID, novaCategoriaNome.trim());
-      setCategorias((prev) => [...prev, categoria].sort((a, b) => a.CategoriaNome.localeCompare(b.CategoriaNome)));
-      setForm((prev) => ({ ...prev, CategoriaGUID: categoria.CategoriaGUID }));
-      setNovaCategoriaNome('');
-      setNovaCategoriaAberta(false);
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao criar categoria');
-    }
-  };
-
-  const excluirCategoriaAtual = async (categoriaGUID: string) => {
-    if (!confirm('Excluir esta categoria? Conteúdos já criados nela ficam sem categoria.')) return;
-    try {
-      await CategoriaConteudoAPI.excluirCategoria(categoriaGUID);
-      setCategorias((prev) => prev.filter((c) => c.CategoriaGUID !== categoriaGUID));
-      if (form.CategoriaGUID === categoriaGUID) {
-        setForm((prev) => ({ ...prev, CategoriaGUID: '' }));
-      }
-    } catch (err: any) {
-      alert(err?.message || 'Falha ao excluir categoria');
     }
   };
 
@@ -274,15 +246,21 @@ export default function ConteudoForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turmaGUIDQuery, form.MatProfTurGUID]);
 
-  // Pré-preenchimento: categoria vinda da URL, assim que a lista de categorias da turma carregar
+  // Pré-preenchimento: categoria vinda da URL (GUID de uma turma específica,
+  // vindo do "+" da tela de categorias) — resolvido pro NOME, já que o campo
+  // do formulário agora trabalha por nome (ver carregarCategoriaNomes acima).
   useEffect(() => {
-    if (categoriaPreenchidaRef.current || !categoriaGUIDQuery || categorias.length === 0) return;
-    const match = categorias.find((c) => c.CategoriaGUID === categoriaGUIDQuery);
-    if (match) {
-      categoriaPreenchidaRef.current = true;
-      setForm((prev) => ({ ...prev, CategoriaGUID: match.CategoriaGUID }));
-    }
-  }, [categoriaGUIDQuery, categorias]);
+    if (categoriaPreenchidaRef.current || !categoriaGUIDQuery || !turmaGUIDQuery || !materiaSelecionada) return;
+    categoriaPreenchidaRef.current = true;
+    CategoriaConteudoAPI.listarCategorias({ MateriaGUID: materiaSelecionada.MateriaGUID, TurmaGUID: turmaGUIDQuery })
+      .then((lista) => {
+        const match = lista.find((c) => c.CategoriaGUID === categoriaGUIDQuery);
+        if (match) setForm((prev) => ({ ...prev, CategoriaNome: match.CategoriaNome }));
+      })
+      .catch(() => {
+        // pré-preenchimento é best-effort — o professor ainda pode escolher a categoria manualmente
+      });
+  }, [categoriaGUIDQuery, turmaGUIDQuery, materiaSelecionada]);
 
   const toggleSerie = (serieIndex: number) => {
     setSeries((prev) => prev.map((serie, idx) => (idx === serieIndex ? { ...serie, expanded: !serie.expanded } : serie)));
@@ -320,20 +298,14 @@ export default function ConteudoForm({
 
   const totalTurmasSelecionadas = obterTurmasSelecionadas().length;
 
-  // Categoria é escopada por turma — como este formulário permite distribuir
-  // o mesmo conteúdo pra N turmas de uma vez, só dá pra escolher/criar
-  // categoria quando exatamente 1 turma está marcada (senão não saberíamos
-  // pra qual turma a categoria seria).
-  const turmaUnicaGUID = totalTurmasSelecionadas === 1 ? obterTurmasSelecionadas()[0].TurmaGUID : null;
-
   useEffect(() => {
-    if (materiaSelecionada && turmaUnicaGUID) {
-      void carregarCategorias(materiaSelecionada.MateriaGUID, turmaUnicaGUID);
+    if (materiaSelecionada) {
+      void carregarCategoriaNomes(materiaSelecionada.MateriaGUID);
     } else {
-      setCategorias([]);
+      setCategoriaNomes([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [materiaSelecionada?.MateriaGUID, turmaUnicaGUID]);
+  }, [materiaSelecionada?.MateriaGUID]);
 
   // ===== Editor de texto rico (sem dependência externa) =====
   const aplicarFormato = (comando: string, valor?: string) => {
@@ -431,6 +403,15 @@ export default function ConteudoForm({
 
       setSubmitting(true);
 
+      const categoriaNome = form.CategoriaNome.trim();
+      const categoriasPorTurma = categoriaNome
+        ? await CategoriaConteudoAPI.resolverCategoriaPorNomeParaTurmas(
+            materiaSelecionada.MateriaGUID,
+            turmasSelecionadas.map((t) => t.TurmaGUID),
+            categoriaNome
+          )
+        : undefined;
+
       await ConteudoAPI.criarConteudo({
         MateriaGUID: materiaSelecionada.MateriaGUID,
         ConteudoTitulo: form.ConteudoTitulo,
@@ -439,7 +420,7 @@ export default function ConteudoForm({
         TurmasGUID: turmasSelecionadas.map((t) => t.TurmaGUID),
         ConteudoDataPublicacao: conteudoDataPublicacao,
         DatasPorTurma: datasPorTurma,
-        CategoriasPorTurma: turmaUnicaGUID && form.CategoriaGUID ? { [turmaUnicaGUID]: form.CategoriaGUID } : undefined,
+        CategoriasPorTurma: categoriasPorTurma,
         OrigemTipo: form.ConteudoTipo === 'cronometrado' ? form.OrigemTipo : undefined,
         LinkUrl: form.ConteudoTipo === 'cronometrado' && form.OrigemTipo === 'link' ? form.LinkUrl.trim() : undefined,
         arquivoCronometrado:
@@ -497,7 +478,7 @@ export default function ConteudoForm({
             <select
               value={form.MatProfTurGUID}
               onChange={(e) => {
-                setForm((prev) => ({ ...prev, MatProfTurGUID: e.target.value, CategoriaGUID: '' }));
+                setForm((prev) => ({ ...prev, MatProfTurGUID: e.target.value, CategoriaNome: '' }));
                 setSeries([]);
               }}
               required
@@ -512,57 +493,26 @@ export default function ConteudoForm({
           )}
         </div>
 
-        {/* Categoria — só disponível com exatamente 1 turma marcada abaixo, já que categoria é por turma */}
+        {/* Categoria — por nome (não por turma): reaproveita uma categoria já
+            usada em outra turma sua, ou cria uma nova, aplicada exatamente
+            nas turmas marcadas na seção "Turmas" abaixo. */}
         <div className={styles.formGroup}>
           <label>Categoria</label>
-          {!turmaUnicaGUID && (
-            <p className={styles.hint}>
-              Marque exatamente 1 turma na seção "Turmas" abaixo para escolher ou criar uma categoria.
-            </p>
-          )}
-          <div className={styles.categoriaLinha}>
-            <select
-              value={form.CategoriaGUID}
-              onChange={(e) => setForm((prev) => ({ ...prev, CategoriaGUID: e.target.value }))}
-              disabled={!turmaUnicaGUID}
-            >
-              <option value="">Sem categoria</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.CategoriaGUID} value={categoria.CategoriaGUID}>
-                  {categoria.CategoriaNome}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className={styles.selectButton}
-              onClick={() => setNovaCategoriaAberta((prev) => !prev)}
-              disabled={!turmaUnicaGUID}
-            >
-              + Nova
-            </button>
-            {form.CategoriaGUID && (
-              <button
-                type="button"
-                className={styles.selectButton}
-                onClick={() => excluirCategoriaAtual(form.CategoriaGUID)}
-              >
-                Excluir categoria
-              </button>
-            )}
-          </div>
-          {novaCategoriaAberta && (
-            <div className={styles.categoriaLinha}>
-              <input
-                placeholder="Nome da nova categoria (ex: Cinemática)"
-                value={novaCategoriaNome}
-                onChange={(e) => setNovaCategoriaNome(e.target.value)}
-              />
-              <button type="button" className={styles.selectButton} onClick={handleCriarCategoria}>
-                Salvar
-              </button>
-            </div>
-          )}
+          <input
+            list="categoria-nomes-lista"
+            placeholder="Sem categoria (opcional)"
+            value={form.CategoriaNome}
+            onChange={(e) => setForm((prev) => ({ ...prev, CategoriaNome: e.target.value }))}
+            disabled={!materiaSelecionada}
+          />
+          <datalist id="categoria-nomes-lista">
+            {categoriaNomes.map((nome) => (
+              <option key={nome} value={nome} />
+            ))}
+          </datalist>
+          <p className={styles.hint}>
+            Escolha um nome já usado ou digite um novo — a categoria é aplicada nas turmas marcadas abaixo.
+          </p>
         </div>
 
         {/* Turmas */}
