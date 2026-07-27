@@ -1,8 +1,56 @@
 .container {
+  /* Tokens do Bauá Design System escopados localmente, mesmo padrão de
+     frontend/app/dashboard/[escolaGUID]/gestao-dados/page.module.css. */
+  --green-500: #17C077;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --surface-muted: #F0F4F1;
+  --white: #FFFFFF;
+
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
   font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-600);
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-500: #22D488;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --line-200: #2A3A31;
+  --surface-muted: #16211C;
+  --white: #16211C;
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-500: #2F6FED;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-500: #5B8CFF;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
 }
 
 .header {
@@ -34,7 +82,7 @@
   height: 42px;
   border-radius: 8px;
   border: 1.5px solid var(--line-200, #E2EAE5);
-  background: #fff;
+  background: var(--white, #fff);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -84,13 +132,14 @@
 }
 
 .modal {
-  background: #fff;
+  background: var(--white, #fff);
   border-radius: 12px;
   max-width: 480px;
   width: 100%;
   padding: 2rem;
   max-height: 90vh;
   overflow-y: auto;
+  color: var(--slate-600, #46564D);
 }
 
 .modalTitulo {
@@ -169,7 +218,8 @@
 
 .botaoCancelar {
   padding: 0.75rem 1.25rem;
-  background: #fff;
+  background: var(--white, #fff);
+  color: var(--slate-600, #46564D);
   border: 1.5px solid var(--line-200, #E2EAE5);
   border-radius: 8px;
   cursor: pointer;
@@ -179,7 +229,7 @@
   position: absolute;
   top: 52px;
   right: 0;
-  background: #fff;
+  background: var(--white, #fff);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(15, 29, 23, 0.2);
   padding: 0.5rem;
@@ -201,6 +251,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  color: var(--ink-900, #0F1D17);
 }
 
 .popoverNovoItem button:hover {

@@ -1,4 +1,14 @@
 .overlay {
+  /* Tokens do Bauá Design System escopados localmente, mesmo padrão de
+     frontend/app/dashboard/[escolaGUID]/chat/GerenciarGrupoModal.module.css. */
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --surface-muted: #F0F4F1;
+  --white: #FFFFFF;
+
   position: fixed;
   inset: 0;
   background: rgba(15, 29, 23, 0.6);
@@ -9,8 +19,35 @@
   padding: 1rem;
 }
 
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .overlay {
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --line-200: #2A3A31;
+  --surface-muted: #16211C;
+  --white: #16211C;
+}
+
+:global(html[data-alto-contraste="true"]) .overlay {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .overlay {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+}
+
 .modal {
-  background: #fff;
+  background: var(--white, #fff);
   border-radius: 12px;
   max-width: 640px;
   width: 100%;
@@ -18,6 +55,7 @@
   overflow-y: auto;
   padding: 2rem;
   position: relative;
+  color: var(--slate-600, #46564D);
 }
 
 .botaoFechar {
@@ -28,7 +66,8 @@
   height: 32px;
   border-radius: 50%;
   border: none;
-  background: #F0F4F1;
+  background: var(--surface-muted, #F0F4F1);
+  color: var(--slate-600, #46564D);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -38,14 +77,14 @@
 .carregando {
   text-align: center;
   padding: 2rem;
-  color: #647268;
+  color: var(--slate-500, #647268);
 }
 
 .titulo {
   font-size: 1.375rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  color: #0F1D17;
+  color: var(--ink-900, #0F1D17);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -59,7 +98,7 @@
 
 .textoConteudo {
   line-height: 1.6;
-  color: #0F1D17;
+  color: var(--ink-900, #0F1D17);
 }
 
 .imagem {
@@ -67,7 +106,7 @@
   border-radius: 8px;
   max-height: 60vh;
   object-fit: contain;
-  background: #F0F4F1;
+  background: var(--surface-muted, #F0F4F1);
 }
 
 .navegacaoPaginas {
@@ -82,8 +121,9 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1.5px solid #E2EAE5;
-  background: #fff;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  background: var(--white, #fff);
+  color: var(--slate-600, #46564D);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -96,12 +136,12 @@
 }
 
 .dataProva {
-  color: #647268;
+  color: var(--slate-500, #647268);
   margin-bottom: 0.5rem;
 }
 
 .hintFuturo {
-  color: #8A968E;
+  color: var(--slate-400, #8A968E);
   font-style: italic;
   font-size: 0.9rem;
 }
@@ -127,13 +167,13 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 0;
-  border-bottom: 1px solid #E2EAE5;
+  border-bottom: 1px solid var(--line-200, #E2EAE5);
   gap: 1rem;
 }
 
 .inputNota {
   width: 70px;
   padding: 0.4rem 0.6rem;
-  border: 1.5px solid #E2EAE5;
+  border: 1.5px solid var(--line-200, #E2EAE5);
   border-radius: 6px;
 }

@@ -1,4 +1,17 @@
 .overlay {
+  /* Tokens do Bauá Design System escopados localmente, mesmo padrão de
+     frontend/app/dashboard/[escolaGUID]/chat/GerenciarGrupoModal.module.css. */
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --danger-500: #D64545;
+  --line-200: #E2EAE5;
+  --surface-muted: #F0F4F1;
+  --white: #FFFFFF;
+
   position: fixed;
   inset: 0;
   background: rgba(15, 29, 23, 0.6);
@@ -9,14 +22,57 @@
   padding: 1rem;
 }
 
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .overlay {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --danger-500: #FF6B70;
+  --line-200: #2A3A31;
+  --surface-muted: #16211C;
+  --white: #16211C;
+}
+
+:global(html[data-daltonico="true"]) .overlay {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --danger-500: #E8720C;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .overlay {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --danger-500: #FF9142;
+}
+
+:global(html[data-alto-contraste="true"]) .overlay {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .overlay {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+}
+
 .modal {
-  background: #fff;
+  background: var(--white, #fff);
   border-radius: 12px;
   max-width: 640px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
+  color: var(--slate-600, #46564D);
 }
 
 .header {
@@ -26,14 +82,14 @@
   padding: 1.5rem 1.5rem 0;
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--white, #fff);
   z-index: 1;
 }
 
 .titulo {
   font-size: 1.375rem;
   font-weight: 700;
-  color: #0F1D17;
+  color: var(--ink-900, #0F1D17);
 }
 
 .botaoFechar {
@@ -41,7 +97,8 @@
   height: 32px;
   border-radius: 50%;
   border: none;
-  background: #F0F4F1;
+  background: var(--surface-muted, #F0F4F1);
+  color: var(--slate-600, #46564D);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -61,7 +118,7 @@
 
 .erro {
   font-size: 0.85rem;
-  color: #D64545;
+  color: var(--danger-500, #D64545);
   margin: -0.5rem 0 1rem;
 }
 
@@ -117,7 +174,7 @@
   border-radius: 10px;
   padding: 0.75rem;
   cursor: grab;
-  background: #fff;
+  background: var(--white, #fff);
 }
 
 .categoriaHeader {
@@ -125,8 +182,38 @@
   align-items: center;
   gap: 0.5rem;
   font-weight: 600;
-  color: #0F1D17;
+  color: var(--ink-900, #0F1D17);
   margin-bottom: 0.5rem;
+}
+
+.categoriaHeader span {
+  flex: 1;
+}
+
+.botaoColapsar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--slate-500, #647268);
+  flex-shrink: 0;
+}
+
+.botaoColapsar:hover {
+  background: var(--surface-muted, #F0F4F1);
+}
+
+.iconeColapsar {
+  transition: transform 0.15s ease;
+}
+
+.iconeColapsarFechado {
+  transform: rotate(-90deg);
 }
 
 .categoriaItens {
@@ -150,10 +237,17 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.65rem;
-  background: var(--surface-muted, #F0F4F1);
+  background: var(--white, #fff);
+  border: 1px solid var(--line-200, #E2EAE5);
   border-radius: 6px;
   cursor: grab;
   font-size: 0.85rem;
+  color: var(--ink-900, #0F1D17);
+}
+
+.item :global(svg) {
+  color: var(--green-600, #12A063);
+  flex-shrink: 0;
 }
 
 .itemTitulo {
@@ -161,11 +255,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 500;
+  color: var(--ink-900, #0F1D17);
 }
 
 .itemTurma {
   font-size: 0.75rem;
-  color: var(--slate-500, #647268);
+  font-weight: 600;
+  color: var(--slate-600, #46564D);
+  background: var(--surface-muted, #F0F4F1);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
   flex-shrink: 0;
 }
 
