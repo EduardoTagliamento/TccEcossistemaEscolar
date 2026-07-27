@@ -117,13 +117,18 @@ export type ItemTipoBoardGeral =
   | 'conteudo_texto'
   | 'conteudo_imagem';
 
+export interface TurmaBoardGeral {
+  TurmaGUID: string;
+  TurmaNome: string;
+  TurmaSerie: string;
+}
+
 export interface ItemBoardGeral {
   ItemGUID: string;
   Tipo: ItemTipoBoardGeral;
   Titulo: string;
-  TurmaGUID: string;
-  TurmaNome: string;
-  TurmaSerie: string;
+  /** Turmas onde esse item existe (tarefa: sempre 1; conteúdo/prova: N, condensados). */
+  Turmas: TurmaBoardGeral[];
   ItemOrdem: number;
 }
 

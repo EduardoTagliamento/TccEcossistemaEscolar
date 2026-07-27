@@ -38,13 +38,18 @@ export interface CategoriaCompletaDTO {
   Itens: ItemCategoriaDTO[];
 }
 
+export interface TurmaBoardGeralDTO {
+  TurmaGUID: string;
+  TurmaNome: string;
+  TurmaSerie: string;
+}
+
 export interface ItemBoardGeralDTO {
   ItemGUID: string;
   Tipo: ItemTipo;
   Titulo: string;
-  TurmaGUID: string;
-  TurmaNome: string;
-  TurmaSerie: string;
+  /** Turmas onde esse item existe. Tarefa é sempre 1; conteúdo/prova podem ter N (fan-out). */
+  Turmas: TurmaBoardGeralDTO[];
   ItemOrdem: number;
 }
 
@@ -493,10 +498,31 @@ export default class CategoriaConteudoService {
     }
   };
 
+  /** Nome mais frequente entre as ocorrências (desempate: primeira encontrada). Usado quando o mesmo item aparece em turmas com categoria divergente. */
+  #nomeMaisFrequente(nomes: (string | null)[]): string | null {
+    const contagem = new Map<string | null, number>();
+    for (const nome of nomes) contagem.set(nome, (contagem.get(nome) ?? 0) + 1);
+    let melhor: string | null = nomes[0] ?? null;
+    let melhorContagem = 0;
+    for (const [nome, qtd] of contagem) {
+      if (qtd > melhorContagem) {
+        melhor = nome;
+        melhorContagem = qtd;
+      }
+    }
+    return melhor;
+  }
+
   /**
    * Board geral: categorias (por nome, consolidadas entre turmas) + itens de
    * tarefa/conteúdo/prova de TODAS as turmas dessa matéria, agrupados por
-   * categoria (ou "sem categoria"), cada item já dizendo de qual turma é.
+   * categoria (ou "sem categoria").
+   *
+   * Tarefa é sempre de 1 turma só — aparece como está, sem condensar.
+   * Conteúdo/Prova são fan-out (1 item → N turmas): aqui são condensados numa
+   * única linha por item, com a lista de turmas onde existem — e só entram
+   * na tela se estiverem em 2+ turmas (o que só 1 turma tem fica de fora,
+   * por ser organização específica daquela turma, não "geral").
    */
   buscarBoardGeral = async (usuarioCPF: string, materiaGUID: string): Promise<BoardGeralDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarBoardGeral()");
@@ -529,9 +555,7 @@ export default class CategoriaConteudoService {
         ItemGUID: row.TarefaGUID,
         Tipo: row.TarefaTipoEntrega === "digital" ? "tarefa_digital" : "tarefa_presencial",
         Titulo: row.TarefaTitulo,
-        TurmaGUID: row.TurmaGUID,
-        TurmaNome: row.TurmaNome,
-        TurmaSerie: row.TurmaSerie,
+        Turmas: [{ TurmaGUID: row.TurmaGUID, TurmaNome: row.TurmaNome, TurmaSerie: row.TurmaSerie }],
         ItemOrdem: row.ItemOrdem ?? 0,
       });
     }
@@ -553,15 +577,33 @@ export default class CategoriaConteudoService {
       texto: "conteudo_texto",
       paginado: "conteudo_imagem",
     };
+    const gruposConteudo = new Map<
+      string,
+      { Titulo: string; Tipo: ItemTipo; ItemOrdem: number; Turmas: TurmaBoardGeralDTO[]; Categorias: (string | null)[] }
+    >();
     for (const row of conteudoRows as any[]) {
-      adicionar(row.CategoriaNome ?? null, {
-        ItemGUID: row.ConteudoGUID,
-        Tipo: tipoConteudoMap[row.ConteudoTipo] ?? "conteudo_texto",
-        Titulo: row.ConteudoTitulo,
-        TurmaGUID: row.TurmaGUID,
-        TurmaNome: row.TurmaNome,
-        TurmaSerie: row.TurmaSerie,
-        ItemOrdem: row.ItemOrdem ?? 0,
+      let grupo = gruposConteudo.get(row.ConteudoGUID);
+      if (!grupo) {
+        grupo = {
+          Titulo: row.ConteudoTitulo,
+          Tipo: tipoConteudoMap[row.ConteudoTipo] ?? "conteudo_texto",
+          ItemOrdem: row.ItemOrdem ?? 0,
+          Turmas: [],
+          Categorias: [],
+        };
+        gruposConteudo.set(row.ConteudoGUID, grupo);
+      }
+      grupo.Turmas.push({ TurmaGUID: row.TurmaGUID, TurmaNome: row.TurmaNome, TurmaSerie: row.TurmaSerie });
+      grupo.Categorias.push(row.CategoriaNome ?? null);
+    }
+    for (const [conteudoGUID, grupo] of gruposConteudo) {
+      if (grupo.Turmas.length < 2) continue; // só 1 turma tem — não entra na tela geral
+      adicionar(this.#nomeMaisFrequente(grupo.Categorias), {
+        ItemGUID: conteudoGUID,
+        Tipo: grupo.Tipo,
+        Titulo: grupo.Titulo,
+        Turmas: grupo.Turmas,
+        ItemOrdem: grupo.ItemOrdem,
       });
     }
 
@@ -577,15 +619,27 @@ export default class CategoriaConteudoService {
        WHERE p.MateriaGUID = ?`,
       [usuarioCPF, materiaGUID]
     );
+    const gruposProva = new Map<
+      string,
+      { Titulo: string; ItemOrdem: number; Turmas: TurmaBoardGeralDTO[]; Categorias: (string | null)[] }
+    >();
     for (const row of provaRows as any[]) {
-      adicionar(row.CategoriaNome ?? null, {
-        ItemGUID: row.ProvaAgendadaGUID,
+      let grupo = gruposProva.get(row.ProvaAgendadaGUID);
+      if (!grupo) {
+        grupo = { Titulo: row.ProvaDescricao || "Prova", ItemOrdem: row.ItemOrdem ?? 0, Turmas: [], Categorias: [] };
+        gruposProva.set(row.ProvaAgendadaGUID, grupo);
+      }
+      grupo.Turmas.push({ TurmaGUID: row.TurmaGUID, TurmaNome: row.TurmaNome, TurmaSerie: row.TurmaSerie });
+      grupo.Categorias.push(row.CategoriaNome ?? null);
+    }
+    for (const [provaGUID, grupo] of gruposProva) {
+      if (grupo.Turmas.length < 2) continue; // só 1 turma tem — não entra na tela geral
+      adicionar(this.#nomeMaisFrequente(grupo.Categorias), {
+        ItemGUID: provaGUID,
         Tipo: "prova",
-        Titulo: row.ProvaDescricao || "Prova",
-        TurmaGUID: row.TurmaGUID,
-        TurmaNome: row.TurmaNome,
-        TurmaSerie: row.TurmaSerie,
-        ItemOrdem: row.ItemOrdem ?? 0,
+        Titulo: grupo.Titulo,
+        Turmas: grupo.Turmas,
+        ItemOrdem: grupo.ItemOrdem,
       });
     }
 
@@ -621,11 +675,40 @@ export default class CategoriaConteudoService {
     return this.buscarBoardGeral(usuarioCPF, materiaGUID);
   };
 
+  /** Resolve o GUID da categoria (por nome) numa turma, criando-a se essa turma ainda não a tinha. */
+  #resolverOuCriarCategoriaGeral = async (
+    usuarioCPF: string,
+    materiaGUID: string,
+    turmaGUID: string,
+    nome: string
+  ): Promise<string> => {
+    let categoria = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turmaGUID, nome);
+    if (!categoria) {
+      const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, materiaGUID, turmaGUID);
+      const nova = new CategoriaConteudo();
+      nova.CategoriaGUID = uuidv4();
+      nova.UsuarioCPF = usuarioCPF;
+      nova.MateriaGUID = materiaGUID;
+      nova.TurmaGUID = turmaGUID;
+      nova.CategoriaNome = nome;
+      nova.Ordem = maiorOrdem + 1;
+      await this.#categoriaDAO.create(nova);
+      categoria = nova;
+    }
+    return categoria.CategoriaGUID;
+  };
+
   /**
-   * Move um item (tarefa/conteúdo/prova) — de qualquer turma — pra uma
-   * categoria geral (por nome) ou de volta pra "sem categoria" (nome null).
-   * Se a turma daquele item ainda não tinha essa categoria aplicada (ex.:
-   * turma nova depois da categoria criada), cria na hora — mantém o "em massa".
+   * Move um item pra uma categoria geral (por nome) ou de volta pra "sem
+   * categoria" (nome null).
+   *
+   * Tarefa é sempre de 1 turma só — move só essa linha (`turmaGUID` recebido
+   * do frontend). Conteúdo/Prova são condensados na tela geral (item único
+   * representando N turmas) — aqui o movimento é aplicado a TODAS as turmas
+   * (dentro da alocação ativa do professor) onde aquele item existe, não só
+   * a que veio no parâmetro; se alguma dessas turmas ainda não tinha essa
+   * categoria aplicada (ex.: turma nova depois da categoria criada), cria na
+   * hora — mantém o "em massa".
    */
   moverItemBoardGeral = async (
     usuarioCPF: string,
@@ -637,80 +720,67 @@ export default class CategoriaConteudoService {
   ): Promise<BoardGeralDTO> => {
     console.log("🟣 CategoriaConteudoService.moverItemBoardGeral()");
 
-    const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT 1 FROM materiaxprofessorxturma
-       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
-      [materiaGUID, turmaGUID, usuarioCPF]
-    );
-    if (alocacaoRows.length === 0) {
-      throw new ErrorResponse(403, "Sem permissão", {
-        message: "Você não está alocado nesta matéria/turma.",
-      });
-    }
-
-    let categoriaGUIDDestino: string | null = null;
-    if (categoriaNomeDestino) {
-      const nome = categoriaNomeDestino.trim();
-      let categoria = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turmaGUID, nome);
-      if (!categoria) {
-        const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, materiaGUID, turmaGUID);
-        const nova = new CategoriaConteudo();
-        nova.CategoriaGUID = uuidv4();
-        nova.UsuarioCPF = usuarioCPF;
-        nova.MateriaGUID = materiaGUID;
-        nova.TurmaGUID = turmaGUID;
-        nova.CategoriaNome = nome;
-        nova.Ordem = maiorOrdem + 1;
-        await this.#categoriaDAO.create(nova);
-        categoria = nova;
-      }
-      categoriaGUIDDestino = categoria.CategoriaGUID;
-    }
+    const nome = categoriaNomeDestino?.trim() || null;
 
     if (tipo === "tarefa_digital" || tipo === "tarefa_presencial") {
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT 1 FROM tarefaacademica t
          INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
-         WHERE t.TarefaGUID = ? AND mpt.MateriaGUID = ? AND mpt.TurmaGUID = ? LIMIT 1`,
-        [itemGUID, materiaGUID, turmaGUID]
+         WHERE t.TarefaGUID = ? AND mpt.MateriaGUID = ? AND mpt.TurmaGUID = ? AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa' LIMIT 1`,
+        [itemGUID, materiaGUID, turmaGUID, usuarioCPF]
       );
       if (rows.length === 0) {
         throw new ErrorResponse(403, "Item inválido", { message: `A tarefa ${itemGUID} não pertence a esta matéria/turma.` });
       }
+      const categoriaGUIDDestino = nome ? await this.#resolverOuCriarCategoriaGeral(usuarioCPF, materiaGUID, turmaGUID, nome) : null;
       await pool.execute(`UPDATE tarefaacademica SET CategoriaGUID = ?, ItemOrdem = 0 WHERE TarefaGUID = ?`, [
         categoriaGUIDDestino,
         itemGUID,
       ]);
     } else if (tipo === "conteudo_video" || tipo === "conteudo_texto" || tipo === "conteudo_imagem") {
       const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT 1 FROM conteudo c
+        `SELECT ct.TurmaGUID FROM conteudo c
          INNER JOIN conteudoturma ct ON ct.ConteudoGUID = c.ConteudoGUID
-         WHERE c.ConteudoGUID = ? AND c.MateriaGUID = ? AND ct.TurmaGUID = ? LIMIT 1`,
-        [itemGUID, materiaGUID, turmaGUID]
+         INNER JOIN materiaxprofessorxturma mpt ON mpt.MateriaGUID = c.MateriaGUID AND mpt.TurmaGUID = ct.TurmaGUID
+           AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'
+         WHERE c.ConteudoGUID = ? AND c.MateriaGUID = ?`,
+        [usuarioCPF, itemGUID, materiaGUID]
       );
       if (rows.length === 0) {
         throw new ErrorResponse(403, "Item inválido", { message: `O conteúdo ${itemGUID} não pertence a esta matéria/turma.` });
       }
-      await pool.execute(`UPDATE conteudoturma SET CategoriaGUID = ?, ItemOrdem = 0 WHERE ConteudoGUID = ? AND TurmaGUID = ?`, [
-        categoriaGUIDDestino,
-        itemGUID,
-        turmaGUID,
-      ]);
+      for (const row of rows as any[]) {
+        const categoriaGUIDDestino = nome
+          ? await this.#resolverOuCriarCategoriaGeral(usuarioCPF, materiaGUID, row.TurmaGUID, nome)
+          : null;
+        await pool.execute(`UPDATE conteudoturma SET CategoriaGUID = ?, ItemOrdem = 0 WHERE ConteudoGUID = ? AND TurmaGUID = ?`, [
+          categoriaGUIDDestino,
+          itemGUID,
+          row.TurmaGUID,
+        ]);
+      }
     } else if (tipo === "prova") {
       const [rows] = await pool.execute<RowDataPacket[]>(
-        `SELECT 1 FROM provaagendada p
+        `SELECT pt.TurmaGUID FROM provaagendada p
          INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
-         WHERE p.ProvaAgendadaGUID = ? AND p.MateriaGUID = ? AND pt.TurmaGUID = ? LIMIT 1`,
-        [itemGUID, materiaGUID, turmaGUID]
+         INNER JOIN materiaxprofessorxturma mpt ON mpt.MateriaGUID = p.MateriaGUID AND mpt.TurmaGUID = pt.TurmaGUID
+           AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'
+         WHERE p.ProvaAgendadaGUID = ? AND p.MateriaGUID = ?`,
+        [usuarioCPF, itemGUID, materiaGUID]
       );
       if (rows.length === 0) {
         throw new ErrorResponse(403, "Item inválido", { message: `A prova ${itemGUID} não pertence a esta matéria/turma.` });
       }
-      await pool.execute(`UPDATE provaagendada_turma SET CategoriaGUID = ?, ItemOrdem = 0 WHERE ProvaAgendadaGUID = ? AND TurmaGUID = ?`, [
-        categoriaGUIDDestino,
-        itemGUID,
-        turmaGUID,
-      ]);
+      for (const row of rows as any[]) {
+        const categoriaGUIDDestino = nome
+          ? await this.#resolverOuCriarCategoriaGeral(usuarioCPF, materiaGUID, row.TurmaGUID, nome)
+          : null;
+        await pool.execute(`UPDATE provaagendada_turma SET CategoriaGUID = ?, ItemOrdem = 0 WHERE ProvaAgendadaGUID = ? AND TurmaGUID = ?`, [
+          categoriaGUIDDestino,
+          itemGUID,
+          row.TurmaGUID,
+        ]);
+      }
     } else {
       throw new ErrorResponse(400, "Tipo de item inválido", { message: `Tipo desconhecido: ${tipo}` });
     }
