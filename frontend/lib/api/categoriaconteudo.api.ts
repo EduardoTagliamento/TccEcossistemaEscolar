@@ -203,6 +203,31 @@ export async function moverItemBoardGeral(
   return result.data.board;
 }
 
+/**
+ * Resolve (ou cria) a categoria de nome `categoriaNome` em cada uma das
+ * turmas informadas, pro professor autenticado — usado pelo ConteudoForm/
+ * ProvaAgendadaForm pra permitir escolher/criar categoria por nome mesmo
+ * distribuindo o item pra várias turmas de uma vez (não precisa mais de
+ * "exatamente 1 turma marcada"). Retorna { TurmaGUID: CategoriaGUID },
+ * pronto pra virar `CategoriasPorTurma` no payload de criação.
+ */
+export async function resolverCategoriaPorNomeParaTurmas(
+  materiaGUID: string,
+  turmasGUID: string[],
+  categoriaNome: string
+): Promise<Record<string, string>> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/geral/resolver`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ MateriaGUID: materiaGUID, TurmasGUID: turmasGUID, CategoriaNome: categoriaNome }),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao resolver categoria');
+  }
+  return result.data.categoriasPorTurma;
+}
+
 export async function atualizarCategoria(categoriaGUID: string, categoriaNome: string): Promise<CategoriaConteudo> {
   const response = await fetch(`${API_URL}/categoria-conteudo/${categoriaGUID}`, {
     method: 'PUT',

@@ -96,7 +96,7 @@ export default function ProvaAgendadaForm({
   const [provas, setProvas] = useState<Prova[]>([]);
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [series, setSeries] = useState<SerieItem[]>([]);
-  const [categorias, setCategorias] = useState<CategoriaConteudoAPI.CategoriaConteudo[]>([]);
+  const [categoriaNomes, setCategoriaNomes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingGUID, setEditingGUID] = useState<string | null>(null);
@@ -111,7 +111,7 @@ export default function ProvaAgendadaForm({
   const [form, setForm] = useState({
     MateriaGUID: '',
     MatProfTurGUID: '', // Para buscar turmas
-    CategoriaGUID: '',
+    CategoriaNome: '',
     ProvaData: '',
     ProvaDescricao: '',
     ProvaStatus: 'Agendada' as 'Agendada' | 'Realizada' | 'Cancelada',
@@ -293,26 +293,28 @@ export default function ProvaAgendadaForm({
     return turmasGUID;
   };
 
-  // Categoria é escopada por turma — só dá pra escolher quando exatamente 1 turma está marcada.
-  const turmaUnicaSelecionada = obterTurmasSelecionadas().length === 1 ? obterTurmasSelecionadas()[0] : null;
-
-  const carregarCategorias = async (materiaGUID: string, turmaGUID: string) => {
+  // Nomes de categoria "geral" já usados pelo professor nessa matéria (em
+  // qualquer turma onde leciona) — mesma fonte do "Gerenciar categorias".
+  // Serve só de sugestão (datalist); no submit, o nome escolhido/digitado é
+  // resolvido/criado exatamente nas turmas selecionadas, via
+  // resolverCategoriaPorNomeParaTurmas.
+  const carregarCategoriaNomes = async (materiaGUID: string) => {
     try {
-      const lista = await CategoriaConteudoAPI.listarCategorias({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
-      setCategorias(lista);
+      const board = await CategoriaConteudoAPI.buscarBoardGeral(materiaGUID);
+      setCategoriaNomes(board.Categorias.map((c) => c.CategoriaNome));
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar categorias');
     }
   };
 
   useEffect(() => {
-    if (form.MateriaGUID && turmaUnicaSelecionada) {
-      void carregarCategorias(form.MateriaGUID, turmaUnicaSelecionada);
+    if (form.MateriaGUID) {
+      void carregarCategoriaNomes(form.MateriaGUID);
     } else {
-      setCategorias([]);
+      setCategoriaNomes([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.MateriaGUID, turmaUnicaSelecionada]);
+  }, [form.MateriaGUID]);
 
   // Pré-preenchimento: matéria vinda da URL, assim que a lista carregar
   useEffect(() => {
@@ -336,15 +338,21 @@ export default function ProvaAgendadaForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turmaGUIDQuery, form.MatProfTurGUID]);
 
-  // Pré-preenchimento: categoria vinda da URL, assim que a lista carregar
+  // Pré-preenchimento: categoria vinda da URL (GUID de uma turma específica,
+  // vindo do "+" da tela de categorias) — resolvido pro NOME, já que o campo
+  // do formulário agora trabalha por nome (ver carregarCategoriaNomes acima).
   useEffect(() => {
-    if (categoriaPreenchidaRef.current || !categoriaGUIDQuery || categorias.length === 0) return;
-    const match = categorias.find((c) => c.CategoriaGUID === categoriaGUIDQuery);
-    if (match) {
-      categoriaPreenchidaRef.current = true;
-      setForm((prev) => ({ ...prev, CategoriaGUID: match.CategoriaGUID }));
-    }
-  }, [categoriaGUIDQuery, categorias]);
+    if (categoriaPreenchidaRef.current || !categoriaGUIDQuery || !turmaGUIDQuery || !form.MateriaGUID) return;
+    categoriaPreenchidaRef.current = true;
+    CategoriaConteudoAPI.listarCategorias({ MateriaGUID: form.MateriaGUID, TurmaGUID: turmaGUIDQuery })
+      .then((lista) => {
+        const match = lista.find((c) => c.CategoriaGUID === categoriaGUIDQuery);
+        if (match) setForm((prev) => ({ ...prev, CategoriaNome: match.CategoriaNome }));
+      })
+      .catch(() => {
+        // pré-preenchimento é best-effort — o professor ainda pode escolher a categoria manualmente
+      });
+  }, [categoriaGUIDQuery, turmaGUIDQuery, form.MateriaGUID]);
 
   const nomeDaTurma = (turmaGUID: string): string => {
     for (const serie of series) {
@@ -453,7 +461,7 @@ export default function ProvaAgendadaForm({
     setForm({
       MateriaGUID: materiasUnicas.length === 1 ? materiasUnicas[0].MateriaGUID : '',
       MatProfTurGUID: materiasUnicas.length === 1 ? materiasUnicas[0].MatProfTurGUID : '',
-      CategoriaGUID: '',
+      CategoriaNome: '',
       ProvaData: obterDataPadraoFimDoDia(),
       ProvaDescricao: '',
       ProvaStatus: 'Agendada',
@@ -537,6 +545,11 @@ export default function ProvaAgendadaForm({
         provaDataParaEnvio = Object.values(datasPorTurma)[0] || provaDataParaEnvio;
       }
 
+      const categoriaNome = form.CategoriaNome.trim();
+      const categoriasPorTurma = categoriaNome
+        ? await CategoriaConteudoAPI.resolverCategoriaPorNomeParaTurmas(form.MateriaGUID, turmasSelecionadas, categoriaNome)
+        : undefined;
+
       const payload = {
         prova: {
           TurmasGUID: turmasSelecionadas,
@@ -544,7 +557,7 @@ export default function ProvaAgendadaForm({
           ProvaData: provaDataParaEnvio, // Já em GMT-3 (manual: convertido do navegador; automático: calculado no servidor)
           ProvaDescricao: form.ProvaDescricao || undefined,
           DatasPorTurma: datasPorTurma,
-          CategoriasPorTurma: turmaUnicaSelecionada && form.CategoriaGUID ? { [turmaUnicaSelecionada]: form.CategoriaGUID } : undefined,
+          CategoriasPorTurma: categoriasPorTurma,
         },
       };
 
@@ -579,7 +592,7 @@ export default function ProvaAgendadaForm({
     setForm({
       MateriaGUID: prova.MateriaGUID,
       MatProfTurGUID: '', // Não precisa para edição
-      CategoriaGUID: '',
+      CategoriaNome: '',
       ProvaData: converterDoBrasil(prova.ProvaData), // Converte GMT-3 para timezone do usuário
       ProvaDescricao: prova.ProvaDescricao || '',
       ProvaStatus: prova.ProvaStatus,
@@ -673,25 +686,27 @@ export default function ProvaAgendadaForm({
           </div>
         )}
 
-        {/* Categoria — só disponível com exatamente 1 turma marcada acima, já que categoria é por turma */}
+        {/* Categoria — por nome (não por turma): reaproveita uma categoria já
+            usada em outra turma sua, ou cria uma nova, aplicada exatamente
+            nas turmas marcadas acima. */}
         {!editingGUID && (
           <div className={styles.formGroup}>
             <label>Categoria</label>
-            {!turmaUnicaSelecionada && (
-              <p className={styles.hint}>Marque exatamente 1 turma acima para escolher uma categoria.</p>
-            )}
-            <select
-              value={form.CategoriaGUID}
-              onChange={(e) => setForm((prev) => ({ ...prev, CategoriaGUID: e.target.value }))}
-              disabled={!turmaUnicaSelecionada}
-            >
-              <option value="">Sem categoria</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.CategoriaGUID} value={categoria.CategoriaGUID}>
-                  {categoria.CategoriaNome}
-                </option>
+            <input
+              list="categoria-nomes-lista"
+              placeholder="Sem categoria (opcional)"
+              value={form.CategoriaNome}
+              onChange={(e) => setForm((prev) => ({ ...prev, CategoriaNome: e.target.value }))}
+              disabled={!form.MateriaGUID}
+            />
+            <datalist id="categoria-nomes-lista">
+              {categoriaNomes.map((nome) => (
+                <option key={nome} value={nome} />
               ))}
-            </select>
+            </datalist>
+            <p className={styles.hint}>
+              Escolha um nome já usado ou digite um novo — a categoria é aplicada nas turmas marcadas acima.
+            </p>
           </div>
         )}
 

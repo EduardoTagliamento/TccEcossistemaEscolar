@@ -335,6 +335,20 @@ export default class CategoriaConteudoService {
       });
     }
 
+    // Só professor alocado ativamente nesta matéria/turma pode criar categoria
+    // aqui — representante/vice-representante de turma ainda não tem esse
+    // botão ligado no frontend (função futura, ver PLANO_IMPLEMENTACAO_MATERIAS.md).
+    const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT 1 FROM materiaxprofessorxturma
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [data.MateriaGUID, data.TurmaGUID, usuarioCPF]
+    );
+    if (alocacaoRows.length === 0) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está alocado nesta matéria/turma.",
+      });
+    }
+
     const nome = data.CategoriaNome.trim();
     const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(
       usuarioCPF,
@@ -696,6 +710,57 @@ export default class CategoriaConteudoService {
       categoria = nova;
     }
     return categoria.CategoriaGUID;
+  };
+
+  /**
+   * Resolve (ou cria) a categoria de nome `categoriaNome` em cada uma das
+   * turmas informadas, pro professor autenticado — usado pelos formulários de
+   * Conteúdo/Prova (`/cadastro`) pra permitir escolher/criar categoria por
+   * NOME mesmo distribuindo o item pra várias turmas de uma vez (antes disso,
+   * o formulário só permitia categoria com exatamente 1 turma marcada, já que
+   * a categoria em si é uma linha por turma). Diferente de
+   * `criarCategoriaGeral` (que aplica em TODAS as turmas ativas do
+   * professor), aqui a lista de turmas é a que o professor efetivamente
+   * selecionou no formulário — pode ser um subconjunto.
+   *
+   * Retorna um mapa TurmaGUID → CategoriaGUID, pronto pra virar
+   * `CategoriasPorTurma` no payload de criação de Conteúdo/Prova.
+   */
+  resolverCategoriaPorNomeParaTurmas = async (
+    usuarioCPF: string,
+    materiaGUID: string,
+    turmasGUID: string[],
+    categoriaNome: string
+  ): Promise<Record<string, string>> => {
+    console.log("🟣 CategoriaConteudoService.resolverCategoriaPorNomeParaTurmas()");
+
+    const nome = categoriaNome.trim();
+    if (nome.length < 2 || nome.length > 100) {
+      throw new ErrorResponse(400, "CategoriaNome inválido", {
+        message: "CategoriaNome deve ter entre 2 e 100 caracteres",
+      });
+    }
+    if (turmasGUID.length === 0) {
+      throw new ErrorResponse(400, "TurmasGUID inválido", {
+        message: "Informe ao menos uma turma.",
+      });
+    }
+
+    const mapa: Record<string, string> = {};
+    for (const turmaGUID of turmasGUID) {
+      const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT 1 FROM materiaxprofessorxturma
+         WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+        [materiaGUID, turmaGUID, usuarioCPF]
+      );
+      if (alocacaoRows.length === 0) {
+        throw new ErrorResponse(403, "Sem permissão", {
+          message: `Você não está alocado nesta matéria na turma ${turmaGUID}.`,
+        });
+      }
+      mapa[turmaGUID] = await this.#resolverOuCriarCategoriaGeral(usuarioCPF, materiaGUID, turmaGUID, nome);
+    }
+    return mapa;
   };
 
   /**

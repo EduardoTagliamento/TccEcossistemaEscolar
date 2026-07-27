@@ -145,6 +145,34 @@ export class CategoriaConteudoMiddleware {
     next();
   };
 
+  static validarResolverCategoriaPorNome = (req: Request, res: Response, next: NextFunction) => {
+    console.log("🟡 CategoriaConteudoMiddleware.validarResolverCategoriaPorNome()");
+
+    const { MateriaGUID, TurmasGUID, CategoriaNome } = req.body;
+
+    if (!MateriaGUID || !uuidRegex.test(MateriaGUID)) {
+      return next(
+        new ErrorResponse(400, "MateriaGUID inválido", { message: "MateriaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+
+    if (!Array.isArray(TurmasGUID) || TurmasGUID.length === 0 || !TurmasGUID.every((guid) => typeof guid === "string" && uuidRegex.test(guid))) {
+      return next(
+        new ErrorResponse(400, "TurmasGUID inválido", {
+          message: "O campo 'TurmasGUID' deve ser uma lista não vazia de UUIDs de turma",
+        })
+      );
+    }
+
+    if (!CategoriaNome || typeof CategoriaNome !== "string" || CategoriaNome.trim().length < 2 || CategoriaNome.trim().length > 100) {
+      return next(
+        new ErrorResponse(400, "CategoriaNome inválido", { message: "CategoriaNome deve ter entre 2 e 100 caracteres" })
+      );
+    }
+
+    next();
+  };
+
   static validarMoverItemBoardGeral = (req: Request, res: Response, next: NextFunction) => {
     console.log("🟡 CategoriaConteudoMiddleware.validarMoverItemBoardGeral()");
 
