@@ -47,6 +47,16 @@ export default function GerenciarCategoriasModal({ materiaGUID, onFechar }: Gere
 
   const [categoriaArrastando, setCategoriaArrastando] = useState<string | null>(null);
   const [itemArrastando, setItemArrastando] = useState<ItemBoardGeral | null>(null);
+  const [categoriasColapsadas, setCategoriasColapsadas] = useState<Set<string>>(new Set());
+
+  const alternarColapso = (chave: string) => {
+    setCategoriasColapsadas((prev) => {
+      const proximo = new Set(prev);
+      if (proximo.has(chave)) proximo.delete(chave);
+      else proximo.add(chave);
+      return proximo;
+    });
+  };
 
   useEffect(() => {
     void carregarBoard();
@@ -192,57 +202,90 @@ export default function GerenciarCategoriasModal({ materiaGUID, onFechar }: Gere
                 {(board?.Categorias.length ?? 0) === 0 && (
                   <p className={styles.mensagemVazia}>Nenhuma categoria criada ainda.</p>
                 )}
-                {board?.Categorias.map((categoria) => (
-                  <div
-                    key={categoria.CategoriaNome}
-                    className={styles.categoria}
-                    draggable
-                    onDragStart={() => handleCategoriaDragStart(categoria.CategoriaNome)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => void handleCategoriaDrop(categoria.CategoriaNome)}
-                  >
-                    <div className={styles.categoriaHeader}>
-                      <Icon name="folder" size={16} />
-                      <span>{categoria.CategoriaNome}</span>
-                    </div>
+                {board?.Categorias.map((categoria) => {
+                  const colapsada = categoriasColapsadas.has(categoria.CategoriaNome);
+                  return (
                     <div
-                      className={styles.categoriaItens}
-                      onDragOver={(e) => itemArrastando && e.preventDefault()}
-                      onDrop={(e) => {
-                        if (!itemArrastando) return;
-                        e.stopPropagation();
-                        void moverItemPara(categoria.CategoriaNome);
-                      }}
+                      key={categoria.CategoriaNome}
+                      className={styles.categoria}
+                      draggable
+                      onDragStart={() => handleCategoriaDragStart(categoria.CategoriaNome)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => void handleCategoriaDrop(categoria.CategoriaNome)}
                     >
-                      {categoria.Itens.length === 0 ? (
-                        <p className={styles.mensagemVaziaItens}>Arraste itens sem categoria pra cá.</p>
-                      ) : (
-                        categoria.Itens.map(renderItem)
+                      <div className={styles.categoriaHeader}>
+                        <Icon name="folder" size={16} />
+                        <span>{categoria.CategoriaNome}</span>
+                        <button
+                          type="button"
+                          className={styles.botaoColapsar}
+                          onClick={() => alternarColapso(categoria.CategoriaNome)}
+                          title={colapsada ? 'Expandir categoria' : 'Minimizar categoria'}
+                        >
+                          <Icon
+                            name="chevron-down"
+                            size={16}
+                            className={`${styles.iconeColapsar} ${colapsada ? styles.iconeColapsarFechado : ''}`}
+                          />
+                        </button>
+                      </div>
+                      {!colapsada && (
+                        <div
+                          className={styles.categoriaItens}
+                          onDragOver={(e) => itemArrastando && e.preventDefault()}
+                          onDrop={(e) => {
+                            if (!itemArrastando) return;
+                            e.stopPropagation();
+                            void moverItemPara(categoria.CategoriaNome);
+                          }}
+                        >
+                          {categoria.Itens.length === 0 ? (
+                            <p className={styles.mensagemVaziaItens}>Arraste itens sem categoria pra cá.</p>
+                          ) : (
+                            categoria.Itens.map(renderItem)
+                          )}
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              <div
-                className={styles.semCategoria}
-                onDragOver={(e) => itemArrastando && e.preventDefault()}
-                onDrop={(e) => {
-                  if (!itemArrastando) return;
-                  e.stopPropagation();
-                  void moverItemPara(null);
-                }}
-              >
+              <div className={styles.semCategoria}>
                 <div className={styles.categoriaHeader}>
                   <span>Sem categoria</span>
+                  <button
+                    type="button"
+                    className={styles.botaoColapsar}
+                    onClick={() => alternarColapso('__sem_categoria__')}
+                    title={categoriasColapsadas.has('__sem_categoria__') ? 'Expandir' : 'Minimizar'}
+                  >
+                    <Icon
+                      name="chevron-down"
+                      size={16}
+                      className={`${styles.iconeColapsar} ${
+                        categoriasColapsadas.has('__sem_categoria__') ? styles.iconeColapsarFechado : ''
+                      }`}
+                    />
+                  </button>
                 </div>
-                <div className={styles.categoriaItens}>
-                  {(board?.ItensSemCategoria.length ?? 0) === 0 ? (
-                    <p className={styles.mensagemVaziaItens}>Nenhum item sem categoria.</p>
-                  ) : (
-                    board?.ItensSemCategoria.map(renderItem)
-                  )}
-                </div>
+                {!categoriasColapsadas.has('__sem_categoria__') && (
+                  <div
+                    className={styles.categoriaItens}
+                    onDragOver={(e) => itemArrastando && e.preventDefault()}
+                    onDrop={(e) => {
+                      if (!itemArrastando) return;
+                      e.stopPropagation();
+                      void moverItemPara(null);
+                    }}
+                  >
+                    {(board?.ItensSemCategoria.length ?? 0) === 0 ? (
+                      <p className={styles.mensagemVaziaItens}>Nenhum item sem categoria.</p>
+                    ) : (
+                      board?.ItensSemCategoria.map(renderItem)
+                    )}
+                  </div>
+                )}
               </div>
             </>
           )}

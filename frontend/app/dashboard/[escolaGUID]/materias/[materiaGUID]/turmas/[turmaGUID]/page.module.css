@@ -1,6 +1,62 @@
 .container {
+  /* Tokens do Bauá Design System escopados localmente, mesmo padrão de
+     frontend/app/dashboard/[escolaGUID]/gestao-dados/page.module.css. */
+  --green-500: #17C077;
+  --gold-500: #FFC02E;
+  --gold-50: #FEF3E2;
+  --gold-700: #8A6A00;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --line-200: #E2EAE5;
+  --surface-muted: #F0F4F1;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
   min-height: 100%;
   font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-600);
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-500: #22D488;
+  --gold-500: #FFCB52;
+  --gold-50: #3A2C0F;
+  --gold-700: #FFD98A;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --line-200: #2A3A31;
+  --surface-muted: #16211C;
+  --surface-50: #0F1712;
+  --white: #16211C;
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-500: #2F6FED;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-500: #5B8CFF;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --line-200: #8A968E;
+  --surface-muted: #B7C1BA;
+  --gold-700: #6B5200;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --line-200: #7C8B82;
+  --surface-muted: #647268;
+  --gold-700: #FFE7B0;
 }
 
 .hero {
@@ -55,8 +111,8 @@
 }
 
 .avisoTurmaUnica {
-  background: #FEF3E2;
-  color: #8A6A00;
+  background: var(--gold-50, #FEF3E2);
+  color: var(--gold-700, #8A6A00);
   padding: 0.75rem 1rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
@@ -64,7 +120,7 @@
 }
 
 .categoria {
-  background: #fff;
+  background: var(--white, #fff);
   border-radius: 10px;
   margin-bottom: 1.25rem;
   box-shadow: 0 2px 8px rgba(15, 29, 23, 0.06);
@@ -80,14 +136,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.25rem;
-  background: #F5F9F6;
-  border-bottom: 1px solid #E2EAE5;
+  background: var(--surface-50, #F5F9F6);
+  border-bottom: 1px solid var(--line-200, #E2EAE5);
   cursor: grab;
 }
 
 .categoriaNome {
   font-weight: 700;
-  color: #0F1D17;
+  color: var(--ink-900, #0F1D17);
   font-size: 1.05rem;
 }
 
@@ -102,7 +158,7 @@
   height: 28px;
   border-radius: 50%;
   border: none;
-  background: #17C077;
+  background: var(--green-500, #17C077);
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -118,7 +174,7 @@
   position: absolute;
   top: 36px;
   right: 0;
-  background: #fff;
+  background: var(--white, #fff);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(15, 29, 23, 0.2);
   padding: 0.5rem;
@@ -140,7 +196,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #0F1D17;
+  color: var(--ink-900, #0F1D17);
 }
 
 .popoverNovoItem button:hover {
@@ -156,9 +212,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid #F0F4F1;
+  border-bottom: 1px solid var(--surface-muted, #F0F4F1);
   cursor: pointer;
   gap: 1rem;
+  color: var(--ink-900, #0F1D17);
 }
 
 .itemLinha:last-child {
@@ -166,7 +223,7 @@
 }
 
 .itemLinha:hover {
-  background: #F5F9F6;
+  background: var(--surface-50, #F5F9F6);
 }
 
 .itemEsquerda {
@@ -174,25 +231,26 @@
   align-items: center;
   gap: 0.6rem;
   min-width: 0;
+  color: var(--slate-600, #46564D);
 }
 
 .itemTitulo {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #0F1D17;
+  color: var(--ink-900, #0F1D17);
   font-size: 0.95rem;
 }
 
 .mensagemVazia {
   padding: 1.25rem;
-  color: #647268;
+  color: var(--slate-500, #647268);
   text-align: center;
   font-size: 0.9rem;
 }
 
 .mensagemSemCategoria {
   text-align: center;
-  color: #647268;
+  color: var(--slate-500, #647268);
   padding: 2rem;
 }

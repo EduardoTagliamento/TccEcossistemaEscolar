@@ -1,4 +1,11 @@
 .overlay {
+  /* Tokens do Bauá Design System escopados localmente, mesmo padrão de
+     frontend/app/dashboard/[escolaGUID]/chat/GerenciarGrupoModal.module.css. */
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --surface-muted: #F0F4F1;
+  --white: #FFFFFF;
+
   position: fixed;
   inset: 0;
   background: rgba(15, 29, 23, 0.6);
@@ -9,14 +16,33 @@
   padding: 1rem;
 }
 
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .overlay {
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --surface-muted: #16211C;
+  --white: #16211C;
+}
+
+:global(html[data-alto-contraste="true"]) .overlay {
+  --slate-600: #1A2620;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .overlay {
+  --slate-600: #FFFFFF;
+}
+
 .modal {
-  background: #fff;
+  background: var(--white, #fff);
   border-radius: 12px;
   max-width: 760px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
+  color: var(--slate-600, #46564D);
 }
 
 .header {
@@ -26,14 +52,14 @@
   padding: 1.5rem 1.5rem 0;
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--white, #fff);
   z-index: 1;
 }
 
 .titulo {
   font-size: 1.375rem;
   font-weight: 700;
-  color: #0F1D17;
+  color: var(--ink-900, #0F1D17);
 }
 
 .botaoFechar {
@@ -41,7 +67,8 @@
   height: 32px;
   border-radius: 50%;
   border: none;
-  background: #F0F4F1;
+  background: var(--surface-muted, #F0F4F1);
+  color: var(--slate-600, #46564D);
   cursor: pointer;
   display: flex;
   align-items: center;
