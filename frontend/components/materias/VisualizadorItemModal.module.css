@@ -82,6 +82,57 @@
   justify-content: center;
 }
 
+.painelEstatisticas {
+  background: var(--surface-muted, #F0F4F1);
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 0 2.5rem 1rem 0;
+  color: var(--ink-900, #0F1D17);
+  font-size: 0.9rem;
+}
+
+.estatisticasMedia {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.rankingLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.rankingItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--line-200, #E2EAE5);
+  font-size: 0.85rem;
+}
+
+.rankingPosicao {
+  width: 28px;
+  flex-shrink: 0;
+  color: var(--slate-500, #647268);
+  font-weight: 600;
+}
+
+.rankingNome {
+  flex: 1;
+  color: var(--ink-900, #0F1D17);
+}
+
+.rankingValor {
+  color: var(--slate-500, #647268);
+  white-space: nowrap;
+}
+
 .painelExclusao {
   background: var(--surface-muted, #F0F4F1);
   border: 1.5px solid var(--line-200, #E2EAE5);

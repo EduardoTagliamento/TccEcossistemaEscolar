@@ -87,6 +87,20 @@ export interface CategoriaConteudoCreateDTO {
   CategoriaNome: string;
 }
 
+export interface EstatisticaAlunoDTO {
+  MatriculaGUID: string;
+  AlunoNome: string;
+  /** 0-100, mesmo cálculo usado na barra de progresso (ver buscarCategoriasCompletas) */
+  Percentual: number;
+  Nota: number | null;
+}
+
+export interface EstatisticasItemDTO {
+  MediaPercentual: number;
+  /** Ordenado desc por Percentual — quem está na frente aparece primeiro */
+  Ranking: EstatisticaAlunoDTO[];
+}
+
 export default class CategoriaConteudoService {
   #categoriaDAO: CategoriaConteudoDAO;
   #materiaDAO: MateriaDAO;
@@ -1023,6 +1037,135 @@ export default class CategoriaConteudoService {
       [matricula.MatriculaGUID]
     );
     return rows.length > 0;
+  };
+
+  /**
+   * Estatísticas de um item (tarefa/conteúdo/prova) pra o professor: média de
+   * % da turma + ranking de alunos, na tela de visualização do item. Reusa o
+   * mesmo cálculo de Percentual já usado em buscarCategoriasCompletas (barra
+   * de progresso), só que pra TODOS os alunos ativos da turma de uma vez, em
+   * vez de só o usuário autenticado.
+   */
+  buscarEstatisticasItem = async (
+    usuarioCPF: string,
+    tipo: ItemTipo,
+    itemGUID: string,
+    turmaGUID: string
+  ): Promise<EstatisticasItemDTO> => {
+    console.log("🟣 CategoriaConteudoService.buscarEstatisticasItem()");
+
+    let materiaGUID: string;
+
+    if (tipo === "tarefa_digital" || tipo === "tarefa_presencial") {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT mpt.MateriaGUID
+         FROM tarefaacademica t
+         INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+         WHERE t.TarefaGUID = ? LIMIT 1`,
+        [itemGUID]
+      );
+      if (rows.length === 0) throw new ErrorResponse(404, "Tarefa não encontrada");
+      materiaGUID = (rows[0] as any).MateriaGUID;
+    } else if (tipo.startsWith("conteudo_")) {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT MateriaGUID FROM conteudo WHERE ConteudoGUID = ? LIMIT 1`,
+        [itemGUID]
+      );
+      if (rows.length === 0) throw new ErrorResponse(404, "Conteúdo não encontrado");
+      materiaGUID = (rows[0] as any).MateriaGUID;
+    } else {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT MateriaGUID FROM provaagendada WHERE ProvaAgendadaGUID = ? LIMIT 1`,
+        [itemGUID]
+      );
+      if (rows.length === 0) throw new ErrorResponse(404, "Prova não encontrada");
+      materiaGUID = (rows[0] as any).MateriaGUID;
+    }
+
+    const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT 1 FROM materiaxprofessorxturma
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [materiaGUID, turmaGUID, usuarioCPF]
+    );
+    if (alocacaoRows.length === 0) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está alocado nesta matéria/turma.",
+      });
+    }
+
+    let alunos: EstatisticaAlunoDTO[];
+
+    if (tipo === "tarefa_digital" || tipo === "tarefa_presencial") {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT m.MatriculaGUID, u.UsuarioNome, tm.TarefaFeito, tm.TarefaNota,
+                COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS Prazo
+         FROM matricula m
+         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         CROSS JOIN tarefaacademica t
+         LEFT JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID AND tm.MatriculaGUID = m.MatriculaGUID
+         WHERE t.TarefaGUID = ? AND m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
+        [itemGUID, turmaGUID]
+      );
+      alunos = (rows as any[]).map((row) => {
+        const nota = row.TarefaNota !== null && row.TarefaNota !== undefined ? Number(row.TarefaNota) : null;
+        const feito = Boolean(row.TarefaFeito);
+        const prazoPassou = row.Prazo ? new Date(row.Prazo).getTime() < Date.now() : false;
+
+        let percentual = 0;
+        if (nota !== null) percentual = Math.round((nota / 10) * 100);
+        else if (feito) percentual = 100;
+        else if (prazoPassou) percentual = 0;
+
+        return { MatriculaGUID: row.MatriculaGUID, AlunoNome: row.UsuarioNome, Percentual: percentual, Nota: nota };
+      });
+    } else if (tipo.startsWith("conteudo_")) {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT m.MatriculaGUID, u.UsuarioNome, cp.PercentualConcluido
+         FROM matricula m
+         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         LEFT JOIN conteudoprogresso cp ON cp.ConteudoGUID = ? AND cp.MatriculaGUID = m.MatriculaGUID
+         WHERE m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
+        [itemGUID, turmaGUID]
+      );
+      alunos = (rows as any[]).map((row) => ({
+        MatriculaGUID: row.MatriculaGUID,
+        AlunoNome: row.UsuarioNome,
+        Percentual: row.PercentualConcluido ?? 0,
+        Nota: null,
+      }));
+    } else {
+      // Prova: visualização é por ProvaAgendadaTurmaGUID, não pelo ProvaAgendadaGUID direto.
+      const [ptRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT ProvaAgendadaTurmaGUID FROM provaagendada_turma WHERE ProvaAgendadaGUID = ? AND TurmaGUID = ? LIMIT 1`,
+        [itemGUID, turmaGUID]
+      );
+      if (ptRows.length === 0) {
+        throw new ErrorResponse(404, "Prova não encontrada nesta turma");
+      }
+      const provaAgendadaTurmaGUID = (ptRows[0] as any).ProvaAgendadaTurmaGUID;
+
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT m.MatriculaGUID, u.UsuarioNome, pv.ProvaAgendadaVisualizacaoGUID
+         FROM matricula m
+         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         LEFT JOIN provaagendadavisualizacao pv ON pv.ProvaAgendadaTurmaGUID = ? AND pv.MatriculaGUID = m.MatriculaGUID
+         WHERE m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
+        [provaAgendadaTurmaGUID, turmaGUID]
+      );
+      alunos = (rows as any[]).map((row) => ({
+        MatriculaGUID: row.MatriculaGUID,
+        AlunoNome: row.UsuarioNome,
+        Percentual: row.ProvaAgendadaVisualizacaoGUID ? 100 : 0,
+        Nota: null,
+      }));
+    }
+
+    const mediaPercentual = alunos.length > 0
+      ? Math.round(alunos.reduce((soma, a) => soma + a.Percentual, 0) / alunos.length)
+      : 0;
+    const ranking = [...alunos].sort((a, b) => b.Percentual - a.Percentual);
+
+    return { MediaPercentual: mediaPercentual, Ranking: ranking };
   };
 
   excluirCategoria = async (guid: string, usuarioCPF: string): Promise<void> => {

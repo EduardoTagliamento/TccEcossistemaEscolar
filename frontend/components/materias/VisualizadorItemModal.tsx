@@ -64,6 +64,9 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const [alunoDetalheGUID, setAlunoDetalheGUID] = useState<string | null>(null);
   const [mostrarExclusao, setMostrarExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [mostrarEstatisticas, setMostrarEstatisticas] = useState(false);
+  const [estatisticas, setEstatisticas] = useState<MateriasModuloAPI.EstatisticasItem | null>(null);
+  const [carregandoEstatisticas, setCarregandoEstatisticas] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ultimoReporte = useRef(0);
   const youtubeContainerRef = useRef<HTMLDivElement>(null);
@@ -73,6 +76,8 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   useEffect(() => {
     setAbaAvaliacao('pendentes');
     setAlunoDetalheGUID(null);
+    setMostrarEstatisticas(false);
+    setEstatisticas(null);
     void carregarDetalhe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.ItemGUID]);
@@ -276,6 +281,22 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     }
   };
 
+  const alternarEstatisticas = async () => {
+    const abrindo = !mostrarEstatisticas;
+    setMostrarEstatisticas(abrindo);
+    if (!abrindo || estatisticas || carregandoEstatisticas) return;
+    try {
+      setCarregandoEstatisticas(true);
+      const dados = await MateriasModuloAPI.buscarEstatisticasItem(item.Tipo, item.ItemGUID, turmaGUID);
+      setEstatisticas(dados);
+    } catch (erro: any) {
+      alert(erro?.message || 'Erro ao carregar estatísticas');
+      setMostrarEstatisticas(false);
+    } finally {
+      setCarregandoEstatisticas(false);
+    }
+  };
+
   const avaliarEntrega = async (tarefaMatriculaGUID: string, notaTexto: string) => {
     const nota = Number(notaTexto);
     if (isNaN(nota) || nota < 0 || nota > 10) {
@@ -307,6 +328,9 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
         <div className={styles.acoesHeader}>
           {ehProfessor && !carregando && (
             <>
+              <button className={styles.botaoAcaoHeader} onClick={alternarEstatisticas} title="Estatísticas da turma">
+                <Icon name="bar-chart" size={16} />
+              </button>
               {onEditar && (
                 <button className={styles.botaoAcaoHeader} onClick={onEditar} title="Editar">
                   <Icon name="edit" size={16} />
@@ -325,6 +349,35 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
             <Icon name="x" size={18} />
           </button>
         </div>
+
+        {mostrarEstatisticas && (
+          <div className={styles.painelEstatisticas} onClick={(e) => e.stopPropagation()}>
+            {carregandoEstatisticas && <p className={styles.carregando}>Carregando estatísticas...</p>}
+            {!carregandoEstatisticas && estatisticas && (
+              <>
+                <p className={styles.estatisticasMedia}>
+                  <Icon name="bar-chart" size={16} /> Média da turma: <strong>{estatisticas.MediaPercentual}%</strong>
+                </p>
+                {estatisticas.Ranking.length === 0 ? (
+                  <p className={styles.hintFuturo}>Nenhum aluno matriculado ativamente nesta turma.</p>
+                ) : (
+                  <ol className={styles.rankingLista}>
+                    {estatisticas.Ranking.map((aluno, indice) => (
+                      <li key={aluno.MatriculaGUID} className={styles.rankingItem}>
+                        <span className={styles.rankingPosicao}>{indice + 1}º</span>
+                        <span className={styles.rankingNome}>{aluno.AlunoNome}</span>
+                        <span className={styles.rankingValor}>
+                          {aluno.Nota !== null ? `Nota ${aluno.Nota.toFixed(2)} · ` : ''}
+                          {aluno.Percentual}%
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {mostrarExclusao && (
           <div className={styles.painelExclusao} onClick={(e) => e.stopPropagation()}>
