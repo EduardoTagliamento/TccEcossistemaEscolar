@@ -210,15 +210,32 @@ export class TarefaAcademicaDAO {
     return result.affectedRows > 0;
   };
 
-  vincularAnexo = async (TarefaGUID: string, AnexoGUID: string, tipo: "tarefa" | "resposta"): Promise<void> => {
+  /**
+   * @param TarefaMatriculaGUID Só faz sentido pra tipo "resposta" (entrega do
+   * aluno) — é o que restringe o anexo à atribuição de UM aluno específico,
+   * em vez de ficar visível/misturado pra todos os alunos da mesma
+   * TarefaAcademica compartilhada. Material de apoio (tipo "tarefa") continua
+   * null, já que é intencionalmente compartilhado pela turma inteira.
+   */
+  vincularAnexo = async (
+    TarefaGUID: string,
+    AnexoGUID: string,
+    tipo: "tarefa" | "resposta",
+    TarefaMatriculaGUID: string | null = null
+  ): Promise<void> => {
     console.log("🟢 TarefaAcademicaDAO.vincularAnexo()");
 
+    // AnexoTipo no banco é ENUM('descricao', 'entrega') — os literais internos
+    // "tarefa"/"resposta" usados no resto do código não batem com o enum e
+    // seriam rejeitados (ou truncados pra '' fora de modo estrito) pelo MySQL.
+    const anexoTipoBanco = tipo === "tarefa" ? "descricao" : "entrega";
+
     const SQL = `
-      INSERT INTO relacaoanexostarefa (RelacaoAnexoTarefaGUID, AnexoGUID, TarefaGUID, AnexoTipo)
-      VALUES (UUID(), ?, ?, ?);
+      INSERT INTO relacaoanexostarefa (RelacaoAnexoTarefaGUID, AnexoGUID, TarefaGUID, TarefaMatriculaGUID, AnexoTipo)
+      VALUES (UUID(), ?, ?, ?, ?);
     `;
     const pool = await this.#database.getPool();
-    await pool.execute(SQL, [AnexoGUID, TarefaGUID, tipo]);
+    await pool.execute(SQL, [AnexoGUID, TarefaGUID, TarefaMatriculaGUID, anexoTipoBanco]);
   };
 
   desvincularAnexo = async (TarefaGUID: string, AnexoGUID: string): Promise<void> => {
@@ -227,6 +244,67 @@ export class TarefaAcademicaDAO {
     const SQL = "DELETE FROM relacaoanexostarefa WHERE TarefaGUID = ? AND AnexoGUID = ?;";
     const pool = await this.#database.getPool();
     await pool.execute(SQL, [TarefaGUID, AnexoGUID]);
+  };
+
+  /**
+   * Vínculo de anexo→tarefa (tipo + dono, quando for entrega) — usado pra
+   * validar ownership antes de desvincular (ver TarefaAcademicaService.removerAnexo).
+   */
+  buscarVinculoAnexo = async (
+    TarefaGUID: string,
+    AnexoGUID: string
+  ): Promise<{ AnexoTipo: "descricao" | "entrega"; TarefaMatriculaGUID: string | null } | null> => {
+    console.log("🟢 TarefaAcademicaDAO.buscarVinculoAnexo()");
+
+    const SQL = `
+      SELECT AnexoTipo, TarefaMatriculaGUID
+      FROM relacaoanexostarefa
+      WHERE TarefaGUID = ? AND AnexoGUID = ?
+      LIMIT 1;
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(SQL, [TarefaGUID, AnexoGUID]);
+    const row = rows[0] as any;
+    if (!row) return null;
+    return { AnexoTipo: row.AnexoTipo, TarefaMatriculaGUID: row.TarefaMatriculaGUID };
+  };
+
+  /**
+   * Anexos de entrega (resposta do aluno) por TarefaMatriculaGUID, em lote
+   * (evita N+1 ao montar a lista de alunos de uma tarefa). Usado tanto pro
+   * aluno ver o que ele mesmo já enviou quanto pelo professor ver a entrega
+   * de cada aluno individualmente — nunca uma lista compartilhada.
+   */
+  buscarAnexosEntregaPorMatricula = async (
+    tarefaMatriculaGUIDs: string[]
+  ): Promise<Map<string, Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; CreatedAt: Date | null }>>> => {
+    console.log("🟢 TarefaAcademicaDAO.buscarAnexosEntregaPorMatricula()");
+
+    const unicos = Array.from(new Set(tarefaMatriculaGUIDs));
+    const mapa = new Map<string, Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; CreatedAt: Date | null }>>();
+    if (unicos.length === 0) return mapa;
+
+    const placeholders = unicos.map(() => "?").join(", ");
+    const SQL = `
+      SELECT rat.TarefaMatriculaGUID, a.AnexoGUID, a.AnexoNomeOriginal, a.AnexoTamanho, a.CreatedAt
+      FROM relacaoanexostarefa rat
+      INNER JOIN anexo a ON a.AnexoGUID = rat.AnexoGUID
+      WHERE rat.TarefaMatriculaGUID IN (${placeholders}) AND rat.AnexoTipo = 'entrega'
+      ORDER BY a.CreatedAt ASC;
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(SQL, unicos);
+    for (const row of rows as any[]) {
+      const lista = mapa.get(row.TarefaMatriculaGUID) ?? [];
+      lista.push({
+        AnexoGUID: row.AnexoGUID,
+        AnexoNomeOriginal: row.AnexoNomeOriginal,
+        AnexoTamanho: row.AnexoTamanho,
+        CreatedAt: row.CreatedAt ?? null,
+      });
+      mapa.set(row.TarefaMatriculaGUID, lista);
+    }
+    return mapa;
   };
 
   /**

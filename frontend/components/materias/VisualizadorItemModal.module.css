@@ -177,3 +177,80 @@
   border: 1.5px solid var(--line-200, #E2EAE5);
   border-radius: 6px;
 }
+
+.alunoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.alunoNome {
+  font-weight: 600;
+  color: var(--ink-900, #0F1D17);
+}
+
+.alunoStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--slate-500, #647268);
+}
+
+.entregaDigital {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.statusEntregue {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #17C077;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.inputArquivo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border: 1.5px dashed var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--slate-600, #46564D);
+}
+
+.botaoEnviarEntrega {
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: #17C077;
+  color: #FFFFFF;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botaoEnviarEntrega:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.anexoEntregado {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #17C077;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-align: left;
+}

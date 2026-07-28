@@ -34,9 +34,20 @@ export interface TarefaAcademicaDTO {
   UpdatedAt: string | null;
 }
 
+export interface AnexoEntregaResumoDTO {
+  AnexoGUID: string;
+  AnexoNomeOriginal: string | null;
+  AnexoTamanho: number | null;
+  CreatedAt: string | null;
+}
+
 export interface MatriculaAtribuidaDTO {
   TarefaMatriculaGUID: string;
   MatriculaGUID: string;
+  /** Nome do aluno dono da matrícula — resolvido via JOIN matricula+usuario, null se o aluno foi removido. */
+  AlunoNome: string | null;
+  /** Anexos de entrega enviados por ESTE aluno (nunca de outros alunos da mesma tarefa). */
+  AnexosEntrega: AnexoEntregaResumoDTO[];
   /** Prazo efetivo deste aluno: override (agendamento automático) ou o prazo compartilhado da tarefa */
   TarefaPrazoData: string;
   TarefaFeito: boolean;
@@ -366,7 +377,13 @@ export default class TarefaAcademicaService {
     return tarefasCompletas;
   };
 
-  buscarTarefa = async (TarefaGUID: string): Promise<TarefaAcademicaDTO> => {
+  /**
+   * @param usuarioCPFFiltro Quando informado, restringe `MatriculasAtribuidas` à
+   * matrícula pertencente a esse CPF — usado quando um aluno consulta a própria
+   * tarefa (uma linha de TarefaAcademica é compartilhada por N alunos da turma;
+   * sem esse filtro, todo aluno veria a lista completa de colegas).
+   */
+  buscarTarefa = async (TarefaGUID: string, usuarioCPFFiltro?: string): Promise<TarefaAcademicaDTO> => {
     console.log("🟣 TarefaAcademicaService.buscarTarefa()");
 
     const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
@@ -377,7 +394,16 @@ export default class TarefaAcademicaService {
       });
     }
 
-    const atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
+    let atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
+
+    if (usuarioCPFFiltro) {
+      const infoPorMatricula = await this.#buscarInfoPorMatricula(
+        atribuicoes.map((atrib) => atrib.MatriculaGUID)
+      );
+      atribuicoes = atribuicoes.filter(
+        (atrib) => infoPorMatricula.get(atrib.MatriculaGUID)?.UsuarioCPF === usuarioCPFFiltro
+      );
+    }
 
     return this.toDTO(tarefa, atribuicoes);
   };
@@ -629,9 +655,14 @@ export default class TarefaAcademicaService {
       });
     }
 
+    const infoPorMatricula = await this.#buscarInfoPorMatricula([atribuicaoAtualizada.MatriculaGUID]);
+    const anexosPorMatricula = await this.#tarefaDAO.buscarAnexosEntregaPorMatricula([atribuicaoAtualizada.TarefaMatriculaGUID]);
+
     return {
       TarefaMatriculaGUID: atribuicaoAtualizada.TarefaMatriculaGUID,
       MatriculaGUID: atribuicaoAtualizada.MatriculaGUID,
+      AlunoNome: infoPorMatricula.get(atribuicaoAtualizada.MatriculaGUID)?.UsuarioNome ?? null,
+      AnexosEntrega: this.#mapAnexosEntrega(anexosPorMatricula.get(atribuicaoAtualizada.TarefaMatriculaGUID) ?? []),
       TarefaPrazoData: (
         atribuicaoAtualizada.TarefaPrazoDataMatricula ?? tarefa!.TarefaPrazoData
       ).toISOString(),
@@ -728,9 +759,14 @@ export default class TarefaAcademicaService {
       }
     }
 
+    const infoPorMatricula = await this.#buscarInfoPorMatricula([atribuicaoAtualizada.MatriculaGUID]);
+    const anexosPorMatricula = await this.#tarefaDAO.buscarAnexosEntregaPorMatricula([atribuicaoAtualizada.TarefaMatriculaGUID]);
+
     return {
       TarefaMatriculaGUID: atribuicaoAtualizada.TarefaMatriculaGUID,
       MatriculaGUID: atribuicaoAtualizada.MatriculaGUID,
+      AlunoNome: infoPorMatricula.get(atribuicaoAtualizada.MatriculaGUID)?.UsuarioNome ?? null,
+      AnexosEntrega: this.#mapAnexosEntrega(anexosPorMatricula.get(atribuicaoAtualizada.TarefaMatriculaGUID) ?? []),
       TarefaPrazoData: (atribuicaoAtualizada.TarefaPrazoDataMatricula ?? tarefa.TarefaPrazoData).toISOString(),
       TarefaFeito: atribuicaoAtualizada.TarefaFeito,
       TarefaRealizacaoData: atribuicaoAtualizada.TarefaRealizacaoData
@@ -893,7 +929,29 @@ export default class TarefaAcademicaService {
       });
     }
 
-    await this.#tarefaDAO.vincularAnexo(TarefaGUID, AnexoGUID, "resposta");
+    if (anexo.UsuarioCPF !== usuarioCPF) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você só pode enviar como entrega um anexo que você mesmo enviou.",
+      });
+    }
+
+    // Resolve a atribuição (TarefaAcademicaMatricula) do aluno autenticado
+    // dentro desta tarefa — uma TarefaAcademica é compartilhada por N alunos
+    // da turma, então a entrega precisa ficar amarrada à atribuição de UM
+    // aluno específico (TarefaMatriculaGUID), nunca só ao TarefaGUID.
+    const atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
+    const infoPorMatricula = await this.#buscarInfoPorMatricula(atribuicoes.map((a) => a.MatriculaGUID));
+    const minhaAtribuicao = atribuicoes.find(
+      (a) => infoPorMatricula.get(a.MatriculaGUID)?.UsuarioCPF === usuarioCPF
+    );
+
+    if (!minhaAtribuicao) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está atribuído a esta tarefa.",
+      });
+    }
+
+    await this.#tarefaDAO.vincularAnexo(TarefaGUID, AnexoGUID, "resposta", minhaAtribuicao.TarefaMatriculaGUID);
 
     this.#notificarTarefaRespostaRecebida(tarefa, usuarioCPF).catch((error) => {
       console.error("🔴 TarefaAcademicaService.#notificarTarefaRespostaRecebida() falhou:", error);
@@ -920,18 +978,114 @@ export default class TarefaAcademicaService {
       });
     }
 
+    const vinculo = await this.#tarefaDAO.buscarVinculoAnexo(TarefaGUID, AnexoGUID);
+    if (!vinculo) {
+      throw new ErrorResponse(404, "Anexo não encontrado", {
+        message: "Este anexo não está vinculado a esta tarefa.",
+      });
+    }
+
+    if (vinculo.AnexoTipo === "entrega") {
+      // Entrega: só o próprio aluno dono da atribuição pode remover.
+      const infoPorMatricula = vinculo.TarefaMatriculaGUID
+        ? await this.#buscarInfoPorMatriculaTarefa([vinculo.TarefaMatriculaGUID])
+        : new Map<string, { UsuarioCPF: string; UsuarioNome: string }>();
+      const donoCPF = vinculo.TarefaMatriculaGUID
+        ? infoPorMatricula.get(vinculo.TarefaMatriculaGUID)?.UsuarioCPF
+        : undefined;
+
+      if (donoCPF !== usuarioCPF) {
+        throw new ErrorResponse(403, "Sem permissão", {
+          message: "Você só pode remover a própria entrega.",
+        });
+      }
+    } else {
+      // Material de apoio (descrição): só o professor responsável pela tarefa.
+      const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
+      if (!alocacao || alocacao.UsuarioCPF !== usuarioCPF) {
+        throw new ErrorResponse(403, "Sem permissão", {
+          message: "Só o professor responsável por esta tarefa pode remover o material de apoio.",
+        });
+      }
+    }
+
     await this.#tarefaDAO.desvincularAnexo(TarefaGUID, AnexoGUID);
   };
 
   // ========== Métodos Auxiliares ==========
 
   /**
+   * Resolve MatriculaGUID -> {UsuarioCPF, UsuarioNome} em uma única query
+   * (evita N+1 ao montar MatriculasAtribuidas). Usado pela tela de avaliação
+   * do professor (nome em vez do GUID cru da matrícula) e para filtrar
+   * "minha matrícula" quando um aluno consulta a própria tarefa.
+   */
+  #buscarInfoPorMatricula = async (
+    matriculaGUIDs: string[]
+  ): Promise<Map<string, { UsuarioCPF: string; UsuarioNome: string }>> => {
+    const unicos = Array.from(new Set(matriculaGUIDs));
+    if (unicos.length === 0) return new Map();
+
+    const placeholders = unicos.map(() => "?").join(", ");
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT m.MatriculaGUID, u.UsuarioCPF, u.UsuarioNome
+       FROM matricula m
+       INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+       WHERE m.MatriculaGUID IN (${placeholders})`,
+      unicos
+    );
+
+    return new Map(rows.map((row: any) => [row.MatriculaGUID, { UsuarioCPF: row.UsuarioCPF, UsuarioNome: row.UsuarioNome }]));
+  };
+
+  /**
+   * Igual a #buscarInfoPorMatricula, mas indexado por TarefaMatriculaGUID em
+   * vez de MatriculaGUID — usado onde só se tem a atribuição em mãos (ex.:
+   * validar dono de um anexo de entrega em removerAnexo).
+   */
+  #buscarInfoPorMatriculaTarefa = async (
+    tarefaMatriculaGUIDs: string[]
+  ): Promise<Map<string, { UsuarioCPF: string; UsuarioNome: string }>> => {
+    const unicos = Array.from(new Set(tarefaMatriculaGUIDs));
+    if (unicos.length === 0) return new Map();
+
+    const placeholders = unicos.map(() => "?").join(", ");
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT tm.TarefaMatriculaGUID, u.UsuarioCPF, u.UsuarioNome
+       FROM tarefaacademica_matricula tm
+       INNER JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
+       INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+       WHERE tm.TarefaMatriculaGUID IN (${placeholders})`,
+      unicos
+    );
+
+    return new Map(rows.map((row: any) => [row.TarefaMatriculaGUID, { UsuarioCPF: row.UsuarioCPF, UsuarioNome: row.UsuarioNome }]));
+  };
+
+  #mapAnexosEntrega = (
+    lista: Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; CreatedAt: Date | null }>
+  ): AnexoEntregaResumoDTO[] =>
+    lista.map((anexo) => ({
+      AnexoGUID: anexo.AnexoGUID,
+      AnexoNomeOriginal: anexo.AnexoNomeOriginal,
+      AnexoTamanho: anexo.AnexoTamanho,
+      CreatedAt: anexo.CreatedAt ? new Date(anexo.CreatedAt).toISOString() : null,
+    }));
+
+  /**
    * Converte TarefaAcademica + Atribuições para TarefaAcademicaDTO (normalizado)
    */
-  private toDTO(
+  private toDTO = async (
     tarefa: TarefaAcademica,
     atribuicoes: TarefaAcademicaMatricula[]
-  ): TarefaAcademicaDTO {
+  ): Promise<TarefaAcademicaDTO> => {
+    const infoPorMatricula = await this.#buscarInfoPorMatricula(
+      atribuicoes.map((atrib) => atrib.MatriculaGUID)
+    );
+    const anexosPorMatricula = await this.#tarefaDAO.buscarAnexosEntregaPorMatricula(
+      atribuicoes.map((atrib) => atrib.TarefaMatriculaGUID)
+    );
+
     const dto = {
       TarefaGUID: tarefa.TarefaGUID,
       matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
@@ -947,6 +1101,8 @@ export default class TarefaAcademicaService {
       MatriculasAtribuidas: atribuicoes.map((atrib) => ({
         TarefaMatriculaGUID: atrib.TarefaMatriculaGUID,
         MatriculaGUID: atrib.MatriculaGUID,
+        AlunoNome: infoPorMatricula.get(atrib.MatriculaGUID)?.UsuarioNome ?? null,
+        AnexosEntrega: this.#mapAnexosEntrega(anexosPorMatricula.get(atrib.TarefaMatriculaGUID) ?? []),
         TarefaPrazoData: (atrib.TarefaPrazoDataMatricula ?? tarefa.TarefaPrazoData).toISOString(),
         TarefaFeito: atrib.TarefaFeito,
         TarefaRealizacaoData: atrib.TarefaRealizacaoData
@@ -961,5 +1117,5 @@ export default class TarefaAcademicaService {
     };
 
     return dto;
-  }
+  };
 }
