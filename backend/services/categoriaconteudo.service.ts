@@ -38,6 +38,12 @@ export interface CategoriaCompletaDTO {
   Itens: ItemCategoriaDTO[];
 }
 
+export interface CategoriasCompletasResultDTO {
+  categorias: CategoriaCompletaDTO[];
+  /** Itens com CategoriaGUID NULL — sobraram de uma categoria excluída, nunca some junto com ela. */
+  itensSemCategoria: ItemCategoriaDTO[];
+}
+
 export interface TurmaBoardGeralDTO {
   TurmaGUID: string;
   TurmaNome: string;
@@ -104,7 +110,7 @@ export default class CategoriaConteudoService {
     materiaGUID: string,
     turmaGUID: string,
     usuarioCPF: string
-  ): Promise<CategoriaCompletaDTO[]> => {
+  ): Promise<CategoriasCompletasResultDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarCategoriasCompletas()");
 
     const categorias = await this.#categoriaDAO.findAll({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
@@ -210,12 +216,15 @@ export default class CategoriaConteudoService {
       });
     }
 
-    return categorias.map((categoria) => ({
-      CategoriaGUID: categoria.CategoriaGUID,
-      CategoriaNome: categoria.CategoriaNome || "",
-      Ordem: categoria.Ordem,
-      Itens: (mapaItens.get(categoria.CategoriaGUID) ?? []).sort((a, b) => a.ItemOrdem - b.ItemOrdem),
-    }));
+    return {
+      categorias: categorias.map((categoria) => ({
+        CategoriaGUID: categoria.CategoriaGUID,
+        CategoriaNome: categoria.CategoriaNome || "",
+        Ordem: categoria.Ordem,
+        Itens: (mapaItens.get(categoria.CategoriaGUID) ?? []).sort((a, b) => a.ItemOrdem - b.ItemOrdem),
+      })),
+      itensSemCategoria: (mapaItens.get("__sem_categoria__") ?? []).sort((a, b) => a.ItemOrdem - b.ItemOrdem),
+    };
   };
 
   /**
@@ -230,7 +239,7 @@ export default class CategoriaConteudoService {
     turmaGUID: string,
     categoriaDestinoGUID: string,
     itens: { ItemGUID: string; Tipo: ItemTipo }[]
-  ): Promise<CategoriaCompletaDTO[]> => {
+  ): Promise<CategoriasCompletasResultDTO> => {
     console.log("🟣 CategoriaConteudoService.reordenarItens()");
 
     const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
@@ -510,6 +519,89 @@ export default class CategoriaConteudoService {
       categoria.Ordem = maiorOrdem + 1;
       await this.#categoriaDAO.create(categoria);
     }
+  };
+
+  /**
+   * Renomeia a categoria "geral" — todas as linhas do professor nessa
+   * matéria com o nome atual, uma por turma ativa (não existe 1 CategoriaGUID
+   * único pra essa "categoria", é o conjunto de linhas com o mesmo nome — ver
+   * comentário do board geral acima). Turmas onde já existe outra categoria
+   * com o nome novo são puladas (não sobrescreve), pra não colidir.
+   */
+  atualizarCategoriaGeral = async (
+    usuarioCPF: string,
+    materiaGUID: string,
+    categoriaNomeAtual: string,
+    novoNome: string
+  ): Promise<{ turmasAtualizadas: number }> => {
+    console.log("🟣 CategoriaConteudoService.atualizarCategoriaGeral()");
+
+    const nomeAtual = categoriaNomeAtual.trim();
+    const nome = novoNome.trim();
+    if (nome.length < 2 || nome.length > 100) {
+      throw new ErrorResponse(400, "CategoriaNome inválido", {
+        message: "CategoriaNome deve ter entre 2 e 100 caracteres",
+      });
+    }
+
+    const turmas = await this.#turmasAtivasDoProfessor(usuarioCPF, materiaGUID);
+    if (turmas.length === 0) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está alocado em nenhuma turma ativa nesta matéria.",
+      });
+    }
+
+    let turmasAtualizadas = 0;
+    for (const turma of turmas) {
+      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nomeAtual);
+      if (!existente) continue;
+
+      const conflito = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nome);
+      if (conflito && conflito.CategoriaGUID !== existente.CategoriaGUID) continue;
+
+      await this.#categoriaDAO.update(existente.CategoriaGUID, nome);
+      turmasAtualizadas++;
+    }
+
+    if (turmasAtualizadas === 0) {
+      throw new ErrorResponse(404, "Categoria não encontrada", {
+        message: `Nenhuma turma ativa tem uma categoria chamada "${nomeAtual}".`,
+      });
+    }
+
+    return { turmasAtualizadas };
+  };
+
+  /**
+   * Exclui a categoria "geral" — todas as linhas do professor nessa matéria
+   * com esse nome, uma por turma ativa. Reaproveita excluirCategoria (já
+   * desvincula os itens antes de excluir cada linha) linha a linha.
+   */
+  excluirCategoriaGeral = async (
+    usuarioCPF: string,
+    materiaGUID: string,
+    categoriaNome: string
+  ): Promise<{ turmasExcluidas: number }> => {
+    console.log("🟣 CategoriaConteudoService.excluirCategoriaGeral()");
+
+    const nome = categoriaNome.trim();
+    const turmas = await this.#turmasAtivasDoProfessor(usuarioCPF, materiaGUID);
+
+    let turmasExcluidas = 0;
+    for (const turma of turmas) {
+      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nome);
+      if (!existente) continue;
+      await this.excluirCategoria(existente.CategoriaGUID, usuarioCPF);
+      turmasExcluidas++;
+    }
+
+    if (turmasExcluidas === 0) {
+      throw new ErrorResponse(404, "Categoria não encontrada", {
+        message: `Nenhuma turma ativa tem uma categoria chamada "${nome}".`,
+      });
+    }
+
+    return { turmasExcluidas };
   };
 
   /** Nome mais frequente entre as ocorrências (desempate: primeira encontrada). Usado quando o mesmo item aparece em turmas com categoria divergente. */
@@ -949,7 +1041,24 @@ export default class CategoriaConteudoService {
       });
     }
 
-    await this.#categoriaDAO.delete(guid);
+    // As 3 FKs de CategoriaGUID (tarefaacademica/conteudoturma/provaagendada_turma)
+    // são RESTRICT — sem desvincular antes, o DELETE abaixo estouraria um erro
+    // de constraint sempre que a categoria tivesse algum item. Itens caem pra
+    // "sem categoria" (CategoriaGUID = NULL) em vez de serem apagados junto.
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(`UPDATE tarefaacademica SET CategoriaGUID = NULL WHERE CategoriaGUID = ?`, [guid]);
+      await connection.execute(`UPDATE conteudoturma SET CategoriaGUID = NULL WHERE CategoriaGUID = ?`, [guid]);
+      await connection.execute(`UPDATE provaagendada_turma SET CategoriaGUID = NULL WHERE CategoriaGUID = ?`, [guid]);
+      await connection.execute(`DELETE FROM categoriaconteudo WHERE CategoriaGUID = ?`, [guid]);
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   };
 
   private toDTO(categoria: CategoriaConteudo): CategoriaConteudoDTO {

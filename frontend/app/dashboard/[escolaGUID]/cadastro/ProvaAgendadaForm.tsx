@@ -57,6 +57,8 @@ interface ProvaAgendadaFormProps {
   materiaGUIDInicial?: string;
   turmaGUIDInicial?: string;
   categoriaGUIDInicial?: string;
+  /** Quando informado, carrega essa prova e abre direto no modo edição — usado pelo ícone de editar do visualizador. */
+  editarGUIDInicial?: string;
   ocultarListagem?: boolean;
   onCriado?: () => void;
 }
@@ -65,6 +67,7 @@ export default function ProvaAgendadaForm({
   materiaGUIDInicial,
   turmaGUIDInicial,
   categoriaGUIDInicial,
+  editarGUIDInicial,
   ocultarListagem = false,
   onCriado,
 }: ProvaAgendadaFormProps = {}) {
@@ -354,6 +357,28 @@ export default function ProvaAgendadaForm({
       });
   }, [categoriaGUIDQuery, turmaGUIDQuery, form.MateriaGUID]);
 
+  // Carrega uma prova existente e abre direto no modo edição — usado quando
+  // este form é embutido no modal de edição (ícone de lápis do visualizador),
+  // em vez do fluxo normal de clicar "Editar" na listagem interna.
+  const editarGUIDAplicadoRef = useRef(false);
+  useEffect(() => {
+    if (editarGUIDAplicadoRef.current || !editarGUIDInicial || !usuario) return;
+    editarGUIDAplicadoRef.current = true;
+    (async () => {
+      try {
+        const response = await fetch(`/api/prova/${editarGUIDInicial}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.message || 'Erro ao carregar prova');
+        editarProva(data.data.prova);
+      } catch (err: any) {
+        setErro(err?.message || 'Falha ao carregar prova para edição');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editarGUIDInicial, usuario, token]);
+
   const nomeDaTurma = (turmaGUID: string): string => {
     for (const serie of series) {
       const turma = serie.turmas.find((t) => t.TurmaGUID === turmaGUID);
@@ -506,6 +531,7 @@ export default function ProvaAgendadaForm({
         alert('Prova atualizada com sucesso!');
         limparFormulario();
         await carregarProvas();
+        onCriado?.();
         return;
       }
 

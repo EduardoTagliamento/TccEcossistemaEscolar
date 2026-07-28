@@ -163,12 +163,18 @@ export interface CategoriaCompleta {
   Itens: ItemCategoria[];
 }
 
-export async function buscarCategoriasCompletas(materiaGUID: string, turmaGUID: string): Promise<CategoriaCompleta[]> {
+export interface CategoriasCompletasResultado {
+  categorias: CategoriaCompleta[];
+  /** Itens órfãos (categoria excluída) — nunca somem junto com a categoria. */
+  itensSemCategoria: ItemCategoria[];
+}
+
+export async function buscarCategoriasCompletas(materiaGUID: string, turmaGUID: string): Promise<CategoriasCompletasResultado> {
   const response = await fetch(`${API_URL}/categoria-conteudo/completas/${materiaGUID}/${turmaGUID}`, {
     headers: getHeaders(),
   });
   const dados = await extrairDados(response, 'Erro ao buscar categorias');
-  return dados.categorias;
+  return { categorias: dados.categorias, itensSemCategoria: dados.itensSemCategoria || [] };
 }
 
 export async function temPendencia(materiaGUID: string, turmaGUID: string, ehProfessor: boolean): Promise<boolean> {

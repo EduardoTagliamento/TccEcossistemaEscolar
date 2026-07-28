@@ -58,10 +58,18 @@
   color: var(--slate-600, #46564D);
 }
 
-.botaoFechar {
+.acoesHeader {
   position: absolute;
   top: 1rem;
   right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 1;
+}
+
+.botaoFechar,
+.botaoAcaoHeader {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -72,6 +80,39 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.painelExclusao {
+  background: var(--surface-muted, #F0F4F1);
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 0 2.5rem 1rem 0;
+  color: var(--ink-900, #0F1D17);
+  font-size: 0.9rem;
+}
+
+.painelExclusaoAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.painelExclusaoAcoes button {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  background: var(--white, #fff);
+  color: var(--slate-600, #46564D);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.botaoExcluirConfirmar {
+  border-color: #E5484D !important;
+  background: #E5484D !important;
+  color: #fff !important;
 }
 
 .carregando {

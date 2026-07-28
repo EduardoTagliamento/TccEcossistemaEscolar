@@ -428,6 +428,13 @@ export default class TarefaAcademicaService {
       });
     }
 
+    const alocacaoAtualizar = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
+    if (!alocacaoAtualizar || alocacaoAtualizar.UsuarioCPF !== usuarioCPF) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Só o professor responsável por esta tarefa pode atualizá-la.",
+      });
+    }
+
     // VALIDAÇÃO: TarefaCompartilhada é IMUTÁVEL
     // Não pode ser alterado após criação (dados já podem ter grupos criados)
     // Campo não deve estar presente no UpdateDTO, mas validamos por segurança
@@ -562,6 +569,13 @@ export default class TarefaAcademicaService {
     if (!tarefa) {
       throw new ErrorResponse(404, "Tarefa não encontrada", {
         message: `Não existe tarefa com id ${TarefaGUID}`,
+      });
+    }
+
+    const alocacaoExcluir = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
+    if (!alocacaoExcluir || alocacaoExcluir.UsuarioCPF !== usuarioCPF) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Só o professor responsável por esta tarefa pode excluí-la.",
       });
     }
 

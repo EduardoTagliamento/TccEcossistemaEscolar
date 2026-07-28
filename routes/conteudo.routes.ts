@@ -51,7 +51,12 @@ export default class ConteudoRoteador {
 
     this.#router.get("/:guid", ConteudoMiddleware.validarGUID, this.#controller.show);
 
+    this.#router.put("/:guid", ConteudoMiddleware.validarGUID, this.#controller.update);
+
     this.#router.delete("/:guid", ConteudoMiddleware.validarGUID, this.#controller.destroy);
+
+    // DELETE /api/conteudo/:guid/turma/:turmaGUID — excluir só desta turma
+    this.#router.delete("/:guid/turma/:turmaGUID", ConteudoMiddleware.validarGUID, this.#controller.destroyDeTurma);
 
     // Progresso de consumo (aluno)
     this.#router.post("/:guid/progresso/video", ConteudoMiddleware.validarGUID, this.#progressoController.registrarVideo);

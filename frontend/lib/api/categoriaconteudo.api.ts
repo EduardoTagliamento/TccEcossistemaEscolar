@@ -253,3 +253,37 @@ export async function excluirCategoria(categoriaGUID: string): Promise<void> {
     throw new Error(result.message || 'Erro ao excluir categoria');
   }
 }
+
+/** Renomeia em TODAS as turmas ativas do professor que têm uma categoria com esse nome (não só a turma atual). */
+export async function atualizarCategoriaGeral(
+  materiaGUID: string,
+  categoriaNomeAtual: string,
+  novoNome: string
+): Promise<{ turmasAtualizadas: number }> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/geral/renomear`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ MateriaGUID: materiaGUID, CategoriaNomeAtual: categoriaNomeAtual, NovoNome: novoNome }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao renomear categoria em todas as turmas');
+  }
+  return result.data;
+}
+
+/** Exclui em TODAS as turmas ativas do professor que têm uma categoria com esse nome (não só a turma atual). */
+export async function excluirCategoriaGeral(materiaGUID: string, categoriaNome: string): Promise<{ turmasExcluidas: number }> {
+  const params = new URLSearchParams({ MateriaGUID: materiaGUID, CategoriaNome: categoriaNome });
+  const response = await fetch(`${API_URL}/categoria-conteudo/geral?${params.toString()}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao excluir categoria em todas as turmas');
+  }
+  return result.data;
+}

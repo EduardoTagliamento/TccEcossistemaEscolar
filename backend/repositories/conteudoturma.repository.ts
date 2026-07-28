@@ -56,6 +56,15 @@ export default class ConteudoTurmaDAO {
     return result.affectedRows;
   }
 
+  /** Remove só o vínculo com UMA turma — "excluir só desta turma" (mantém as demais). */
+  async deleteOne(conteudoGUID: string, turmaGUID: string): Promise<boolean> {
+    const sql = `DELETE FROM conteudoturma WHERE ConteudoGUID = ? AND TurmaGUID = ?`;
+    const pool = await this.#database.getPool();
+    const [result] = await pool.execute<ResultSetHeader>(sql, [conteudoGUID, turmaGUID]);
+
+    return result.affectedRows > 0;
+  }
+
   private mapRowToEntity(row: RowDataPacket): ConteudoTurma {
     const atribuicao = new ConteudoTurma();
     atribuicao.ConteudoTurmaGUID = row.ConteudoTurmaGUID;
