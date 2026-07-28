@@ -8,6 +8,7 @@ import type { ItemCategoria } from '@/lib/api/materiasmodulo.api';
 import * as AnexoAPI from '@/lib/api/anexo.api';
 import * as TarefaAcademicaAPI from '@/lib/api/tarefaacademica.api';
 import { carregarYoutubeIframeAPI, YOUTUBE_PLAYER_STATE } from '@/lib/youtube/youtubeIframeApi';
+import { exportarParaExcel } from '@/lib/exportarExcel';
 import styles from './VisualizadorItemModal.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -297,6 +298,22 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     }
   };
 
+  const exportarEstatisticasExcel = () => {
+    if (!estatisticas) return;
+    const linhas = estatisticas.Ranking.map((aluno, indice) => ({
+      Posição: indice + 1,
+      Nome: aluno.AlunoNome,
+      MatriculaGUID: aluno.MatriculaGUID,
+      'Percentual (%)': aluno.Percentual,
+      Nota: aluno.Nota ?? '',
+    }));
+    // Sanitiza pro nome do arquivo — qualquer caractere fora de a-Z0-9 (acento,
+    // espaço, símbolo) já cai fora, não precisa de um passo separado de acento.
+    const tituloItem = tarefaDetalhe?.TarefaTitulo || conteudo?.ConteudoTitulo || provaDetalhe?.ProvaDescricao || 'estatisticas';
+    const nomeBase = tituloItem.replace(/[^a-zA-Z0-9]+/g, '-');
+    exportarParaExcel(`estatisticas-${nomeBase}`, 'Estatísticas', linhas);
+  };
+
   const avaliarEntrega = async (tarefaMatriculaGUID: string, notaTexto: string) => {
     const nota = Number(notaTexto);
     if (isNaN(nota) || nota < 0 || nota > 10) {
@@ -355,9 +372,16 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
             {carregandoEstatisticas && <p className={styles.carregando}>Carregando estatísticas...</p>}
             {!carregandoEstatisticas && estatisticas && (
               <>
-                <p className={styles.estatisticasMedia}>
-                  <Icon name="bar-chart" size={16} /> Média da turma: <strong>{estatisticas.MediaPercentual}%</strong>
-                </p>
+                <div className={styles.estatisticasCabecalho}>
+                  <p className={styles.estatisticasMedia}>
+                    <Icon name="bar-chart" size={16} /> Média da turma: <strong>{estatisticas.MediaPercentual}%</strong>
+                  </p>
+                  {estatisticas.Ranking.length > 0 && (
+                    <button className={styles.botaoExportar} onClick={exportarEstatisticasExcel} title="Exportar para Excel">
+                      <Icon name="download" size={14} /> Exportar
+                    </button>
+                  )}
+                </div>
                 {estatisticas.Ranking.length === 0 ? (
                   <p className={styles.hintFuturo}>Nenhum aluno matriculado ativamente nesta turma.</p>
                 ) : (
