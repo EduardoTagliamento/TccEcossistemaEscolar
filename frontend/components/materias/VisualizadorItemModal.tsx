@@ -27,9 +27,15 @@ function extrairYoutubeId(url: string): string | null {
   return match ? match[1] : null;
 }
 
-type AbaAvaliacao = 'pendentes' | 'avaliados' | 'sem_postagem';
+type AbaAvaliacao = 'pendentes' | 'avaliados' | 'atrasados' | 'sem_postagem';
 
+// Atrasado é checado ANTES de avaliado: o scheduler zera automaticamente
+// quem perde o prazo sem entregar (TarefaFeito continua false, só ganha
+// TarefaNota=0) — sem essa ordem, esses caem em "avaliados" e ficam
+// indistinguíveis de uma correção manual do professor.
 function categorizarAluno(m: any): AbaAvaliacao {
+  const atrasada = !m.TarefaFeito && new Date(m.TarefaPrazoData) < new Date();
+  if (atrasada) return 'atrasados';
   if (m.TarefaNota !== null && m.TarefaNota !== undefined) return 'avaliados';
   if (m.TarefaFeito) return 'pendentes';
   return 'sem_postagem';
@@ -93,7 +99,13 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
         const response = await fetch(`${API_URL}/prova/${item.ItemGUID}`, { headers: getHeaders() });
         const resultado = await response.json();
         setProvaDetalhe(resultado?.data?.prova);
-        if (!ehProfessor && item.RefTurmaGUID) {
+        // Sem gate de ehProfessor — mesmo padrão de texto/vídeo (nunca checam
+        // o papel aqui): o backend já resolve a matrícula pelo CPF autenticado
+        // e devolve 404 (silencioso, pego pelo catch abaixo) se não houver
+        // nenhuma. Gatear por ehProfessor deixava de registrar progresso pra
+        // contas com os dois papéis (professor + aluno), que têm matrícula
+        // válida mas eram tratadas só como professor aqui.
+        if (item.RefTurmaGUID) {
           await MateriasModuloAPI.registrarVisualizacaoProva(item.RefTurmaGUID);
           onProgressoAtualizado();
         }
@@ -181,10 +193,17 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const paginas = conteudo?.Paginado?.Arquivos.slice().sort((a, b) => a.Ordem - b.Ordem) || [];
 
   useEffect(() => {
-    if (item.Tipo === 'conteudo_imagem' && paginas.length > 0 && !ehProfessor) {
+    // Sem gate de ehProfessor — mesmo motivo do registro de visualização de
+    // prova acima: o backend já resolve a matrícula pelo CPF, gatear aqui só
+    // quebrava contas com os dois papéis (professor + aluno).
+    if (item.Tipo === 'conteudo_imagem' && paginas.length > 0) {
       const pagina = paginas[paginaAtual];
       if (pagina) {
-        void MateriasModuloAPI.registrarProgressoPagina(pagina.ConteudoPaginadoArquivoGUID).then(onProgressoAtualizado);
+        void MateriasModuloAPI.registrarProgressoPagina(pagina.ConteudoPaginadoArquivoGUID)
+          .then(onProgressoAtualizado)
+          .catch(() => {
+            // Sem matrícula ativa (ex.: conta só-professor abrindo o item) — no-op silencioso, mesmo padrão de texto/prova.
+          });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -465,6 +484,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
               const grupos: Record<AbaAvaliacao, any[]> = {
                 pendentes: alunos.filter((m) => categorizarAluno(m) === 'pendentes'),
                 avaliados: alunos.filter((m) => categorizarAluno(m) === 'avaliados'),
+                atrasados: alunos.filter((m) => categorizarAluno(m) === 'atrasados'),
                 sem_postagem: alunos.filter((m) => categorizarAluno(m) === 'sem_postagem'),
               };
               const listaAtual = grupos[abaAvaliacao];
@@ -472,6 +492,9 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
                 ? listaAtual.findIndex((m) => m.TarefaMatriculaGUID === alunoDetalheGUID)
                 : -1;
               const alunoAtual = indiceAtual >= 0 ? listaAtual[indiceAtual] : null;
+              const alunoAtualAtrasado = Boolean(
+                alunoAtual && !alunoAtual.TarefaFeito && new Date(alunoAtual.TarefaPrazoData) < new Date()
+              );
 
               const abrirAba = (aba: AbaAvaliacao) => {
                 setAbaAvaliacao(aba);
@@ -506,6 +529,12 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
                       onClick={() => abrirAba('avaliados')}
                     >
                       Avaliados ({grupos.avaliados.length})
+                    </button>
+                    <button
+                      className={abaAvaliacao === 'atrasados' ? styles.abaAtiva : styles.aba}
+                      onClick={() => abrirAba('atrasados')}
+                    >
+                      Atrasados ({grupos.atrasados.length})
                     </button>
                     <button
                       className={abaAvaliacao === 'sem_postagem' ? styles.abaAtiva : styles.aba}
@@ -595,6 +624,13 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
                             onBlur={(e) => e.target.value && avaliarEntrega(alunoAtual.TarefaMatriculaGUID, e.target.value)}
                           />
                         </div>
+                      ) : alunoAtualAtrasado ? (
+                        <p className={styles.hintFuturo}>
+                          <Icon name="lock" size={14} />
+                          {alunoAtual.TarefaNota !== null && alunoAtual.TarefaNota !== undefined
+                            ? ` Prazo vencido sem entrega — nota zerada automaticamente (${Number(alunoAtual.TarefaNota).toFixed(2)}).`
+                            : ' Prazo vencido sem entrega — a nota será zerada automaticamente em breve (verificação a cada 5 minutos).'}
+                        </p>
                       ) : (
                         <p className={styles.hintFuturo}>
                           <Icon name="alert-triangle" size={14} /> Ainda não é possível avaliar — o aluno não entregou/marcou esta tarefa.
