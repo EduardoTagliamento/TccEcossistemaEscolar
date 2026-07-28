@@ -51,6 +51,36 @@ export class CategoriaConteudoController {
     }
   };
 
+  // GET /api/categoria-conteudo/estatisticas/:tipo/:itemGUID/:turmaGUID
+  buscarEstatisticasItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.buscarEstatisticasItem()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { tipo, itemGUID, turmaGUID } = req.params;
+      const tiposValidos = ["tarefa_digital", "tarefa_presencial", "conteudo_video", "conteudo_texto", "conteudo_imagem", "prova"];
+      if (!tiposValidos.includes(tipo)) {
+        res.status(400).json({ success: false, message: "Tipo de item inválido", data: null });
+        return;
+      }
+
+      const estatisticas = await this.#categoriaService.buscarEstatisticasItem(
+        usuarioCPF,
+        tipo as any,
+        itemGUID,
+        turmaGUID
+      );
+
+      res.json({ success: true, message: "Estatísticas obtidas com sucesso", data: estatisticas });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // GET /api/categoria-conteudo/completas/:materiaGUID/:turmaGUID
   buscarCategoriasCompletas = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.buscarCategoriasCompletas()");

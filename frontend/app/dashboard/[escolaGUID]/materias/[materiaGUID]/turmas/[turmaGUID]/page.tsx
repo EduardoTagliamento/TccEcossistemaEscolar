@@ -405,7 +405,7 @@ function CategoriaPageConteudo() {
                       <Icon name={ICONE_POR_TIPO[item.Tipo]} size={16} />
                       <span className={styles.itemTitulo}>{item.Titulo}</span>
                     </div>
-                    <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />
+                    {!ehProfessor && <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />}
                   </div>
                 ))
               )}
@@ -432,7 +432,7 @@ function CategoriaPageConteudo() {
                     <Icon name={ICONE_POR_TIPO[item.Tipo]} size={16} />
                     <span className={styles.itemTitulo}>{item.Titulo}</span>
                   </div>
-                  <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />
+                  {!ehProfessor && <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />}
                 </div>
               ))}
             </div>

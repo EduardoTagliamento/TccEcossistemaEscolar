@@ -177,6 +177,27 @@ export async function buscarCategoriasCompletas(materiaGUID: string, turmaGUID: 
   return { categorias: dados.categorias, itensSemCategoria: dados.itensSemCategoria || [] };
 }
 
+// ==================== Estatísticas (professor) ====================
+
+export interface EstatisticaAluno {
+  MatriculaGUID: string;
+  AlunoNome: string;
+  Percentual: number;
+  Nota: number | null;
+}
+
+export interface EstatisticasItem {
+  MediaPercentual: number;
+  Ranking: EstatisticaAluno[];
+}
+
+export async function buscarEstatisticasItem(tipo: ItemTipo, itemGUID: string, turmaGUID: string): Promise<EstatisticasItem> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/estatisticas/${tipo}/${itemGUID}/${turmaGUID}`, {
+    headers: getHeaders(),
+  });
+  return extrairDados(response, 'Erro ao buscar estatísticas');
+}
+
 export async function temPendencia(materiaGUID: string, turmaGUID: string, ehProfessor: boolean): Promise<boolean> {
   const response = await fetch(
     `${API_URL}/categoria-conteudo/tem-pendencia/${materiaGUID}/${turmaGUID}?EhProfessor=${ehProfessor}`,
