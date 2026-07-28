@@ -197,4 +197,28 @@ export default class ProvaAgendadaControl {
       next(error);
     }
   };
+
+  /**
+   * DELETE /api/prova/:ProvaAgendadaGUID/turma/:TurmaGUID
+   * "Excluir só desta turma" — se for a última turma restante, cai pra exclusão completa.
+   */
+  destroyDeTurma = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 ProvaAgendadaControl.destroyDeTurma()");
+    try {
+      const { ProvaAgendadaGUID, TurmaGUID } = request.params;
+      const usuarioCPF = request.user?.UsuarioCPF;
+
+      const resultado = await this.#provaService.removerProvaDeTurma(ProvaAgendadaGUID, TurmaGUID, usuarioCPF);
+
+      response.status(200).json({
+        success: true,
+        message: resultado.provaExcluidaPorCompleto
+          ? "Prova excluída (era a única turma restante)"
+          : "Prova removida desta turma",
+        data: resultado,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

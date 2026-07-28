@@ -132,6 +132,33 @@ export class ConteudoController {
     }
   };
 
+  // PUT /api/conteudo/:guid — só título/descrição (dados compartilhados por todas as turmas)
+  update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 ConteudoController.update()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { conteudo } = req.body;
+      const conteudoAtualizado = await this.#conteudoService.atualizarConteudo(
+        req.params.guid,
+        { ConteudoTitulo: conteudo?.ConteudoTitulo, ConteudoDescricao: conteudo?.ConteudoDescricao },
+        usuarioCPF
+      );
+
+      res.json({
+        success: true,
+        message: "Conteúdo atualizado com sucesso",
+        data: { conteudo: conteudoAtualizado },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // DELETE /api/conteudo/:guid
   destroy = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 ConteudoController.destroy()");
@@ -148,6 +175,37 @@ export class ConteudoController {
         success: true,
         message: "Conteúdo excluído com sucesso",
         data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /api/conteudo/:guid/turma/:turmaGUID
+   * "Excluir só desta turma" — se for a última turma restante, cai pra exclusão completa.
+   */
+  destroyDeTurma = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 ConteudoController.destroyDeTurma()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const resultado = await this.#conteudoService.removerConteudoDeTurma(
+        req.params.guid,
+        req.params.turmaGUID,
+        usuarioCPF
+      );
+
+      res.json({
+        success: true,
+        message: resultado.conteudoExcluidoPorCompleto
+          ? "Conteúdo excluído (era a única turma restante)"
+          : "Conteúdo removido desta turma",
+        data: resultado,
       });
     } catch (error) {
       next(error);

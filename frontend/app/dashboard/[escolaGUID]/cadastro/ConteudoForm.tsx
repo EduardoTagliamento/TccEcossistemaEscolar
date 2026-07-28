@@ -50,6 +50,8 @@ interface ConteudoFormProps {
   materiaGUIDInicial?: string;
   turmaGUIDInicial?: string;
   categoriaGUIDInicial?: string;
+  /** Quando informado, carrega esse conteúdo e abre direto no modo edição — usado pelo ícone de editar do visualizador. Só título/descrição são editáveis (mídia/turmas exigem um conteúdo novo). */
+  editarGUIDInicial?: string;
   /** Esconde a seção "Conteúdos publicados" — usado quando embutido no modal do "+". */
   ocultarListagem?: boolean;
   /** Chamado após criar com sucesso — usado pelo modal do "+" pra fechar e atualizar a tela de categorias. */
@@ -60,6 +62,7 @@ export default function ConteudoForm({
   materiaGUIDInicial,
   turmaGUIDInicial,
   categoriaGUIDInicial,
+  editarGUIDInicial,
   ocultarListagem = false,
   onCriado,
 }: ConteudoFormProps = {}) {
@@ -94,6 +97,7 @@ export default function ConteudoForm({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [editingGUID, setEditingGUID] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     MatProfTurGUID: '',
@@ -262,6 +266,28 @@ export default function ConteudoForm({
       });
   }, [categoriaGUIDQuery, turmaGUIDQuery, materiaSelecionada]);
 
+  // Carrega um conteúdo existente e abre direto no modo edição — usado quando
+  // este form é embutido no modal de edição (ícone de lápis do visualizador).
+  // Só título/descrição são editáveis por este endpoint (ver backend).
+  const editarGUIDAplicadoRef = useRef(false);
+  useEffect(() => {
+    if (editarGUIDAplicadoRef.current || !editarGUIDInicial || !usuario) return;
+    editarGUIDAplicadoRef.current = true;
+    (async () => {
+      try {
+        const conteudo = await ConteudoAPI.buscarConteudo(editarGUIDInicial);
+        setEditingGUID(conteudo.ConteudoGUID);
+        setForm((prev) => ({
+          ...prev,
+          ConteudoTitulo: conteudo.ConteudoTitulo,
+          ConteudoDescricao: conteudo.ConteudoDescricao || '',
+        }));
+      } catch (err: any) {
+        setErro(err?.message || 'Falha ao carregar conteúdo para edição');
+      }
+    })();
+  }, [editarGUIDInicial, usuario]);
+
   const toggleSerie = (serieIndex: number) => {
     setSeries((prev) => prev.map((serie, idx) => (idx === serieIndex ? { ...serie, expanded: !serie.expanded } : serie)));
   };
@@ -351,6 +377,23 @@ export default function ConteudoForm({
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setErro(null);
+
+    if (editingGUID) {
+      setSubmitting(true);
+      try {
+        await ConteudoAPI.atualizarConteudo(editingGUID, {
+          ConteudoTitulo: form.ConteudoTitulo,
+          ConteudoDescricao: form.ConteudoDescricao,
+        });
+        alert('Conteúdo atualizado com sucesso!');
+        onCriado?.();
+      } catch (err: any) {
+        setErro(err?.message || 'Falha ao atualizar conteúdo');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     try {
       if (!materiaSelecionada) {
@@ -467,7 +510,15 @@ export default function ConteudoForm({
       {erro && <p className={styles.error}>{erro}</p>}
 
       <form className={styles.form} onSubmit={onSubmit}>
+        {editingGUID && (
+          <p className={styles.hint}>
+            Editando conteúdo existente — só título e descrição podem ser alterados aqui (mídia e turmas exigem publicar um conteúdo novo).
+          </p>
+        )}
+
         {/* Matéria */}
+        {!editingGUID && (
+        <>
         <div className={styles.formGroup}>
           <label>Matéria *</label>
           {loading ? (
@@ -527,6 +578,8 @@ export default function ConteudoForm({
             {totalTurmasSelecionadas === 0 ? 'Selecionar Turmas' : `${totalTurmasSelecionadas} turma(s) selecionada(s)`}
           </button>
         </div>
+        </>
+        )}
 
         <input
           placeholder="Título *"
@@ -540,6 +593,8 @@ export default function ConteudoForm({
           onChange={(e) => setForm((prev) => ({ ...prev, ConteudoDescricao: e.target.value }))}
         />
 
+        {!editingGUID && (
+        <>
         {/* Tipo de conteúdo */}
         <div className={styles.formGroup}>
           <label>Tipo de conteúdo *</label>
@@ -692,11 +747,25 @@ export default function ConteudoForm({
             </>
           )}
         </div>
+        </>
+        )}
 
         <div className={styles.actions}>
-          <button type="submit" disabled={submitting || totalTurmasSelecionadas === 0}>
-            {submitting ? 'Publicando...' : 'Publicar Conteúdo'}
+          <button type="submit" disabled={submitting || (!editingGUID && totalTurmasSelecionadas === 0)}>
+            {submitting ? 'Salvando...' : editingGUID ? 'Salvar alterações' : 'Publicar Conteúdo'}
           </button>
+          {editingGUID && (
+            <button
+              type="button"
+              className={styles.selectButton}
+              onClick={() => {
+                setEditingGUID(null);
+                limparFormulario();
+              }}
+            >
+              Cancelar edição
+            </button>
+          )}
         </div>
       </form>
 

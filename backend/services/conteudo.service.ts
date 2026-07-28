@@ -7,7 +7,7 @@ import ConteudoTurma from "../entities/conteudoturma.model";
 import ConteudoCronometrado, { ConteudoCronometradoOrigem } from "../entities/conteudocronometrado.model";
 import ConteudoTexto from "../entities/conteudotexto.model";
 import ConteudoPaginadoArquivo from "../entities/conteudopaginadoarquivo.model";
-import { ConteudoDAO, ConteudoFilters } from "../repositories/conteudo.repository";
+import { ConteudoDAO, ConteudoFilters, ConteudoUpdateFields } from "../repositories/conteudo.repository";
 import ConteudoTurmaDAO from "../repositories/conteudoturma.repository";
 import { ConteudoCronometradoDAO } from "../repositories/conteudocronometrado.repository";
 import { ConteudoTextoDAO } from "../repositories/conteudotexto.repository";
@@ -24,6 +24,8 @@ import { getAuditoriaService } from "./auditoria.service";
 
 export interface ConteudoTurmaDTO {
   TurmaGUID: string;
+  TurmaNome: string;
+  TurmaSerie: string;
   ConteudoDataPublicacao: string; // efetiva: override ?? compartilhada
 }
 
@@ -73,6 +75,11 @@ export interface ConteudoCreateDTO {
 
   // tipo "texto"
   ConteudoHtml?: string;
+}
+
+export interface ConteudoUpdateDTO {
+  ConteudoTitulo?: string;
+  ConteudoDescricao?: string;
 }
 
 export interface ConteudoArquivos {
@@ -387,6 +394,60 @@ export default class ConteudoService {
     return this.montarDTO(conteudo);
   };
 
+  /**
+   * Edição limitada a título/descrição (dados compartilhados por todas as
+   * turmas) — trocar o payload de mídia (vídeo/texto/imagens) ou as turmas
+   * distribuídas não é suportado por este endpoint, é um novo Conteudo.
+   */
+  atualizarConteudo = async (guid: string, data: ConteudoUpdateDTO, usuarioCPF: string): Promise<ConteudoDTO> => {
+    console.log("🟣 ConteudoService.atualizarConteudo()");
+
+    const conteudo = await this.#conteudoDAO.findById(guid);
+    if (!conteudo) {
+      throw new ErrorResponse(404, "Conteúdo não encontrado", {
+        message: `Não existe conteúdo com id ${guid}`,
+      });
+    }
+
+    if (conteudo.UsuarioCPF !== usuarioCPF) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você só pode editar conteúdos que você mesmo criou.",
+      });
+    }
+
+    const updates: ConteudoUpdateFields = {};
+    if (data.ConteudoTitulo !== undefined) {
+      const titulo = data.ConteudoTitulo.trim();
+      if (!titulo) {
+        throw new ErrorResponse(400, "Título inválido", { message: "O título não pode ficar vazio." });
+      }
+      updates.ConteudoTitulo = titulo;
+    }
+    if (data.ConteudoDescricao !== undefined) {
+      updates.ConteudoDescricao = data.ConteudoDescricao.trim() || null;
+    }
+
+    await this.#conteudoDAO.update(guid, updates);
+
+    const atribuicoes = await this.#conteudoTurmaDAO.findByConteudo(guid);
+    if (atribuicoes.length > 0) {
+      const turma = await this.#turmaDAO.findById(atribuicoes[0].TurmaGUID);
+      if (turma) {
+        void getAuditoriaService().registrar({
+          EscolaGUID: turma.EscolaGUID,
+          UsuarioCPFAtor: usuarioCPF,
+          AcaoTipo: "Update",
+          EntidadeTipo: "conteudo",
+          EntidadeGUID: guid,
+          EntidadeDescricao: updates.ConteudoTitulo ?? conteudo.ConteudoTitulo,
+          CategoriaAuditoriaId: 2,
+        });
+      }
+    }
+
+    return this.buscarConteudo(guid);
+  };
+
   excluirConteudo = async (guid: string, usuarioCPF: string): Promise<void> => {
     console.log("🟣 ConteudoService.excluirConteudo()");
 
@@ -448,8 +509,65 @@ export default class ConteudoService {
     });
   };
 
+  /**
+   * Excluir conteúdo de UMA turma só (mantém as demais) — se for a última
+   * turma restante, cai pra exclusão completa (reaproveita excluirConteudo,
+   * incluindo limpeza de arquivos no R2 e cascade das subtabelas).
+   */
+  removerConteudoDeTurma = async (
+    guid: string,
+    turmaGUID: string,
+    usuarioCPF: string
+  ): Promise<{ conteudoExcluidoPorCompleto: boolean }> => {
+    console.log("🟣 ConteudoService.removerConteudoDeTurma()");
+
+    const conteudo = await this.#conteudoDAO.findById(guid);
+    if (!conteudo) {
+      throw new ErrorResponse(404, "Conteúdo não encontrado", {
+        message: `Não existe conteúdo com id ${guid}`,
+      });
+    }
+
+    if (conteudo.UsuarioCPF !== usuarioCPF) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você só pode excluir conteúdos que você mesmo criou.",
+      });
+    }
+
+    const atribuicoes = await this.#conteudoTurmaDAO.findByConteudo(guid);
+    const pertence = atribuicoes.some((a) => a.TurmaGUID === turmaGUID);
+    if (!pertence) {
+      throw new ErrorResponse(404, "Vínculo não encontrado", {
+        message: "Este conteúdo não está distribuído para esta turma.",
+      });
+    }
+
+    if (atribuicoes.length === 1) {
+      await this.excluirConteudo(guid, usuarioCPF);
+      return { conteudoExcluidoPorCompleto: true };
+    }
+
+    const turma = await this.#turmaDAO.findById(turmaGUID);
+    await this.#conteudoTurmaDAO.deleteOne(guid, turmaGUID);
+
+    if (turma) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: turma.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Delete",
+        EntidadeTipo: "conteudo",
+        EntidadeGUID: guid,
+        EntidadeDescricao: `${conteudo.ConteudoTitulo} — removido da turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
+        CategoriaAuditoriaId: 2,
+      });
+    }
+
+    return { conteudoExcluidoPorCompleto: false };
+  };
+
   private montarDTO = async (conteudo: Conteudo): Promise<ConteudoDTO> => {
     const atribuicoes = await this.#conteudoTurmaDAO.findByConteudo(conteudo.ConteudoGUID);
+    const turmas = await Promise.all(atribuicoes.map((a) => this.#turmaDAO.findById(a.TurmaGUID)));
 
     const dto: ConteudoDTO = {
       ConteudoGUID: conteudo.ConteudoGUID,
@@ -460,8 +578,10 @@ export default class ConteudoService {
       ConteudoTipo: conteudo.ConteudoTipo,
       ConteudoDescricao: conteudo.ConteudoDescricao,
       ConteudoDataPublicacao: conteudo.ConteudoDataPublicacao.toISOString(),
-      Turmas: atribuicoes.map((a) => ({
+      Turmas: atribuicoes.map((a, i) => ({
         TurmaGUID: a.TurmaGUID,
+        TurmaNome: turmas[i]?.TurmaNome ?? "",
+        TurmaSerie: turmas[i]?.TurmaSerie ?? "",
         ConteudoDataPublicacao: (a.ConteudoDataPublicacaoTurma ?? conteudo.ConteudoDataPublicacao).toISOString(),
       })),
       CreatedAt: conteudo.CreatedAt ? conteudo.CreatedAt.toISOString() : null,

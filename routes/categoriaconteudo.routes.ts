@@ -49,6 +49,16 @@ export default class CategoriaConteudoRoteador {
       CategoriaConteudoMiddleware.validarResolverCategoriaPorNome,
       this.#controller.resolverCategoriaPorNome
     );
+    this.#router.patch(
+      "/geral/renomear",
+      CategoriaConteudoMiddleware.validarAtualizarCategoriaGeral,
+      this.#controller.atualizarCategoriaGeral
+    );
+    this.#router.delete(
+      "/geral",
+      CategoriaConteudoMiddleware.validarExcluirCategoriaGeral,
+      this.#controller.excluirCategoriaGeral
+    );
     this.#router.get("/completas/:materiaGUID/:turmaGUID", this.#controller.buscarCategoriasCompletas);
     this.#router.get("/tem-pendencia/:materiaGUID/:turmaGUID", this.#controller.temPendencia);
     this.#router.get("/tem-pendencia-agregado", this.#controller.temPendenciaAgregada);

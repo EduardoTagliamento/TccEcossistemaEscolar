@@ -76,6 +76,8 @@ interface TarefaFormProps {
   materiaGUIDInicial?: string;
   turmaGUIDInicial?: string;
   categoriaGUIDInicial?: string;
+  /** Quando informado, carrega essa tarefa e abre direto no modo edição — usado pelo ícone de editar do visualizador. */
+  editarGUIDInicial?: string;
   ocultarListagem?: boolean;
   onCriado?: () => void;
 }
@@ -84,6 +86,7 @@ export default function TarefaForm({
   materiaGUIDInicial,
   turmaGUIDInicial,
   categoriaGUIDInicial,
+  editarGUIDInicial,
   ocultarListagem = false,
   onCriado,
 }: TarefaFormProps = {}) {
@@ -474,6 +477,28 @@ export default function TarefaForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoriaGUIDQuery, turmaGUIDQuery, form.matXprofXturxescGUID, materiasUnicas]);
 
+  // Carrega uma tarefa existente e abre direto no modo edição — usado quando
+  // este form é embutido no modal de edição (ícone de lápis do visualizador),
+  // em vez do fluxo normal de clicar "Editar" na listagem interna.
+  const editarGUIDAplicadoRef = useRef(false);
+  useEffect(() => {
+    if (editarGUIDAplicadoRef.current || !editarGUIDInicial || !usuario) return;
+    editarGUIDAplicadoRef.current = true;
+    (async () => {
+      try {
+        const response = await fetch(`/api/tarefa/${editarGUIDInicial}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.message || 'Erro ao carregar tarefa');
+        editarTarefa(data.data.tarefa);
+      } catch (err: any) {
+        setErro(err?.message || 'Falha ao carregar tarefa para edição');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editarGUIDInicial, usuario, token]);
+
   // diasOverride permite passar o dia escolhido sem depender do state (que
   // ainda não teria sido atualizado se chamado logo após um setResultadosCalculo)
   const handleCalcularDatas = async (diasOverride?: Record<string, DiaSemana>) => {
@@ -631,6 +656,7 @@ export default function TarefaForm({
         alert('Tarefa atualizada com sucesso!');
         limparFormulario();
         await carregarTarefas();
+        onCriado?.();
         return;
       }
 

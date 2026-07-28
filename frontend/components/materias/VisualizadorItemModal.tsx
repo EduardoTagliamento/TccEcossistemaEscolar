@@ -39,11 +39,14 @@ interface VisualizadorItemModalProps {
   item: ItemCategoria;
   ehProfessor: boolean;
   escolaGUID: string;
+  turmaGUID: string;
   onFechar: () => void;
   onProgressoAtualizado: () => void;
+  /** Ícone de lápis (só professor) — fecha este visualizador e abre o modal de edição. */
+  onEditar?: () => void;
 }
 
-export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, onFechar, onProgressoAtualizado }: VisualizadorItemModalProps) {
+export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, turmaGUID, onFechar, onProgressoAtualizado, onEditar }: VisualizadorItemModalProps) {
   const [carregando, setCarregando] = useState(true);
   const [conteudo, setConteudo] = useState<ConteudoAPI.Conteudo | null>(null);
   const [tarefaDetalhe, setTarefaDetalhe] = useState<any>(null);
@@ -53,6 +56,8 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, o
   const [enviandoEntrega, setEnviandoEntrega] = useState(false);
   const [abaAvaliacao, setAbaAvaliacao] = useState<AbaAvaliacao>('pendentes');
   const [alunoDetalheGUID, setAlunoDetalheGUID] = useState<string | null>(null);
+  const [mostrarExclusao, setMostrarExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ultimoReporte = useRef(0);
   const youtubeContainerRef = useRef<HTMLDivElement>(null);
@@ -219,6 +224,39 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, o
     }
   };
 
+  // Conteúdo/prova são fan-out (mesmo item em N turmas via ConteudoTurma/
+  // ProvaAgendadaTurma) — dá pra excluir só o vínculo desta turma ou o item
+  // inteiro. Tarefa é sempre de 1 turma só (decisão de arquitetura), então
+  // não tem essa escolha: exclui direto.
+  const excluirItem = async (todasAsTurmas: boolean) => {
+    setExcluindo(true);
+    try {
+      if (item.Tipo.startsWith('conteudo_')) {
+        if (todasAsTurmas) {
+          await ConteudoAPI.excluirConteudo(item.ItemGUID);
+        } else {
+          await ConteudoAPI.removerConteudoDeTurma(item.ItemGUID, turmaGUID);
+        }
+      } else if (item.Tipo === 'prova') {
+        const url = todasAsTurmas
+          ? `${API_URL}/prova/${item.ItemGUID}`
+          : `${API_URL}/prova/${item.ItemGUID}/turma/${turmaGUID}`;
+        const response = await fetch(url, { method: 'DELETE', headers: getHeaders() });
+        const resultado = await response.json();
+        if (!resultado.success) throw new Error(resultado.message);
+      } else {
+        const response = await fetch(`${API_URL}/tarefa/${item.ItemGUID}`, { method: 'DELETE', headers: getHeaders() });
+        const resultado = await response.json();
+        if (!resultado.success) throw new Error(resultado.message);
+      }
+      onProgressoAtualizado();
+      onFechar();
+    } catch (erro: any) {
+      alert(erro?.message || 'Erro ao excluir item');
+      setExcluindo(false);
+    }
+  };
+
   const avaliarEntrega = async (tarefaMatriculaGUID: string, notaTexto: string) => {
     const nota = Number(notaTexto);
     if (isNaN(nota) || nota < 0 || nota > 10) {
@@ -237,12 +275,72 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, o
     }
   };
 
+  const turmasDoItem: { TurmaGUID: string; TurmaNome: string; TurmaSerie: string }[] =
+    item.Tipo.startsWith('conteudo_')
+      ? conteudo?.Turmas || []
+      : item.Tipo === 'prova'
+        ? provaDetalhe?.TurmasAtribuidasDetalhe || []
+        : [];
+
   return (
     <div className={styles.overlay} onClick={onFechar}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <button className={styles.botaoFechar} onClick={onFechar}>
-          <Icon name="x" size={18} />
-        </button>
+        <div className={styles.acoesHeader}>
+          {ehProfessor && !carregando && (
+            <>
+              {onEditar && (
+                <button className={styles.botaoAcaoHeader} onClick={onEditar} title="Editar">
+                  <Icon name="edit" size={16} />
+                </button>
+              )}
+              <button
+                className={styles.botaoAcaoHeader}
+                onClick={() => setMostrarExclusao((atual) => !atual)}
+                title="Excluir"
+              >
+                <Icon name="trash" size={16} />
+              </button>
+            </>
+          )}
+          <button className={styles.botaoFechar} onClick={onFechar}>
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+
+        {mostrarExclusao && (
+          <div className={styles.painelExclusao} onClick={(e) => e.stopPropagation()}>
+            {item.Tipo.startsWith('tarefa_') ? (
+              <>
+                <p>Excluir esta tarefa? Essa ação não pode ser desfeita.</p>
+                <div className={styles.painelExclusaoAcoes}>
+                  <button disabled={excluindo} onClick={() => excluirItem(true)} className={styles.botaoExcluirConfirmar}>
+                    {excluindo ? 'Excluindo...' : 'Excluir'}
+                  </button>
+                  <button disabled={excluindo} onClick={() => setMostrarExclusao(false)}>Cancelar</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p>
+                  Este item está em {turmasDoItem.length} turma{turmasDoItem.length === 1 ? '' : 's'}
+                  {turmasDoItem.length > 0 && (
+                    <>: {turmasDoItem.map((t) => `${t.TurmaSerie} ${t.TurmaNome}`).join(', ')}</>
+                  )}
+                  . Excluir de onde?
+                </p>
+                <div className={styles.painelExclusaoAcoes}>
+                  <button disabled={excluindo} onClick={() => excluirItem(false)}>
+                    {excluindo ? 'Excluindo...' : 'Só desta turma'}
+                  </button>
+                  <button disabled={excluindo} onClick={() => excluirItem(true)} className={styles.botaoExcluirConfirmar}>
+                    {excluindo ? 'Excluindo...' : 'De todas as turmas'}
+                  </button>
+                  <button disabled={excluindo} onClick={() => setMostrarExclusao(false)}>Cancelar</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {carregando && <p className={styles.carregando}>Carregando...</p>}
 

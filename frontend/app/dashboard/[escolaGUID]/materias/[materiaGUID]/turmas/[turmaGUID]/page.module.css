@@ -147,6 +147,19 @@
   font-size: 1.05rem;
 }
 
+.inputRenomearCategoria {
+  font-weight: 700;
+  color: var(--ink-900, #0F1D17);
+  font-size: 1.05rem;
+  border: none;
+  border-bottom: 1.5px solid var(--green-500, #17C077);
+  background: transparent;
+  padding: 0 0 2px 0;
+  outline: none;
+  min-width: 0;
+  flex: 1;
+}
+
 .categoriaAcoes {
   display: flex;
   align-items: center;
@@ -253,4 +266,47 @@
   text-align: center;
   color: var(--slate-500, #647268);
   padding: 2rem;
+}
+
+.overlayConfirmacao {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 29, 23, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 1rem;
+}
+
+.painelConfirmacao {
+  background: var(--white, #fff);
+  border-radius: 12px;
+  max-width: 420px;
+  width: 100%;
+  padding: 1.5rem;
+  color: var(--ink-900, #0F1D17);
+}
+
+.painelConfirmacaoAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.painelConfirmacaoAcoes button {
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  background: var(--white, #fff);
+  color: var(--slate-600, #46564D);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.botaoConfirmacaoDestaque {
+  border-color: var(--green-500, #17C077) !important;
+  background: var(--green-500, #17C077) !important;
+  color: #fff !important;
 }

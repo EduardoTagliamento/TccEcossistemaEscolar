@@ -11,6 +11,7 @@ import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { CategoriaConteudoDAO } from "../backend/repositories/categoriaconteudo.repository";
 import { ProvaAgendadaVisualizacaoDAO } from "../backend/repositories/provaagendadavisualizacao.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
+import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofessorxturma.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { provaRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
@@ -68,6 +69,13 @@ export default class ProvaAgendadaRoteador {
       this.#controle.destroy
     );
 
+    // DELETE /api/prova/:ProvaAgendadaGUID/turma/:TurmaGUID — excluir só desta turma
+    this.#router.delete(
+      "/:ProvaAgendadaGUID/turma/:TurmaGUID",
+      this.#middleware.validateIdParam,
+      this.#controle.destroyDeTurma
+    );
+
     return this.#router;
   };
 }
@@ -82,6 +90,7 @@ const materiaDAO = new MateriaDAO(db);
 const categoriaDAO = new CategoriaConteudoDAO(db);
 const visualizacaoDAO = new ProvaAgendadaVisualizacaoDAO(db);
 const matriculaDAO = new MatriculaDAO(db);
+const alocacaoDAO = new MaterialProfessorTurmaDAO(db);
 const provaService = new ProvaAgendadaService(
   provaDAO,
   provaTurmaDAO,
@@ -90,7 +99,8 @@ const provaService = new ProvaAgendadaService(
   materiaDAO,
   categoriaDAO,
   visualizacaoDAO,
-  matriculaDAO
+  matriculaDAO,
+  alocacaoDAO
 );
 const provaControle = new ProvaAgendadaControl(provaService);
 const provaMiddleware = new ProvaAgendadaMiddleware();
