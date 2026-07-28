@@ -159,16 +159,100 @@
 }
 
 .listaAlunos {
-  margin-top: 1rem;
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
 }
 
-.linhaAluno {
+.linhaAlunoClicavel {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
+  padding: 0.6rem 0.25rem;
+  border: none;
   border-bottom: 1px solid var(--line-200, #E2EAE5);
+  background: none;
   gap: 1rem;
+  cursor: pointer;
+  text-align: left;
+  color: var(--slate-600, #46564D);
+}
+
+.linhaAlunoClicavel:hover {
+  background: var(--surface-muted, #F0F4F1);
+}
+
+.avaliacaoBloco {
+  margin-top: 1rem;
+}
+
+.abasAvaliacao {
+  display: flex;
+  gap: 0.4rem;
+  border-bottom: 1.5px solid var(--line-200, #E2EAE5);
+  margin-bottom: 0.75rem;
+}
+
+.aba,
+.abaAtiva {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--slate-500, #647268);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+}
+
+.abaAtiva {
+  color: #17C077;
+  border-bottom-color: #17C077;
+}
+
+.detalheAluno {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.botaoVoltarLista {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--slate-500, #647268);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.alunoNomeDetalhe {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-900, #0F1D17);
+  margin: 0;
+}
+
+.anexosDetalhe {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.notaArea {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notaArea label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink-900, #0F1D17);
 }
 
 .inputNota {
