@@ -333,6 +333,7 @@ function CategoriaPageConteudo() {
         <VisualizadorItemModal
           item={itemSelecionado}
           ehProfessor={ehProfessor}
+          escolaGUID={escolaGUID}
           onFechar={() => setItemSelecionado(null)}
           onProgressoAtualizado={() => void carregarCategorias()}
         />
