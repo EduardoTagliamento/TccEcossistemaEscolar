@@ -723,6 +723,15 @@ export default class TarefaAcademicaService {
       });
     }
 
+    // Não faz sentido avaliar quem ainda não entregou/marcou a tarefa — o
+    // zeramento automático de quem perde o prazo é feito à parte pelo
+    // scheduler (TarefaAcademicaNotaScheduler), não por esta avaliação manual.
+    if (!linha.TarefaFeito) {
+      throw new ErrorResponse(400, "Aluno ainda não entregou a tarefa", {
+        message: "Só é possível avaliar depois que o aluno entregar (ou marcar como feita) a tarefa.",
+      });
+    }
+
     const atribuicaoAtualizada = await this.#tarefaMatriculaDAO.update(TarefaMatriculaGUID, {
       TarefaNota: nota,
       TarefaAvaliadoEm: new Date(),

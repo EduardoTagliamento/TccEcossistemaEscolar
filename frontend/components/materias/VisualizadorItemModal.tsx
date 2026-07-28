@@ -27,6 +27,14 @@ function extrairYoutubeId(url: string): string | null {
   return match ? match[1] : null;
 }
 
+type AbaAvaliacao = 'pendentes' | 'avaliados' | 'sem_postagem';
+
+function categorizarAluno(m: any): AbaAvaliacao {
+  if (m.TarefaNota !== null && m.TarefaNota !== undefined) return 'avaliados';
+  if (m.TarefaFeito) return 'pendentes';
+  return 'sem_postagem';
+}
+
 interface VisualizadorItemModalProps {
   item: ItemCategoria;
   ehProfessor: boolean;
@@ -43,6 +51,8 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, o
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [arquivoEntrega, setArquivoEntrega] = useState<File | null>(null);
   const [enviandoEntrega, setEnviandoEntrega] = useState(false);
+  const [abaAvaliacao, setAbaAvaliacao] = useState<AbaAvaliacao>('pendentes');
+  const [alunoDetalheGUID, setAlunoDetalheGUID] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ultimoReporte = useRef(0);
   const youtubeContainerRef = useRef<HTMLDivElement>(null);
@@ -50,6 +60,8 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, o
   const youtubeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    setAbaAvaliacao('pendentes');
+    setAlunoDetalheGUID(null);
     void carregarDetalhe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.ItemGUID]);
@@ -215,9 +227,11 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, o
     }
     try {
       await MateriasModuloAPI.avaliarTarefa(tarefaMatriculaGUID, nota);
-      alert('Nota atribuída com sucesso!');
       onProgressoAtualizado();
       await carregarDetalhe();
+      // O aluno acabou de sair de "pendentes" — segue a mesma pessoa,
+      // agora na aba "avaliados", em vez de sumir da tela.
+      setAbaAvaliacao('avaliados');
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao avaliar tarefa');
     }
@@ -348,50 +362,151 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, o
               </div>
             )}
 
-            {ehProfessor && (
-              <div className={styles.listaAlunos}>
-                <h3>Alunos</h3>
-                {(tarefaDetalhe.MatriculasAtribuidas || []).map((m: any) => {
-                  const atrasada = !m.TarefaFeito && new Date(m.TarefaPrazoData) < new Date();
+            {ehProfessor && (() => {
+              const alunos: any[] = tarefaDetalhe.MatriculasAtribuidas || [];
+              const grupos: Record<AbaAvaliacao, any[]> = {
+                pendentes: alunos.filter((m) => categorizarAluno(m) === 'pendentes'),
+                avaliados: alunos.filter((m) => categorizarAluno(m) === 'avaliados'),
+                sem_postagem: alunos.filter((m) => categorizarAluno(m) === 'sem_postagem'),
+              };
+              const listaAtual = grupos[abaAvaliacao];
+              const indiceAtual = alunoDetalheGUID
+                ? listaAtual.findIndex((m) => m.TarefaMatriculaGUID === alunoDetalheGUID)
+                : -1;
+              const alunoAtual = indiceAtual >= 0 ? listaAtual[indiceAtual] : null;
+
+              const abrirAba = (aba: AbaAvaliacao) => {
+                setAbaAvaliacao(aba);
+                setAlunoDetalheGUID(null);
+              };
+
+              const renderizarStatus = (m: any) => {
+                const atrasada = !m.TarefaFeito && new Date(m.TarefaPrazoData) < new Date();
+                if (m.TarefaFeito) {
                   return (
-                    <div key={m.TarefaMatriculaGUID} className={styles.linhaAluno}>
-                      <div className={styles.alunoInfo}>
-                        <span className={styles.alunoNome}>{m.AlunoNome || m.MatriculaGUID}</span>
-                        <span className={styles.alunoStatus}>
-                          {m.TarefaFeito ? (
-                            <><Icon name="check-circle" size={14} /> Entregue{m.TarefaRealizacaoData && ` em ${new Date(m.TarefaRealizacaoData).toLocaleDateString('pt-BR')}`}</>
-                          ) : atrasada ? (
-                            <><Icon name="lock" size={14} /> Atrasada</>
-                          ) : (
-                            <><Icon name="clock" size={14} /> Pendente</>
-                          )}
-                        </span>
-                        {(m.AnexosEntrega || []).map((anexo: any) => (
-                          <button
-                            key={anexo.AnexoGUID}
-                            type="button"
-                            className={styles.anexoEntregado}
-                            onClick={() => AnexoAPI.baixarAnexo(anexo.AnexoGUID, anexo.AnexoNomeOriginal || undefined)}
-                          >
-                            <Icon name="paperclip" size={12} /> {anexo.AnexoNomeOriginal || 'Arquivo enviado'}
-                          </button>
-                        ))}
-                      </div>
-                      <input
-                        type="number"
-                        min={0}
-                        max={10}
-                        step={0.01}
-                        defaultValue={m.TarefaNota ?? ''}
-                        placeholder="Nota"
-                        className={styles.inputNota}
-                        onBlur={(e) => e.target.value && avaliarEntrega(m.TarefaMatriculaGUID, e.target.value)}
-                      />
-                    </div>
+                    <>
+                      <Icon name="check-circle" size={14} /> Entregue
+                      {m.TarefaRealizacaoData && ` em ${new Date(m.TarefaRealizacaoData).toLocaleDateString('pt-BR')}`}
+                    </>
                   );
-                })}
-              </div>
-            )}
+                }
+                if (atrasada) return <><Icon name="lock" size={14} /> Atrasada</>;
+                return <><Icon name="clock" size={14} /> Pendente</>;
+              };
+
+              return (
+                <div className={styles.avaliacaoBloco}>
+                  <div className={styles.abasAvaliacao}>
+                    <button
+                      className={abaAvaliacao === 'pendentes' ? styles.abaAtiva : styles.aba}
+                      onClick={() => abrirAba('pendentes')}
+                    >
+                      Pendentes ({grupos.pendentes.length})
+                    </button>
+                    <button
+                      className={abaAvaliacao === 'avaliados' ? styles.abaAtiva : styles.aba}
+                      onClick={() => abrirAba('avaliados')}
+                    >
+                      Avaliados ({grupos.avaliados.length})
+                    </button>
+                    <button
+                      className={abaAvaliacao === 'sem_postagem' ? styles.abaAtiva : styles.aba}
+                      onClick={() => abrirAba('sem_postagem')}
+                    >
+                      Sem postagem ({grupos.sem_postagem.length})
+                    </button>
+                  </div>
+
+                  {!alunoAtual && (
+                    <div className={styles.listaAlunos}>
+                      {listaAtual.length === 0 && <p className={styles.hintFuturo}>Nenhum aluno nessa situação.</p>}
+                      {listaAtual.map((m) => (
+                        <button
+                          key={m.TarefaMatriculaGUID}
+                          type="button"
+                          className={styles.linhaAlunoClicavel}
+                          onClick={() => setAlunoDetalheGUID(m.TarefaMatriculaGUID)}
+                        >
+                          <div className={styles.alunoInfo}>
+                            <span className={styles.alunoNome}>{m.AlunoNome || m.MatriculaGUID}</span>
+                            <span className={styles.alunoStatus}>{renderizarStatus(m)}</span>
+                          </div>
+                          <Icon name="chevron-right" size={16} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {alunoAtual && (
+                    <div className={styles.detalheAluno}>
+                      <button type="button" className={styles.botaoVoltarLista} onClick={() => setAlunoDetalheGUID(null)}>
+                        <Icon name="chevron-left" size={14} /> Voltar à lista
+                      </button>
+
+                      <div className={styles.navegacaoPaginas}>
+                        <button
+                          disabled={indiceAtual <= 0}
+                          onClick={() => setAlunoDetalheGUID(listaAtual[indiceAtual - 1].TarefaMatriculaGUID)}
+                        >
+                          <Icon name="chevron-left" size={16} />
+                        </button>
+                        <span>{indiceAtual + 1} / {listaAtual.length}</span>
+                        <button
+                          disabled={indiceAtual >= listaAtual.length - 1}
+                          onClick={() => setAlunoDetalheGUID(listaAtual[indiceAtual + 1].TarefaMatriculaGUID)}
+                        >
+                          <Icon name="chevron-right" size={16} />
+                        </button>
+                      </div>
+
+                      <h3 className={styles.alunoNomeDetalhe}>{alunoAtual.AlunoNome || alunoAtual.MatriculaGUID}</h3>
+                      <span className={styles.alunoStatus}>{renderizarStatus(alunoAtual)}</span>
+
+                      <div className={styles.anexosDetalhe}>
+                        {(alunoAtual.AnexosEntrega || []).length > 0 ? (
+                          alunoAtual.AnexosEntrega.map((anexo: any) => (
+                            <button
+                              key={anexo.AnexoGUID}
+                              type="button"
+                              className={styles.anexoEntregado}
+                              onClick={() => AnexoAPI.baixarAnexo(anexo.AnexoGUID, anexo.AnexoNomeOriginal || undefined)}
+                            >
+                              <Icon name="paperclip" size={14} /> {anexo.AnexoNomeOriginal || 'Arquivo enviado'}
+                            </button>
+                          ))
+                        ) : (
+                          <p className={styles.hintFuturo}>
+                            {alunoAtual.TarefaFeito ? 'Sem anexo (entrega presencial ou marcada manualmente).' : 'Nenhum anexo enviado ainda.'}
+                          </p>
+                        )}
+                      </div>
+
+                      {alunoAtual.TarefaFeito ? (
+                        <div className={styles.notaArea}>
+                          <label htmlFor="inputNotaAluno">Nota</label>
+                          <input
+                            key={alunoAtual.TarefaMatriculaGUID}
+                            id="inputNotaAluno"
+                            type="number"
+                            min={0}
+                            max={10}
+                            step={0.01}
+                            defaultValue={alunoAtual.TarefaNota ?? ''}
+                            placeholder="Nota"
+                            className={styles.inputNota}
+                            onBlur={(e) => e.target.value && avaliarEntrega(alunoAtual.TarefaMatriculaGUID, e.target.value)}
+                          />
+                        </div>
+                      ) : (
+                        <p className={styles.hintFuturo}>
+                          <Icon name="alert-triangle" size={14} /> Ainda não é possível avaliar — o aluno não entregou/marcou esta tarefa.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
