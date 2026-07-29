@@ -241,18 +241,3 @@
   color: var(--slate-500);
 }
 
-.spinnerPequeno {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--line-200);
-  border-top-color: var(--green-500);
-  border-radius: 50%;
-  animation: girar 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes girar {
-  to {
-    transform: rotate(360deg);
-  }
-}

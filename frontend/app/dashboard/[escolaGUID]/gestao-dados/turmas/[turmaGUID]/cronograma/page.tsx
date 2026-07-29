@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import styles from './page.module.css';
+import Loader from '@/components/Loader';
 
 import * as EscolaConfiguracaoAPI from '@/lib/api/escolaconfiguracao.api';
 import { DiaSemana, DIA_SEMANA_LABEL, SlotAula, SlotsPorDia } from '@/lib/api/escolaconfiguracao.api';
@@ -257,7 +258,7 @@ export default function CronogramaTurmaPage() {
   if (carregando) {
     return (
       <div className={styles.loadingContainer}>
-        <div className={styles.spinner}></div>
+        <Loader />
         <p>Carregando cronograma...</p>
       </div>
     );

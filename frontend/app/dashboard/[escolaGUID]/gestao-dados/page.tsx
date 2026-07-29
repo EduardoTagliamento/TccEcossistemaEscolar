@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from './page.module.css';
+import Loader from '@/components/Loader';
 import * as CursoAPI from '@/lib/api/curso.api';
 import * as MateriaAPI from '@/lib/api/materia.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
@@ -140,7 +141,7 @@ export default function GestaoDadosPage() {
 
       {loading ? (
         <div className={styles.loadingContainer}>
-          <div className={styles.spinner}></div>
+          <Loader />
           <p className={styles.loadingText}>Carregando dados...</p>
         </div>
       ) : (

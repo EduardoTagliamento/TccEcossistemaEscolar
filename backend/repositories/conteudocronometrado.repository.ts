@@ -38,6 +38,36 @@ export class ConteudoCronometradoDAO {
     await pool.execute(SQL, params);
   };
 
+  update = async (
+    conteudoGUID: string,
+    fields: { LinkUrl?: string; ArquivoUrl?: string; ArquivoMimeType?: string }
+  ): Promise<void> => {
+    console.log("🟢 ConteudoCronometradoDAO.update()");
+
+    const sets: string[] = [];
+    const params: any[] = [];
+
+    if (fields.LinkUrl !== undefined) {
+      sets.push("LinkUrl = ?");
+      params.push(fields.LinkUrl);
+    }
+    if (fields.ArquivoUrl !== undefined) {
+      sets.push("ArquivoUrl = ?");
+      params.push(fields.ArquivoUrl);
+    }
+    if (fields.ArquivoMimeType !== undefined) {
+      sets.push("ArquivoMimeType = ?");
+      params.push(fields.ArquivoMimeType);
+    }
+
+    if (sets.length === 0) return;
+
+    params.push(conteudoGUID);
+    const SQL = `UPDATE conteudocronometrado SET ${sets.join(", ")} WHERE ConteudoGUID = ?`;
+    const pool = await this.#database.getPool();
+    await pool.execute(SQL, params);
+  };
+
   findByConteudo = async (conteudoGUID: string): Promise<ConteudoCronometrado | null> => {
     console.log("🟢 ConteudoCronometradoDAO.findByConteudo()");
 

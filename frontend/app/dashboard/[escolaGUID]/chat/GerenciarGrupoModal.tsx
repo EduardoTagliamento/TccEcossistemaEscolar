@@ -4,6 +4,7 @@ import { useState } from 'react';
 import * as ConversaAPI from '@/lib/api/conversa.api';
 import * as GrupoTarefaAPI from '@/lib/api/grupotarefa.api';
 import { Icon } from './icons';
+import Loader from '@/components/Loader';
 import styles from './GerenciarGrupoModal.module.css';
 
 interface GerenciarGrupoModalProps {
@@ -133,7 +134,7 @@ export default function GerenciarGrupoModal({
 
                 <div className={styles.acoes}>
                   {emAcao ? (
-                    <span className={styles.spinnerPequeno} />
+                    <Loader size={16} inline />
                   ) : (
                     <>
                       {ehTurma && isCoordenacaoOuDirecao && membro.MembroFuncao !== 'Lider' && (

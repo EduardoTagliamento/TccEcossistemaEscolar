@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import * as PendenciaAPI from '@/lib/api/pendencia.api';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 interface Escola {
@@ -199,7 +200,7 @@ export default function DashboardPage() {
   if (authLoading || isLoading) {
     return (
       <div className={styles.loadingContainer}>
-        <div className={styles.spinner}></div>
+        <Loader />
         <p>Carregando dashboard...</p>
       </div>
     );

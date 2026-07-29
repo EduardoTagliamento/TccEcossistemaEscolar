@@ -1,5 +1,7 @@
 # Relatório: Board Bauá x Estado real do código
 
+> ⚠️ **A partir de 2026-07-29, "o que falta fazer" vive em `docs/RELATORIO_BAUA_CODIGO_2.md`** — lista enxuta, só de pendências, sem a narrativa/justificativas. Este arquivo continua sendo a fonte da auditoria completa (board Kanban x código, comparação seção por seção, histórico de correções de bugs), mas **não é mais o lugar de checar o que está pendente** — os blocos "✅ Status atualizado" e o checklist no fim seguem aqui como histórico, porém podem estar desatualizados a partir de agora; o `_2` é quem deve ser mantido corrente daqui pra frente.
+
 > Fonte primária: `Bauá (1).pdf` (12 páginas, board Kanban com post-its), lido diretamente nesta sessão em alta resolução — a transcrição abaixo corrige pontos que estavam ilegíveis em `docs/PENDENCIAS_BAUA.md`.
 > Método: para cada item do board, o diretório do projeto foi inspecionado (rotas, controllers, entidades, páginas Next.js) para confirmar se o checkbox do board (✅/🔁/⬜) reflete o estado real do repositório.
 > Data: 2026-07-17.
@@ -60,6 +62,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Ação real pendente:** decidir sobre a seta de navegação + cores do design system.
 
 **✅ Status atualizado (2026-07-22):** Login, Cadastro, Criar-escola e a Landing page **já foram migrados** para os componentes novos do design system (`frontend/components/auth/AuthBrandShell.tsx`, `AuthButton.tsx`, `AuthIcon.tsx`, `AuthInput.tsx`, `AuthGreenShell.tsx`, `BauaLogo.tsx`) — confirmado por grep: `1cc47b`/`169162`/`ebebeb` não aparecem mais em nenhum desses 4 CSS. Uma tela nova também nasceu já no padrão novo: `frontend/app/verificar-email/page.tsx` (fluxo de verificação de e-mail, ligado à integração Resend/Brevo documentada em `docs/PLANEJAMENTO_VERIFICACAO_EMAIL_RESEND.md`/`_BREVO.md`). **`saiba-mais` é a única página institucional que ainda não recebeu o rework** — continua com cor fixa e sem os componentes novos.
+
+**✅ Status atualizado (2026-07-29):** `saiba-mais` recebeu o rework um dia depois deste relatório — commit `6b27275` (2026-07-23, "fix saiba-mais"). Não usa `AuthBrandShell` (é uma página de conteúdo/institucional, sem formulário — mesmo padrão da landing page), mas redeclara localmente os mesmos tokens do Bauá Design System usados em `page.module.css` (landing page); `1cc47b`/`169162`/`ebebeb` não aparecem mais em `saiba-mais/page.module.css`. Também confirmado o reposicionamento pedido nos post-its de Login/Cadastro (imagem/marca à esquerda, formulário à direita, espelhado): `AuthBrandShell` tem o `brandPanel` à esquerda por padrão (`/login`) e a prop `invertido` (usada só em `/cadastro`) espelha os lados — o rework de 2026-07-22 cobriu tanto cores/componentes quanto o posicionamento.
 
 ---
 
@@ -178,6 +182,11 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 
 **✅ Status atualizado (2026-07-22):** a "bolha de chat minimizada ao navegar pra fora da tela de chat" (estilo Instagram Web), que estava listada como "em andamento", **está pronta** — `frontend/app/dashboard/[escolaGUID]/_components/MinimizedChatBubble.tsx`, com "Expandir" levando direto de volta pra conversa que estava minimizada. Reconfirmado por leitura direta do código que reações, kick/promover (2ª tela de membros) e recibo de leitura **continuam pendentes** — nenhuma menção a painel de membros com ações administrativas em `chat/page.tsx`, `meuPapelNoGrupo` (Líder/Representante/Vice-Representante) hoje só controla permissão de fixar/apagar mensagem, não gestão de membros.
 
+**✅ Status atualizado (2026-07-29):** os 3 pendentes acima **já foram resolvidos** — commit `68d8cf3` "att chat" (2026-07-23), documento nunca tinha sido atualizado pra refletir isso.
+- **Reações a mensagens:** tabela `mensagem_reacao` (PK composta `MensagemGUID+UsuarioCPF+ReacaoEmoji`, permite múltiplas reações independentes por usuário na mesma mensagem, estilo Discord), 6 emojis fixos (`👍❤️😂😮😢🙏`). Backend: `MensagemDAO.toggleReacao`, `MensagemService.reagir` (emite `reacao_atualizada` via socket), `POST /api/conversa/:guid/mensagem/:msgGuid/reacao` + evento WS `reagir_mensagem`. Frontend: chips de reação + emoji picker no menu de ações da mensagem, já renderizados em `chat/page.tsx`.
+- **Gestão de Representante/Vice-Representante:** endpoints `PUT`/`DELETE /api/conversa/:guid/permissao/representante` (Coordenação/Direção) e `.../vice-representante` (Representante ou Líder de tarefa) já tinham UI — `frontend/app/dashboard/[escolaGUID]/chat/GerenciarGrupoModal.tsx`, aberto pelo botão de engrenagem "Gerenciar grupo" em `chat/page.tsx`. **Não existe "kick" de membro no módulo de chat/conversa** — isso é proposital: turma nunca teve expulsão via chat (matrícula controla saída), e grupo de tarefa já tinha isso antes desta rodada num módulo separado (`GrupoTarefaService.expulsarMembro`, só o Líder), reaproveitado pelo mesmo modal.
+- **Recibo de leitura:** evento `mensagem_lida` (payload `{ConversaGUID, UsuarioCPF, LidaAt}`) já é escutado em `chat/page.tsx` (`handleMensagemLida`), com check simples/duplo e contador "✓✓ N" pra grupos.
+
 ---
 
 ## 8. Secretaria (pág. 7)
@@ -214,6 +223,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Pendente:** toast em tempo real ouvindo `notificacao:nova` (decisão confirmada: deve aparecer em todas as telas do dashboard) — ainda não implementado, o dropdown hoje só busca a lista ao abrir, não reage a eventos WS em tempo real; paginação/retenção do feed — sem decisão fechada ainda.
 - **Reconfirmado (2026-07-22):** `notificacao:nova` ainda não é escutado em nenhum lugar do frontend (busca direta, zero ocorrências) — o toast em tempo real segue sem implementação. O commit `att notificação e resend` desta data mexeu em `.env`/`perfil/page.tsx`, não no toast.
 
+**✅ Status atualizado (2026-07-29):** as duas pendências acima foram fechadas. Toast em tempo real: `frontend/app/dashboard/[escolaGUID]/_components/NotificacaoToastListener.tsx` já existe e está montado em `frontend/app/dashboard/[escolaGUID]/layout.tsx` — escuta `notificacao:nova` via WebSocket em toda tela do dashboard, com clique navegando pro link da notificação e marcando como lida (implementado em sessão anterior a esta auditoria, a documentação é que estava desatualizada). Paginação/retenção: decisão do usuário foi "expurgar lidas antigas" (não lidas nunca são apagadas automaticamente); implementado nesta sessão — `NotificacaoDAO.deleteLidasAntigas()` + `NotificacaoService.expurgarLidasAntigas()` + job diário `expurgo_notificacoes_lidas` (03:30, `NotificacaoScheduler`) expurgando lidas com mais de 30 dias; frontend da tela `/notificacoes` passou a paginar com `limit`/`offset` (30 por página) + botão "Carregar mais".
+
 ---
 
 ## 9. Matérias (pág. 8)
@@ -226,6 +237,46 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Código real:** existe `backend/controllers/materia.controller.ts` + `routes/materia.routes.ts`, mas é um CRUD básico de matéria (usado como cadastro/lookup em `gestao-dados/materias`), **não** as telas específicas de matéria descritas aqui (feed do professor, visão do aluno, notas, recomendação por IA). A pasta `backend/ai/` existe mas contém apenas `README.txt` — nenhuma lógica de recomendação por IA implementada ainda. O board está correto: este módulo é pendente ponta a ponta, e é o único que menciona uma feature de IA ainda não iniciada.
 
 **Status (2026-07-19):** segue 100% não iniciado. Usuário decidiu adiar deliberadamente ("veremos futuramente sobre IA") tanto a fonte de dado de entrada da recomendação quanto a escolha de provedor — não é uma pendência esquecida, é adiamento consciente. As demais partes do módulo (tela geral, tela específica, notas de prova, entrega digital de tarefa) não têm decisão de adiamento — seguem simplesmente não implementadas.
+
+**✅ Status atualizado (2026-07-29):** módulo implementado ponta a ponta em várias sessões desde 2026-07-23, via spec-first (`docs/PLANO_IMPLEMENTACAO_MATERIAS.md`). Não é mais "não iniciado" — é o módulo mais robusto adicionado ao app desde este relatório. Resumo do que existe hoje:
+
+**Navegação e identidade visual**
+- Ícone "Matérias" na navbar (Professor + Aluno), com badge vermelho de pendência agregada.
+- 3 telas: grid de matérias (card por matéria, aluno vê a turma dele automaticamente; professor escolhe matéria → turma), tela de categorias (compartilhada aluno/professor).
+- Capa/cor customizável por (Matéria, Professor) e por Turma (trocável por Representante/Vice-Representante ou Coordenação/Direção como fallback).
+
+**Categorias**
+- Sistema de categorias com ordem manual (drag-and-drop nativo HTML5, sem lib nova), escopo (Professor, Matéria, Turma).
+- "Gerenciar categorias" (board geral): categoria "do professor" replicada por turma sob o mesmo nome, criação/reordenação em massa, mover itens fan-out (conteúdo/prova) entre turmas de uma vez.
+- Categoria por nome nos formulários de criação (`ConteudoForm`/`TarefaForm`/`ProvaAgendadaForm`) — resolve/cria automaticamente por turma, sem exigir GUID.
+- Editar (renomear) e excluir categoria a partir da tela de turma, com escolha **"só esta turma" vs. "todas as turmas com essa categoria"** (endpoints `PATCH`/`DELETE .../geral`). Excluir categoria com itens não apaga os itens — eles caem para um grupo "Sem categoria" visível na tela (antes eram descartados silenciosamente).
+
+**Consumo de conteúdo/tarefa/prova (visualizador unificado)**
+- Modal único (`VisualizadorItemModal`) para os 6 tipos de item: vídeo, texto, imagem paginada, tarefa digital, tarefa presencial, prova.
+- Progresso do aluno: vídeo por tempo assistido (upload nativo **e** link do YouTube via YouTube IFrame Player API — não é mais um `<iframe>` mudo), imagem por página vista, texto instantâneo, prova instantânea ao abrir ("já vi").
+- Barra de progresso escondida na visão do professor (só aluno tem progresso pessoal — antes aparecia sempre vazia/zerada, o que confundia).
+- Entrega de tarefa digital: upload real de anexo pelo aluno, escopado por matrícula (`TarefaMatriculaGUID` — corrigido um bug real onde o anexo de um aluno aparecia como se fosse compartilhado entre todos os alunos da mesma tarefa).
+- Nota manual (professor) + nota automática 0 via scheduler a cada 5 minutos para quem perde o prazo sem entregar.
+- Avaliação do professor: abas Pendentes / Avaliados / Atrasados / Sem postagem, navegação aluno a aluno, nome do aluno (não GUID cru), anexo de entrega individual com download.
+- Editar (reabre o formulário de criação pré-preenchido) e excluir tarefa/prova/conteúdo direto do visualizador (só professor) — exclusão de conteúdo/prova (fan-out em N turmas) com escolha "só esta turma" vs. "todas as turmas".
+- Estatísticas por item (ícone gráfico, só professor): média de % da turma + ranking de alunos (nome, matrícula, % e nota quando aplicável), com exportação para planilha Excel (.xlsx, contendo nome e `MatriculaGUID`).
+
+**Dashboard**
+- Seções "tarefas pendentes" (aluno) e "avaliações pendentes" (professor), linkando direto para o item no módulo Matérias.
+
+**Correções de segurança encontradas e fechadas no caminho**
+- `atualizarTarefa`/`excluirTarefa` e `atualizarProva`/`excluirProva` não validavam que quem editava era o professor responsável (só checavam "autenticado") — qualquer professor conseguia mexer em tarefa/prova de outro. Corrigido.
+- `removerAnexo` (tarefa) não validava dono do anexo — corrigido junto com o escopo por matrícula.
+
+**✅ Status atualizado (2026-07-29):** os dois gaps de edição/navegação abaixo foram fechados nesta rodada:
+- **Editar mídia de um Conteúdo já publicado** — `PUT /api/conteudo/:guid` passou a aceitar multipart e, além de título/descrição, substitui a mídia conforme o `ConteudoTipo` (imutável): HTML sanitizado (texto), link (cronometrado por link) ou re-upload de arquivo(s) que substitui o(s) anterior(es) no R2 (cronometrado por upload, ou todas as páginas do paginado de uma vez). `ConteudoForm` (usado pelo ícone de editar do visualizador) mostra os campos de mídia também em modo edição, com tipo/origem travados. Turmas distribuídas continuam imutáveis por este endpoint.
+- **Formulário de tarefa/prova no visualizador vs. `/tarefas/[tarefaGUID]`** — em vez de replicar a UI de grupo (convite, expulsar, transferir liderança) dentro do `VisualizadorItemModal`, foi adicionado um link "Gerenciar grupo" (visível só pro aluno, quando `TarefaCompartilhada=true`) que leva direto pra tela `/tarefas/[tarefaGUID]` já existente — antes só alcançável navegando manualmente, sem nenhum ponto de entrada a partir de Matérias.
+
+**Ainda faltando / fora de escopo (decisão do usuário, não esquecimento):**
+- [ ] **Tarefa tipo "lista"** (7º tipo de tarefa, mencionado no board original como "futuramente") — nunca entrou em nenhuma fase, os tipos implementados são só digital e presencial.
+- [ ] **Recomendação de estudo por IA** — adiada deliberadamente ("veremos futuramente"), sem fonte de dado nem provedor escolhidos. `backend/ai/` segue só com README.
+- [ ] **Nota de prova** (`prova_nota`) — fora de escopo desta fase; prova hoje é só leitura (data + conteúdo) + registro de "já vi", sem lançamento de nota.
+- [ ] **Categoria "do representante"** (representante/vice-representante de turma criar categoria própria, sem depender do professor) — o hook de permissão já existe no backend, mas nenhuma UI foi ligada; função confirmada como "futura" desde o spec original.
 
 ---
 
@@ -264,6 +315,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Código real:** **discrepância relevante** — `frontend/app/dashboard/[escolaGUID]/configuracoes/page.tsx` já implementa cronograma de turmas, grade horária, dias letivos e intervalos, consumindo `lib/api/escolaconfiguracao.api.ts`. Backend: `backend/controllers/escolaconfiguracao.controller.ts` + `routes/escolaconfiguracao.routes.ts` também existem. O board marca Frontend ⬜, mas a tela de cronograma (um dos 4 post-its) já está pronta. **O que falta de fato**, pelo que dá para inferir sem abrir o arquivo por completo: alterar informações gerais da escola (nome/e-mail/logo fora do cronograma) e a regra de restringir customização de cor ao representante legal — vale confirmar com o board original quais dessas ainda não estão na tela atual.
 
 **✅ Status atualizado (2026-07-22):** seção "Identidade da Escola" implementada na mesma tela, visível **só para Direção** (`FuncaoId` 6 — nota explícita na UI: "Visível apenas para a Direção"), cobrindo `EscolaNome` e as 4 cores (`EscolaCorPriEs/Cl`, `EscolaCorSecEs/Cl`). Isso resolve a regra "restringir customização de cor ao representante legal" (interpretando Direção como o representante legal da escola) e parte de "alterar informações da escola". **Ainda falta:** e-mail e logo da escola não têm campo nessa tela (busca direta por `EscolaEmail`/`EscolaLogo`/upload de logo em `configuracoes/page.tsx` não encontrou nada) — permanecem pendentes.
+
+**✅ Status atualizado (2026-07-29):** e-mail e logo/ícone da escola também foram adicionados à seção "Identidade da Escola" — commit `4a0970e` (2026-07-23, um dia depois deste relatório). Campo `EscolaEmail` (validado, `input type="email"`) e upload de ícone (`EscolaIcone`, PNG/JPG até 1MB, com preview e opção de remover), ambos salvos junto com nome/cores no mesmo botão "Salvar Identidade da Escola" (`PUT /api/escola/:guid`). Confirmado ponta a ponta: coluna/campo existe em `backend/entities/escola.model.ts`, `backend/repositories/escola.repository.ts`, `backend/services/escola.service.ts` e migration `001_add_escola_logo.sql`. Nada mais pendente nessa seção.
 
 ---
 
@@ -326,6 +379,8 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 
 **Trabalho adicional identificado em 2026-07-22** (não fruto desta sessão de auditoria, mas confirmado por leitura direta do código/git log — o relatório estava desatualizado nesses pontos): Registro de Auditoria completo (backend+frontend), telas de Cadastro de Evento e Cadastro de Pendência, rework de design system em Login/Cadastro/Criar-escola/Landing page, seção "Identidade da Escola" (nome+cores, restrita à Direção), bolha de chat minimizada. Mais 3 correções de bugs em produção (ver seção acima). Todos os itens abaixo já refletem esse estado.
 
+**Trabalho adicional identificado em 2026-07-29:** módulo Matérias implementado ponta a ponta (ver seção 9 acima) — telas de navegação, categorias, visualizador unificado de conteúdo/tarefa/prova com progresso real (incl. YouTube), avaliação de tarefa pelo professor, edição/exclusão de itens e categorias com escopo por turma, estatísticas por item com exportação Excel. Duas lacunas de segurança encontradas e fechadas no caminho (update/delete de tarefa/prova sem checagem de professor responsável). O checklist "### Matérias" abaixo já reflete esse estado. Também confirmado nesta data que os 3 pendentes de Chat (reações, gestão de Representante/Vice, recibo de leitura) já tinham sido implementados desde 2026-07-23 (commit `68d8cf3`) — o relatório só nunca tinha sido atualizado pra refletir isso.
+
 ### Migrations escritas, faltando confirmar execução contra o banco real
 - [x] `backend/database/migrations/2026-07-22-fix-pendencia-timestamps.sql` — **confirmado executado** via `SHOW CREATE TABLE pendencia` direto no Railway nesta sessão (colunas já vêm como `PendenciaCreatedAt`/`PendenciaUpdatedAt`)
 - [x] `backend/database/migrations/2026-07-22-fix-evento-schema.sql` — **confirmado executado** via `SHOW CREATE TABLE evento` direto no Railway nesta sessão (colunas já vêm como `EventoDescricao`/`EventoData`/`EventoCreatedAt`/`EventoUpdatedAt`)
@@ -337,15 +392,15 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 ### Chat
 - [x] Lista de conversas, painel de mensagens, tempo real via WebSocket, anexos de imagem/arquivo
 - [x] Bolha de chat minimizada ao navegar pra fora da tela de chat (estilo Instagram Web) — `MinimizedChatBubble.tsx`
-- [ ] Reações a mensagens (decidido que entra no escopo — não implementado ainda)
-- [ ] Gestão de Representante/Vice-Representante (kick/promover) na tela de grupo — endpoints já existem, falta UI (nenhum painel de membros com ações administrativas encontrado em `chat/page.tsx`)
-- [ ] Recibo de leitura visual (`mensagem_lida`) — evento existe, não é consumido no frontend
+- [x] Reações a mensagens — tabela `mensagem_reacao`, evento `reacao_atualizada`, chips + emoji picker em `chat/page.tsx` (commit `68d8cf3`, 2026-07-23)
+- [x] Gestão de Representante/Vice-Representante na tela de grupo — `GerenciarGrupoModal.tsx` (kick propriamente dito não existe no módulo de chat por design: turma não expulsa via chat, grupo de tarefa reaproveita `GrupoTarefaService.expulsarMembro` já existente)
+- [x] Recibo de leitura visual (`mensagem_lida`) — consumido em `chat/page.tsx` (`handleMensagemLida`), check simples/duplo + contador em grupo
 
 ### Notificações
 - [x] Dropdown no sino da navbar (lista recente + link "ver todas")
-- [ ] Toast em tempo real ouvindo `notificacao:nova` via WebSocket, em todas as telas (decisão já confirmada, falta implementar)
+- [x] Toast em tempo real ouvindo `notificacao:nova` via WebSocket, em todas as telas — `NotificacaoToastListener.tsx`, montado no layout do dashboard
+- [x] Paginação/retenção do feed — decisão: expurgo automático só de lidas (30 dias, não lidas nunca somem); feed pagina 30 por vez com "Carregar mais"
 - [ ] Canal WhatsApp — decidido fora de escopo por ora (Evolution API, trabalho futuro)
-- [ ] Paginação/retenção do feed — sem decisão fechada
 
 ### Secretaria
 - [x] Tela de cadastro de eventos — `cadastro-evento/page.tsx`
@@ -353,10 +408,19 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 - [x] Registro de Auditoria — ponta a ponta (backend completo + `auditoria/page.tsx`, filtro por categoria/entidade, scheduler de expurgo por retenção); falta só confirmar execução da migration (ver acima)
 
 ### Matérias
-- [ ] As 4 telas (geral, específica, prova-visão-aluno, tarefa-visão-aluno) — nada implementado
-- [ ] Lançamento de nota de prova (pré-requisito de dado, tabela `prova_nota` proposta mas não criada)
-- [ ] Recomendação por IA — adiada deliberadamente pelo usuário ("veremos futuramente")
-- [ ] Entrega digital de tarefa pelo aluno — confirmado que é escopo de Matérias, não implementado
+- [x] As 4 telas (geral, específica, prova-visão-aluno, tarefa-visão-aluno) — implementadas via visualizador unificado (`VisualizadorItemModal`) + telas de navegação matéria/turma/categoria
+- [x] Entrega digital de tarefa pelo aluno — upload real de anexo, escopado por matrícula (bug de anexo "compartilhado entre alunos" corrigido no caminho)
+- [x] Progresso de conteúdo (vídeo incl. YouTube, texto, imagem paginada) e visualização de prova
+- [x] Categorias (ordem manual, escopo por turma, editar/excluir em massa "categoria geral", itens órfãos não são apagados)
+- [x] Avaliação de tarefa pelo professor (nota manual + zeramento automático por prazo, abas Pendentes/Avaliados/Atrasados/Sem postagem, nome do aluno)
+- [x] Editar/excluir tarefa/prova/conteúdo direto do visualizador, com escolha "só esta turma" vs. "todas as turmas" pra conteúdo/prova
+- [x] Estatísticas por item (média da turma + ranking) com exportação para Excel (nome + `MatriculaGUID`)
+- [x] Editar mídia de um Conteúdo já publicado (texto/link/arquivo, por tipo) — antes só título/descrição
+- [x] Link "Gerenciar grupo" no visualizador para tarefa compartilhada, levando à tela `/tarefas/[tarefaGUID]`
+- [ ] Lançamento de nota de prova — fora de escopo desta fase (tabela `prova_nota` nunca criada; prova é só leitura + registro de "já vi")
+- [ ] Recomendação por IA — adiada deliberadamente pelo usuário ("veremos futuramente"); `backend/ai/` só tem README
+- [ ] Tarefa tipo "lista" (7º tipo, mencionado como "futuramente" no board original) — nunca implementado, só digital/presencial existem
+- [ ] Categoria "do representante" (aluno representante de turma criar categoria própria) — hook de permissão pronto no backend, sem UI ligada
 
 ### Configuração do usuário
 - [x] Dado cadastral (nome/e-mail/telefone), foto de perfil, troca de senha — tela `/perfil`, acessível pelo dropdown do avatar
@@ -365,12 +429,12 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 ### Configuração da escola
 - [x] Alterar nome e cores da escola (seção "Identidade da Escola", restrita à Direção)
 - [x] Restringir customização de cor ao representante legal (interpretado como Direção/`FuncaoId` 6)
-- [ ] Alterar e-mail e logo da escola — ainda sem campo na tela
+- [x] Alterar e-mail e logo da escola — campos já existem na seção "Identidade da Escola" (`configuracoes/page.tsx`, `EscolaEmail`/`EscolaIcone`, endpoint `PUT /api/escola/:guid`), adicionados no commit `4a0970e` (2026-07-23), depois do snapshot original deste relatório (2026-07-22)
 
 ### Auth / institucional (Login, Cadastro, Saiba mais, Landing page)
 - [x] Migrar cores fixas (`#1cc47b`/`#169162`/`#ebebeb`) para o design system em `login`, `cadastro`, `criar-escola`, landing page — feito via componentes novos `AuthBrandShell`/`AuthButton`/`AuthIcon`/`AuthInput`/`AuthGreenShell`/`BauaLogo`
-- [ ] `saiba-mais` ainda não recebeu o rework — continua com cor fixa
-- [ ] Reposicionamento conforme post-its (imagem à esquerda, formulário à direita, espelhado em login/cadastro) — confirmar se o rework de 2026-07-22 já cobriu isso ou só trocou cores/componentes
+- [x] `saiba-mais` recebeu o rework — commit `6b27275` (2026-07-23, "fix saiba-mais"), depois do snapshot original: tokens do Bauá Design System redeclarados localmente em `.container` (mesmo padrão de `page.module.css`/landing page), sem `#1cc47b`/`#169162`/`#ebebeb` (confirmado por grep). Não usa `AuthBrandShell` porque não é um formulário — é uma página de conteúdo, mesmo padrão da landing page
+- [x] Reposicionamento conforme post-its (imagem/marca à esquerda, formulário à direita, espelhado em login/cadastro) — confirmado: `AuthBrandShell.tsx` tem o `brandPanel` à esquerda por padrão (usado em `/login`) e a prop `invertido` (usada em `/cadastro`) espelha os lados
 - [ ] Revisão de copy/persuasão da landing page (confiança, argumentos de venda, FAQ) — decisão de conteúdo, não de layout
 
 ### Bugs de produção (2026-07-22)

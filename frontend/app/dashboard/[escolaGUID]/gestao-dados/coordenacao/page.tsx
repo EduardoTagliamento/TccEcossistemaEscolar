@@ -15,6 +15,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 import BaseTabelaDados, { Coluna } from '@/components/gestao-dados/BaseTabelaDados';
@@ -334,7 +335,7 @@ export default function CoordenacaoPage() {
     return (
       <div className={styles.container}>
         <div className={styles.loadingContainer}>
-          <div className={styles.spinner}></div>
+          <Loader />
           <p>Verificando permissões...</p>
         </div>
       </div>

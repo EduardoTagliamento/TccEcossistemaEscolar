@@ -132,7 +132,9 @@ export class ConteudoController {
     }
   };
 
-  // PUT /api/conteudo/:guid — só título/descrição (dados compartilhados por todas as turmas)
+  // PUT /api/conteudo/:guid (multipart/form-data) — título/descrição + mídia
+  // (HTML do texto, link do vídeo por link, ou arquivo(s) de substituição);
+  // ConteudoTipo, origem e turmas distribuídas continuam imutáveis aqui.
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 ConteudoController.update()");
     try {
@@ -142,11 +144,24 @@ export class ConteudoController {
         return;
       }
 
-      const { conteudo } = req.body;
+      const body = req.body;
+      const arquivosRecebidos = req.files as
+        | { [fieldname: string]: Express.Multer.File[] }
+        | undefined;
+
       const conteudoAtualizado = await this.#conteudoService.atualizarConteudo(
         req.params.guid,
-        { ConteudoTitulo: conteudo?.ConteudoTitulo, ConteudoDescricao: conteudo?.ConteudoDescricao },
-        usuarioCPF
+        {
+          ConteudoTitulo: body.ConteudoTitulo,
+          ConteudoDescricao: body.ConteudoDescricao,
+          ConteudoHtml: body.ConteudoHtml,
+          LinkUrl: body.LinkUrl,
+        },
+        usuarioCPF,
+        {
+          arquivoCronometrado: arquivosRecebidos?.arquivo?.[0],
+          arquivosPaginado: arquivosRecebidos?.arquivos,
+        }
       );
 
       res.json({

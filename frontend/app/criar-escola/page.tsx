@@ -10,7 +10,7 @@ import AuthGreenShell from '@/components/auth/AuthGreenShell';
 import AuthInput from '@/components/auth/AuthInput';
 import AuthButton from '@/components/auth/AuthButton';
 import AuthIcon from '@/components/auth/AuthIcon';
-import BauaLogo from '@/components/auth/BauaLogo';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 const poppins = Poppins({
@@ -193,8 +193,7 @@ export default function CriarEscolaPage() {
     return (
       <AuthGreenShell className={fontVars} maxWidth={420}>
         <div className={styles.loadingState}>
-          <BauaLogo size={28} />
-          <div className={styles.spinner} />
+          <Loader size={44} />
           <p>Carregando...</p>
         </div>
       </AuthGreenShell>

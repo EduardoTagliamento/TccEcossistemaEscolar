@@ -10,6 +10,7 @@ import * as EscolaAPI from '@/lib/api/escola.api';
 import { useAuth } from '@/lib/auth/AuthContext';
 import ColorPicker from '@/components/ColorPicker';
 import { validarEmail } from '@/lib/validators/email';
+import Loader from '@/components/Loader';
 
 interface IntervaloLinha {
   IntervaloInicio: string;
@@ -388,7 +389,7 @@ export default function ConfiguracoesEscolaPage() {
   if (carregando) {
     return (
       <div className={styles.loadingContainer}>
-        <div className={styles.spinner}></div>
+        <Loader />
         <p>Carregando configurações...</p>
       </div>
     );

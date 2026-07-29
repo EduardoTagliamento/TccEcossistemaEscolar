@@ -80,6 +80,10 @@ export interface ConteudoCreateDTO {
 export interface ConteudoUpdateDTO {
   ConteudoTitulo?: string;
   ConteudoDescricao?: string;
+  /** tipo "texto" — substitui o HTML atual (sanitizado antes de salvar) */
+  ConteudoHtml?: string;
+  /** tipo "cronometrado", só quando OrigemTipo atual é "link" — substitui o link atual */
+  LinkUrl?: string;
 }
 
 export interface ConteudoArquivos {
@@ -395,11 +399,19 @@ export default class ConteudoService {
   };
 
   /**
-   * Edição limitada a título/descrição (dados compartilhados por todas as
-   * turmas) — trocar o payload de mídia (vídeo/texto/imagens) ou as turmas
-   * distribuídas não é suportado por este endpoint, é um novo Conteudo.
+   * Edição de título/descrição (dados compartilhados por todas as turmas) e,
+   * opcionalmente, da mídia do conteúdo — HTML (texto), link (cronometrado
+   * por link) ou arquivo(s) de substituição (cronometrado por upload /
+   * paginado). O ConteudoTipo e a origem (upload vs. link) do cronometrado
+   * não podem mudar aqui; trocar isso exige publicar um conteúdo novo. As
+   * turmas distribuídas também não são editáveis por este endpoint.
    */
-  atualizarConteudo = async (guid: string, data: ConteudoUpdateDTO, usuarioCPF: string): Promise<ConteudoDTO> => {
+  atualizarConteudo = async (
+    guid: string,
+    data: ConteudoUpdateDTO,
+    usuarioCPF: string,
+    arquivos: ConteudoArquivos = {}
+  ): Promise<ConteudoDTO> => {
     console.log("🟣 ConteudoService.atualizarConteudo()");
 
     const conteudo = await this.#conteudoDAO.findById(guid);
@@ -428,6 +440,7 @@ export default class ConteudoService {
     }
 
     await this.#conteudoDAO.update(guid, updates);
+    await this.#atualizarMidia(conteudo, data, arquivos);
 
     const atribuicoes = await this.#conteudoTurmaDAO.findByConteudo(guid);
     if (atribuicoes.length > 0) {
@@ -446,6 +459,74 @@ export default class ConteudoService {
     }
 
     return this.buscarConteudo(guid);
+  };
+
+  /** Substitui a mídia de um conteúdo já publicado, de acordo com o ConteudoTipo (imutável). */
+  #atualizarMidia = async (
+    conteudo: Conteudo,
+    data: ConteudoUpdateDTO,
+    arquivos: ConteudoArquivos
+  ): Promise<void> => {
+    if (conteudo.ConteudoTipo === "texto") {
+      if (data.ConteudoHtml === undefined) return;
+
+      const htmlSanitizado = sanitizeHtml(data.ConteudoHtml, SANITIZE_HTML_OPTIONS);
+      if (!htmlSanitizado.trim()) {
+        throw new ErrorResponse(400, "Conteúdo de texto vazio", {
+          message: "O texto não pode ficar vazio após a formatação.",
+        });
+      }
+      await this.#textoDAO.update(conteudo.ConteudoGUID, htmlSanitizado);
+      return;
+    }
+
+    if (conteudo.ConteudoTipo === "cronometrado") {
+      const cronometrado = await this.#cronometradoDAO.findByConteudo(conteudo.ConteudoGUID);
+      if (!cronometrado) return;
+
+      if (cronometrado.OrigemTipo === "link" && data.LinkUrl !== undefined) {
+        const linkUrl = data.LinkUrl.trim();
+        if (!linkUrl) {
+          throw new ErrorResponse(400, "LinkUrl inválido", { message: "Informe uma URL válida." });
+        }
+        try {
+          new URL(linkUrl);
+        } catch {
+          throw new ErrorResponse(400, "LinkUrl inválido", { message: "Informe uma URL válida." });
+        }
+        await this.#cronometradoDAO.update(conteudo.ConteudoGUID, { LinkUrl: linkUrl });
+      } else if (cronometrado.OrigemTipo === "upload" && arquivos.arquivoCronometrado) {
+        const arquivo = arquivos.arquivoCronometrado;
+        const ext = path.extname(arquivo.originalname);
+        const chave = `conteudo/${conteudo.ConteudoGUID}/arquivo${ext}`;
+        const url = await R2StorageService.upload(chave, arquivo.buffer, arquivo.mimetype);
+
+        if (cronometrado.ArquivoUrl && cronometrado.ArquivoUrl !== url) {
+          await R2StorageService.removeByUrl(cronometrado.ArquivoUrl).catch((error) => {
+            console.error("🔴 ConteudoService.#atualizarMidia() falhou ao remover arquivo antigo:", error);
+          });
+        }
+
+        await this.#cronometradoDAO.update(conteudo.ConteudoGUID, {
+          ArquivoUrl: url,
+          ArquivoMimeType: arquivo.mimetype,
+        });
+      }
+      return;
+    }
+
+    // paginado
+    if (arquivos.arquivosPaginado && arquivos.arquivosPaginado.length > 0) {
+      const antigos = await this.#paginadoDAO.findByConteudo(conteudo.ConteudoGUID);
+      await this.#paginadoDAO.deleteByConteudo(conteudo.ConteudoGUID);
+      await this.criarPaginado(conteudo.ConteudoGUID, arquivos.arquivosPaginado);
+
+      for (const antigo of antigos) {
+        await R2StorageService.removeByUrl(antigo.ArquivoUrl).catch((error) => {
+          console.error("🔴 ConteudoService.#atualizarMidia() falhou ao remover página antiga:", error);
+        });
+      }
+    }
   };
 
   excluirConteudo = async (guid: string, usuarioCPF: string): Promise<void> => {

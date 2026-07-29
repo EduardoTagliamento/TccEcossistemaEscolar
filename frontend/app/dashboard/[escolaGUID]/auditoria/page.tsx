@@ -14,6 +14,7 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 import * as AuditoriaAPI from '@/lib/api/auditoria.api';
@@ -196,7 +197,7 @@ export default function AuditoriaPage() {
     return (
       <div className={styles.container}>
         <div className={styles.loadingContainer}>
-          <div className={styles.spinner}></div>
+          <Loader />
           <p>Verificando permissões...</p>
         </div>
       </div>
@@ -327,7 +328,7 @@ export default function AuditoriaPage() {
       <div className={styles.secao}>
         {carregando ? (
           <div className={styles.loadingContainer}>
-            <div className={styles.spinner}></div>
+            <Loader />
             <p>Carregando registros...</p>
           </div>
         ) : registros.length === 0 ? (
