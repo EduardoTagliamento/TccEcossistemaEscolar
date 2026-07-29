@@ -14,6 +14,7 @@ import cron from "node-cron";
 import MysqlDatabase from "../database/MysqlDatabase";
 import { TarefaAcademicaMatriculaDAO } from "../repositories/tarefaacademica-matricula.repository";
 import { TarefaAcademicaDAO } from "../repositories/tarefaacademica.repository";
+import { TarefaAcademicaRespostaDAO } from "../repositories/tarefaacademica-resposta.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { getNotificacaoService } from "./notificacao.service";
@@ -22,6 +23,7 @@ export class TarefaAcademicaNotaScheduler {
   #tasks: cron.ScheduledTask[] = [];
   #tarefaMatriculaDAO: TarefaAcademicaMatriculaDAO;
   #tarefaDAO: TarefaAcademicaDAO;
+  #respostaDAO: TarefaAcademicaRespostaDAO;
   #matriculaDAO: MatriculaDAO;
   #turmaDAO: TurmaDAO;
 
@@ -29,6 +31,7 @@ export class TarefaAcademicaNotaScheduler {
     const db = new MysqlDatabase();
     this.#tarefaMatriculaDAO = new TarefaAcademicaMatriculaDAO(db);
     this.#tarefaDAO = new TarefaAcademicaDAO(db);
+    this.#respostaDAO = new TarefaAcademicaRespostaDAO(db);
     this.#matriculaDAO = new MatriculaDAO(db);
     this.#turmaDAO = new TurmaDAO(db);
   }
@@ -43,6 +46,13 @@ export class TarefaAcademicaNotaScheduler {
           await this.zerarTarefasVencidas();
         } catch (error) {
           console.error("[SCHEDULER] ❌ Erro ao zerar tarefas vencidas:", error);
+        }
+        // Passo separado, não bloqueia nem é bloqueado pelo zerar acima —
+        // digital/presencial e lista têm caminhos de fechamento diferentes.
+        try {
+          await this.fecharListasVencidas();
+        } catch (error) {
+          console.error("[SCHEDULER] ❌ Erro ao fechar listas vencidas:", error);
         }
       },
       { scheduled: true, timezone: "America/Sao_Paulo" }
@@ -107,4 +117,77 @@ export class TarefaAcademicaNotaScheduler {
     console.log(`[SCHEDULER] ✅ ${zeradas}/${vencidas.length} entrega(s) zerada(s) automaticamente`);
     return zeradas;
   }
+
+  /**
+   * Prazo vencido com lista incompleta (decisão confirmada com o usuário,
+   * ver docs/PLANO_IMPLEMENTACAO_TAREFA_LISTA.md Seção 4.4): aproveita o que
+   * já foi respondido — insere resposta em branco (0 pontos) só nas questões
+   * que ficaram sem resposta, fecha a submissão (TarefaFeito=true, o aluno
+   * não pode mais responder depois disso) e tenta fechar a nota final (só
+   * fecha de fato se não sobrar nenhuma discursiva sem corrigir).
+   */
+  public async fecharListasVencidas(): Promise<number> {
+    const vencidas = await this.#tarefaMatriculaDAO.findListasVencidasParaFechar(new Date());
+    if (vencidas.length === 0) return 0;
+
+    console.log(`[SCHEDULER] 📝 ${vencidas.length} lista(s) vencida(s) incompleta(s) — fechando...`);
+
+    let fechadas = 0;
+    for (const item of vencidas) {
+      try {
+        await this.#respostaDAO.inserirRespostasEmBranco(item.TarefaGUID, item.TarefaMatriculaGUID);
+        await this.#tarefaMatriculaDAO.update(item.TarefaMatriculaGUID, { TarefaFeito: true });
+        await this.#settleTarefaLista(item.TarefaMatriculaGUID);
+
+        const tarefa = await this.#tarefaDAO.findById(item.TarefaGUID);
+        const matricula = await this.#matriculaDAO.findById(item.MatriculaGUID);
+        if (tarefa && matricula) {
+          const turma = await this.#turmaDAO.findById(matricula.TurmaGUID);
+          if (turma) {
+            await getNotificacaoService().disparar({
+              tipoSlug: "tarefa_avaliada",
+              destinatarios: [item.UsuarioCPF],
+              escolaGUID: turma.EscolaGUID,
+              titulo: `Prazo de "${tarefa.TarefaTitulo}" venceu — as questões em branco foram zeradas automaticamente`,
+              entidadeTipo: "tarefa",
+              entidadeGUID: tarefa.TarefaGUID,
+              link: `/dashboard/${turma.EscolaGUID}/tarefas/${tarefa.TarefaGUID}`,
+            });
+          }
+        }
+
+        fechadas++;
+      } catch (error) {
+        console.error(`[SCHEDULER] ❌ Erro ao fechar lista ${item.TarefaMatriculaGUID}:`, error);
+      }
+    }
+
+    console.log(`[SCHEDULER] ✅ ${fechadas}/${vencidas.length} lista(s) fechada(s) automaticamente`);
+    return fechadas;
+  }
+
+  /**
+   * Mesma lógica de TarefaAcademicaService.#tentarSettleTarefaLista, só a
+   * parte da nota (o TarefaFeito=true já foi setado explicitamente acima,
+   * incondicional, porque aqui o prazo já venceu — diferente do fluxo normal
+   * de resposta, onde TarefaFeito só vira true quando o aluno responde a
+   * última questão). Duplicado aqui em vez de injetar TarefaAcademicaService
+   * inteiro só por causa de um método privado — o scheduler já tem as DAOs
+   * que precisa.
+   */
+  #settleTarefaLista = async (TarefaMatriculaGUID: string): Promise<void> => {
+    const agregado = (await this.#respostaDAO.buscarAgregadoPorAluno([TarefaMatriculaGUID])).get(TarefaMatriculaGUID);
+    if (!agregado || agregado.TotalQuestoes === 0) return;
+    if (agregado.QuestoesCorrigidas < agregado.TotalQuestoes) return; // sobrou discursiva sem corrigir — fica "aguardando_avaliacao"
+
+    const notaFinal = agregado.PontosMaximosTotal > 0
+      ? Math.round((agregado.PontosObtidos / agregado.PontosMaximosTotal) * 1000) / 100
+      : 0;
+
+    await this.#tarefaMatriculaDAO.update(TarefaMatriculaGUID, {
+      TarefaNota: notaFinal,
+      TarefaAvaliadoEm: new Date(),
+      TarefaAvaliadoPorCPF: await this.#respostaDAO.buscarAvaliadorHumano(TarefaMatriculaGUID),
+    });
+  };
 }

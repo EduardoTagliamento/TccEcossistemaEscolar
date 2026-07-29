@@ -5,6 +5,7 @@ import { CategoriaConteudoDAO, CategoriaConteudoFilters } from "../repositories/
 import { MateriaDAO } from "../repositories/materia.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
+import { TarefaAcademicaRespostaDAO, AgregadoAlunoLista } from "../repositories/tarefaacademica-resposta.repository";
 import { pool } from "../database/mysql";
 import { RowDataPacket } from "mysql2";
 
@@ -12,6 +13,7 @@ export type ItemTipo =
   | "prova"
   | "tarefa_digital"
   | "tarefa_presencial"
+  | "tarefa_lista"
   | "conteudo_video"
   | "conteudo_texto"
   | "conteudo_imagem";
@@ -101,19 +103,83 @@ export interface EstatisticasItemDTO {
   Ranking: EstatisticaAlunoDTO[];
 }
 
+export interface EstatisticaRespostaAlunoDTO {
+  MatriculaGUID: string;
+  AlunoNome: string;
+  PontosObtidos: number | null;
+  PontosMaximos: number;
+  RespostaResumo: string;
+}
+
+export interface EstatisticaQuestaoDTO {
+  QuestaoGUID: string;
+  QuestaoOrdem: number;
+  QuestaoEnunciadoResumo: string;
+  QuestaoTipo: "objetiva" | "discursiva";
+  /** Objetiva: % de respostas corrigidas que acertaram (pontos = máximo). Discursiva: média pontos/máximo. */
+  PercentualAcerto: number;
+  RespostasPorAluno: EstatisticaRespostaAlunoDTO[];
+}
+
+export interface EstatisticasPorQuestaoDTO {
+  Questoes: EstatisticaQuestaoDTO[];
+}
+
 export default class CategoriaConteudoService {
   #categoriaDAO: CategoriaConteudoDAO;
   #materiaDAO: MateriaDAO;
   #turmaDAO: TurmaDAO;
   #matriculaDAO?: MatriculaDAO;
+  #respostaDAO?: TarefaAcademicaRespostaDAO;
 
-  constructor(categoriaDAO: CategoriaConteudoDAO, materiaDAO: MateriaDAO, turmaDAO: TurmaDAO, matriculaDAO?: MatriculaDAO) {
+  constructor(
+    categoriaDAO: CategoriaConteudoDAO,
+    materiaDAO: MateriaDAO,
+    turmaDAO: TurmaDAO,
+    matriculaDAO?: MatriculaDAO,
+    respostaDAO?: TarefaAcademicaRespostaDAO
+  ) {
     console.log("⬆️  CategoriaConteudoService.constructor()");
     this.#categoriaDAO = categoriaDAO;
     this.#materiaDAO = materiaDAO;
     this.#turmaDAO = turmaDAO;
     this.#matriculaDAO = matriculaDAO;
+    this.#respostaDAO = respostaDAO;
   }
+
+  /**
+   * Resolve Estado/Percentual de um item "tarefa_lista" — o progresso é por
+   * questão (não 1 valor só), então não reaproveita o cálculo de
+   * digital/presencial acima. `agregado` vem de
+   * TarefaAcademicaRespostaDAO.buscarAgregadoPorAluno (1 query em lote por
+   * chamada de board, não por item).
+   */
+  #resolverEstadoLista = (
+    agregado: AgregadoAlunoLista | undefined,
+    prazoPassou: boolean,
+    tarefaFeito: boolean,
+    tarefaNota: number | null
+  ): { estado: ItemCategoriaDTO["Estado"]; percentual: number | null } => {
+    if (tarefaNota !== null) {
+      return { estado: "avaliado", percentual: Math.round((tarefaNota / 10) * 100) };
+    }
+
+    const pontosMax = agregado?.PontosMaximosTotal ?? 0;
+    const percentualAoVivo = pontosMax > 0 ? Math.round(((agregado?.PontosObtidos ?? 0) / pontosMax) * 100) : 0;
+
+    if (tarefaFeito) {
+      // Fechada (todas respondidas) mas a nota final ainda não fechou —
+      // sobrou discursiva sem corrigir (ou corrida rara com o settle).
+      return { estado: "aguardando_avaliacao", percentual: percentualAoVivo };
+    }
+    if (prazoPassou) {
+      return { estado: "atrasado", percentual: percentualAoVivo };
+    }
+    if ((agregado?.QuestoesRespondidas ?? 0) > 0) {
+      return { estado: "parcial", percentual: percentualAoVivo };
+    }
+    return { estado: "sem_progresso", percentual: null };
+  };
 
   /**
    * Tela de categorias: categorias em ordem + itens (tarefa/prova/conteúdo)
@@ -139,9 +205,10 @@ export default class CategoriaConteudoService {
       mapaItens.get(chave)!.push(item);
     };
 
-    // ---- Tarefas (digital/presencial) ----
+    // ---- Tarefas (digital/presencial/lista) ----
     const [tarefaRows] = await pool.execute<RowDataPacket[]>(
       `SELECT t.TarefaGUID, t.TarefaTitulo, t.TarefaTipoEntrega, t.CategoriaGUID, t.ItemOrdem,
+              tm.TarefaMatriculaGUID,
               COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS Prazo,
               tm.TarefaFeito, tm.TarefaNota, tm.TarefaAvaliadoPorCPF
        FROM tarefaacademica t
@@ -150,10 +217,38 @@ export default class CategoriaConteudoService {
        WHERE mpt.MateriaGUID = ? AND mpt.TurmaGUID = ?`,
       [matriculaGUID, materiaGUID, turmaGUID]
     );
+
+    const matriculaGUIDsLista = (tarefaRows as any[])
+      .filter((row) => row.TarefaTipoEntrega === "lista" && row.TarefaMatriculaGUID)
+      .map((row) => row.TarefaMatriculaGUID as string);
+    const agregadosLista = this.#respostaDAO
+      ? await this.#respostaDAO.buscarAgregadoPorAluno(matriculaGUIDsLista)
+      : new Map<string, AgregadoAlunoLista>();
+
     for (const row of tarefaRows as any[]) {
       const prazoPassou = new Date(row.Prazo).getTime() < Date.now();
       const feito = Boolean(row.TarefaFeito);
       const nota: number | null = row.TarefaNota !== null ? Number(row.TarefaNota) : null;
+
+      if (row.TarefaTipoEntrega === "lista") {
+        const { estado, percentual } = this.#resolverEstadoLista(
+          agregadosLista.get(row.TarefaMatriculaGUID),
+          prazoPassou,
+          feito,
+          nota
+        );
+        adicionar(row.CategoriaGUID, {
+          ItemGUID: row.TarefaGUID,
+          Tipo: "tarefa_lista",
+          Titulo: row.TarefaTitulo,
+          Percentual: percentual,
+          Estado: estado,
+          Nota: nota,
+          ItemOrdem: row.ItemOrdem ?? 0,
+        });
+        continue;
+      }
+
       // Zerado automaticamente pelo scheduler (prazo vencido sem entrega) tem
       // TarefaAvaliadoPorCPF NULL — nota existe (0) mas não é uma correção de
       // verdade, então continua contando como "atrasado" (vermelho + cadeado),
@@ -286,7 +381,7 @@ export default class CategoriaConteudoService {
     for (let indice = 0; indice < itens.length; indice++) {
       const { ItemGUID, Tipo } = itens[indice];
 
-      if (Tipo === "tarefa_digital" || Tipo === "tarefa_presencial") {
+      if (Tipo === "tarefa_digital" || Tipo === "tarefa_presencial" || Tipo === "tarefa_lista") {
         const [rows] = await pool.execute<RowDataPacket[]>(
           `SELECT 1 FROM tarefaacademica t
            INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
@@ -676,9 +771,15 @@ export default class CategoriaConteudoService {
       [materiaGUID, usuarioCPF]
     );
     for (const row of tarefaRows as any[]) {
+      const tipoTarefa: ItemTipo =
+        row.TarefaTipoEntrega === "digital"
+          ? "tarefa_digital"
+          : row.TarefaTipoEntrega === "lista"
+          ? "tarefa_lista"
+          : "tarefa_presencial";
       adicionar(row.CategoriaNome ?? null, {
         ItemGUID: row.TarefaGUID,
-        Tipo: row.TarefaTipoEntrega === "digital" ? "tarefa_digital" : "tarefa_presencial",
+        Tipo: tipoTarefa,
         Titulo: row.TarefaTitulo,
         Turmas: [{ TurmaGUID: row.TurmaGUID, TurmaNome: row.TurmaNome, TurmaSerie: row.TurmaSerie }],
         ItemOrdem: row.ItemOrdem ?? 0,
@@ -898,7 +999,7 @@ export default class CategoriaConteudoService {
 
     const nome = categoriaNomeDestino?.trim() || null;
 
-    if (tipo === "tarefa_digital" || tipo === "tarefa_presencial") {
+    if (tipo === "tarefa_digital" || tipo === "tarefa_presencial" || tipo === "tarefa_lista") {
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT 1 FROM tarefaacademica t
          INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
@@ -1061,7 +1162,7 @@ export default class CategoriaConteudoService {
 
     let materiaGUID: string;
 
-    if (tipo === "tarefa_digital" || tipo === "tarefa_presencial") {
+    if (tipo === "tarefa_digital" || tipo === "tarefa_presencial" || tipo === "tarefa_lista") {
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT mpt.MateriaGUID
          FROM tarefaacademica t
@@ -1123,6 +1224,30 @@ export default class CategoriaConteudoService {
 
         return { MatriculaGUID: row.MatriculaGUID, AlunoNome: row.UsuarioNome, Percentual: percentual, Nota: nota };
       });
+    } else if (tipo === "tarefa_lista") {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT m.MatriculaGUID, u.UsuarioNome, tm.TarefaMatriculaGUID, tm.TarefaFeito, tm.TarefaNota,
+                COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS Prazo
+         FROM matricula m
+         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         CROSS JOIN tarefaacademica t
+         LEFT JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID AND tm.MatriculaGUID = m.MatriculaGUID
+         WHERE t.TarefaGUID = ? AND m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
+        [itemGUID, turmaGUID]
+      );
+      const matriculaGUIDsAtribuidas = (rows as any[])
+        .filter((row) => row.TarefaMatriculaGUID)
+        .map((row) => row.TarefaMatriculaGUID as string);
+      const agregados = this.#respostaDAO
+        ? await this.#respostaDAO.buscarAgregadoPorAluno(matriculaGUIDsAtribuidas)
+        : new Map<string, AgregadoAlunoLista>();
+      alunos = (rows as any[]).map((row) => {
+        const nota = row.TarefaNota !== null && row.TarefaNota !== undefined ? Number(row.TarefaNota) : null;
+        const feito = Boolean(row.TarefaFeito);
+        const prazoPassou = row.Prazo ? new Date(row.Prazo).getTime() < Date.now() : false;
+        const { percentual } = this.#resolverEstadoLista(agregados.get(row.TarefaMatriculaGUID), prazoPassou, feito, nota);
+        return { MatriculaGUID: row.MatriculaGUID, AlunoNome: row.UsuarioNome, Percentual: percentual ?? 0, Nota: nota };
+      });
     } else if (tipo.startsWith("conteudo_")) {
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT m.MatriculaGUID, u.UsuarioNome, cp.PercentualConcluido
@@ -1171,6 +1296,116 @@ export default class CategoriaConteudoService {
     const ranking = [...alunos].sort((a, b) => b.Percentual - a.Percentual);
 
     return { MediaPercentual: mediaPercentual, Ranking: ranking };
+  };
+
+  /**
+   * Estatística quebrada por questão (só tarefa "lista") — % de acerto de
+   * cada questão + a resposta de cada aluno, pra a tabela extra que
+   * digital/presencial não têm (aqueles só têm o agregado de
+   * buscarEstatisticasItem).
+   */
+  buscarEstatisticasPorQuestao = async (
+    usuarioCPF: string,
+    TarefaGUID: string,
+    turmaGUID: string
+  ): Promise<EstatisticasPorQuestaoDTO> => {
+    console.log("🟣 CategoriaConteudoService.buscarEstatisticasPorQuestao()");
+
+    if (!this.#respostaDAO) {
+      throw new ErrorResponse(500, "Serviço indisponível", { message: "Estatística por questão não configurada." });
+    }
+
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT mpt.MateriaGUID
+       FROM tarefaacademica t
+       INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+       WHERE t.TarefaGUID = ? LIMIT 1`,
+      [TarefaGUID]
+    );
+    if (rows.length === 0) throw new ErrorResponse(404, "Tarefa não encontrada");
+    const materiaGUID = (rows[0] as any).MateriaGUID;
+
+    const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT 1 FROM materiaxprofessorxturma
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [materiaGUID, turmaGUID, usuarioCPF]
+    );
+    if (alocacaoRows.length === 0) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está alocado nesta matéria/turma.",
+      });
+    }
+
+    const linhas = await this.#respostaDAO.buscarRespostasComContextoPorTarefa(TarefaGUID);
+
+    const porQuestao = new Map<
+      string,
+      {
+        QuestaoOrdem: number;
+        QuestaoEnunciado: string;
+        QuestaoTipo: "objetiva" | "discursiva";
+        QuestaoPontosMaximos: number;
+        respostas: EstatisticaRespostaAlunoDTO[];
+      }
+    >();
+
+    for (const linha of linhas) {
+      let grupo = porQuestao.get(linha.QuestaoGUID);
+      if (!grupo) {
+        grupo = {
+          QuestaoOrdem: linha.QuestaoOrdem,
+          QuestaoEnunciado: linha.QuestaoEnunciado,
+          QuestaoTipo: linha.QuestaoTipo,
+          QuestaoPontosMaximos: Number(linha.QuestaoPontosMaximos),
+          respostas: [],
+        };
+        porQuestao.set(linha.QuestaoGUID, grupo);
+      }
+
+      const respostaResumo =
+        linha.QuestaoTipo === "objetiva"
+          ? linha.AlternativaTexto ?? ""
+          : linha.RespostaTextoDiscursiva
+          ? linha.RespostaTextoDiscursiva.length > 80
+            ? `${linha.RespostaTextoDiscursiva.slice(0, 80)}…`
+            : linha.RespostaTextoDiscursiva
+          : "";
+
+      grupo.respostas.push({
+        MatriculaGUID: linha.MatriculaGUID,
+        AlunoNome: linha.AlunoNome,
+        PontosObtidos: linha.RespostaPontosObtidos !== null ? Number(linha.RespostaPontosObtidos) : null,
+        PontosMaximos: Number(linha.QuestaoPontosMaximos),
+        RespostaResumo: respostaResumo,
+      });
+    }
+
+    const Questoes: EstatisticaQuestaoDTO[] = Array.from(porQuestao.entries())
+      .map(([QuestaoGUID, grupo]) => {
+        const corrigidas = grupo.respostas.filter((r) => r.PontosObtidos !== null);
+
+        let percentualAcerto = 0;
+        if (grupo.QuestaoTipo === "objetiva") {
+          const acertos = corrigidas.filter((r) => r.PontosObtidos === grupo.QuestaoPontosMaximos).length;
+          percentualAcerto = corrigidas.length > 0 ? Math.round((acertos / corrigidas.length) * 100) : 0;
+        } else {
+          const media =
+            corrigidas.length > 0 ? corrigidas.reduce((soma, r) => soma + (r.PontosObtidos ?? 0), 0) / corrigidas.length : 0;
+          percentualAcerto = grupo.QuestaoPontosMaximos > 0 ? Math.round((media / grupo.QuestaoPontosMaximos) * 100) : 0;
+        }
+
+        return {
+          QuestaoGUID,
+          QuestaoOrdem: grupo.QuestaoOrdem,
+          QuestaoEnunciadoResumo: grupo.QuestaoEnunciado.length > 80 ? `${grupo.QuestaoEnunciado.slice(0, 80)}…` : grupo.QuestaoEnunciado,
+          QuestaoTipo: grupo.QuestaoTipo,
+          PercentualAcerto: percentualAcerto,
+          RespostasPorAluno: grupo.respostas,
+        };
+      })
+      .sort((a, b) => a.QuestaoOrdem - b.QuestaoOrdem);
+
+    return { Questoes };
   };
 
   excluirCategoria = async (guid: string, usuarioCPF: string): Promise<void> => {

@@ -28,6 +28,7 @@ const ICONE_POR_TIPO: Record<ItemBoardGeral['Tipo'], IconName> = {
   prova: 'award',
   tarefa_digital: 'upload',
   tarefa_presencial: 'edit',
+  tarefa_lista: 'list',
   conteudo_video: 'camera',
   conteudo_texto: 'file-text',
   conteudo_imagem: 'layers',

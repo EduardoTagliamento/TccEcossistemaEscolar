@@ -9,7 +9,7 @@ interface TarefaAcademicaRow extends RowDataPacket {
   TarefaConteudo: string | null;
   TarefaPostagemData: Date;
   TarefaPrazoData: Date;
-  TarefaTipoEntrega: "digital" | "fisica";
+  TarefaTipoEntrega: "digital" | "fisica" | "lista";
   CategoriaGUID: string | null;
   TarefaCompartilhada: boolean;
   TarefaMinPessoas: number | null;

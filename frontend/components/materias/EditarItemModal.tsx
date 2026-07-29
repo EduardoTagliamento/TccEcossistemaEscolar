@@ -26,6 +26,7 @@ const TITULOS: Record<ItemCategoria['Tipo'], string> = {
   conteudo_imagem: 'Editar conteúdo',
   tarefa_digital: 'Editar tarefa',
   tarefa_presencial: 'Editar tarefa',
+  tarefa_lista: 'Editar lista',
   prova: 'Editar prova',
 };
 

@@ -230,6 +230,13 @@ export class TarefaAcademicaMatriculaDAO {
    * "avaliações pendentes" do professor. Considera o prazo por matrícula
    * (TarefaPrazoDataMatricula) quando existir, senão o prazo geral da tarefa.
    */
+  /**
+   * Tarefas digital/presencial vencidas sem entrega — exclui tipo 'lista' de
+   * propósito: lista tem seu próprio caminho de fechamento (ver
+   * findListasVencidasParaFechar), porque "prazo vencido" nela não zera tudo
+   * de uma vez — aproveita o que já foi respondido (decisão confirmada com o
+   * usuário, ver docs/PLANO_IMPLEMENTACAO_TAREFA_LISTA.md, Seção 4.4).
+   */
   findVencidasSemAvaliacao = async (agora: Date): Promise<TarefaVencidaSemAvaliacao[]> => {
     console.log("🟢 TarefaAcademicaMatriculaDAO.findVencidasSemAvaliacao()");
 
@@ -240,6 +247,30 @@ export class TarefaAcademicaMatriculaDAO {
       INNER JOIN matricula mat ON mat.MatriculaGUID = tm.MatriculaGUID
       WHERE tm.TarefaFeito = FALSE
         AND tm.TarefaNota IS NULL
+        AND t.TarefaTipoEntrega != 'lista'
+        AND COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) <= ?;
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL, [agora]);
+
+    return rows as TarefaVencidaSemAvaliacao[];
+  };
+
+  /**
+   * Tarefas 'lista' vencidas ainda não fechadas (TarefaFeito=FALSE) — usado
+   * pelo scheduler pra fechar a submissão e zerar só as questões em branco,
+   * mantendo os pontos já respondidos (ver TarefaAcademicaRespostaDAO.inserirRespostasEmBranco).
+   */
+  findListasVencidasParaFechar = async (agora: Date): Promise<TarefaVencidaSemAvaliacao[]> => {
+    console.log("🟢 TarefaAcademicaMatriculaDAO.findListasVencidasParaFechar()");
+
+    const SQL = `
+      SELECT tm.TarefaMatriculaGUID, tm.TarefaGUID, tm.MatriculaGUID, mat.UsuarioCPF
+      FROM tarefaacademica_matricula tm
+      INNER JOIN tarefaacademica t ON t.TarefaGUID = tm.TarefaGUID
+      INNER JOIN matricula mat ON mat.MatriculaGUID = tm.MatriculaGUID
+      WHERE tm.TarefaFeito = FALSE
+        AND t.TarefaTipoEntrega = 'lista'
         AND COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) <= ?;
     `;
     const pool = await this.#database.getPool();

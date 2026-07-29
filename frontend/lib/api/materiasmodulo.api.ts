@@ -141,6 +141,7 @@ export type ItemTipo =
   | 'prova'
   | 'tarefa_digital'
   | 'tarefa_presencial'
+  | 'tarefa_lista'
   | 'conteudo_video'
   | 'conteudo_texto'
   | 'conteudo_imagem';
@@ -304,4 +305,110 @@ export async function listarPendentesAvaliacaoProfessor(): Promise<TarefaPendent
   const response = await fetch(`${API_URL}/tarefa/pendentes-avaliacao-professor`, { headers: getHeaders() });
   const dados = await extrairDados(response, 'Erro ao listar pendentes de avaliação');
   return dados.pendentes;
+}
+
+// ==================== Tarefa "lista" — visão do aluno ====================
+
+/** Alternativa na visão do aluno — gabarito (Correta/Pontos) só vem preenchido depois que ele respondeu essa questão. */
+export interface AlternativaAluno {
+  AlternativaGUID: string;
+  AlternativaTexto: string;
+  AlternativaOrdem: number;
+  AlternativaCorreta: boolean | null;
+  AlternativaPontos: number | null;
+}
+
+export interface QuestaoAnexoResumo {
+  AnexoGUID: string;
+  AnexoNomeOriginal: string | null;
+  AnexoTamanho: number | null;
+  CreatedAt: string | null;
+}
+
+export interface QuestaoComResposta {
+  QuestaoGUID: string;
+  QuestaoEnunciado: string;
+  QuestaoTipo: 'objetiva' | 'discursiva';
+  QuestaoPontosMaximos: number;
+  /** Só vem preenchida depois que a questão foi resolvida (objetiva: na hora; discursiva: após corrigida). */
+  QuestaoExplicacao: string | null;
+  QuestaoOrdem: number;
+  Alternativas: AlternativaAluno[];
+  Anexos: QuestaoAnexoResumo[];
+  MinhaResposta: {
+    RespostaGUID: string;
+    AlternativaGUID: string | null;
+    RespostaTextoDiscursiva: string | null;
+    RespostaPontosObtidos: number | null;
+    Corrigida: boolean;
+  } | null;
+}
+
+export async function buscarQuestoesComRespostas(tarefaGUID: string): Promise<QuestaoComResposta[]> {
+  const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}/questoes/minhas-respostas`, {
+    headers: getHeaders(),
+  });
+  const dados = await extrairDados(response, 'Erro ao buscar questões da lista');
+  return dados.questoes || [];
+}
+
+export interface RespostaQuestao {
+  RespostaGUID: string;
+  QuestaoGUID: string;
+  AlternativaGUID: string | null;
+  RespostaTextoDiscursiva: string | null;
+  RespostaPontosObtidos: number | null;
+  RespostaAvaliadoEm: string | null;
+  RespostaAvaliadoPorCPF: string | null;
+  RespondidoEm: string | null;
+}
+
+export async function responderObjetiva(tarefaGUID: string, questaoGUID: string, alternativaGUID: string): Promise<RespostaQuestao> {
+  const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}/questoes/${questaoGUID}/responder-objetiva`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ AlternativaGUID: alternativaGUID }),
+  });
+  const dados = await extrairDados(response, 'Erro ao responder questão');
+  return dados.resposta;
+}
+
+export async function responderDiscursiva(tarefaGUID: string, questaoGUID: string, texto: string): Promise<RespostaQuestao> {
+  const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}/questoes/${questaoGUID}/responder-discursiva`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ Texto: texto }),
+  });
+  const dados = await extrairDados(response, 'Erro ao responder questão');
+  return dados.resposta;
+}
+
+// ==================== Estatísticas por questão (tarefa "lista", professor) ====================
+
+export interface EstatisticaRespostaAluno {
+  MatriculaGUID: string;
+  AlunoNome: string;
+  PontosObtidos: number | null;
+  PontosMaximos: number;
+  RespostaResumo: string;
+}
+
+export interface EstatisticaQuestao {
+  QuestaoGUID: string;
+  QuestaoOrdem: number;
+  QuestaoEnunciadoResumo: string;
+  QuestaoTipo: 'objetiva' | 'discursiva';
+  PercentualAcerto: number;
+  RespostasPorAluno: EstatisticaRespostaAluno[];
+}
+
+export interface EstatisticasPorQuestao {
+  Questoes: EstatisticaQuestao[];
+}
+
+export async function buscarEstatisticasPorQuestao(tarefaGUID: string, turmaGUID: string): Promise<EstatisticasPorQuestao> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/estatisticas-por-questao/${tarefaGUID}/${turmaGUID}`, {
+    headers: getHeaders(),
+  });
+  return extrairDados(response, 'Erro ao buscar estatísticas por questão');
 }

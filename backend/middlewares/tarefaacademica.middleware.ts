@@ -2,7 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import ErrorResponse from "../utils/ErrorResponse";
 
 const GUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const TIPO_ENTREGA_VALID = ["digital", "fisica"];
+const TIPO_ENTREGA_VALID = ["digital", "fisica", "lista"];
+const QUESTAO_TIPO_VALID = ["objetiva", "discursiva"];
 
 /**
  * Middleware de validação para rotas de TarefaAcademica
@@ -171,7 +172,7 @@ export default class TarefaAcademicaMiddleware {
 
     if (!TIPO_ENTREGA_VALID.includes(tarefa.TarefaTipoEntrega)) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'TarefaTipoEntrega' deve ser 'digital' ou 'fisica'.",
+        message: "O campo 'TarefaTipoEntrega' deve ser 'digital', 'fisica' ou 'lista'.",
       });
     }
 
@@ -318,7 +319,7 @@ export default class TarefaAcademicaMiddleware {
 
     if (!TIPO_ENTREGA_VALID.includes(tarefa.TarefaTipoEntrega)) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'TarefaTipoEntrega' deve ser 'digital' ou 'fisica'.",
+        message: "O campo 'TarefaTipoEntrega' deve ser 'digital', 'fisica' ou 'lista'.",
       });
     }
 
@@ -419,7 +420,7 @@ export default class TarefaAcademicaMiddleware {
       !TIPO_ENTREGA_VALID.includes(tarefa.TarefaTipoEntrega)
     ) {
       throw new ErrorResponse(400, "Erro na validação de dados", {
-        message: "O campo 'TarefaTipoEntrega' deve ser 'digital' ou 'fisica'.",
+        message: "O campo 'TarefaTipoEntrega' deve ser 'digital', 'fisica' ou 'lista'.",
       });
     }
 
@@ -545,6 +546,361 @@ export default class TarefaAcademicaMiddleware {
           message: "O filtro 'DataInicio' deve ser anterior a 'DataFim'.",
         });
       }
+    }
+
+    next();
+  };
+
+  // ========== Questão de tarefa "lista" ==========
+
+  /** Valida o payload de UMA questão (usado tanto na criação simples quanto em cada item do batch). */
+  #validarPayloadQuestao = (questao: any, prefixo: string): void => {
+    if (!questao || typeof questao !== "object") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: `${prefixo} deve ser um objeto.`,
+      });
+    }
+
+    if (!questao.QuestaoEnunciado || typeof questao.QuestaoEnunciado !== "string" || questao.QuestaoEnunciado.trim() === "") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: `${prefixo}.QuestaoEnunciado é obrigatório.`,
+      });
+    }
+
+    if (!QUESTAO_TIPO_VALID.includes(questao.QuestaoTipo)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: `${prefixo}.QuestaoTipo deve ser 'objetiva' ou 'discursiva'.`,
+      });
+    }
+
+    if (questao.QuestaoPontosMaximos === undefined || isNaN(Number(questao.QuestaoPontosMaximos)) || Number(questao.QuestaoPontosMaximos) <= 0) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: `${prefixo}.QuestaoPontosMaximos é obrigatório e deve ser um número > 0.`,
+      });
+    }
+
+    if (questao.QuestaoExplicacao !== undefined && questao.QuestaoExplicacao !== null && typeof questao.QuestaoExplicacao !== "string") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: `${prefixo}.QuestaoExplicacao deve ser uma string.`,
+      });
+    }
+
+    if (questao.QuestaoTipo === "objetiva") {
+      if (!Array.isArray(questao.Alternativas) || questao.Alternativas.length < 2) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: `${prefixo}.Alternativas deve ser um array com ao menos 2 itens para questão objetiva.`,
+        });
+      }
+      let corretas = 0;
+      for (const alt of questao.Alternativas) {
+        if (!alt.AlternativaTexto || typeof alt.AlternativaTexto !== "string" || alt.AlternativaTexto.trim() === "") {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `${prefixo}.Alternativas: AlternativaTexto é obrigatório.`,
+          });
+        }
+        if (typeof alt.AlternativaCorreta !== "boolean") {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `${prefixo}.Alternativas: AlternativaCorreta é obrigatório e deve ser booleano.`,
+          });
+        }
+        if (alt.AlternativaPontos === undefined || isNaN(Number(alt.AlternativaPontos)) || Number(alt.AlternativaPontos) < 0) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `${prefixo}.Alternativas: AlternativaPontos é obrigatório e deve ser um número >= 0.`,
+          });
+        }
+        if (alt.AlternativaCorreta) corretas++;
+      }
+      if (corretas !== 1) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: `${prefixo}.Alternativas: exatamente uma alternativa deve ser marcada como correta.`,
+        });
+      }
+    }
+
+    if (questao.AnexosGUID !== undefined) {
+      if (!Array.isArray(questao.AnexosGUID)) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: `${prefixo}.AnexosGUID deve ser um array de UUIDs.`,
+        });
+      }
+      for (const guid of questao.AnexosGUID) {
+        if (typeof guid !== "string" || !GUID_REGEX.test(guid)) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: `${prefixo}.AnexosGUID: '${guid}' não é um UUID válido.`,
+          });
+        }
+      }
+    }
+  };
+
+  /** Valida body para criação de questão (POST /api/tarefa/:TarefaGUID/questoes) — Body: { questao: {...} } */
+  validateQuestaoCreateBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateQuestaoCreateBody()");
+    this.#validarPayloadQuestao(request.body?.questao, "questao");
+    next();
+  };
+
+  /** Valida body para criação em lote (POST /api/tarefa/:TarefaGUID/questoes/batch) — Body: { questoes: [...] } */
+  validateQuestoesBatchBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateQuestoesBatchBody()");
+    const { questoes } = request.body;
+
+    if (!Array.isArray(questoes) || questoes.length === 0) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'questoes' é obrigatório e deve ser um array com ao menos 1 item.",
+      });
+    }
+
+    questoes.forEach((questao: any, index: number) => this.#validarPayloadQuestao(questao, `questoes[${index}]`));
+
+    next();
+  };
+
+  /** Valida body para importação de questões via planilha (POST /api/tarefa/:TarefaGUID/questoes/importar) — Body: { linhas: [...] } */
+  validateImportarQuestoesBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateImportarQuestoesBody()");
+    const { linhas } = request.body;
+
+    if (!Array.isArray(linhas) || linhas.length === 0) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'linhas' é obrigatório e deve ser um array com ao menos 1 item.",
+      });
+    }
+
+    linhas.forEach((linha: any, index: number) => {
+      if (linha.LinhaOriginal === undefined || isNaN(Number(linha.LinhaOriginal))) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: `linhas[${index}].LinhaOriginal é obrigatório.`,
+        });
+      }
+      this.#validarPayloadQuestao(linha, `linhas[${index}]`);
+    });
+
+    next();
+  };
+
+  /** Valida body para atualização de questão (PUT /api/tarefa/questoes/:QuestaoGUID) — Body: { questao: {...parcial} } */
+  validateQuestaoUpdateBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateQuestaoUpdateBody()");
+    const { questao } = request.body;
+
+    if (!questao || typeof questao !== "object") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'questao' é obrigatório e deve ser um objeto.",
+      });
+    }
+
+    const camposValidos = ["QuestaoEnunciado", "QuestaoTipo", "QuestaoPontosMaximos", "QuestaoExplicacao", "Alternativas"];
+    const camposFornecidos = camposValidos.filter((c) => questao[c] !== undefined);
+    if (camposFornecidos.length === 0) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "É necessário fornecer ao menos um campo para atualização: " + camposValidos.join(", "),
+      });
+    }
+
+    if (questao.QuestaoEnunciado !== undefined && (typeof questao.QuestaoEnunciado !== "string" || questao.QuestaoEnunciado.trim() === "")) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "questao.QuestaoEnunciado deve ser uma string não vazia.",
+      });
+    }
+
+    if (questao.QuestaoTipo !== undefined && !QUESTAO_TIPO_VALID.includes(questao.QuestaoTipo)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "questao.QuestaoTipo deve ser 'objetiva' ou 'discursiva'.",
+      });
+    }
+
+    if (questao.QuestaoPontosMaximos !== undefined && (isNaN(Number(questao.QuestaoPontosMaximos)) || Number(questao.QuestaoPontosMaximos) <= 0)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "questao.QuestaoPontosMaximos deve ser um número > 0.",
+      });
+    }
+
+    if (questao.Alternativas !== undefined) {
+      if (!Array.isArray(questao.Alternativas) || questao.Alternativas.length < 2) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "questao.Alternativas deve ser um array com ao menos 2 itens.",
+        });
+      }
+      let corretas = 0;
+      for (const alt of questao.Alternativas) {
+        if (!alt.AlternativaTexto || typeof alt.AlternativaTexto !== "string" || alt.AlternativaTexto.trim() === "") {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: "questao.Alternativas: AlternativaTexto é obrigatório.",
+          });
+        }
+        if (typeof alt.AlternativaCorreta !== "boolean") {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: "questao.Alternativas: AlternativaCorreta é obrigatório e deve ser booleano.",
+          });
+        }
+        if (alt.AlternativaPontos === undefined || isNaN(Number(alt.AlternativaPontos)) || Number(alt.AlternativaPontos) < 0) {
+          throw new ErrorResponse(400, "Erro na validação de dados", {
+            message: "questao.Alternativas: AlternativaPontos é obrigatório e deve ser um número >= 0.",
+          });
+        }
+        if (alt.AlternativaCorreta) corretas++;
+      }
+      if (corretas !== 1) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "questao.Alternativas: exatamente uma alternativa deve ser marcada como correta.",
+        });
+      }
+    }
+
+    next();
+  };
+
+  /** Valida body para reordenar questões (PATCH /api/tarefa/:TarefaGUID/questoes/reordenar) — Body: { ordens: [{QuestaoGUID, QuestaoOrdem}] } */
+  validateReordenarQuestoesBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateReordenarQuestoesBody()");
+    const { ordens } = request.body;
+
+    if (!Array.isArray(ordens) || ordens.length === 0) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'ordens' é obrigatório e deve ser um array com ao menos 1 item.",
+      });
+    }
+
+    for (const item of ordens) {
+      if (!item.QuestaoGUID || !GUID_REGEX.test(item.QuestaoGUID)) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "Cada item de 'ordens' precisa de um 'QuestaoGUID' válido.",
+        });
+      }
+      if (item.QuestaoOrdem === undefined || isNaN(Number(item.QuestaoOrdem)) || Number(item.QuestaoOrdem) < 0) {
+        throw new ErrorResponse(400, "Erro na validação de dados", {
+          message: "Cada item de 'ordens' precisa de um 'QuestaoOrdem' >= 0.",
+        });
+      }
+    }
+
+    next();
+  };
+
+  /** Valida TarefaGUID e QuestaoGUID nos parâmetros da rota (rotas de resposta do aluno) */
+  validateTarefaEQuestaoIdParam = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateTarefaEQuestaoIdParam()");
+    const { TarefaGUID, QuestaoGUID } = request.params;
+
+    if (!TarefaGUID || !GUID_REGEX.test(TarefaGUID)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O parâmetro 'TarefaGUID' deve ser um UUID válido.",
+      });
+    }
+    if (!QuestaoGUID || !GUID_REGEX.test(QuestaoGUID)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O parâmetro 'QuestaoGUID' deve ser um UUID válido.",
+      });
+    }
+
+    next();
+  };
+
+  /** Valida TarefaGUID e TarefaMatriculaGUID nos parâmetros da rota (painel de correção do professor) */
+  validateTarefaEMatriculaIdParam = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateTarefaEMatriculaIdParam()");
+    const { TarefaGUID, TarefaMatriculaGUID } = request.params;
+
+    if (!TarefaGUID || !GUID_REGEX.test(TarefaGUID)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O parâmetro 'TarefaGUID' deve ser um UUID válido.",
+      });
+    }
+    if (!TarefaMatriculaGUID || TarefaMatriculaGUID.trim().length < 1 || TarefaMatriculaGUID.trim().length > 36) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O parâmetro 'TarefaMatriculaGUID' é obrigatório.",
+      });
+    }
+
+    next();
+  };
+
+  /** Valida o GUID de questão nos parâmetros da rota */
+  validateQuestaoIdParam = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateQuestaoIdParam()");
+    const { QuestaoGUID } = request.params;
+
+    if (!QuestaoGUID || !GUID_REGEX.test(QuestaoGUID)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O parâmetro 'QuestaoGUID' deve ser um UUID válido.",
+      });
+    }
+
+    next();
+  };
+
+  /** Valida body para vincular anexo a questão (POST /api/tarefa/questoes/:QuestaoGUID/anexos) — Body: { AnexoGUID } */
+  validateAnexoQuestaoBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateAnexoQuestaoBody()");
+    const { AnexoGUID } = request.body;
+
+    if (!AnexoGUID || typeof AnexoGUID !== "string" || !GUID_REGEX.test(AnexoGUID)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'AnexoGUID' é obrigatório e deve ser um UUID válido.",
+      });
+    }
+
+    next();
+  };
+
+  /** Valida body para resposta objetiva (POST .../responder-objetiva) — Body: { AlternativaGUID } */
+  validateResponderObjetivaBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateResponderObjetivaBody()");
+    const { AlternativaGUID } = request.body;
+
+    if (!AlternativaGUID || typeof AlternativaGUID !== "string" || !GUID_REGEX.test(AlternativaGUID)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'AlternativaGUID' é obrigatório e deve ser um UUID válido.",
+      });
+    }
+
+    next();
+  };
+
+  /** Valida body para resposta discursiva (POST .../responder-discursiva) — Body: { Texto } */
+  validateResponderDiscursivaBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateResponderDiscursivaBody()");
+    const { Texto } = request.body;
+
+    if (!Texto || typeof Texto !== "string" || Texto.trim() === "") {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'Texto' é obrigatório e não pode ser vazio.",
+      });
+    }
+
+    if (Texto.trim().length > 8000) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'Texto' deve ter no máximo 8000 caracteres.",
+      });
+    }
+
+    next();
+  };
+
+  /** Valida o GUID de resposta nos parâmetros da rota */
+  validateRespostaIdParam = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateRespostaIdParam()");
+    const { RespostaGUID } = request.params;
+
+    if (!RespostaGUID || !GUID_REGEX.test(RespostaGUID)) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O parâmetro 'RespostaGUID' deve ser um UUID válido.",
+      });
+    }
+
+    next();
+  };
+
+  /** Valida body para correção de discursiva (PATCH /api/tarefa/respostas/:RespostaGUID/avaliar) — Body: { Pontos } */
+  validateAvaliarQuestaoBody = (request: Request, _response: Response, next: NextFunction): void => {
+    console.log("🔷 TarefaAcademicaMiddleware.validateAvaliarQuestaoBody()");
+    const { Pontos } = request.body;
+
+    if (Pontos === undefined || isNaN(Number(Pontos)) || Number(Pontos) < 0) {
+      throw new ErrorResponse(400, "Erro na validação de dados", {
+        message: "O campo 'Pontos' é obrigatório e deve ser um número >= 0.",
+      });
     }
 
     next();

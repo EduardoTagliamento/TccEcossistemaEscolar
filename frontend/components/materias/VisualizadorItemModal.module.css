@@ -156,6 +156,38 @@
   white-space: nowrap;
 }
 
+.estatisticasPorQuestao {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1.5px solid var(--line-200, #E2EAE5);
+}
+
+.estatisticasPorQuestaoTitulo {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--ink-900, #0F1D17);
+}
+
+.questaoEstatisticaItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line-200, #E2EAE5);
+  font-size: 0.85rem;
+}
+
+.questaoEstatisticaEnunciado {
+  flex: 1;
+  color: var(--ink-900, #0F1D17);
+}
+
+.questaoEstatisticaValor {
+  color: var(--slate-500, #647268);
+  white-space: nowrap;
+}
+
 .painelExclusao {
   background: var(--surface-muted, #F0F4F1);
   border: 1.5px solid var(--line-200, #E2EAE5);
@@ -483,4 +515,136 @@
   cursor: pointer;
   text-decoration: underline;
   text-align: left;
+}
+
+/* Tarefa "lista" (quiz estilo Forms) — visão do aluno */
+.listaQuestoesAluno {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.progressoLista {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink-900, #0F1D17);
+}
+
+.questaoAlunoCard {
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.questaoAlunoEnunciado {
+  margin: 0;
+  color: var(--ink-900, #0F1D17);
+}
+
+.questaoAlunoPontos {
+  color: var(--slate-500, #647268);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.alternativasAlunoList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.alternativaAluno,
+.alternativaCorreta,
+.alternativaErrada {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.alternativaCorreta {
+  border-color: #17C077;
+  background: color-mix(in srgb, #17C077 12%, transparent);
+  color: #0F1D17;
+  font-weight: 600;
+}
+
+.alternativaErrada {
+  border-color: #E5484D;
+  background: color-mix(in srgb, #E5484D 10%, transparent);
+  color: #0F1D17;
+}
+
+.discursivaAluno {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.discursivaAluno textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 0.6rem;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.discursivaAluno textarea:disabled {
+  opacity: 0.7;
+  background: var(--surface-muted, #F0F4F1);
+}
+
+.explicacaoQuestao {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--slate-500, #647268);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Tarefa "lista" — painel de correção do professor */
+.correcaoListaBloco {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.questaoCorrecaoCard {
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.discursivaCorrecao {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.respostaDiscursivaTexto {
+  background: var(--surface-muted, #F0F4F1);
+  border-radius: 8px;
+  padding: 0.6rem;
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--ink-900, #0F1D17);
 }

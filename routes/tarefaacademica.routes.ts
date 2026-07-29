@@ -15,6 +15,9 @@ import RelacaoAnexosService from "../backend/services/relacaoanexos.service";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { CategoriaConteudoDAO } from "../backend/repositories/categoriaconteudo.repository";
 import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofessorxturma.repository";
+import { TarefaAcademicaQuestaoDAO } from "../backend/repositories/tarefaacademica-questao.repository";
+import { TarefaAcademicaAlternativaDAO } from "../backend/repositories/tarefaacademica-alternativa.repository";
+import { TarefaAcademicaRespostaDAO } from "../backend/repositories/tarefaacademica-resposta.repository";
 
 export default class TarefaAcademicaRoteador {
   #router: Router;
@@ -60,6 +63,15 @@ export default class TarefaAcademicaRoteador {
       "/matricula/:TarefaMatriculaGUID/avaliar",
       AuthMiddleware.authenticate,
       this.#controle.avaliar
+    );
+
+    // PATCH /api/tarefa/respostas/:RespostaGUID/avaliar - Professor corrige questão discursiva (lista) (DEVE vir antes de "/:TarefaGUID")
+    this.#router.patch(
+      "/respostas/:RespostaGUID/avaliar",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateRespostaIdParam,
+      this.#middleware.validateAvaliarQuestaoBody,
+      this.#controle.avaliarQuestaoDiscursiva
     );
 
     // GET /api/tarefa/pendentes-aluno?UsuarioCPF= (DEVE vir antes de "/:TarefaGUID")
@@ -143,6 +155,121 @@ export default class TarefaAcademicaRoteador {
       this.#controle.vincularAnexo
     );
 
+    // ========== Questão de tarefa "lista" ==========
+    // Rotas /questoes/... e /respostas/... DEVEM vir antes de "/:TarefaGUID" pra não conflitar.
+
+    // POST /api/tarefa/:TarefaGUID/questoes/batch - Criar N questões de uma vez
+    this.#router.post(
+      "/:TarefaGUID/questoes/batch",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#middleware.validateQuestoesBatchBody,
+      this.#controle.criarQuestoesBatch
+    );
+
+    // POST /api/tarefa/:TarefaGUID/questoes/importar - Importar questões via planilha
+    this.#router.post(
+      "/:TarefaGUID/questoes/importar",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#middleware.validateImportarQuestoesBody,
+      this.#controle.importarQuestoesPlanilha
+    );
+
+    // PATCH /api/tarefa/:TarefaGUID/questoes/reordenar - Reordenar questões
+    this.#router.patch(
+      "/:TarefaGUID/questoes/reordenar",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#middleware.validateReordenarQuestoesBody,
+      this.#controle.reordenarQuestoes
+    );
+
+    // POST /api/tarefa/:TarefaGUID/questoes - Criar uma questão
+    this.#router.post(
+      "/:TarefaGUID/questoes",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#middleware.validateQuestaoCreateBody,
+      this.#controle.criarQuestao
+    );
+
+    // GET /api/tarefa/:TarefaGUID/questoes/minhas-respostas - Visão do aluno (DEVE vir antes de "/:TarefaGUID/questoes")
+    this.#router.get(
+      "/:TarefaGUID/questoes/minhas-respostas",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#controle.buscarQuestoesComRespostas
+    );
+
+    // POST /api/tarefa/:TarefaGUID/questoes/:QuestaoGUID/responder-objetiva
+    this.#router.post(
+      "/:TarefaGUID/questoes/:QuestaoGUID/responder-objetiva",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateTarefaEQuestaoIdParam,
+      this.#middleware.validateResponderObjetivaBody,
+      this.#controle.responderObjetiva
+    );
+
+    // POST /api/tarefa/:TarefaGUID/questoes/:QuestaoGUID/responder-discursiva
+    this.#router.post(
+      "/:TarefaGUID/questoes/:QuestaoGUID/responder-discursiva",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateTarefaEQuestaoIdParam,
+      this.#middleware.validateResponderDiscursivaBody,
+      this.#controle.responderDiscursiva
+    );
+
+    // GET /api/tarefa/:TarefaGUID/questoes/matricula/:TarefaMatriculaGUID - Painel de correção do professor (DEVE vir antes de "/:TarefaGUID/questoes")
+    this.#router.get(
+      "/:TarefaGUID/questoes/matricula/:TarefaMatriculaGUID",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateTarefaEMatriculaIdParam,
+      this.#controle.buscarRespostasAluno
+    );
+
+    // GET /api/tarefa/:TarefaGUID/questoes - Listar questões (professor)
+    this.#router.get(
+      "/:TarefaGUID/questoes",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#controle.listarQuestoes
+    );
+
+    // PUT /api/tarefa/questoes/:QuestaoGUID - Atualizar questão
+    this.#router.put(
+      "/questoes/:QuestaoGUID",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateQuestaoIdParam,
+      this.#middleware.validateQuestaoUpdateBody,
+      this.#controle.atualizarQuestao
+    );
+
+    // DELETE /api/tarefa/questoes/:QuestaoGUID - Excluir questão
+    this.#router.delete(
+      "/questoes/:QuestaoGUID",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateQuestaoIdParam,
+      this.#controle.excluirQuestao
+    );
+
+    // POST /api/tarefa/questoes/:QuestaoGUID/anexos - Vincular anexo à questão
+    this.#router.post(
+      "/questoes/:QuestaoGUID/anexos",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateQuestaoIdParam,
+      this.#middleware.validateAnexoQuestaoBody,
+      this.#controle.vincularAnexoQuestao
+    );
+
+    // DELETE /api/tarefa/questoes/:QuestaoGUID/anexos/:AnexoGUID - Desvincular anexo da questão
+    this.#router.delete(
+      "/questoes/:QuestaoGUID/anexos/:AnexoGUID",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateQuestaoIdParam,
+      this.#controle.desvincularAnexoQuestao
+    );
+
     return this.#router;
   };
 }
@@ -159,8 +286,21 @@ const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(db);
 const relacaoAnexosDAO = new RelacaoAnexosDAO(db);
 const categoriaDAO = new CategoriaConteudoDAO(db);
 const alocacaoDAO = new MaterialProfessorTurmaDAO(db);
+const questaoDAO = new TarefaAcademicaQuestaoDAO(db);
+const alternativaDAO = new TarefaAcademicaAlternativaDAO(db);
+const respostaDAO = new TarefaAcademicaRespostaDAO(db);
 
-const tarefaService = new TarefaAcademicaService(tarefaDAO, tarefaMatriculaDAO, anexoDAO, matriculaDAO, categoriaDAO, alocacaoDAO);
+const tarefaService = new TarefaAcademicaService(
+  tarefaDAO,
+  tarefaMatriculaDAO,
+  anexoDAO,
+  matriculaDAO,
+  categoriaDAO,
+  alocacaoDAO,
+  questaoDAO,
+  alternativaDAO,
+  respostaDAO
+);
 const relacaoAnexosService = new RelacaoAnexosService(relacaoAnexosDAO, anexoDAO, tarefaDAO, eventoDAO, pendenciaDAO, escolaxUsuarioxFuncaoDAO);
 const tarefaControle = new TarefaAcademicaControl(tarefaService, relacaoAnexosService);
 const tarefaMiddleware = new TarefaAcademicaMiddleware();

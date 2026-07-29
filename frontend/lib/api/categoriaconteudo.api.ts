@@ -113,6 +113,7 @@ export type ItemTipoBoardGeral =
   | 'prova'
   | 'tarefa_digital'
   | 'tarefa_presencial'
+  | 'tarefa_lista'
   | 'conteudo_video'
   | 'conteudo_texto'
   | 'conteudo_imagem';

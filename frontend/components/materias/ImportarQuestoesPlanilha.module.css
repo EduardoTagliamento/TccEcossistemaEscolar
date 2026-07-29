@@ -1,0 +1,100 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.botaoModelo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.8rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.botaoModelo:hover {
+  border-color: var(--color-primary);
+}
+
+.preview {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--bg-secondary);
+}
+
+.previewTitulo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-success, #17C077);
+}
+
+.previewLista {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.botaoImportar {
+  align-self: flex-start;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1.1rem;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botaoImportar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.erros {
+  border-left: 3px solid var(--color-error);
+  padding-left: 0.6rem;
+}
+
+.errosTitulo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+  color: var(--color-error);
+}
+
+.erros ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.resultado {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-success, #17C077);
+  font-weight: 600;
+}

@@ -8,6 +8,7 @@ import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import * as AnexoAPI from '@/lib/api/anexo.api';
 import type { ItemCategoria } from '@/lib/api/materiasmodulo.api';
 import * as TarefaAcademicaAPI from '@/lib/api/tarefaacademica.api';
+import type { Questao } from '@/types/tarefaacademica';
 import { carregarYoutubeIframeAPI, YOUTUBE_PLAYER_STATE } from '@/lib/youtube/youtubeIframeApi';
 import { exportarParaExcel } from '@/lib/exportarExcel';
 import styles from './VisualizadorItemModal.module.css';
@@ -69,6 +70,17 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const [mostrarEstatisticas, setMostrarEstatisticas] = useState(false);
   const [estatisticas, setEstatisticas] = useState<MateriasModuloAPI.EstatisticasItem | null>(null);
   const [carregandoEstatisticas, setCarregandoEstatisticas] = useState(false);
+  const [estatisticasPorQuestao, setEstatisticasPorQuestao] = useState<MateriasModuloAPI.EstatisticasPorQuestao | null>(null);
+  // ---- Tarefa "lista" (quiz estilo Forms) ----
+  const [questoesAluno, setQuestoesAluno] = useState<MateriasModuloAPI.QuestaoComResposta[]>([]);
+  const [questoesProfessor, setQuestoesProfessor] = useState<Questao[]>([]);
+  const [enviandoResposta, setEnviandoResposta] = useState<string | null>(null);
+  const [textosDiscursiva, setTextosDiscursiva] = useState<Record<string, string>>({});
+  // ---- Correção do professor (por questão) ----
+  const [respostasAlunoLista, setRespostasAlunoLista] = useState<Awaited<ReturnType<typeof TarefaAcademicaAPI.buscarRespostasAluno>>>([]);
+  const [carregandoRespostasAluno, setCarregandoRespostasAluno] = useState(false);
+  const [pontosDiscursiva, setPontosDiscursiva] = useState<Record<string, string>>({});
+  const [salvandoCorrecao, setSalvandoCorrecao] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ultimoReporte = useRef(0);
   const youtubeContainerRef = useRef<HTMLDivElement>(null);
@@ -80,6 +92,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     setAlunoDetalheGUID(null);
     setMostrarEstatisticas(false);
     setEstatisticas(null);
+    setEstatisticasPorQuestao(null);
     void carregarDetalhe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.ItemGUID]);
@@ -94,7 +107,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
           await MateriasModuloAPI.registrarProgressoTexto(item.ItemGUID);
           onProgressoAtualizado();
         }
-      } else if (item.Tipo === 'tarefa_digital' || item.Tipo === 'tarefa_presencial') {
+      } else if (item.Tipo === 'tarefa_digital' || item.Tipo === 'tarefa_presencial' || item.Tipo === 'tarefa_lista') {
         // Uma linha de TarefaAcademica é compartilhada por N alunos da turma —
         // minhaMatricula=true restringe a resposta à atribuição do próprio
         // aluno (professor continua vendo a turma inteira).
@@ -102,6 +115,21 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
         const response = await fetch(`${API_URL}/tarefa/${item.ItemGUID}${query}`, { headers: getHeaders() });
         const resultado = await response.json();
         setTarefaDetalhe(resultado?.data?.tarefa);
+
+        if (item.Tipo === 'tarefa_lista') {
+          if (ehProfessor) {
+            const questoes = await TarefaAcademicaAPI.listarQuestoes(item.ItemGUID);
+            setQuestoesProfessor(questoes);
+          } else {
+            const questoes = await MateriasModuloAPI.buscarQuestoesComRespostas(item.ItemGUID);
+            setQuestoesAluno(questoes);
+            const textos: Record<string, string> = {};
+            questoes.forEach((q) => {
+              if (q.QuestaoTipo === 'discursiva') textos[q.QuestaoGUID] = q.MinhaResposta?.RespostaTextoDiscursiva || '';
+            });
+            setTextosDiscursiva(textos);
+          }
+        }
       } else if (item.Tipo === 'prova') {
         const response = await fetch(`${API_URL}/prova/${item.ItemGUID}`, { headers: getHeaders() });
         const resultado = await response.json();
@@ -250,6 +278,81 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     }
   };
 
+  const responderQuestaoObjetiva = async (questaoGUID: string, alternativaGUID: string) => {
+    try {
+      setEnviandoResposta(questaoGUID);
+      await MateriasModuloAPI.responderObjetiva(item.ItemGUID, questaoGUID, alternativaGUID);
+      onProgressoAtualizado();
+      await carregarDetalhe();
+    } catch (erro: any) {
+      alert(erro?.message || 'Erro ao responder questão');
+    } finally {
+      setEnviandoResposta(null);
+    }
+  };
+
+  const responderQuestaoDiscursiva = async (questaoGUID: string) => {
+    const texto = (textosDiscursiva[questaoGUID] || '').trim();
+    if (!texto) {
+      alert('Escreva uma resposta antes de enviar.');
+      return;
+    }
+    try {
+      setEnviandoResposta(questaoGUID);
+      await MateriasModuloAPI.responderDiscursiva(item.ItemGUID, questaoGUID, texto);
+      onProgressoAtualizado();
+      await carregarDetalhe();
+    } catch (erro: any) {
+      alert(erro?.message || 'Erro ao responder questão');
+    } finally {
+      setEnviandoResposta(null);
+    }
+  };
+
+  // Painel de correção do professor: recarrega as respostas do aluno
+  // selecionado sempre que a seleção muda (não dá pra reaproveitar
+  // tarefaDetalhe.MatriculasAtribuidas — aquele é o agregado, não por questão).
+  useEffect(() => {
+    if (item.Tipo !== 'tarefa_lista' || !ehProfessor || !alunoDetalheGUID) {
+      setRespostasAlunoLista([]);
+      return;
+    }
+    (async () => {
+      try {
+        setCarregandoRespostasAluno(true);
+        const questoes = await TarefaAcademicaAPI.buscarRespostasAluno(item.ItemGUID, alunoDetalheGUID);
+        setRespostasAlunoLista(questoes);
+      } catch (erro: any) {
+        alert(erro?.message || 'Erro ao carregar respostas do aluno');
+      } finally {
+        setCarregandoRespostasAluno(false);
+      }
+    })();
+  }, [alunoDetalheGUID, item.Tipo, item.ItemGUID, ehProfessor]);
+
+  const corrigirDiscursiva = async (respostaGUID: string, pontosMaximos: number) => {
+    const valor = pontosDiscursiva[respostaGUID];
+    const pontos = Number(valor);
+    if (valor === undefined || valor === '' || isNaN(pontos) || pontos < 0 || pontos > pontosMaximos) {
+      alert(`Informe uma pontuação entre 0 e ${pontosMaximos}.`);
+      return;
+    }
+    try {
+      setSalvandoCorrecao(respostaGUID);
+      await TarefaAcademicaAPI.avaliarQuestaoDiscursiva(respostaGUID, pontos);
+      onProgressoAtualizado();
+      if (alunoDetalheGUID) {
+        const questoes = await TarefaAcademicaAPI.buscarRespostasAluno(item.ItemGUID, alunoDetalheGUID);
+        setRespostasAlunoLista(questoes);
+      }
+      await carregarDetalhe();
+    } catch (erro: any) {
+      alert(erro?.message || 'Erro ao corrigir resposta');
+    } finally {
+      setSalvandoCorrecao(null);
+    }
+  };
+
   // Conteúdo/prova são fan-out (mesmo item em N turmas via ConteudoTurma/
   // ProvaAgendadaTurma) — dá pra excluir só o vínculo desta turma ou o item
   // inteiro. Tarefa é sempre de 1 turma só (decisão de arquitetura), então
@@ -291,6 +394,10 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
       setCarregandoEstatisticas(true);
       const dados = await MateriasModuloAPI.buscarEstatisticasItem(item.Tipo, item.ItemGUID, turmaGUID);
       setEstatisticas(dados);
+      if (item.Tipo === 'tarefa_lista') {
+        const porQuestao = await MateriasModuloAPI.buscarEstatisticasPorQuestao(item.ItemGUID, turmaGUID);
+        setEstatisticasPorQuestao(porQuestao);
+      }
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao carregar estatísticas');
       setMostrarEstatisticas(false);
@@ -301,6 +408,31 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
 
   const exportarEstatisticasExcel = () => {
     if (!estatisticas) return;
+    // Sanitiza pro nome do arquivo — qualquer caractere fora de a-Z0-9 (acento,
+    // espaço, símbolo) já cai fora, não precisa de um passo separado de acento.
+    const tituloItem = tarefaDetalhe?.TarefaTitulo || conteudo?.ConteudoTitulo || provaDetalhe?.ProvaDescricao || 'estatisticas';
+    const nomeBase = tituloItem.replace(/[^a-zA-Z0-9]+/g, '-');
+
+    if (item.Tipo === 'tarefa_lista' && estatisticasPorQuestao) {
+      // 1 linha por (aluno × questão) — quebra o agregado por questão, em vez do resumo por aluno.
+      const linhas = estatisticasPorQuestao.Questoes.flatMap((questao) =>
+        questao.RespostasPorAluno.map((resposta) => ({
+          Aluno: resposta.AlunoNome,
+          'Questão nº': questao.QuestaoOrdem + 1,
+          Enunciado: questao.QuestaoEnunciadoResumo,
+          Tipo: questao.QuestaoTipo === 'objetiva' ? 'Objetiva' : 'Discursiva',
+          Resposta: resposta.RespostaResumo,
+          'Pontos Obtidos': resposta.PontosObtidos ?? '',
+          'Pontos Máximos': resposta.PontosMaximos,
+          '% da Questão': resposta.PontosMaximos > 0 && resposta.PontosObtidos !== null
+            ? Math.round((resposta.PontosObtidos / resposta.PontosMaximos) * 100)
+            : '',
+        }))
+      );
+      exportarParaExcel(`estatisticas-${nomeBase}-por-questao`, 'Por questão', linhas);
+      return;
+    }
+
     const linhas = estatisticas.Ranking.map((aluno, indice) => ({
       Posição: indice + 1,
       Nome: aluno.AlunoNome,
@@ -308,10 +440,6 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
       'Percentual (%)': aluno.Percentual,
       Nota: aluno.Nota ?? '',
     }));
-    // Sanitiza pro nome do arquivo — qualquer caractere fora de a-Z0-9 (acento,
-    // espaço, símbolo) já cai fora, não precisa de um passo separado de acento.
-    const tituloItem = tarefaDetalhe?.TarefaTitulo || conteudo?.ConteudoTitulo || provaDetalhe?.ProvaDescricao || 'estatisticas';
-    const nomeBase = tituloItem.replace(/[^a-zA-Z0-9]+/g, '-');
     exportarParaExcel(`estatisticas-${nomeBase}`, 'Estatísticas', linhas);
   };
 
@@ -398,6 +526,20 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
                       </li>
                     ))}
                   </ol>
+                )}
+
+                {item.Tipo === 'tarefa_lista' && estatisticasPorQuestao && (
+                  <div className={styles.estatisticasPorQuestao}>
+                    <h4 className={styles.estatisticasPorQuestaoTitulo}>Desempenho por questão</h4>
+                    {estatisticasPorQuestao.Questoes.map((questao) => (
+                      <div key={questao.QuestaoGUID} className={styles.questaoEstatisticaItem}>
+                        <span className={styles.questaoEstatisticaEnunciado}>
+                          {questao.QuestaoOrdem + 1}. {questao.QuestaoEnunciadoResumo}
+                        </span>
+                        <span className={styles.questaoEstatisticaValor}>{questao.PercentualAcerto}% de acerto</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </>
             )}
@@ -508,7 +650,95 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
               </Link>
             )}
 
-            {!ehProfessor && (
+            {!ehProfessor && item.Tipo === 'tarefa_lista' && (() => {
+              const tarefaFechada = Boolean(tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaFeito);
+              const respondidas = questoesAluno.filter((q) => q.MinhaResposta).length;
+              return (
+                <div className={styles.listaQuestoesAluno}>
+                  <p className={styles.progressoLista}>
+                    <Icon name="list" size={16} /> {respondidas} de {questoesAluno.length} questões respondidas
+                  </p>
+                  {tarefaFechada && (
+                    <p className={styles.statusEntregue}>
+                      <Icon name="check-circle" size={16} /> Lista concluída
+                      {tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaNota !== null &&
+                        tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaNota !== undefined &&
+                        ` — nota ${Number(tarefaDetalhe.MatriculasAtribuidas[0].TarefaNota).toFixed(2)}`}
+                    </p>
+                  )}
+                  {questoesAluno.map((q, indice) => (
+                    <div key={q.QuestaoGUID} className={styles.questaoAlunoCard}>
+                      <p className={styles.questaoAlunoEnunciado}>
+                        <strong>{indice + 1}.</strong> {q.QuestaoEnunciado}
+                        <span className={styles.questaoAlunoPontos}> ({q.QuestaoPontosMaximos} pt{q.QuestaoPontosMaximos === 1 ? '' : 's'})</span>
+                      </p>
+
+                      {q.QuestaoTipo === 'objetiva' ? (
+                        <div className={styles.alternativasAlunoList}>
+                          {q.Alternativas.map((a) => {
+                            const respondida = q.MinhaResposta !== null;
+                            const selecionada = q.MinhaResposta?.AlternativaGUID === a.AlternativaGUID;
+                            const classe = !respondida
+                              ? styles.alternativaAluno
+                              : a.AlternativaCorreta
+                                ? styles.alternativaCorreta
+                                : selecionada
+                                  ? styles.alternativaErrada
+                                  : styles.alternativaAluno;
+                            return (
+                              <label key={a.AlternativaGUID} className={classe}>
+                                <input
+                                  type="radio"
+                                  name={`aluno-${q.QuestaoGUID}`}
+                                  checked={selecionada}
+                                  disabled={respondida || tarefaFechada || enviandoResposta === q.QuestaoGUID}
+                                  onChange={() => responderQuestaoObjetiva(q.QuestaoGUID, a.AlternativaGUID)}
+                                />
+                                {a.AlternativaTexto}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className={styles.discursivaAluno}>
+                          <textarea
+                            value={textosDiscursiva[q.QuestaoGUID] ?? ''}
+                            disabled={Boolean(q.MinhaResposta) || tarefaFechada}
+                            placeholder="Escreva sua resposta"
+                            onChange={(e) => setTextosDiscursiva((prev) => ({ ...prev, [q.QuestaoGUID]: e.target.value }))}
+                          />
+                          {!q.MinhaResposta && !tarefaFechada && (
+                            <button
+                              type="button"
+                              className={styles.botaoEnviarEntrega}
+                              disabled={enviandoResposta === q.QuestaoGUID}
+                              onClick={() => responderQuestaoDiscursiva(q.QuestaoGUID)}
+                            >
+                              {enviandoResposta === q.QuestaoGUID ? 'Enviando...' : 'Enviar resposta'}
+                            </button>
+                          )}
+                          {q.MinhaResposta && (
+                            <p className={styles.hintFuturo}>
+                              {q.MinhaResposta.Corrigida
+                                ? `Corrigida: ${q.MinhaResposta.RespostaPontosObtidos} / ${q.QuestaoPontosMaximos} pts`
+                                : 'Resposta enviada — aguardando correção do professor.'}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {q.QuestaoExplicacao && (
+                        <p className={styles.explicacaoQuestao}>
+                          <Icon name="help-circle" size={14} /> {q.QuestaoExplicacao}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {!ehProfessor && item.Tipo !== 'tarefa_lista' && (
               <div className={styles.acoesAluno}>
                 {item.Tipo === 'tarefa_presencial' ? (
                   <label className={styles.checkboxLabel}>
@@ -673,52 +903,124 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
                       <h3 className={styles.alunoNomeDetalhe}>{alunoAtual.AlunoNome || alunoAtual.MatriculaGUID}</h3>
                       <span className={styles.alunoStatus}>{renderizarStatus(alunoAtual)}</span>
 
-                      <div className={styles.anexosDetalhe}>
-                        {(alunoAtual.AnexosEntrega || []).length > 0 ? (
-                          alunoAtual.AnexosEntrega.map((anexo: any) => (
-                            <button
-                              key={anexo.AnexoGUID}
-                              type="button"
-                              className={styles.anexoEntregado}
-                              onClick={() => AnexoAPI.baixarAnexo(anexo.AnexoGUID, anexo.AnexoNomeOriginal || undefined)}
-                            >
-                              <Icon name="paperclip" size={14} /> {anexo.AnexoNomeOriginal || 'Arquivo enviado'}
-                            </button>
-                          ))
-                        ) : (
-                          <p className={styles.hintFuturo}>
-                            {alunoAtual.TarefaFeito ? 'Sem anexo (entrega presencial ou marcada manualmente).' : 'Nenhum anexo enviado ainda.'}
-                          </p>
-                        )}
-                      </div>
+                      {item.Tipo === 'tarefa_lista' ? (
+                        <div className={styles.correcaoListaBloco}>
+                          {carregandoRespostasAluno && <p className={styles.hintFuturo}>Carregando respostas...</p>}
+                          {!carregandoRespostasAluno && respostasAlunoLista.map((q, indice) => (
+                            <div key={q.QuestaoGUID} className={styles.questaoCorrecaoCard}>
+                              <p className={styles.questaoAlunoEnunciado}>
+                                <strong>{indice + 1}.</strong> {q.QuestaoEnunciado}
+                                <span className={styles.questaoAlunoPontos}> ({q.QuestaoPontosMaximos} pt{q.QuestaoPontosMaximos === 1 ? '' : 's'})</span>
+                              </p>
 
-                      {alunoAtual.TarefaFeito ? (
-                        <div className={styles.notaArea}>
-                          <label htmlFor="inputNotaAluno">Nota</label>
-                          <input
-                            key={alunoAtual.TarefaMatriculaGUID}
-                            id="inputNotaAluno"
-                            type="number"
-                            min={0}
-                            max={10}
-                            step={0.01}
-                            defaultValue={alunoAtual.TarefaNota ?? ''}
-                            placeholder="Nota"
-                            className={styles.inputNota}
-                            onBlur={(e) => e.target.value && avaliarEntrega(alunoAtual.TarefaMatriculaGUID, e.target.value)}
-                          />
+                              {!q.Resposta ? (
+                                <p className={styles.hintFuturo}>Ainda não respondida.</p>
+                              ) : q.QuestaoTipo === 'objetiva' ? (
+                                <div className={styles.alternativasAlunoList}>
+                                  {q.Alternativas.map((a) => {
+                                    const selecionada = q.Resposta?.AlternativaGUID === a.AlternativaGUID;
+                                    const classe = a.AlternativaCorreta
+                                      ? styles.alternativaCorreta
+                                      : selecionada
+                                        ? styles.alternativaErrada
+                                        : styles.alternativaAluno;
+                                    return (
+                                      <div key={a.AlternativaGUID} className={classe}>
+                                        {selecionada && <Icon name="check" size={14} />} {a.AlternativaTexto}
+                                      </div>
+                                    );
+                                  })}
+                                  <p className={styles.hintFuturo}>
+                                    Correção automática: {q.Resposta.RespostaPontosObtidos} / {q.QuestaoPontosMaximos} pts
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className={styles.discursivaCorrecao}>
+                                  <p className={styles.respostaDiscursivaTexto}>{q.Resposta.RespostaTextoDiscursiva}</p>
+                                  {q.Resposta.RespostaPontosObtidos !== null ? (
+                                    <p className={styles.hintFuturo}>
+                                      <Icon name="check-circle" size={14} /> Corrigida: {q.Resposta.RespostaPontosObtidos} / {q.QuestaoPontosMaximos} pts
+                                    </p>
+                                  ) : (
+                                    <div className={styles.notaArea}>
+                                      <label htmlFor={`pontos-${q.Resposta.RespostaGUID}`}>Pontos</label>
+                                      <input
+                                        id={`pontos-${q.Resposta.RespostaGUID}`}
+                                        type="number"
+                                        min={0}
+                                        max={q.QuestaoPontosMaximos}
+                                        step={0.01}
+                                        className={styles.inputNota}
+                                        value={pontosDiscursiva[q.Resposta.RespostaGUID] ?? ''}
+                                        onChange={(e) =>
+                                          setPontosDiscursiva((prev) => ({ ...prev, [q.Resposta!.RespostaGUID]: e.target.value }))
+                                        }
+                                      />
+                                      <button
+                                        type="button"
+                                        className={styles.botaoEnviarEntrega}
+                                        disabled={salvandoCorrecao === q.Resposta.RespostaGUID}
+                                        onClick={() => corrigirDiscursiva(q.Resposta!.RespostaGUID, q.QuestaoPontosMaximos)}
+                                      >
+                                        {salvandoCorrecao === q.Resposta.RespostaGUID ? 'Salvando...' : 'Salvar nota'}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      ) : alunoAtualAtrasado ? (
-                        <p className={styles.hintFuturo}>
-                          <Icon name="lock" size={14} />
-                          {alunoAtual.TarefaNota !== null && alunoAtual.TarefaNota !== undefined
-                            ? ` Prazo vencido sem entrega — nota zerada automaticamente (${Number(alunoAtual.TarefaNota).toFixed(2)}).`
-                            : ' Prazo vencido sem entrega — a nota será zerada automaticamente em breve (verificação a cada 5 minutos).'}
-                        </p>
                       ) : (
-                        <p className={styles.hintFuturo}>
-                          <Icon name="alert-triangle" size={14} /> Ainda não é possível avaliar — o aluno não entregou/marcou esta tarefa.
-                        </p>
+                        <>
+                          <div className={styles.anexosDetalhe}>
+                            {(alunoAtual.AnexosEntrega || []).length > 0 ? (
+                              alunoAtual.AnexosEntrega.map((anexo: any) => (
+                                <button
+                                  key={anexo.AnexoGUID}
+                                  type="button"
+                                  className={styles.anexoEntregado}
+                                  onClick={() => AnexoAPI.baixarAnexo(anexo.AnexoGUID, anexo.AnexoNomeOriginal || undefined)}
+                                >
+                                  <Icon name="paperclip" size={14} /> {anexo.AnexoNomeOriginal || 'Arquivo enviado'}
+                                </button>
+                              ))
+                            ) : (
+                              <p className={styles.hintFuturo}>
+                                {alunoAtual.TarefaFeito ? 'Sem anexo (entrega presencial ou marcada manualmente).' : 'Nenhum anexo enviado ainda.'}
+                              </p>
+                            )}
+                          </div>
+
+                          {alunoAtual.TarefaFeito ? (
+                            <div className={styles.notaArea}>
+                              <label htmlFor="inputNotaAluno">Nota</label>
+                              <input
+                                key={alunoAtual.TarefaMatriculaGUID}
+                                id="inputNotaAluno"
+                                type="number"
+                                min={0}
+                                max={10}
+                                step={0.01}
+                                defaultValue={alunoAtual.TarefaNota ?? ''}
+                                placeholder="Nota"
+                                className={styles.inputNota}
+                                onBlur={(e) => e.target.value && avaliarEntrega(alunoAtual.TarefaMatriculaGUID, e.target.value)}
+                              />
+                            </div>
+                          ) : alunoAtualAtrasado ? (
+                            <p className={styles.hintFuturo}>
+                              <Icon name="lock" size={14} />
+                              {alunoAtual.TarefaNota !== null && alunoAtual.TarefaNota !== undefined
+                                ? ` Prazo vencido sem entrega — nota zerada automaticamente (${Number(alunoAtual.TarefaNota).toFixed(2)}).`
+                                : ' Prazo vencido sem entrega — a nota será zerada automaticamente em breve (verificação a cada 5 minutos).'}
+                            </p>
+                          ) : (
+                            <p className={styles.hintFuturo}>
+                              <Icon name="alert-triangle" size={14} /> Ainda não é possível avaliar — o aluno não entregou/marcou esta tarefa.
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   )}

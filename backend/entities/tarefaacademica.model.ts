@@ -23,7 +23,7 @@ export default class TarefaAcademica {
   #TarefaConteudo: string | null = null;
   #TarefaPostagemData!: Date;
   #TarefaPrazoData!: Date;
-  #TarefaTipoEntrega!: "digital" | "fisica";
+  #TarefaTipoEntrega!: "digital" | "fisica" | "lista";
   #CategoriaGUID: string | null = null;
   #CreatedAt: Date | null = null;
   #UpdatedAt: Date | null = null;
@@ -146,13 +146,13 @@ export default class TarefaAcademica {
   }
 
   // ========== TarefaTipoEntrega ==========
-  get TarefaTipoEntrega(): "digital" | "fisica" {
+  get TarefaTipoEntrega(): "digital" | "fisica" | "lista" {
     return this.#TarefaTipoEntrega;
   }
 
-  set TarefaTipoEntrega(value: "digital" | "fisica") {
-    if (value !== "digital" && value !== "fisica") {
-      throw new Error('TarefaTipoEntrega deve ser "digital" ou "fisica".');
+  set TarefaTipoEntrega(value: "digital" | "fisica" | "lista") {
+    if (value !== "digital" && value !== "fisica" && value !== "lista") {
+      throw new Error('TarefaTipoEntrega deve ser "digital", "fisica" ou "lista".');
     }
     this.#TarefaTipoEntrega = value;
   }

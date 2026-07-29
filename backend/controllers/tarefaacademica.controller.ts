@@ -3,6 +3,9 @@ import TarefaAcademicaService, {
   TarefaAcademicaCreateDTO,
   TarefaAcademicaBatchCreateDTO,
   TarefaAcademicaUpdateDTO,
+  QuestaoCreateDTO,
+  QuestaoUpdateDTO,
+  QuestaoImportRowDTO,
 } from "../services/tarefaacademica.service";
 import { TarefaAcademicaFilters } from "../repositories/tarefaacademica.repository";
 import ErrorResponse from "../utils/ErrorResponse";
@@ -464,6 +467,431 @@ export default class TarefaAcademicaControl {
         success: true,
         message: "Anexo vinculado à tarefa com sucesso",
         data: { relacao },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ========== Questão de tarefa "lista" ==========
+
+  /**
+   * POST /api/tarefa/:TarefaGUID/questoes
+   * Body: { questao: { QuestaoEnunciado, QuestaoTipo, QuestaoPontosMaximos, QuestaoExplicacao?, Alternativas?, AnexosGUID? } }
+   */
+  criarQuestao = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.criarQuestao()");
+    try {
+      const { TarefaGUID } = request.params;
+      const { questao } = request.body;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const data: QuestaoCreateDTO = {
+        QuestaoEnunciado: questao.QuestaoEnunciado,
+        QuestaoTipo: questao.QuestaoTipo,
+        QuestaoPontosMaximos: Number(questao.QuestaoPontosMaximos),
+        QuestaoExplicacao: questao.QuestaoExplicacao,
+        Alternativas: questao.Alternativas,
+        AnexosGUID: questao.AnexosGUID,
+      };
+
+      const criada = await this.#tarefaService.criarQuestao(TarefaGUID, data, professorCPF);
+
+      response.status(201).json({
+        success: true,
+        message: "Questão criada com sucesso",
+        data: { questao: criada },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/tarefa/:TarefaGUID/questoes/batch
+   * Body: { questoes: [{ QuestaoEnunciado, QuestaoTipo, ... }] }
+   */
+  criarQuestoesBatch = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.criarQuestoesBatch()");
+    try {
+      const { TarefaGUID } = request.params;
+      const { questoes } = request.body;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const data: QuestaoCreateDTO[] = questoes.map((q: any) => ({
+        QuestaoEnunciado: q.QuestaoEnunciado,
+        QuestaoTipo: q.QuestaoTipo,
+        QuestaoPontosMaximos: Number(q.QuestaoPontosMaximos),
+        QuestaoExplicacao: q.QuestaoExplicacao,
+        Alternativas: q.Alternativas,
+        AnexosGUID: q.AnexosGUID,
+      }));
+
+      const resultado = await this.#tarefaService.criarQuestoesBatch(TarefaGUID, data, professorCPF);
+
+      response.status(201).json({
+        success: true,
+        message: `${resultado.count} questão(ões) criada(s) com sucesso`,
+        data: resultado,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/tarefa/:TarefaGUID/questoes
+   */
+  listarQuestoes = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.listarQuestoes()");
+    try {
+      const { TarefaGUID } = request.params;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const questoes = await this.#tarefaService.listarQuestoes(TarefaGUID, professorCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Questões listadas com sucesso",
+        data: { questoes, total: questoes.length },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PUT /api/tarefa/questoes/:QuestaoGUID
+   * Body: { questao: {...parcial} }
+   */
+  atualizarQuestao = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.atualizarQuestao()");
+    try {
+      const { QuestaoGUID } = request.params;
+      const { questao } = request.body;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const data: QuestaoUpdateDTO = {
+        QuestaoEnunciado: questao.QuestaoEnunciado,
+        QuestaoTipo: questao.QuestaoTipo,
+        QuestaoPontosMaximos: questao.QuestaoPontosMaximos !== undefined ? Number(questao.QuestaoPontosMaximos) : undefined,
+        QuestaoExplicacao: questao.QuestaoExplicacao,
+        Alternativas: questao.Alternativas,
+      };
+
+      const atualizada = await this.#tarefaService.atualizarQuestao(QuestaoGUID, data, professorCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Questão atualizada com sucesso",
+        data: { questao: atualizada },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /api/tarefa/questoes/:QuestaoGUID
+   */
+  excluirQuestao = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.excluirQuestao()");
+    try {
+      const { QuestaoGUID } = request.params;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      await this.#tarefaService.excluirQuestao(QuestaoGUID, professorCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Questão excluída com sucesso",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PATCH /api/tarefa/:TarefaGUID/questoes/reordenar
+   * Body: { ordens: [{QuestaoGUID, QuestaoOrdem}] }
+   */
+  reordenarQuestoes = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.reordenarQuestoes()");
+    try {
+      const { TarefaGUID } = request.params;
+      const { ordens } = request.body;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      await this.#tarefaService.reordenarQuestoes(TarefaGUID, ordens, professorCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Questões reordenadas com sucesso",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/tarefa/questoes/:QuestaoGUID/anexos
+   * Body: { AnexoGUID }
+   */
+  vincularAnexoQuestao = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.vincularAnexoQuestao()");
+    try {
+      const { QuestaoGUID } = request.params;
+      const { AnexoGUID } = request.body;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      await this.#tarefaService.vincularAnexoQuestao(QuestaoGUID, AnexoGUID, professorCPF);
+
+      response.status(201).json({
+        success: true,
+        message: "Anexo vinculado à questão com sucesso",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * DELETE /api/tarefa/questoes/:QuestaoGUID/anexos/:AnexoGUID
+   */
+  desvincularAnexoQuestao = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.desvincularAnexoQuestao()");
+    try {
+      const { QuestaoGUID, AnexoGUID } = request.params;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      await this.#tarefaService.desvincularAnexoQuestao(QuestaoGUID, AnexoGUID, professorCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Anexo desvinculado da questão com sucesso",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/tarefa/:TarefaGUID/questoes/importar
+   * Body: { linhas: [{ LinhaOriginal, QuestaoEnunciado, QuestaoTipo, ... }] }
+   */
+  importarQuestoesPlanilha = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.importarQuestoesPlanilha()");
+    try {
+      const { TarefaGUID } = request.params;
+      const { linhas } = request.body;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const data: QuestaoImportRowDTO[] = linhas.map((l: any) => ({
+        LinhaOriginal: Number(l.LinhaOriginal),
+        QuestaoEnunciado: l.QuestaoEnunciado,
+        QuestaoTipo: l.QuestaoTipo,
+        QuestaoPontosMaximos: Number(l.QuestaoPontosMaximos),
+        QuestaoExplicacao: l.QuestaoExplicacao,
+        Alternativas: l.Alternativas,
+      }));
+
+      const resultado = await this.#tarefaService.importarQuestoesPlanilha(TarefaGUID, data, professorCPF);
+
+      response.status(201).json({
+        success: true,
+        message: `${resultado.count} questão(ões) importada(s) com sucesso`,
+        data: resultado,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ========== Resposta do aluno a tarefa "lista" ==========
+
+  /**
+   * GET /api/tarefa/:TarefaGUID/questoes/minhas-respostas
+   * Visão do aluno: questões + resposta dele em cada uma.
+   */
+  buscarQuestoesComRespostas = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.buscarQuestoesComRespostas()");
+    try {
+      const { TarefaGUID } = request.params;
+      const alunoCPF = request.user?.UsuarioCPF;
+
+      if (!alunoCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const questoes = await this.#tarefaService.buscarQuestoesComRespostas(TarefaGUID, alunoCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Questões listadas com sucesso",
+        data: { questoes, total: questoes.length },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/tarefa/:TarefaGUID/questoes/:QuestaoGUID/responder-objetiva
+   * Body: { AlternativaGUID }
+   */
+  responderObjetiva = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.responderObjetiva()");
+    try {
+      const { TarefaGUID, QuestaoGUID } = request.params;
+      const { AlternativaGUID } = request.body;
+      const alunoCPF = request.user?.UsuarioCPF;
+
+      if (!alunoCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const resposta = await this.#tarefaService.responderObjetiva(TarefaGUID, QuestaoGUID, AlternativaGUID, alunoCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Resposta registrada com sucesso",
+        data: { resposta },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/tarefa/:TarefaGUID/questoes/:QuestaoGUID/responder-discursiva
+   * Body: { Texto }
+   */
+  responderDiscursiva = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.responderDiscursiva()");
+    try {
+      const { TarefaGUID, QuestaoGUID } = request.params;
+      const { Texto } = request.body;
+      const alunoCPF = request.user?.UsuarioCPF;
+
+      if (!alunoCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const resposta = await this.#tarefaService.responderDiscursiva(TarefaGUID, QuestaoGUID, Texto, alunoCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Resposta registrada com sucesso",
+        data: { resposta },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // ========== Correção do professor (tarefa "lista") ==========
+
+  /**
+   * GET /api/tarefa/:TarefaGUID/questoes/matricula/:TarefaMatriculaGUID
+   * Painel de correção: questões + resposta de UM aluno específico.
+   */
+  buscarRespostasAluno = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.buscarRespostasAluno()");
+    try {
+      const { TarefaGUID, TarefaMatriculaGUID } = request.params;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const questoes = await this.#tarefaService.buscarRespostasAluno(TarefaGUID, TarefaMatriculaGUID, professorCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Respostas listadas com sucesso",
+        data: { questoes, total: questoes.length },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * PATCH /api/tarefa/respostas/:RespostaGUID/avaliar
+   * Body: { Pontos }
+   */
+  avaliarQuestaoDiscursiva = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.avaliarQuestaoDiscursiva()");
+    try {
+      const { RespostaGUID } = request.params;
+      const { Pontos } = request.body;
+      const professorCPF = request.user?.UsuarioCPF;
+
+      if (!professorCPF) {
+        response.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const resposta = await this.#tarefaService.avaliarQuestaoDiscursiva(RespostaGUID, Number(Pontos), professorCPF);
+
+      response.status(200).json({
+        success: true,
+        message: "Resposta corrigida com sucesso",
+        data: { resposta },
       });
     } catch (error) {
       next(error);

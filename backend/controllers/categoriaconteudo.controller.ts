@@ -62,7 +62,7 @@ export class CategoriaConteudoController {
       }
 
       const { tipo, itemGUID, turmaGUID } = req.params;
-      const tiposValidos = ["tarefa_digital", "tarefa_presencial", "conteudo_video", "conteudo_texto", "conteudo_imagem", "prova"];
+      const tiposValidos = ["tarefa_digital", "tarefa_presencial", "tarefa_lista", "conteudo_video", "conteudo_texto", "conteudo_imagem", "prova"];
       if (!tiposValidos.includes(tipo)) {
         res.status(400).json({ success: false, message: "Tipo de item inválido", data: null });
         return;
@@ -76,6 +76,25 @@ export class CategoriaConteudoController {
       );
 
       res.json({ success: true, message: "Estatísticas obtidas com sucesso", data: estatisticas });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // GET /api/categoria-conteudo/estatisticas-por-questao/:TarefaGUID/:turmaGUID — só tarefa "lista"
+  buscarEstatisticasPorQuestao = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.buscarEstatisticasPorQuestao()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { TarefaGUID, turmaGUID } = req.params;
+      const estatisticas = await this.#categoriaService.buscarEstatisticasPorQuestao(usuarioCPF, TarefaGUID, turmaGUID);
+
+      res.json({ success: true, message: "Estatísticas por questão obtidas com sucesso", data: estatisticas });
     } catch (error) {
       next(error);
     }

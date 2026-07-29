@@ -14,8 +14,12 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
+import * as TarefaAcademicaAPI from '@/lib/api/tarefaacademica.api';
+import { QuestaoCreateInput } from '@/types/tarefaacademica';
 import { DiaSemana, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
 import { Icon } from '@/components/Icon';
+import ImportarQuestoesPlanilha from '@/components/materias/ImportarQuestoesPlanilha';
+import type { QuestaoImportRow, Questao } from '@/types/tarefaacademica';
 import styles from './TarefaForm.module.css';
 
 interface Tarefa {
@@ -26,9 +30,45 @@ interface Tarefa {
   TarefaTitulo: string;
   TarefaConteudo: string | null;
   TarefaPrazoData: string;
-  TarefaTipoEntrega: 'digital' | 'fisica';
+  TarefaTipoEntrega: 'digital' | 'fisica' | 'lista';
   TarefaFeito: boolean;
 }
+
+interface AlternativaRascunho {
+  clientId: string;
+  Texto: string;
+  Correta: boolean;
+  Pontos: number;
+}
+
+interface QuestaoRascunho {
+  clientId: string;
+  /** Presente só em modo edição, quando a questão já existe no backend. */
+  QuestaoGUID?: string;
+  Enunciado: string;
+  Tipo: 'objetiva' | 'discursiva';
+  PontosMaximos: number;
+  Explicacao: string;
+  Alternativas: AlternativaRascunho[];
+  /** Vem do backend (modo edição) — bloqueia mudar Tipo/Alternativas/excluir. */
+  TemResposta: boolean;
+}
+
+let questaoClientIdSeq = 0;
+const novoClientId = () => `q-${Date.now()}-${questaoClientIdSeq++}`;
+
+const novaQuestaoRascunho = (): QuestaoRascunho => ({
+  clientId: novoClientId(),
+  Enunciado: '',
+  Tipo: 'objetiva',
+  PontosMaximos: 1,
+  Explicacao: '',
+  TemResposta: false,
+  Alternativas: [
+    { clientId: novoClientId(), Texto: '', Correta: true, Pontos: 1 },
+    { clientId: novoClientId(), Texto: '', Correta: false, Pontos: 0 },
+  ],
+});
 
 interface MateriaOption {
   MatProfTurGUID: string;
@@ -137,11 +177,222 @@ export default function TarefaForm({
     TarefaTitulo: '',
     TarefaConteudo: '',
     TarefaPrazoData: '',
-    TarefaTipoEntrega: 'digital' as 'digital' | 'fisica',
+    TarefaTipoEntrega: 'digital' as 'digital' | 'fisica' | 'lista',
     TarefaCompartilhada: false,
     TarefaMinPessoas: null as number | null,
     TarefaMaxPessoas: null as number | null,
   });
+
+  // ========== Lista de questões (tarefa tipo "lista") ==========
+  const [questoes, setQuestoes] = useState<QuestaoRascunho[]>([]);
+  const [modoQuestoes, setModoQuestoes] = useState<'manual' | 'planilha'>('manual');
+  const [erroQuestoes, setErroQuestoes] = useState<string | null>(null);
+  const questoesOriginaisGUIDsRef = useRef<Set<string>>(new Set());
+
+  const temQuestaoComResposta = questoes.some((q) => q.TemResposta);
+
+  const adicionarQuestao = () => setQuestoes((prev) => [...prev, novaQuestaoRascunho()]);
+
+  const removerQuestao = (clientId: string) =>
+    setQuestoes((prev) => prev.filter((q) => q.clientId !== clientId));
+
+  const moverQuestao = (clientId: string, direcao: -1 | 1) => {
+    setQuestoes((prev) => {
+      const index = prev.findIndex((q) => q.clientId === clientId);
+      const novoIndex = index + direcao;
+      if (index < 0 || novoIndex < 0 || novoIndex >= prev.length) return prev;
+      const copia = [...prev];
+      [copia[index], copia[novoIndex]] = [copia[novoIndex], copia[index]];
+      return copia;
+    });
+  };
+
+  const atualizarCampoQuestao = <K extends keyof QuestaoRascunho>(clientId: string, campo: K, valor: QuestaoRascunho[K]) =>
+    setQuestoes((prev) => prev.map((q) => (q.clientId === clientId ? { ...q, [campo]: valor } : q)));
+
+  const adicionarAlternativa = (questaoClientId: string) =>
+    setQuestoes((prev) =>
+      prev.map((q) =>
+        q.clientId === questaoClientId
+          ? { ...q, Alternativas: [...q.Alternativas, { clientId: novoClientId(), Texto: '', Correta: false, Pontos: 0 }] }
+          : q
+      )
+    );
+
+  const removerAlternativa = (questaoClientId: string, alternativaClientId: string) =>
+    setQuestoes((prev) =>
+      prev.map((q) =>
+        q.clientId === questaoClientId
+          ? { ...q, Alternativas: q.Alternativas.filter((a) => a.clientId !== alternativaClientId) }
+          : q
+      )
+    );
+
+  const atualizarAlternativa = <K extends keyof AlternativaRascunho>(
+    questaoClientId: string,
+    alternativaClientId: string,
+    campo: K,
+    valor: AlternativaRascunho[K]
+  ) =>
+    setQuestoes((prev) =>
+      prev.map((q) =>
+        q.clientId === questaoClientId
+          ? { ...q, Alternativas: q.Alternativas.map((a) => (a.clientId === alternativaClientId ? { ...a, [campo]: valor } : a)) }
+          : q
+      )
+    );
+
+  const marcarAlternativaCorreta = (questaoClientId: string, alternativaClientId: string) =>
+    setQuestoes((prev) =>
+      prev.map((q) =>
+        q.clientId === questaoClientId
+          ? { ...q, Alternativas: q.Alternativas.map((a) => ({ ...a, Correta: a.clientId === alternativaClientId })) }
+          : q
+      )
+    );
+
+  const validarQuestoes = (): string | null => {
+    if (questoes.length === 0) {
+      return 'Adicione ao menos uma questão à lista.';
+    }
+    for (let i = 0; i < questoes.length; i++) {
+      const q = questoes[i];
+      if (!q.Enunciado.trim()) {
+        return `Questão ${i + 1}: o enunciado é obrigatório.`;
+      }
+      if (!q.PontosMaximos || q.PontosMaximos <= 0) {
+        return `Questão ${i + 1}: os pontos máximos devem ser maiores que zero.`;
+      }
+      if (q.Tipo === 'objetiva') {
+        if (q.Alternativas.length < 2) {
+          return `Questão ${i + 1}: uma questão objetiva precisa de ao menos 2 alternativas.`;
+        }
+        if (q.Alternativas.some((a) => !a.Texto.trim())) {
+          return `Questão ${i + 1}: todas as alternativas precisam de texto.`;
+        }
+        if (q.Alternativas.filter((a) => a.Correta).length !== 1) {
+          return `Questão ${i + 1}: marque exatamente uma alternativa como correta.`;
+        }
+      }
+    }
+    return null;
+  };
+
+  const questaoParaInput = (q: QuestaoRascunho): QuestaoCreateInput => ({
+    QuestaoEnunciado: q.Enunciado.trim(),
+    QuestaoTipo: q.Tipo,
+    QuestaoPontosMaximos: q.PontosMaximos,
+    QuestaoExplicacao: q.Explicacao.trim() || undefined,
+    Alternativas:
+      q.Tipo === 'objetiva'
+        ? q.Alternativas.map((a) => ({ AlternativaTexto: a.Texto.trim(), AlternativaCorreta: a.Correta, AlternativaPontos: a.Pontos }))
+        : undefined,
+  });
+
+  /** Modo edição: carrega as questões já cadastradas dessa tarefa lista. */
+  const carregarQuestoesParaEdicao = async (tarefaGUID: string) => {
+    try {
+      const carregadas = await TarefaAcademicaAPI.listarQuestoes(tarefaGUID);
+      questoesOriginaisGUIDsRef.current = new Set(carregadas.map((q) => q.QuestaoGUID));
+      setQuestoes(
+        carregadas.map((q) => ({
+          clientId: novoClientId(),
+          QuestaoGUID: q.QuestaoGUID,
+          Enunciado: q.QuestaoEnunciado,
+          Tipo: q.QuestaoTipo,
+          PontosMaximos: q.QuestaoPontosMaximos,
+          Explicacao: q.QuestaoExplicacao || '',
+          TemResposta: q.TemResposta,
+          Alternativas: q.Alternativas.map((a) => ({
+            clientId: novoClientId(),
+            Texto: a.AlternativaTexto,
+            Correta: a.AlternativaCorreta,
+            Pontos: a.AlternativaPontos,
+          })),
+        }))
+      );
+    } catch (err: any) {
+      setErroQuestoes(err?.message || 'Falha ao carregar questões da lista');
+    }
+  };
+
+  /** Modo edição: aplica as diferenças (criadas/atualizadas/excluídas/reordenadas) contra o backend. */
+  const sincronizarQuestoesEdicao = async (tarefaGUID: string) => {
+    const guidsAtuais = new Set(questoes.filter((q) => q.QuestaoGUID).map((q) => q.QuestaoGUID as string));
+    const excluidas = Array.from(questoesOriginaisGUIDsRef.current).filter((guid) => !guidsAtuais.has(guid));
+
+    for (const guid of excluidas) {
+      await TarefaAcademicaAPI.excluirQuestao(guid);
+    }
+
+    const ordens: Array<{ QuestaoGUID: string; QuestaoOrdem: number }> = [];
+
+    for (let i = 0; i < questoes.length; i++) {
+      const q = questoes[i];
+      if (q.QuestaoGUID) {
+        const atualizada = await TarefaAcademicaAPI.atualizarQuestao(q.QuestaoGUID, {
+          QuestaoEnunciado: q.Enunciado.trim(),
+          QuestaoPontosMaximos: q.PontosMaximos,
+          QuestaoExplicacao: q.Explicacao.trim() || null,
+          ...(q.TemResposta ? {} : { QuestaoTipo: q.Tipo, Alternativas: questaoParaInput(q).Alternativas }),
+        });
+        ordens.push({ QuestaoGUID: atualizada.QuestaoGUID, QuestaoOrdem: i });
+      } else {
+        const criada = await TarefaAcademicaAPI.criarQuestao(tarefaGUID, questaoParaInput(q));
+        ordens.push({ QuestaoGUID: criada.QuestaoGUID, QuestaoOrdem: i });
+      }
+    }
+
+    if (ordens.length > 0) {
+      await TarefaAcademicaAPI.reordenarQuestoes(tarefaGUID, ordens);
+    }
+  };
+
+  /** Modo criação (tarefa ainda sem GUID): acrescenta as linhas importadas ao rascunho local, junto com as manuais. */
+  const handleImportadoRascunho = (linhas: QuestaoImportRow[]) => {
+    setQuestoes((prev) => [
+      ...prev,
+      ...linhas.map((l) => ({
+        clientId: novoClientId(),
+        Enunciado: l.QuestaoEnunciado,
+        Tipo: l.QuestaoTipo,
+        PontosMaximos: l.QuestaoPontosMaximos,
+        Explicacao: l.QuestaoExplicacao || '',
+        TemResposta: false,
+        Alternativas: (l.Alternativas || []).map((a) => ({
+          clientId: novoClientId(),
+          Texto: a.AlternativaTexto,
+          Correta: a.AlternativaCorreta,
+          Pontos: a.AlternativaPontos,
+        })),
+      })),
+    ]);
+    setModoQuestoes('manual');
+  };
+
+  /** Modo edição (tarefa já existe): a importação já foi persistida no backend — só reflete no rascunho local. */
+  const handleImportadoBackend = (criadas: Questao[]) => {
+    questoesOriginaisGUIDsRef.current = new Set([...questoesOriginaisGUIDsRef.current, ...criadas.map((q) => q.QuestaoGUID)]);
+    setQuestoes((prev) => [
+      ...prev,
+      ...criadas.map((q) => ({
+        clientId: novoClientId(),
+        QuestaoGUID: q.QuestaoGUID,
+        Enunciado: q.QuestaoEnunciado,
+        Tipo: q.QuestaoTipo,
+        PontosMaximos: q.QuestaoPontosMaximos,
+        Explicacao: q.QuestaoExplicacao || '',
+        TemResposta: q.TemResposta,
+        Alternativas: q.Alternativas.map((a) => ({
+          clientId: novoClientId(),
+          Texto: a.AlternativaTexto,
+          Correta: a.AlternativaCorreta,
+          Pontos: a.AlternativaPontos,
+        })),
+      })),
+    ]);
+    setModoQuestoes('manual');
+  };
 
   /**
    * Inicializar campo de data com hoje às 23:59
@@ -618,6 +869,10 @@ export default function TarefaForm({
     setResultadosCalculo({});
     setSemanaBase('');
     setDeslocamentoMinutos(0);
+    setQuestoes([]);
+    setModoQuestoes('manual');
+    setErroQuestoes(null);
+    questoesOriginaisGUIDsRef.current = new Set();
   };
 
   const onSubmit = async (event: FormEvent) => {
@@ -628,6 +883,13 @@ export default function TarefaForm({
     try {
       // MODO EDIÇÃO: Atualizar tarefa existente
       if (editingGUID) {
+        if (form.TarefaTipoEntrega === 'lista') {
+          const erroValidacao = validarQuestoes();
+          if (erroValidacao) {
+            throw new Error(erroValidacao);
+          }
+        }
+
         const payload = {
           tarefa: {
             TarefaTitulo: form.TarefaTitulo,
@@ -653,6 +915,10 @@ export default function TarefaForm({
           throw new Error(data?.message || 'Erro ao atualizar tarefa');
         }
 
+        if (form.TarefaTipoEntrega === 'lista') {
+          await sincronizarQuestoesEdicao(editingGUID);
+        }
+
         alert('Tarefa atualizada com sucesso!');
         limparFormulario();
         await carregarTarefas();
@@ -668,6 +934,13 @@ export default function TarefaForm({
 
       if (grupos.length === 0) {
         throw new Error('Selecione pelo menos um aluno');
+      }
+
+      if (form.TarefaTipoEntrega === 'lista') {
+        const erroValidacao = validarQuestoes();
+        if (erroValidacao) {
+          throw new Error(erroValidacao);
+        }
       }
 
       const materiaAtual = materiasUnicas.find((m) => m.MatProfTurGUID === form.matXprofXturxescGUID);
@@ -747,6 +1020,13 @@ export default function TarefaForm({
           throw new Error(`Turma ${grupo.TurmaNome}: ${data?.message || 'erro ao salvar tarefa'}`);
         }
         totalCriadas += data.data.count;
+
+        if (form.TarefaTipoEntrega === 'lista' && questoes.length > 0) {
+          const novaTarefaGUID = data.data.tarefas?.[0]?.TarefaGUID;
+          if (novaTarefaGUID) {
+            await TarefaAcademicaAPI.criarQuestoesBatch(novaTarefaGUID, questoes.map(questaoParaInput));
+          }
+        }
       }
 
       alert(`${totalCriadas} tarefa(s) criada(s) com sucesso!`);
@@ -775,6 +1055,12 @@ export default function TarefaForm({
       TarefaMinPessoas: tarefa.TarefaMinPessoas,
       TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
     });
+    setQuestoes([]);
+    setErroQuestoes(null);
+    questoesOriginaisGUIDsRef.current = new Set();
+    if (tarefa.TarefaTipoEntrega === 'lista') {
+      void carregarQuestoesParaEdicao(tarefa.TarefaGUID);
+    }
     // Scroll para o topo para visualizar o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1048,11 +1334,169 @@ export default function TarefaForm({
         )}
         <select
           value={form.TarefaTipoEntrega}
-          onChange={(e) => setForm((prev) => ({ ...prev, TarefaTipoEntrega: e.target.value as 'digital' | 'fisica' }))}
+          onChange={(e) => setForm((prev) => ({ ...prev, TarefaTipoEntrega: e.target.value as 'digital' | 'fisica' | 'lista' }))}
         >
           <option value="digital">Digital</option>
           <option value="fisica">Física</option>
+          <option value="lista">Lista de questões</option>
         </select>
+
+        {form.TarefaTipoEntrega === 'lista' && (
+          <div className={styles.listaQuestoes}>
+            <div className={styles.listaQuestoesHeader}>
+              <h3><Icon name="list" size={18} /> Questões da lista</h3>
+              <div className={styles.modoQuestoesTabs}>
+                <button
+                  type="button"
+                  className={modoQuestoes === 'manual' ? styles.modoQuestoesTabAtiva : styles.modoQuestoesTab}
+                  onClick={() => setModoQuestoes('manual')}
+                >
+                  Adicionar manualmente
+                </button>
+                <button
+                  type="button"
+                  className={modoQuestoes === 'planilha' ? styles.modoQuestoesTabAtiva : styles.modoQuestoesTab}
+                  onClick={() => setModoQuestoes('planilha')}
+                >
+                  Importar de planilha
+                </button>
+              </div>
+            </div>
+
+            {temQuestaoComResposta && (
+              <p className={styles.warning}>
+                <Icon name="alert-triangle" size={16} /> Uma ou mais questões já têm resposta de aluno — não é possível mudar o tipo,
+                as alternativas ou excluir essas questões. Enunciado, pontos e explicação continuam editáveis.
+              </p>
+            )}
+
+            {erroQuestoes && <p className={styles.error}>{erroQuestoes}</p>}
+
+            {modoQuestoes === 'manual' ? (
+              <>
+                <div className={styles.questoesList}>
+                  {questoes.map((questao, index) => (
+                    <div key={questao.clientId} className={styles.questaoCard}>
+                      <div className={styles.questaoCardHeader}>
+                        <strong>Questão {index + 1}</strong>
+                        <div className={styles.questaoCardHeaderActions}>
+                          <button type="button" onClick={() => moverQuestao(questao.clientId, -1)} disabled={index === 0} title="Mover para cima">
+                            <Icon name="chevron-right" size={16} style={{ transform: 'rotate(-90deg)' }} />
+                          </button>
+                          <button type="button" onClick={() => moverQuestao(questao.clientId, 1)} disabled={index === questoes.length - 1} title="Mover para baixo">
+                            <Icon name="chevron-right" size={16} style={{ transform: 'rotate(90deg)' }} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removerQuestao(questao.clientId)}
+                            disabled={questao.TemResposta}
+                            title={questao.TemResposta ? 'Não é possível excluir: já tem resposta' : 'Remover questão'}
+                          >
+                            <Icon name="trash" size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <textarea
+                        placeholder="Enunciado da questão *"
+                        value={questao.Enunciado}
+                        onChange={(e) => atualizarCampoQuestao(questao.clientId, 'Enunciado', e.target.value)}
+                      />
+
+                      <div className={styles.formRow}>
+                        <div className={styles.formGroup}>
+                          <label>Tipo</label>
+                          <select
+                            value={questao.Tipo}
+                            disabled={questao.TemResposta}
+                            onChange={(e) => atualizarCampoQuestao(questao.clientId, 'Tipo', e.target.value as 'objetiva' | 'discursiva')}
+                          >
+                            <option value="objetiva">Objetiva</option>
+                            <option value="discursiva">Discursiva</option>
+                          </select>
+                        </div>
+                        <div className={styles.formGroup}>
+                          <label>Pontos máximos</label>
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={questao.PontosMaximos}
+                            onChange={(e) => atualizarCampoQuestao(questao.clientId, 'PontosMaximos', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                      </div>
+
+                      <textarea
+                        placeholder="Explicação exibida ao aluno após responder (opcional)"
+                        value={questao.Explicacao}
+                        onChange={(e) => atualizarCampoQuestao(questao.clientId, 'Explicacao', e.target.value)}
+                      />
+
+                      {questao.Tipo === 'objetiva' && (
+                        <div className={styles.alternativasList}>
+                          <label>Alternativas (marque a correta)</label>
+                          {questao.Alternativas.map((alt) => (
+                            <div key={alt.clientId} className={styles.alternativaRow}>
+                              <input
+                                type="radio"
+                                name={`correta-${questao.clientId}`}
+                                checked={alt.Correta}
+                                disabled={questao.TemResposta}
+                                onChange={() => marcarAlternativaCorreta(questao.clientId, alt.clientId)}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Texto da alternativa"
+                                value={alt.Texto}
+                                onChange={(e) => atualizarAlternativa(questao.clientId, alt.clientId, 'Texto', e.target.value)}
+                              />
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className={styles.alternativaPontos}
+                                title="Pontos dessa alternativa"
+                                value={alt.Pontos}
+                                onChange={(e) => atualizarAlternativa(questao.clientId, alt.clientId, 'Pontos', parseFloat(e.target.value) || 0)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removerAlternativa(questao.clientId, alt.clientId)}
+                                disabled={questao.TemResposta || questao.Alternativas.length <= 2}
+                                title="Remover alternativa"
+                              >
+                                <Icon name="x" size={14} />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={() => adicionarAlternativa(questao.clientId)}
+                            disabled={questao.TemResposta}
+                          >
+                            <Icon name="plus" size={14} /> Adicionar alternativa
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button type="button" className={styles.secondaryButton} onClick={adicionarQuestao}>
+                  <Icon name="plus" size={16} /> Adicionar questão
+                </button>
+              </>
+            ) : (
+              <ImportarQuestoesPlanilha
+                tarefaGUID={editingGUID ?? undefined}
+                onImportadoRascunho={handleImportadoRascunho}
+                onImportadoBackend={handleImportadoBackend}
+              />
+            )}
+          </div>
+        )}
 
         {/* Checkbox Tarefa Compartilhada */}
         <div className={styles.formGroup}>
