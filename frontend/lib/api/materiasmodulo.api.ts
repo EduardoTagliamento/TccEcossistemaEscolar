@@ -163,12 +163,39 @@ export interface CategoriaCompleta {
   Itens: ItemCategoria[];
 }
 
-export async function buscarCategoriasCompletas(materiaGUID: string, turmaGUID: string): Promise<CategoriaCompleta[]> {
+export interface CategoriasCompletasResultado {
+  categorias: CategoriaCompleta[];
+  /** Itens órfãos (categoria excluída) — nunca somem junto com a categoria. */
+  itensSemCategoria: ItemCategoria[];
+}
+
+export async function buscarCategoriasCompletas(materiaGUID: string, turmaGUID: string): Promise<CategoriasCompletasResultado> {
   const response = await fetch(`${API_URL}/categoria-conteudo/completas/${materiaGUID}/${turmaGUID}`, {
     headers: getHeaders(),
   });
   const dados = await extrairDados(response, 'Erro ao buscar categorias');
-  return dados.categorias;
+  return { categorias: dados.categorias, itensSemCategoria: dados.itensSemCategoria || [] };
+}
+
+// ==================== Estatísticas (professor) ====================
+
+export interface EstatisticaAluno {
+  MatriculaGUID: string;
+  AlunoNome: string;
+  Percentual: number;
+  Nota: number | null;
+}
+
+export interface EstatisticasItem {
+  MediaPercentual: number;
+  Ranking: EstatisticaAluno[];
+}
+
+export async function buscarEstatisticasItem(tipo: ItemTipo, itemGUID: string, turmaGUID: string): Promise<EstatisticasItem> {
+  const response = await fetch(`${API_URL}/categoria-conteudo/estatisticas/${tipo}/${itemGUID}/${turmaGUID}`, {
+    headers: getHeaders(),
+  });
+  return extrairDados(response, 'Erro ao buscar estatísticas');
 }
 
 export async function temPendencia(materiaGUID: string, turmaGUID: string, ehProfessor: boolean): Promise<boolean> {

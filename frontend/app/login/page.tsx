@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, FormEvent, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -34,12 +34,28 @@ const baloo2 = Baloo_2({
 });
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isLoading } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
+
+  // Sessão expirada (redirect do interceptor de fetch em @/lib/auth/AuthContext)
+  useEffect(() => {
+    if (searchParams?.get('sessao') === 'expirada') {
+      setError('Sua sessão expirou. Faça login novamente.');
+    }
+  }, [searchParams]);
 
   // Detectar tipo de identificador
   const detectIdentifierType = (value: string): string => {

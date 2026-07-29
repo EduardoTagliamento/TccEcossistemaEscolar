@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   aplicarTema,
   aplicarModoDaltonico,
@@ -10,6 +11,21 @@ import {
   type PreferenciaTema,
   type EscalaFonte,
 } from '@/lib/theme/tema';
+import { installAuthFetchInterceptor, SESSION_EXPIRED_EVENT } from './authFetchInterceptor';
+
+// Telas que não exigem JWT — nunca redirecionar para /login a partir delas.
+const PUBLIC_PATH_PREFIXES = ['/login', '/cadastro', '/saiba-mais', '/verificar-email'];
+
+function isPublicPath(pathname: string): boolean {
+  if (pathname === '/') return true;
+  return PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+// Instala o interceptor assim que o módulo carrega no browser, antes de
+// qualquer fetch da aplicação (inclusive o fetchUser do mount abaixo).
+if (typeof window !== 'undefined') {
+  installAuthFetchInterceptor();
+}
 
 interface Usuario {
   UsuarioCPF: string;
@@ -39,9 +55,28 @@ interface AuthContextData {
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Sessão expirada (401 detectado pelo interceptor de fetch): limpa o
+  // estado e manda para o login, exceto em telas que não exigem JWT.
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      localStorage.removeItem('@baua:token');
+      setToken(null);
+      setUsuario(null);
+
+      const pathname = window.location.pathname;
+      if (!isPublicPath(pathname)) {
+        router.push('/login?sessao=expirada');
+      }
+    };
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, [router]);
 
   // Aplica as 5 preferências de acessibilidade assim que o usuário
   // autenticado carrega (ou reaplica o fallback padrão quando desloga). Ver

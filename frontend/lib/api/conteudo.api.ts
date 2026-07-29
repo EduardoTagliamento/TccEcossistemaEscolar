@@ -20,6 +20,8 @@ export type ConteudoOrigemTipo = 'upload' | 'link';
 
 export interface ConteudoTurmaInfo {
   TurmaGUID: string;
+  TurmaNome: string;
+  TurmaSerie: string;
   ConteudoDataPublicacao: string;
 }
 
@@ -146,6 +148,23 @@ export async function buscarConteudo(conteudoGUID: string): Promise<Conteudo> {
   return result.data.conteudo;
 }
 
+export async function atualizarConteudo(
+  conteudoGUID: string,
+  dados: { ConteudoTitulo?: string; ConteudoDescricao?: string }
+): Promise<Conteudo> {
+  const response = await fetch(`${API_URL}/conteudo/${conteudoGUID}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    body: JSON.stringify({ conteudo: dados }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao atualizar conteúdo');
+  }
+  return result.data.conteudo;
+}
+
 export async function excluirConteudo(conteudoGUID: string): Promise<void> {
   const response = await fetch(`${API_URL}/conteudo/${conteudoGUID}`, {
     method: 'DELETE',
@@ -156,4 +175,18 @@ export async function excluirConteudo(conteudoGUID: string): Promise<void> {
   if (!response.ok) {
     throw new Error(result.message || 'Erro ao excluir conteúdo');
   }
+}
+
+/** Remove só o vínculo com UMA turma — se for a última restante, exclui o conteúdo por completo. */
+export async function removerConteudoDeTurma(conteudoGUID: string, turmaGUID: string): Promise<{ conteudoExcluidoPorCompleto: boolean }> {
+  const response = await fetch(`${API_URL}/conteudo/${conteudoGUID}/turma/${turmaGUID}`, {
+    method: 'DELETE',
+    headers: getAuthHeader(),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao remover conteúdo desta turma');
+  }
+  return result.data;
 }

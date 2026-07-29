@@ -11,6 +11,7 @@ import { CategoriaConteudoDAO } from "../repositories/categoriaconteudo.reposito
 import { ProvaAgendadaVisualizacaoDAO } from "../repositories/provaagendadavisualizacao.repository";
 import ProvaAgendadaVisualizacao from "../entities/provaagendadavisualizacao.model";
 import { MatriculaDAO } from "../repositories/matricula.repository";
+import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
@@ -21,6 +22,12 @@ const DATA_VALIDACAO_TOLERANCIA_MS = 60 * 1000;
 /**
  * DTO para retorno de prova com turmas atribuídas (N:N normalizado)
  */
+export interface TurmaResumoDTO {
+  TurmaGUID: string;
+  TurmaNome: string;
+  TurmaSerie: string;
+}
+
 export interface ProvaAgendadaDTO {
   ProvaAgendadaGUID: string;
   MateriaGUID: string;
@@ -28,6 +35,8 @@ export interface ProvaAgendadaDTO {
   ProvaDescricao: string | null;
   ProvaStatus: "Agendada" | "Realizada" | "Cancelada";
   TurmasAtribuidas: string[]; // Array de TurmaGUID
+  /** Mesmas turmas de TurmasAtribuidas, mas com nome/série — usado pra "excluir desta turma vs. todas as turmas". */
+  TurmasAtribuidasDetalhe: TurmaResumoDTO[];
   /** Data específica por turma (agendamento automático); só contém entradas para turmas com override. */
   DatasPorTurma: Record<string, string>;
   CreatedAt: string | null;
@@ -76,6 +85,7 @@ export default class ProvaAgendadaService {
   #categoriaDAO: CategoriaConteudoDAO;
   #visualizacaoDAO: ProvaAgendadaVisualizacaoDAO;
   #matriculaDAO: MatriculaDAO;
+  #alocacaoDAO: MaterialProfessorTurmaDAO;
 
   constructor(
     provaDAODependency: ProvaAgendadaDAO,
@@ -85,7 +95,8 @@ export default class ProvaAgendadaService {
     materiaDAODependency: MateriaDAO,
     categoriaDAODependency: CategoriaConteudoDAO,
     visualizacaoDAODependency: ProvaAgendadaVisualizacaoDAO,
-    matriculaDAODependency: MatriculaDAO
+    matriculaDAODependency: MatriculaDAO,
+    alocacaoDAODependency: MaterialProfessorTurmaDAO
   ) {
     console.log("⬆️  ProvaAgendadaService.constructor()");
     this.#provaDAO = provaDAODependency;
@@ -96,7 +107,25 @@ export default class ProvaAgendadaService {
     this.#categoriaDAO = categoriaDAODependency;
     this.#visualizacaoDAO = visualizacaoDAODependency;
     this.#matriculaDAO = matriculaDAODependency;
+    this.#alocacaoDAO = alocacaoDAODependency;
   }
+
+  /**
+   * Confirma que usuarioCPF é professor ativamente alocado na matéria da
+   * prova — ProvaAgendada não tem UsuarioCPF próprio (é por MateriaGUID,
+   * compartilhada entre turmas), então ownership é resolvido via alocação.
+   */
+  #validarProfessorResponsavel = async (materiaGUID: string, usuarioCPF: string): Promise<void> => {
+    const alocacoes = await this.#alocacaoDAO.findByProfessor(usuarioCPF);
+    const alocado = alocacoes.some(
+      (a) => a.MateriaGUID === materiaGUID && a.AlocacaoStatus === "Ativa"
+    );
+    if (!alocado) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Só um professor ativamente alocado nesta matéria pode alterar/excluir esta prova.",
+      });
+    }
+  };
 
   /**
    * Aluno abre/visualiza uma prova — marca 100% instantâneo, igual conteúdo
@@ -344,6 +373,8 @@ export default class ProvaAgendadaService {
       });
     }
 
+    await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
+
     const updates: Partial<Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus">> =
       {};
 
@@ -408,6 +439,8 @@ export default class ProvaAgendadaService {
       });
     }
 
+    await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
+
     // Resolver EscolaGUID antes de excluir (CASCADE apaga as atribuições junto)
     const atribuicoesParaAuditoria = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
     let escolaGUIDParaAuditoria: string | null = null;
@@ -435,15 +468,78 @@ export default class ProvaAgendadaService {
   };
 
   /**
+   * Excluir prova de UMA turma só (mantém as demais) — se for a última turma
+   * restante, cai pra exclusão completa (reaproveita excluirProva, incluindo
+   * auditoria e cascade das subtabelas).
+   */
+  removerProvaDeTurma = async (
+    ProvaAgendadaGUID: string,
+    turmaGUID: string,
+    usuarioCPF?: string
+  ): Promise<{ provaExcluidaPorCompleto: boolean }> => {
+    console.log("🟣 ProvaAgendadaService.removerProvaDeTurma()");
+
+    if (!usuarioCPF) {
+      throw new ErrorResponse(401, "Usuário não autenticado", {
+        message: "É necessário estar autenticado para excluir uma prova.",
+      });
+    }
+
+    const prova = await this.#provaDAO.findById(ProvaAgendadaGUID);
+    if (!prova) {
+      throw new ErrorResponse(404, "Prova não encontrada", {
+        message: `Não existe prova com id ${ProvaAgendadaGUID}`,
+      });
+    }
+
+    await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
+
+    const atribuicoes = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
+    const atribuicaoDaTurma = atribuicoes.find((a) => a.TurmaGUID === turmaGUID);
+    if (!atribuicaoDaTurma) {
+      throw new ErrorResponse(404, "Vínculo não encontrado", {
+        message: "Esta prova não está agendada para esta turma.",
+      });
+    }
+
+    if (atribuicoes.length === 1) {
+      await this.excluirProva(ProvaAgendadaGUID, usuarioCPF);
+      return { provaExcluidaPorCompleto: true };
+    }
+
+    const turma = await this.#turmaDAO.findById(turmaGUID);
+    await this.#provaTurmaDAO.delete(atribuicaoDaTurma.ProvaAgendadaTurmaGUID);
+
+    if (turma) {
+      void getAuditoriaService().registrar({
+        EscolaGUID: turma.EscolaGUID,
+        UsuarioCPFAtor: usuarioCPF,
+        AcaoTipo: "Delete",
+        EntidadeTipo: "provaagendada",
+        EntidadeGUID: ProvaAgendadaGUID,
+        EntidadeDescricao: `${prova.ProvaDescricao ?? 'Prova'} — removida da turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
+        CategoriaAuditoriaId: 2,
+      });
+    }
+
+    return { provaExcluidaPorCompleto: false };
+  };
+
+  /**
    * Converte ProvaAgendada (classe) para ProvaAgendadaDTO (interface JSON)
    */
-  private toDTO(prova: ProvaAgendada, atribuicoes: ProvaAgendadaTurma[]): ProvaAgendadaDTO {
+  private toDTO = async (prova: ProvaAgendada, atribuicoes: ProvaAgendadaTurma[]): Promise<ProvaAgendadaDTO> => {
     const datasPorTurma: Record<string, string> = {};
     atribuicoes.forEach((a) => {
       if (a.ProvaDataTurma) {
         datasPorTurma[a.TurmaGUID] = a.ProvaDataTurma.toISOString();
       }
     });
+
+    const turmas = await Promise.all(atribuicoes.map((a) => this.#turmaDAO.findById(a.TurmaGUID)));
+    const turmasAtribuidasDetalhe: TurmaResumoDTO[] = turmas
+      .filter((t): t is NonNullable<typeof t> => t !== null)
+      .map((t) => ({ TurmaGUID: t.TurmaGUID, TurmaNome: t.TurmaNome, TurmaSerie: t.TurmaSerie }));
 
     return {
       ProvaAgendadaGUID: prova.ProvaAgendadaGUID,
@@ -452,9 +548,10 @@ export default class ProvaAgendadaService {
       ProvaDescricao: prova.ProvaDescricao,
       ProvaStatus: prova.ProvaStatus,
       TurmasAtribuidas: atribuicoes.map((a) => a.TurmaGUID),
+      TurmasAtribuidasDetalhe: turmasAtribuidasDetalhe,
       DatasPorTurma: datasPorTurma,
       CreatedAt: prova.CreatedAt ? prova.CreatedAt.toISOString() : null,
       UpdatedAt: prova.UpdatedAt ? prova.UpdatedAt.toISOString() : null,
     };
-  }
+  };
 }

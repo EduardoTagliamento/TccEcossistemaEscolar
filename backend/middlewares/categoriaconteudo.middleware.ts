@@ -145,6 +145,53 @@ export class CategoriaConteudoMiddleware {
     next();
   };
 
+  static validarAtualizarCategoriaGeral = (req: Request, res: Response, next: NextFunction) => {
+    console.log("🟡 CategoriaConteudoMiddleware.validarAtualizarCategoriaGeral()");
+
+    const { MateriaGUID, CategoriaNomeAtual, NovoNome } = req.body;
+
+    if (!MateriaGUID || !uuidRegex.test(MateriaGUID)) {
+      return next(
+        new ErrorResponse(400, "MateriaGUID inválido", { message: "MateriaGUID é obrigatório e deve ser um UUID válido" })
+      );
+    }
+
+    if (!CategoriaNomeAtual || typeof CategoriaNomeAtual !== "string" || CategoriaNomeAtual.trim().length === 0) {
+      return next(
+        new ErrorResponse(400, "CategoriaNomeAtual inválido", { message: "CategoriaNomeAtual é obrigatório" })
+      );
+    }
+
+    if (!NovoNome || typeof NovoNome !== "string" || NovoNome.trim().length < 2 || NovoNome.trim().length > 100) {
+      return next(
+        new ErrorResponse(400, "NovoNome inválido", { message: "NovoNome deve ter entre 2 e 100 caracteres" })
+      );
+    }
+
+    next();
+  };
+
+  static validarExcluirCategoriaGeral = (req: Request, res: Response, next: NextFunction) => {
+    console.log("🟡 CategoriaConteudoMiddleware.validarExcluirCategoriaGeral()");
+
+    const MateriaGUID = req.query.MateriaGUID as string;
+    const CategoriaNome = req.query.CategoriaNome as string;
+
+    if (!MateriaGUID || !uuidRegex.test(MateriaGUID)) {
+      return next(
+        new ErrorResponse(400, "MateriaGUID inválido", { message: "MateriaGUID é obrigatório (query) e deve ser um UUID válido" })
+      );
+    }
+
+    if (!CategoriaNome || CategoriaNome.trim().length === 0) {
+      return next(
+        new ErrorResponse(400, "CategoriaNome inválido", { message: "CategoriaNome é obrigatório (query)" })
+      );
+    }
+
+    next();
+  };
+
   static validarResolverCategoriaPorNome = (req: Request, res: Response, next: NextFunction) => {
     console.log("🟡 CategoriaConteudoMiddleware.validarResolverCategoriaPorNome()");
 

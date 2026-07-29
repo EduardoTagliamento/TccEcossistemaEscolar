@@ -158,7 +158,14 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.show()");
     try {
       const { TarefaGUID } = request.params;
-      const tarefa = await this.#tarefaService.buscarTarefa(TarefaGUID);
+      // ?minhaMatricula=true — usado pela tela do aluno (VisualizadorItemModal),
+      // que não deve ver a lista de atribuições dos colegas de turma.
+      const somenteMinhaMatricula = request.query.minhaMatricula === "true";
+      const usuarioCPF = request.user?.UsuarioCPF;
+      const tarefa = await this.#tarefaService.buscarTarefa(
+        TarefaGUID,
+        somenteMinhaMatricula ? usuarioCPF : undefined
+      );
 
       response.status(200).json({
         success: true,

@@ -58,10 +58,18 @@
   color: var(--slate-600, #46564D);
 }
 
-.botaoFechar {
+.acoesHeader {
   position: absolute;
   top: 1rem;
   right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 1;
+}
+
+.botaoFechar,
+.botaoAcaoHeader {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -72,6 +80,113 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.painelEstatisticas {
+  background: var(--surface-muted, #F0F4F1);
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 0 2.5rem 1rem 0;
+  color: var(--ink-900, #0F1D17);
+  font-size: 0.9rem;
+}
+
+.estatisticasCabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.estatisticasMedia {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.botaoExportar {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  border: 1.5px solid var(--green-500, #17C077);
+  background: var(--white, #fff);
+  color: var(--green-500, #17C077);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.rankingLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.rankingItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--line-200, #E2EAE5);
+  font-size: 0.85rem;
+}
+
+.rankingPosicao {
+  width: 28px;
+  flex-shrink: 0;
+  color: var(--slate-500, #647268);
+  font-weight: 600;
+}
+
+.rankingNome {
+  flex: 1;
+  color: var(--ink-900, #0F1D17);
+}
+
+.rankingValor {
+  color: var(--slate-500, #647268);
+  white-space: nowrap;
+}
+
+.painelExclusao {
+  background: var(--surface-muted, #F0F4F1);
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 0 2.5rem 1rem 0;
+  color: var(--ink-900, #0F1D17);
+  font-size: 0.9rem;
+}
+
+.painelExclusaoAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.painelExclusaoAcoes button {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  background: var(--white, #fff);
+  color: var(--slate-600, #46564D);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.botaoExcluirConfirmar {
+  border-color: #E5484D !important;
+  background: #E5484D !important;
+  color: #fff !important;
 }
 
 .carregando {
@@ -171,16 +286,100 @@
 }
 
 .listaAlunos {
-  margin-top: 1rem;
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
 }
 
-.linhaAluno {
+.linhaAlunoClicavel {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0;
+  padding: 0.6rem 0.25rem;
+  border: none;
   border-bottom: 1px solid var(--line-200, #E2EAE5);
+  background: none;
   gap: 1rem;
+  cursor: pointer;
+  text-align: left;
+  color: var(--slate-600, #46564D);
+}
+
+.linhaAlunoClicavel:hover {
+  background: var(--surface-muted, #F0F4F1);
+}
+
+.avaliacaoBloco {
+  margin-top: 1rem;
+}
+
+.abasAvaliacao {
+  display: flex;
+  gap: 0.4rem;
+  border-bottom: 1.5px solid var(--line-200, #E2EAE5);
+  margin-bottom: 0.75rem;
+}
+
+.aba,
+.abaAtiva {
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--slate-500, #647268);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+}
+
+.abaAtiva {
+  color: #17C077;
+  border-bottom-color: #17C077;
+}
+
+.detalheAluno {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.botaoVoltarLista {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--slate-500, #647268);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.alunoNomeDetalhe {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-900, #0F1D17);
+  margin: 0;
+}
+
+.anexosDetalhe {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.notaArea {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notaArea label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink-900, #0F1D17);
 }
 
 .inputNota {
@@ -188,4 +387,81 @@
   padding: 0.4rem 0.6rem;
   border: 1.5px solid var(--line-200, #E2EAE5);
   border-radius: 6px;
+}
+
+.alunoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.alunoNome {
+  font-weight: 600;
+  color: var(--ink-900, #0F1D17);
+}
+
+.alunoStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--slate-500, #647268);
+}
+
+.entregaDigital {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.statusEntregue {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #17C077;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.inputArquivo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border: 1.5px dashed var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--slate-600, #46564D);
+}
+
+.botaoEnviarEntrega {
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: #17C077;
+  color: #FFFFFF;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botaoEnviarEntrega:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.anexoEntregado {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #17C077;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-align: left;
 }

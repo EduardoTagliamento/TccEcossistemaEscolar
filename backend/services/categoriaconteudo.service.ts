@@ -38,6 +38,12 @@ export interface CategoriaCompletaDTO {
   Itens: ItemCategoriaDTO[];
 }
 
+export interface CategoriasCompletasResultDTO {
+  categorias: CategoriaCompletaDTO[];
+  /** Itens com CategoriaGUID NULL — sobraram de uma categoria excluída, nunca some junto com ela. */
+  itensSemCategoria: ItemCategoriaDTO[];
+}
+
 export interface TurmaBoardGeralDTO {
   TurmaGUID: string;
   TurmaNome: string;
@@ -81,6 +87,20 @@ export interface CategoriaConteudoCreateDTO {
   CategoriaNome: string;
 }
 
+export interface EstatisticaAlunoDTO {
+  MatriculaGUID: string;
+  AlunoNome: string;
+  /** 0-100, mesmo cálculo usado na barra de progresso (ver buscarCategoriasCompletas) */
+  Percentual: number;
+  Nota: number | null;
+}
+
+export interface EstatisticasItemDTO {
+  MediaPercentual: number;
+  /** Ordenado desc por Percentual — quem está na frente aparece primeiro */
+  Ranking: EstatisticaAlunoDTO[];
+}
+
 export default class CategoriaConteudoService {
   #categoriaDAO: CategoriaConteudoDAO;
   #materiaDAO: MateriaDAO;
@@ -104,7 +124,7 @@ export default class CategoriaConteudoService {
     materiaGUID: string,
     turmaGUID: string,
     usuarioCPF: string
-  ): Promise<CategoriaCompletaDTO[]> => {
+  ): Promise<CategoriasCompletasResultDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarCategoriasCompletas()");
 
     const categorias = await this.#categoriaDAO.findAll({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
@@ -215,12 +235,15 @@ export default class CategoriaConteudoService {
       });
     }
 
-    return categorias.map((categoria) => ({
-      CategoriaGUID: categoria.CategoriaGUID,
-      CategoriaNome: categoria.CategoriaNome || "",
-      Ordem: categoria.Ordem,
-      Itens: (mapaItens.get(categoria.CategoriaGUID) ?? []).sort((a, b) => a.ItemOrdem - b.ItemOrdem),
-    }));
+    return {
+      categorias: categorias.map((categoria) => ({
+        CategoriaGUID: categoria.CategoriaGUID,
+        CategoriaNome: categoria.CategoriaNome || "",
+        Ordem: categoria.Ordem,
+        Itens: (mapaItens.get(categoria.CategoriaGUID) ?? []).sort((a, b) => a.ItemOrdem - b.ItemOrdem),
+      })),
+      itensSemCategoria: (mapaItens.get("__sem_categoria__") ?? []).sort((a, b) => a.ItemOrdem - b.ItemOrdem),
+    };
   };
 
   /**
@@ -235,7 +258,7 @@ export default class CategoriaConteudoService {
     turmaGUID: string,
     categoriaDestinoGUID: string,
     itens: { ItemGUID: string; Tipo: ItemTipo }[]
-  ): Promise<CategoriaCompletaDTO[]> => {
+  ): Promise<CategoriasCompletasResultDTO> => {
     console.log("🟣 CategoriaConteudoService.reordenarItens()");
 
     const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
@@ -515,6 +538,89 @@ export default class CategoriaConteudoService {
       categoria.Ordem = maiorOrdem + 1;
       await this.#categoriaDAO.create(categoria);
     }
+  };
+
+  /**
+   * Renomeia a categoria "geral" — todas as linhas do professor nessa
+   * matéria com o nome atual, uma por turma ativa (não existe 1 CategoriaGUID
+   * único pra essa "categoria", é o conjunto de linhas com o mesmo nome — ver
+   * comentário do board geral acima). Turmas onde já existe outra categoria
+   * com o nome novo são puladas (não sobrescreve), pra não colidir.
+   */
+  atualizarCategoriaGeral = async (
+    usuarioCPF: string,
+    materiaGUID: string,
+    categoriaNomeAtual: string,
+    novoNome: string
+  ): Promise<{ turmasAtualizadas: number }> => {
+    console.log("🟣 CategoriaConteudoService.atualizarCategoriaGeral()");
+
+    const nomeAtual = categoriaNomeAtual.trim();
+    const nome = novoNome.trim();
+    if (nome.length < 2 || nome.length > 100) {
+      throw new ErrorResponse(400, "CategoriaNome inválido", {
+        message: "CategoriaNome deve ter entre 2 e 100 caracteres",
+      });
+    }
+
+    const turmas = await this.#turmasAtivasDoProfessor(usuarioCPF, materiaGUID);
+    if (turmas.length === 0) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está alocado em nenhuma turma ativa nesta matéria.",
+      });
+    }
+
+    let turmasAtualizadas = 0;
+    for (const turma of turmas) {
+      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nomeAtual);
+      if (!existente) continue;
+
+      const conflito = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nome);
+      if (conflito && conflito.CategoriaGUID !== existente.CategoriaGUID) continue;
+
+      await this.#categoriaDAO.update(existente.CategoriaGUID, nome);
+      turmasAtualizadas++;
+    }
+
+    if (turmasAtualizadas === 0) {
+      throw new ErrorResponse(404, "Categoria não encontrada", {
+        message: `Nenhuma turma ativa tem uma categoria chamada "${nomeAtual}".`,
+      });
+    }
+
+    return { turmasAtualizadas };
+  };
+
+  /**
+   * Exclui a categoria "geral" — todas as linhas do professor nessa matéria
+   * com esse nome, uma por turma ativa. Reaproveita excluirCategoria (já
+   * desvincula os itens antes de excluir cada linha) linha a linha.
+   */
+  excluirCategoriaGeral = async (
+    usuarioCPF: string,
+    materiaGUID: string,
+    categoriaNome: string
+  ): Promise<{ turmasExcluidas: number }> => {
+    console.log("🟣 CategoriaConteudoService.excluirCategoriaGeral()");
+
+    const nome = categoriaNome.trim();
+    const turmas = await this.#turmasAtivasDoProfessor(usuarioCPF, materiaGUID);
+
+    let turmasExcluidas = 0;
+    for (const turma of turmas) {
+      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nome);
+      if (!existente) continue;
+      await this.excluirCategoria(existente.CategoriaGUID, usuarioCPF);
+      turmasExcluidas++;
+    }
+
+    if (turmasExcluidas === 0) {
+      throw new ErrorResponse(404, "Categoria não encontrada", {
+        message: `Nenhuma turma ativa tem uma categoria chamada "${nome}".`,
+      });
+    }
+
+    return { turmasExcluidas };
   };
 
   /** Nome mais frequente entre as ocorrências (desempate: primeira encontrada). Usado quando o mesmo item aparece em turmas com categoria divergente. */
@@ -938,6 +1044,135 @@ export default class CategoriaConteudoService {
     return rows.length > 0;
   };
 
+  /**
+   * Estatísticas de um item (tarefa/conteúdo/prova) pra o professor: média de
+   * % da turma + ranking de alunos, na tela de visualização do item. Reusa o
+   * mesmo cálculo de Percentual já usado em buscarCategoriasCompletas (barra
+   * de progresso), só que pra TODOS os alunos ativos da turma de uma vez, em
+   * vez de só o usuário autenticado.
+   */
+  buscarEstatisticasItem = async (
+    usuarioCPF: string,
+    tipo: ItemTipo,
+    itemGUID: string,
+    turmaGUID: string
+  ): Promise<EstatisticasItemDTO> => {
+    console.log("🟣 CategoriaConteudoService.buscarEstatisticasItem()");
+
+    let materiaGUID: string;
+
+    if (tipo === "tarefa_digital" || tipo === "tarefa_presencial") {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT mpt.MateriaGUID
+         FROM tarefaacademica t
+         INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
+         WHERE t.TarefaGUID = ? LIMIT 1`,
+        [itemGUID]
+      );
+      if (rows.length === 0) throw new ErrorResponse(404, "Tarefa não encontrada");
+      materiaGUID = (rows[0] as any).MateriaGUID;
+    } else if (tipo.startsWith("conteudo_")) {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT MateriaGUID FROM conteudo WHERE ConteudoGUID = ? LIMIT 1`,
+        [itemGUID]
+      );
+      if (rows.length === 0) throw new ErrorResponse(404, "Conteúdo não encontrado");
+      materiaGUID = (rows[0] as any).MateriaGUID;
+    } else {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT MateriaGUID FROM provaagendada WHERE ProvaAgendadaGUID = ? LIMIT 1`,
+        [itemGUID]
+      );
+      if (rows.length === 0) throw new ErrorResponse(404, "Prova não encontrada");
+      materiaGUID = (rows[0] as any).MateriaGUID;
+    }
+
+    const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
+      `SELECT 1 FROM materiaxprofessorxturma
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [materiaGUID, turmaGUID, usuarioCPF]
+    );
+    if (alocacaoRows.length === 0) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está alocado nesta matéria/turma.",
+      });
+    }
+
+    let alunos: EstatisticaAlunoDTO[];
+
+    if (tipo === "tarefa_digital" || tipo === "tarefa_presencial") {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT m.MatriculaGUID, u.UsuarioNome, tm.TarefaFeito, tm.TarefaNota,
+                COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS Prazo
+         FROM matricula m
+         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         CROSS JOIN tarefaacademica t
+         LEFT JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID AND tm.MatriculaGUID = m.MatriculaGUID
+         WHERE t.TarefaGUID = ? AND m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
+        [itemGUID, turmaGUID]
+      );
+      alunos = (rows as any[]).map((row) => {
+        const nota = row.TarefaNota !== null && row.TarefaNota !== undefined ? Number(row.TarefaNota) : null;
+        const feito = Boolean(row.TarefaFeito);
+        const prazoPassou = row.Prazo ? new Date(row.Prazo).getTime() < Date.now() : false;
+
+        let percentual = 0;
+        if (nota !== null) percentual = Math.round((nota / 10) * 100);
+        else if (feito) percentual = 100;
+        else if (prazoPassou) percentual = 0;
+
+        return { MatriculaGUID: row.MatriculaGUID, AlunoNome: row.UsuarioNome, Percentual: percentual, Nota: nota };
+      });
+    } else if (tipo.startsWith("conteudo_")) {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT m.MatriculaGUID, u.UsuarioNome, cp.PercentualConcluido
+         FROM matricula m
+         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         LEFT JOIN conteudoprogresso cp ON cp.ConteudoGUID = ? AND cp.MatriculaGUID = m.MatriculaGUID
+         WHERE m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
+        [itemGUID, turmaGUID]
+      );
+      alunos = (rows as any[]).map((row) => ({
+        MatriculaGUID: row.MatriculaGUID,
+        AlunoNome: row.UsuarioNome,
+        Percentual: row.PercentualConcluido ?? 0,
+        Nota: null,
+      }));
+    } else {
+      // Prova: visualização é por ProvaAgendadaTurmaGUID, não pelo ProvaAgendadaGUID direto.
+      const [ptRows] = await pool.execute<RowDataPacket[]>(
+        `SELECT ProvaAgendadaTurmaGUID FROM provaagendada_turma WHERE ProvaAgendadaGUID = ? AND TurmaGUID = ? LIMIT 1`,
+        [itemGUID, turmaGUID]
+      );
+      if (ptRows.length === 0) {
+        throw new ErrorResponse(404, "Prova não encontrada nesta turma");
+      }
+      const provaAgendadaTurmaGUID = (ptRows[0] as any).ProvaAgendadaTurmaGUID;
+
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        `SELECT m.MatriculaGUID, u.UsuarioNome, pv.ProvaAgendadaVisualizacaoGUID
+         FROM matricula m
+         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         LEFT JOIN provaagendadavisualizacao pv ON pv.ProvaAgendadaTurmaGUID = ? AND pv.MatriculaGUID = m.MatriculaGUID
+         WHERE m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
+        [provaAgendadaTurmaGUID, turmaGUID]
+      );
+      alunos = (rows as any[]).map((row) => ({
+        MatriculaGUID: row.MatriculaGUID,
+        AlunoNome: row.UsuarioNome,
+        Percentual: row.ProvaAgendadaVisualizacaoGUID ? 100 : 0,
+        Nota: null,
+      }));
+    }
+
+    const mediaPercentual = alunos.length > 0
+      ? Math.round(alunos.reduce((soma, a) => soma + a.Percentual, 0) / alunos.length)
+      : 0;
+    const ranking = [...alunos].sort((a, b) => b.Percentual - a.Percentual);
+
+    return { MediaPercentual: mediaPercentual, Ranking: ranking };
+  };
+
   excluirCategoria = async (guid: string, usuarioCPF: string): Promise<void> => {
     console.log("🟣 CategoriaConteudoService.excluirCategoria()");
 
@@ -954,7 +1189,24 @@ export default class CategoriaConteudoService {
       });
     }
 
-    await this.#categoriaDAO.delete(guid);
+    // As 3 FKs de CategoriaGUID (tarefaacademica/conteudoturma/provaagendada_turma)
+    // são RESTRICT — sem desvincular antes, o DELETE abaixo estouraria um erro
+    // de constraint sempre que a categoria tivesse algum item. Itens caem pra
+    // "sem categoria" (CategoriaGUID = NULL) em vez de serem apagados junto.
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(`UPDATE tarefaacademica SET CategoriaGUID = NULL WHERE CategoriaGUID = ?`, [guid]);
+      await connection.execute(`UPDATE conteudoturma SET CategoriaGUID = NULL WHERE CategoriaGUID = ?`, [guid]);
+      await connection.execute(`UPDATE provaagendada_turma SET CategoriaGUID = NULL WHERE CategoriaGUID = ?`, [guid]);
+      await connection.execute(`DELETE FROM categoriaconteudo WHERE CategoriaGUID = ?`, [guid]);
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   };
 
   private toDTO(categoria: CategoriaConteudo): CategoriaConteudoDTO {
