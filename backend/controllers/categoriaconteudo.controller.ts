@@ -51,6 +51,36 @@ export class CategoriaConteudoController {
     }
   };
 
+  // GET /api/categoria-conteudo/estatisticas/:tipo/:itemGUID/:turmaGUID
+  buscarEstatisticasItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.buscarEstatisticasItem()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { tipo, itemGUID, turmaGUID } = req.params;
+      const tiposValidos = ["tarefa_digital", "tarefa_presencial", "conteudo_video", "conteudo_texto", "conteudo_imagem", "prova"];
+      if (!tiposValidos.includes(tipo)) {
+        res.status(400).json({ success: false, message: "Tipo de item inválido", data: null });
+        return;
+      }
+
+      const estatisticas = await this.#categoriaService.buscarEstatisticasItem(
+        usuarioCPF,
+        tipo as any,
+        itemGUID,
+        turmaGUID
+      );
+
+      res.json({ success: true, message: "Estatísticas obtidas com sucesso", data: estatisticas });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // GET /api/categoria-conteudo/completas/:materiaGUID/:turmaGUID
   buscarCategoriasCompletas = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.buscarCategoriasCompletas()");
@@ -58,9 +88,9 @@ export class CategoriaConteudoController {
       const { materiaGUID, turmaGUID } = req.params;
       const usuarioCPF = req.user?.UsuarioCPF || "";
 
-      const categorias = await this.#categoriaService.buscarCategoriasCompletas(materiaGUID, turmaGUID, usuarioCPF);
+      const resultado = await this.#categoriaService.buscarCategoriasCompletas(materiaGUID, turmaGUID, usuarioCPF);
 
-      res.json({ success: true, message: "Categorias obtidas com sucesso", data: { categorias } });
+      res.json({ success: true, message: "Categorias obtidas com sucesso", data: resultado });
     } catch (error) {
       next(error);
     }
@@ -163,6 +193,46 @@ export class CategoriaConteudoController {
     }
   };
 
+  // PATCH /api/categoria-conteudo/geral/renomear — renomeia em todas as turmas ativas de uma vez
+  atualizarCategoriaGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.atualizarCategoriaGeral()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const { MateriaGUID, CategoriaNomeAtual, NovoNome } = req.body;
+      const resultado = await this.#categoriaService.atualizarCategoriaGeral(usuarioCPF, MateriaGUID, CategoriaNomeAtual, NovoNome);
+      const board = await this.#categoriaService.buscarBoardGeral(usuarioCPF, MateriaGUID);
+
+      res.json({ success: true, message: "Categoria renomeada em todas as turmas", data: { ...resultado, board } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // DELETE /api/categoria-conteudo/geral?MateriaGUID=&CategoriaNome= — exclui em todas as turmas ativas de uma vez
+  excluirCategoriaGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 CategoriaConteudoController.excluirCategoriaGeral()");
+    try {
+      const usuarioCPF = req.user?.UsuarioCPF;
+      if (!usuarioCPF) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+
+      const MateriaGUID = req.query.MateriaGUID as string;
+      const CategoriaNome = req.query.CategoriaNome as string;
+      const resultado = await this.#categoriaService.excluirCategoriaGeral(usuarioCPF, MateriaGUID, CategoriaNome);
+
+      res.json({ success: true, message: "Categoria excluída de todas as turmas", data: resultado });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // POST /api/categoria-conteudo/geral/resolver — resolve/cria categoria por nome pra uma lista de turmas
   resolverCategoriaPorNome = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.resolverCategoriaPorNome()");
@@ -239,7 +309,7 @@ export class CategoriaConteudoController {
       }
 
       const { MateriaGUID, TurmaGUID, CategoriaGUID, itens } = req.body;
-      const categorias = await this.#categoriaService.reordenarItens(
+      const resultado = await this.#categoriaService.reordenarItens(
         usuarioCPF,
         MateriaGUID,
         TurmaGUID,
@@ -250,7 +320,7 @@ export class CategoriaConteudoController {
       res.json({
         success: true,
         message: "Itens reordenados com sucesso",
-        data: { categorias },
+        data: resultado,
       });
     } catch (error) {
       next(error);

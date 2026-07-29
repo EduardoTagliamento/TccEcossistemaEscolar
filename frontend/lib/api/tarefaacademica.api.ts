@@ -122,3 +122,33 @@ export async function deletarTarefa(tarefaGUID: string): Promise<void> {
     throw new Error(result.error || result.message || 'Erro ao deletar tarefa');
   }
 }
+
+// Vincular anexo (já enviado via POST /api/anexo) como entrega digital do aluno
+export async function enviarAnexoEntrega(tarefaGUID: string, anexoGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}/anexo-entrega`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ AnexoGUID: anexoGUID }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || result.message || 'Erro ao enviar anexo de entrega');
+  }
+}
+
+// Marcar tarefa como feita/desfeita para a matrícula do aluno autenticado
+export async function marcarComoFeito(tarefaGUID: string, matriculaGUID: string, tarefaFeito: boolean): Promise<void> {
+  const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}/marcar-feito`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ MatriculaGUID: matriculaGUID, TarefaFeito: tarefaFeito }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || result.message || 'Erro ao marcar tarefa');
+  }
+}

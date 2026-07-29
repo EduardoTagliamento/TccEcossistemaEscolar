@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { Icon, IconName } from '@/components/Icon';
 import ItemProgressoBar from '@/components/materias/ItemProgressoBar';
 import VisualizadorItemModal from '@/components/materias/VisualizadorItemModal';
+import EditarItemModal from '@/components/materias/EditarItemModal';
 import NovoItemModal, { NovoItemAba } from '@/components/materias/NovoItemModal';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
@@ -43,10 +44,18 @@ function CategoriaPageConteudo() {
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [mensagemVisivel, setMensagemVisivel] = useState(true);
   const [categorias, setCategorias] = useState<MateriasModuloAPI.CategoriaCompleta[]>([]);
+  const [itensSemCategoria, setItensSemCategoria] = useState<ItemCategoria[]>([]);
   const [itemSelecionado, setItemSelecionado] = useState<ItemCategoria | null>(null);
+  const [itemEditando, setItemEditando] = useState<ItemCategoria | null>(null);
   const [categoriaArrastando, setCategoriaArrastando] = useState<string | null>(null);
   const [popoverAberto, setPopoverAberto] = useState<string | null>(null);
   const [itemArrastando, setItemArrastando] = useState<string | null>(null);
+  const [editandoCategoriaGUID, setEditandoCategoriaGUID] = useState<string | null>(null);
+  const [confirmacaoCategoria, setConfirmacaoCategoria] = useState<{
+    tipo: 'renomear' | 'excluir';
+    categoria: MateriasModuloAPI.CategoriaCompleta;
+    novoNome?: string;
+  } | null>(null);
   const [modalNovoItem, setModalNovoItem] = useState<{ categoriaGUID: string; aba: NovoItemAba } | null>(null);
 
   // Outras telas (ex.: "tarefas a se esgotar"/"avaliações pendentes" do
@@ -108,24 +117,63 @@ function CategoriaPageConteudo() {
 
   const carregarCategorias = async () => {
     try {
-      const lista = await MateriasModuloAPI.buscarCategoriasCompletas(materiaGUID, turmaGUID);
+      const { categorias: lista, itensSemCategoria: orfaos } = await MateriasModuloAPI.buscarCategoriasCompletas(materiaGUID, turmaGUID);
       setCategorias(lista);
+      setItensSemCategoria(orfaos);
     } catch (erro) {
       console.error('Erro ao carregar categorias:', erro);
     }
   };
 
   useEffect(() => {
-    if (itemAutoAbertoRef.current || !abrirItemGUID || categorias.length === 0) return;
-    for (const categoria of categorias) {
-      const item = categoria.Itens.find((i) => i.ItemGUID === abrirItemGUID);
-      if (item) {
-        itemAutoAbertoRef.current = true;
-        setItemSelecionado(item);
-        break;
-      }
+    if (itemAutoAbertoRef.current || !abrirItemGUID || (categorias.length === 0 && itensSemCategoria.length === 0)) return;
+    const todosItens = [...categorias.flatMap((c) => c.Itens), ...itensSemCategoria];
+    const item = todosItens.find((i) => i.ItemGUID === abrirItemGUID);
+    if (item) {
+      itemAutoAbertoRef.current = true;
+      setItemSelecionado(item);
     }
-  }, [abrirItemGUID, categorias]);
+  }, [abrirItemGUID, categorias, itensSemCategoria]);
+
+  // Categoria "geral" (mesmo nome replicado por turma, ver PLANO_IMPLEMENTACAO_MATERIAS.md
+  // 9.1) — renomear/excluir precisa da mesma escolha "só esta turma" vs "todas
+  // as turmas" que já existe pra conteúdo/prova, senão as outras turmas com o
+  // mesmo nome ficam desatualizadas/órfãs silenciosamente.
+  const salvarRenomeCategoria = (categoriaGUID: string, novoNome: string) => {
+    setEditandoCategoriaGUID(null);
+    const nomeLimpo = novoNome.trim();
+    const categoriaAtual = categorias.find((c) => c.CategoriaGUID === categoriaGUID);
+    if (!nomeLimpo || !categoriaAtual || nomeLimpo === categoriaAtual.CategoriaNome) return;
+    setConfirmacaoCategoria({ tipo: 'renomear', categoria: categoriaAtual, novoNome: nomeLimpo });
+  };
+
+  const pedirExclusaoCategoria = (categoria: MateriasModuloAPI.CategoriaCompleta) => {
+    setConfirmacaoCategoria({ tipo: 'excluir', categoria });
+  };
+
+  const confirmarAcaoCategoria = async (todasAsTurmas: boolean) => {
+    if (!confirmacaoCategoria) return;
+    const { tipo, categoria, novoNome } = confirmacaoCategoria;
+    setConfirmacaoCategoria(null);
+    try {
+      if (tipo === 'renomear' && novoNome) {
+        if (todasAsTurmas) {
+          await CategoriaConteudoAPI.atualizarCategoriaGeral(materiaGUID, categoria.CategoriaNome, novoNome);
+        } else {
+          await CategoriaConteudoAPI.atualizarCategoria(categoria.CategoriaGUID, novoNome);
+        }
+      } else if (tipo === 'excluir') {
+        if (todasAsTurmas) {
+          await CategoriaConteudoAPI.excluirCategoriaGeral(materiaGUID, categoria.CategoriaNome);
+        } else {
+          await CategoriaConteudoAPI.excluirCategoria(categoria.CategoriaGUID);
+        }
+      }
+      await carregarCategorias();
+    } catch (erro: any) {
+      alert(erro?.message || 'Erro ao processar categoria');
+    }
+  };
 
   const abrirNovoItem = (categoriaGUID: string, aba: NovoItemAba) => {
     setPopoverAberto(null);
@@ -173,7 +221,16 @@ function CategoriaPageConteudo() {
     setItemArrastando(null);
     if (arrastadoGUID === itemDestinoGUID) return;
 
+    // O item arrastado pode ter vindo de uma categoria real ou do grupo
+    // "sem categoria" (itens órfãos de uma categoria excluída) — os dois
+    // precisam ser checados como origem possível.
     let itemMovido: ItemCategoria | undefined;
+    const itemNoSemCategoria = itensSemCategoria.find((i) => i.ItemGUID === arrastadoGUID);
+    if (itemNoSemCategoria) {
+      itemMovido = itemNoSemCategoria;
+      setItensSemCategoria((prev) => prev.filter((i) => i.ItemGUID !== arrastadoGUID));
+    }
+
     const semOrigem = categorias.map((c) => {
       const idx = c.Itens.findIndex((i) => i.ItemGUID === arrastadoGUID);
       if (idx === -1) return c;
@@ -232,7 +289,7 @@ function CategoriaPageConteudo() {
       </div>
 
       <div className={styles.corpo}>
-        {categorias.length === 0 && (
+        {categorias.length === 0 && itensSemCategoria.length === 0 && (
           <p className={styles.mensagemSemCategoria}>
             {ehProfessor ? 'Nenhuma categoria criada ainda.' : 'Nenhum conteúdo publicado ainda.'}
           </p>
@@ -248,7 +305,21 @@ function CategoriaPageConteudo() {
             onDrop={() => ehProfessor && handleDrop(categoria.CategoriaGUID)}
           >
             <div className={styles.categoriaHeader}>
-              <span className={styles.categoriaNome}>{categoria.CategoriaNome}</span>
+              {editandoCategoriaGUID === categoria.CategoriaGUID ? (
+                <input
+                  className={styles.inputRenomearCategoria}
+                  defaultValue={categoria.CategoriaNome}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                  onBlur={(e) => salvarRenomeCategoria(categoria.CategoriaGUID, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                    if (e.key === 'Escape') setEditandoCategoriaGUID(null);
+                  }}
+                />
+              ) : (
+                <span className={styles.categoriaNome}>{categoria.CategoriaNome}</span>
+              )}
               {ehProfessor && (
                 <div className={styles.categoriaAcoes}>
                   <div className={styles.acoesWrapper}>
@@ -275,6 +346,20 @@ function CategoriaPageConteudo() {
                       </div>
                     )}
                   </div>
+                  <button
+                    className={styles.botaoAddItem}
+                    onClick={() => setEditandoCategoriaGUID(categoria.CategoriaGUID)}
+                    title="Renomear categoria"
+                  >
+                    <Icon name="edit" size={16} />
+                  </button>
+                  <button
+                    className={styles.botaoAddItem}
+                    onClick={() => pedirExclusaoCategoria(categoria)}
+                    title="Excluir categoria"
+                  >
+                    <Icon name="trash" size={16} />
+                  </button>
                 </div>
               )}
             </div>
@@ -320,22 +405,96 @@ function CategoriaPageConteudo() {
                       <Icon name={ICONE_POR_TIPO[item.Tipo]} size={16} />
                       <span className={styles.itemTitulo}>{item.Titulo}</span>
                     </div>
-                    <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />
+                    {!ehProfessor && <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />}
                   </div>
                 ))
               )}
             </div>
           </div>
         ))}
+
+        {itensSemCategoria.length > 0 && (
+          <div className={styles.categoria}>
+            <div className={styles.categoriaHeader}>
+              <span className={styles.categoriaNome}>Sem categoria</span>
+            </div>
+            <div className={styles.categoriaItens}>
+              {itensSemCategoria.map((item) => (
+                <div
+                  key={item.ItemGUID}
+                  className={styles.itemLinha}
+                  onClick={() => setItemSelecionado(item)}
+                  draggable={ehProfessor}
+                  onDragStart={(e) => handleItemDragStart(e, item.ItemGUID)}
+                  onDragEnd={() => setItemArrastando(null)}
+                >
+                  <div className={styles.itemEsquerda}>
+                    <Icon name={ICONE_POR_TIPO[item.Tipo]} size={16} />
+                    <span className={styles.itemTitulo}>{item.Titulo}</span>
+                  </div>
+                  {!ehProfessor && <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {itemSelecionado && (
         <VisualizadorItemModal
           item={itemSelecionado}
           ehProfessor={ehProfessor}
+          escolaGUID={escolaGUID}
+          turmaGUID={turmaGUID}
           onFechar={() => setItemSelecionado(null)}
           onProgressoAtualizado={() => void carregarCategorias()}
+          onEditar={
+            ehProfessor
+              ? () => {
+                  setItemEditando(itemSelecionado);
+                  setItemSelecionado(null);
+                }
+              : undefined
+          }
         />
+      )}
+
+      {itemEditando && (
+        <EditarItemModal
+          item={itemEditando}
+          onFechar={() => setItemEditando(null)}
+          onAtualizado={() => {
+            setItemEditando(null);
+            void carregarCategorias();
+          }}
+        />
+      )}
+
+      {confirmacaoCategoria && (
+        <div className={styles.overlayConfirmacao} onClick={() => setConfirmacaoCategoria(null)}>
+          <div className={styles.painelConfirmacao} onClick={(e) => e.stopPropagation()}>
+            {confirmacaoCategoria.tipo === 'renomear' ? (
+              <p>
+                Renomear <strong>"{confirmacaoCategoria.categoria.CategoriaNome}"</strong> para{' '}
+                <strong>"{confirmacaoCategoria.novoNome}"</strong> — aplicar onde?
+              </p>
+            ) : (
+              <p>
+                Excluir a categoria <strong>"{confirmacaoCategoria.categoria.CategoriaNome}"</strong>
+                {confirmacaoCategoria.categoria.Itens.length > 0 &&
+                  ` (${confirmacaoCategoria.categoria.Itens.length} item(ns) vão para "Sem categoria")`}
+                . Excluir de onde?
+              </p>
+            )}
+            <div className={styles.painelConfirmacaoAcoes}>
+              <button onClick={() => confirmarAcaoCategoria(false)}>Só desta turma</button>
+              <button className={styles.botaoConfirmacaoDestaque} onClick={() => confirmarAcaoCategoria(true)}>
+                Todas as turmas com essa categoria
+              </button>
+              <button onClick={() => setConfirmacaoCategoria(null)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {modalNovoItem && (

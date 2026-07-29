@@ -129,3 +129,26 @@ export async function excluirAnexo(anexoGUID: string): Promise<void> {
     throw new Error(resultado?.message || 'Erro ao excluir anexo');
   }
 }
+
+/**
+ * GET /api/anexo/:AnexoGUID/download — baixa o arquivo pelo navegador.
+ * Precisa de Authorization no header, então não dá pra usar `<a href>` puro:
+ * busca como blob autenticado e dispara o download via link temporário.
+ */
+export async function baixarAnexo(anexoGUID: string, nomeArquivo?: string): Promise<void> {
+  const response = await fetch(`${API_URL}/anexo/${anexoGUID}/download`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!response.ok) {
+    throw new Error('Erro ao baixar anexo');
+  }
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = nomeArquivo || 'arquivo';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
