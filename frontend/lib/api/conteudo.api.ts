@@ -148,14 +148,35 @@ export async function buscarConteudo(conteudoGUID: string): Promise<Conteudo> {
   return result.data.conteudo;
 }
 
+export interface AtualizarConteudoParams {
+  ConteudoTitulo?: string;
+  ConteudoDescricao?: string;
+  /** tipo "texto" — substitui o HTML atual */
+  ConteudoHtml?: string;
+  /** tipo "cronometrado" por link — substitui o link atual */
+  LinkUrl?: string;
+  /** tipo "cronometrado" por upload — substitui o arquivo atual */
+  arquivoCronometrado?: File;
+  /** tipo "paginado" — substitui todas as páginas atuais */
+  arquivosPaginado?: File[];
+}
+
 export async function atualizarConteudo(
   conteudoGUID: string,
-  dados: { ConteudoTitulo?: string; ConteudoDescricao?: string }
+  dados: AtualizarConteudoParams
 ): Promise<Conteudo> {
+  const formData = new FormData();
+  if (dados.ConteudoTitulo !== undefined) formData.append('ConteudoTitulo', dados.ConteudoTitulo);
+  if (dados.ConteudoDescricao !== undefined) formData.append('ConteudoDescricao', dados.ConteudoDescricao);
+  if (dados.ConteudoHtml !== undefined) formData.append('ConteudoHtml', dados.ConteudoHtml);
+  if (dados.LinkUrl !== undefined) formData.append('LinkUrl', dados.LinkUrl);
+  if (dados.arquivoCronometrado) formData.append('arquivo', dados.arquivoCronometrado);
+  (dados.arquivosPaginado || []).forEach((arquivo) => formData.append('arquivos', arquivo));
+
   const response = await fetch(`${API_URL}/conteudo/${conteudoGUID}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-    body: JSON.stringify({ conteudo: dados }),
+    headers: getAuthHeader(),
+    body: formData,
   });
 
   const result = await response.json();

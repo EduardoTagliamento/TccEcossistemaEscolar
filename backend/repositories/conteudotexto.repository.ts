@@ -22,6 +22,14 @@ export class ConteudoTextoDAO {
     await pool.execute(SQL, [dados.ConteudoGUID, dados.ConteudoHtml]);
   };
 
+  update = async (conteudoGUID: string, conteudoHtml: string): Promise<void> => {
+    console.log("🟢 ConteudoTextoDAO.update()");
+
+    const SQL = `UPDATE conteudotexto SET ConteudoHtml = ? WHERE ConteudoGUID = ?`;
+    const pool = await this.#database.getPool();
+    await pool.execute(SQL, [conteudoHtml, conteudoGUID]);
+  };
+
   findByConteudo = async (conteudoGUID: string): Promise<ConteudoTexto | null> => {
     console.log("🟢 ConteudoTextoDAO.findByConteudo()");
 

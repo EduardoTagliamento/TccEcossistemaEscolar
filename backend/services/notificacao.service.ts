@@ -206,6 +206,16 @@ export default class NotificacaoService {
   }
 
   /**
+   * Expurgo de retenção do feed — remove notificações JÁ LIDAS mais antigas
+   * que `retencaoDias`. Não lidas nunca são apagadas automaticamente, não
+   * importa a idade. Chamado pelo NotificacaoScheduler (job diário).
+   */
+  async expurgarLidasAntigas(retencaoDias: number): Promise<number> {
+    console.log(`🔔 NotificacaoService.expurgarLidasAntigas() - retencaoDias=${retencaoDias}`);
+    return this.#notificacaoDAO.deleteLidasAntigas(retencaoDias);
+  }
+
+  /**
    * Remove da lista de destinatários quem já recebeu esse tipo+entidade hoje.
    * Uso: jobs de lembrete (cron), que rodam diariamente e não podem
    * duplicar o aviso se o processo for reiniciado/reexecutado no mesmo dia.

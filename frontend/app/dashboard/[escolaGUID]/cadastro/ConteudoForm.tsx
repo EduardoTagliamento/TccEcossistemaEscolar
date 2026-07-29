@@ -38,11 +38,15 @@ interface SerieItem {
   expanded: boolean;
 }
 
+// Valores em px (não a escala legada 1-7 do document.execCommand('fontSize')) —
+// o backend sanitiza o HTML salvo e só aceita `<span style="font-size: ...">`
+// (ver SANITIZE_HTML_OPTIONS em conteudo.service.ts), não a tag <font size>
+// que o execCommand gera por padrão.
 const TAMANHO_FONTE_OPCOES: { valor: string; label: string }[] = [
-  { valor: '2', label: 'Pequena' },
-  { valor: '3', label: 'Normal' },
-  { valor: '5', label: 'Grande' },
-  { valor: '7', label: 'Enorme' },
+  { valor: '13px', label: 'Pequena' },
+  { valor: '16px', label: 'Normal' },
+  { valor: '22px', label: 'Grande' },
+  { valor: '32px', label: 'Enorme' },
 ];
 
 interface ConteudoFormProps {
@@ -266,9 +270,14 @@ export default function ConteudoForm({
       });
   }, [categoriaGUIDQuery, turmaGUIDQuery, materiaSelecionada]);
 
+  // Conteúdo paginado existente (só leitura — a substituição é por um novo
+  // conjunto de arquivos, não por edição individual de cada página).
+  const [paginasExistentes, setPaginasExistentes] = useState<{ Ordem: number; ArquivoUrl: string }[]>([]);
+
   // Carrega um conteúdo existente e abre direto no modo edição — usado quando
   // este form é embutido no modal de edição (ícone de lápis do visualizador).
-  // Só título/descrição são editáveis por este endpoint (ver backend).
+  // Título/descrição e a mídia (HTML do texto, link ou arquivo do vídeo,
+  // arquivos do paginado) são editáveis; ConteudoTipo, origem e turmas não.
   const editarGUIDAplicadoRef = useRef(false);
   useEffect(() => {
     if (editarGUIDAplicadoRef.current || !editarGUIDInicial || !usuario) return;
@@ -281,7 +290,17 @@ export default function ConteudoForm({
           ...prev,
           ConteudoTitulo: conteudo.ConteudoTitulo,
           ConteudoDescricao: conteudo.ConteudoDescricao || '',
+          ConteudoTipo: conteudo.ConteudoTipo,
+          OrigemTipo: conteudo.Cronometrado?.OrigemTipo || prev.OrigemTipo,
+          LinkUrl: conteudo.Cronometrado?.LinkUrl || '',
         }));
+        if (conteudo.ConteudoTipo === 'texto' && conteudo.Texto) {
+          setConteudoHtml(conteudo.Texto.ConteudoHtml);
+          if (editorRef.current) editorRef.current.innerHTML = conteudo.Texto.ConteudoHtml;
+        }
+        if (conteudo.ConteudoTipo === 'paginado' && conteudo.Paginado) {
+          setPaginasExistentes(conteudo.Paginado.Arquivos.map((a) => ({ Ordem: a.Ordem, ArquivoUrl: a.ArquivoUrl })));
+        }
       } catch (err: any) {
         setErro(err?.message || 'Falha ao carregar conteúdo para edição');
       }
@@ -345,6 +364,25 @@ export default function ConteudoForm({
     if (url) aplicarFormato('createLink', url);
   };
 
+  // document.execCommand('fontSize', ...) só aceita a escala legada 1-7 e
+  // gera <font size="N">, que o backend descarta na sanitização (só permite
+  // <span style="font-size">). Por isso aplicamos a escala legada como um
+  // marcador único (tamanho 7) e depois trocamos manualmente cada <font>
+  // gerada por um <span> com o tamanho em px de verdade.
+  const aplicarTamanhoFonte = (tamanhoPx: string) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    document.execCommand('fontSize', false, '7');
+    editor.querySelectorAll('font[size="7"]').forEach((elemento) => {
+      const span = document.createElement('span');
+      span.style.fontSize = tamanhoPx;
+      span.innerHTML = elemento.innerHTML;
+      elemento.replaceWith(span);
+    });
+    setConteudoHtml(editor.innerHTML);
+  };
+
   // ===== Utilidades de data =====
   const obterDataAgoraLocal = (): string => {
     const agora = new Date();
@@ -379,11 +417,25 @@ export default function ConteudoForm({
     setErro(null);
 
     if (editingGUID) {
+      if (form.ConteudoTipo === 'texto' && !conteudoHtml.trim()) {
+        setErro('O texto não pode ficar vazio.');
+        return;
+      }
+      if (form.ConteudoTipo === 'cronometrado' && form.OrigemTipo === 'link' && !form.LinkUrl.trim()) {
+        setErro('Informe o link do vídeo/áudio.');
+        return;
+      }
+
       setSubmitting(true);
       try {
         await ConteudoAPI.atualizarConteudo(editingGUID, {
           ConteudoTitulo: form.ConteudoTitulo,
           ConteudoDescricao: form.ConteudoDescricao,
+          ConteudoHtml: form.ConteudoTipo === 'texto' ? conteudoHtml : undefined,
+          LinkUrl: form.ConteudoTipo === 'cronometrado' && form.OrigemTipo === 'link' ? form.LinkUrl.trim() : undefined,
+          arquivoCronometrado:
+            form.ConteudoTipo === 'cronometrado' && form.OrigemTipo === 'upload' ? arquivoCronometrado || undefined : undefined,
+          arquivosPaginado: form.ConteudoTipo === 'paginado' && arquivosPaginado.length > 0 ? arquivosPaginado : undefined,
         });
         alert('Conteúdo atualizado com sucesso!');
         onCriado?.();
@@ -512,7 +564,9 @@ export default function ConteudoForm({
       <form className={styles.form} onSubmit={onSubmit}>
         {editingGUID && (
           <p className={styles.hint}>
-            Editando conteúdo existente — só título e descrição podem ser alterados aqui (mídia e turmas exigem publicar um conteúdo novo).
+            Editando conteúdo existente — título, descrição e a mídia (
+            {form.ConteudoTipo === 'texto' ? 'o texto' : form.ConteudoTipo === 'cronometrado' ? 'o vídeo/áudio' : 'os arquivos'}
+            ) podem ser alterados aqui. Tipo de conteúdo e turmas exigem publicar um conteúdo novo.
           </p>
         )}
 
@@ -615,8 +669,10 @@ export default function ConteudoForm({
             {form.ConteudoTipo === 'paginado' && 'PDF, PowerPoint, Word ou coleção de imagens — progresso do aluno medido por página vista.'}
           </p>
         </div>
+        </>
+        )}
 
-        {/* Campos do tipo "cronometrado" */}
+        {/* Campos do tipo "cronometrado" — origem travada na edição, só o valor (arquivo/link) muda */}
         {form.ConteudoTipo === 'cronometrado' && (
           <div className={styles.formGroup}>
             <div className={styles.formRow}>
@@ -624,6 +680,7 @@ export default function ConteudoForm({
                 <input
                   type="radio"
                   checked={form.OrigemTipo === 'upload'}
+                  disabled={!!editingGUID}
                   onChange={() => setForm((prev) => ({ ...prev, OrigemTipo: 'upload' }))}
                 />{' '}
                 Enviar arquivo
@@ -632,17 +689,21 @@ export default function ConteudoForm({
                 <input
                   type="radio"
                   checked={form.OrigemTipo === 'link'}
+                  disabled={!!editingGUID}
                   onChange={() => setForm((prev) => ({ ...prev, OrigemTipo: 'link' }))}
                 />{' '}
                 Link (YouTube, etc.)
               </label>
             </div>
             {form.OrigemTipo === 'upload' ? (
-              <input
-                type="file"
-                accept="video/mp4,video/webm,video/quicktime,audio/mpeg,audio/mp3,audio/mp4,audio/wav"
-                onChange={(e) => setArquivoCronometrado(e.target.files?.[0] || null)}
-              />
+              <>
+                {editingGUID && <p className={styles.hint}>Selecione um novo arquivo para substituir o atual, ou deixe em branco para manter.</p>}
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,audio/mpeg,audio/mp3,audio/mp4,audio/wav"
+                  onChange={(e) => setArquivoCronometrado(e.target.files?.[0] || null)}
+                />
+              </>
             ) : (
               <input
                 placeholder="https://www.youtube.com/watch?v=..."
@@ -661,7 +722,7 @@ export default function ConteudoForm({
               <button type="button" onClick={() => aplicarFormato('bold')}><strong>N</strong></button>
               <button type="button" onClick={() => aplicarFormato('italic')}><em>I</em></button>
               <button type="button" onClick={() => aplicarFormato('underline')}><u>S</u></button>
-              <select onChange={(e) => aplicarFormato('fontSize', e.target.value)} defaultValue="3">
+              <select onChange={(e) => aplicarTamanhoFonte(e.target.value)} defaultValue="16px">
                 {TAMANHO_FONTE_OPCOES.map((opcao) => (
                   <option key={opcao.valor} value={opcao.valor}>{opcao.label}</option>
                 ))}
@@ -678,10 +739,15 @@ export default function ConteudoForm({
           </div>
         )}
 
-        {/* Campos do tipo "paginado" */}
+        {/* Campos do tipo "paginado" — substitui TODAS as páginas atuais */}
         {form.ConteudoTipo === 'paginado' && (
           <div className={styles.formGroup}>
-            <label>Arquivo(s) *</label>
+            <label>{editingGUID ? 'Substituir arquivo(s)' : 'Arquivo(s) *'}</label>
+            {editingGUID && paginasExistentes.length > 0 && (
+              <p className={styles.hint}>
+                Hoje: {paginasExistentes.length} página(s). Enviar novos arquivos substitui todas de uma vez; deixe em branco para manter.
+              </p>
+            )}
             <input
               type="file"
               multiple
@@ -698,6 +764,7 @@ export default function ConteudoForm({
         )}
 
         {/* Agendamento */}
+        {!editingGUID && (
         <div className={styles.agendamento}>
           <label className={styles.checkboxLinha}>
             <input
@@ -747,7 +814,6 @@ export default function ConteudoForm({
             </>
           )}
         </div>
-        </>
         )}
 
         <div className={styles.actions}>

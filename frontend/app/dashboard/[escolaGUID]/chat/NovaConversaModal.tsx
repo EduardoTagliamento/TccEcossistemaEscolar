@@ -6,6 +6,7 @@ import * as TurmaAPI from '@/lib/api/turma.api';
 import * as AlunoAPI from '@/lib/api/aluno.api';
 import * as ProfessorAPI from '@/lib/api/professor.api';
 import { Icon } from './icons';
+import Loader from '@/components/Loader';
 import styles from './NovaConversaModal.module.css';
 
 interface PessoaSelecionavel {
@@ -169,7 +170,7 @@ export default function NovaConversaModal({
                   <span className={styles.pessoaNome}>{pessoa.UsuarioNome}</span>
                   <span className={styles.pessoaPapel}>{pessoa.Papel}</span>
                 </span>
-                {iniciandoCPF === pessoa.UsuarioCPF && <span className={styles.spinnerPequeno} />}
+                {iniciandoCPF === pessoa.UsuarioCPF && <Loader size={16} inline />}
               </button>
             ))
           )}

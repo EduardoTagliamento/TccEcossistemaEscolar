@@ -7,6 +7,8 @@ import styles from './page.module.css';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import type { Notificacao } from '@/lib/api/notificacao.api';
 
+const TAMANHO_PAGINA = 30;
+
 function formatarData(iso: string): string {
   const data = new Date(iso);
   return data.toLocaleString('pt-BR', {
@@ -25,6 +27,8 @@ export default function NotificacoesPage() {
 
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const [temMais, setTemMais] = useState(false);
   const [erro, setErro] = useState('');
   const [filtro, setFiltro] = useState<'todas' | 'nao-lidas'>('todas');
 
@@ -37,14 +41,34 @@ export default function NotificacoesPage() {
     try {
       setCarregando(true);
       setErro('');
-      const lista = await NotificacaoAPI.listarNotificacoes(
-        filtro === 'nao-lidas' ? { lida: false } : undefined
-      );
+      const lista = await NotificacaoAPI.listarNotificacoes({
+        ...(filtro === 'nao-lidas' ? { lida: false } : {}),
+        limit: TAMANHO_PAGINA,
+        offset: 0,
+      });
       setNotificacoes(lista);
+      setTemMais(lista.length === TAMANHO_PAGINA);
     } catch (e: any) {
       setErro(e.message || 'Erro ao carregar notificações');
     } finally {
       setCarregando(false);
+    }
+  };
+
+  const carregarMais = async () => {
+    try {
+      setCarregandoMais(true);
+      const proximas = await NotificacaoAPI.listarNotificacoes({
+        ...(filtro === 'nao-lidas' ? { lida: false } : {}),
+        limit: TAMANHO_PAGINA,
+        offset: notificacoes.length,
+      });
+      setNotificacoes((prev) => [...prev, ...proximas]);
+      setTemMais(proximas.length === TAMANHO_PAGINA);
+    } catch (e: any) {
+      setErro(e.message || 'Erro ao carregar mais notificações');
+    } finally {
+      setCarregandoMais(false);
     }
   };
 
@@ -136,6 +160,14 @@ export default function NotificacoesPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {!carregando && temMais && (
+        <div className={styles.carregarMaisArea}>
+          <button className={styles.botaoSecundario} onClick={carregarMais} disabled={carregandoMais}>
+            {carregandoMais ? 'Carregando...' : 'Carregar mais'}
+          </button>
+        </div>
       )}
     </div>
   );

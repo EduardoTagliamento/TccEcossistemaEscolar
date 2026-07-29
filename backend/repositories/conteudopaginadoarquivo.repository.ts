@@ -45,6 +45,14 @@ export class ConteudoPaginadoArquivoDAO {
     await pool.execute(SQL, params);
   };
 
+  deleteByConteudo = async (conteudoGUID: string): Promise<void> => {
+    console.log("🟢 ConteudoPaginadoArquivoDAO.deleteByConteudo()");
+
+    const SQL = `DELETE FROM conteudopaginadoarquivo WHERE ConteudoGUID = ?`;
+    const pool = await this.#database.getPool();
+    await pool.execute(SQL, [conteudoGUID]);
+  };
+
   findByConteudo = async (conteudoGUID: string): Promise<ConteudoPaginadoArquivo[]> => {
     console.log("🟢 ConteudoPaginadoArquivoDAO.findByConteudo()");
 

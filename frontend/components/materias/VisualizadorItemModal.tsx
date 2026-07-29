@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Icon } from '@/components/Icon';
 import * as ConteudoAPI from '@/lib/api/conteudo.api';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
@@ -500,6 +501,12 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
             <h2 className={styles.titulo}>{tarefaDetalhe.TarefaTitulo}</h2>
             <p>{tarefaDetalhe.TarefaConteudo}</p>
             <p className={styles.dataProva}>Prazo: {new Date(tarefaDetalhe.TarefaPrazoData).toLocaleString('pt-BR')}</p>
+
+            {!ehProfessor && tarefaDetalhe.TarefaCompartilhada && (
+              <Link href={`/dashboard/${escolaGUID}/tarefas/${item.ItemGUID}`} className={styles.linkGrupo}>
+                <Icon name="users" size={16} /> Gerenciar grupo (convidar, transferir liderança...)
+              </Link>
+            )}
 
             {!ehProfessor && (
               <div className={styles.acoesAluno}>

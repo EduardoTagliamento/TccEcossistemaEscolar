@@ -185,6 +185,27 @@ export class NotificacaoDAO {
     return result.affectedRows;
   }
 
+  /**
+   * Expurgo de retenção — só notificações JÁ LIDAS mais antigas que
+   * `retencaoDias`. Não lidas nunca são removidas automaticamente, mesmo
+   * muito antigas (usado pelo NotificacaoScheduler, job diário).
+   */
+  async deleteLidasAntigas(retencaoDias: number): Promise<number> {
+    console.log("🟢 NotificacaoDAO.deleteLidasAntigas()");
+
+    const query = `
+      DELETE FROM notificacao
+      WHERE NotificacaoLida = 1
+        AND NotificacaoLidaData IS NOT NULL
+        AND NotificacaoLidaData < DATE_SUB(NOW(), INTERVAL ? DAY)
+    `;
+
+    const pool = await this.#database.getPool();
+    const [result] = await pool.execute<ResultSetHeader>(query, [Math.trunc(Number(retencaoDias))]);
+
+    return result.affectedRows;
+  }
+
   #mapRowToNotificacao(row: RowDataPacket): Notificacao {
     return Notificacao.fromPlainObject({
       NotificacaoGUID: row.NotificacaoGUID,

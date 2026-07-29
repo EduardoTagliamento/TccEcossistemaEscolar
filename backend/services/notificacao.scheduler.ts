@@ -15,6 +15,9 @@ import { getNotificacaoService } from "./notificacao.service";
 
 const FUNCOES_EVENTO = [1, 2, 3, 5, 6]; // Coordenacao, Secretaria, Professor, Aluno, Direcao
 
+/** Notificações já lidas com mais dias que isso são expurgadas do feed. Não lidas nunca são apagadas. */
+const RETENCAO_NOTIFICACAO_LIDA_DIAS = 30;
+
 interface DestinatarioRow extends RowDataPacket {
   UsuarioCPF: string;
   EscolaGUID: string;
@@ -40,6 +43,7 @@ export class NotificacaoScheduler {
     this.#schedule("5 7 * * *", "prova_prazo_amanha", () => this.#executarProvaPrazoAmanha());
     this.#schedule("10 7 * * *", "anotacao_prazo_amanha", () => this.#executarAnotacaoPrazoAmanha());
     this.#schedule("15 7 * * *", "evento_prazo_amanha", () => this.#executarEventoPrazoAmanha());
+    this.#schedule("30 3 * * *", "expurgo_notificacoes_lidas", () => this.#executarExpurgoLidasAntigas());
 
     console.log(`[NOTIF-SCHEDULER] ✅ ${this.#tasks.length} agendamentos de lembrete iniciados.`);
   }
@@ -195,5 +199,10 @@ export class NotificacaoScheduler {
         entidadeGUID: evento.EventoGUID,
       });
     }
+  }
+
+  async #executarExpurgoLidasAntigas(): Promise<void> {
+    const removidas = await getNotificacaoService().expurgarLidasAntigas(RETENCAO_NOTIFICACAO_LIDA_DIAS);
+    console.log(`[NOTIF-SCHEDULER] 🧹 ${removidas} notificação(ões) lida(s) há mais de ${RETENCAO_NOTIFICACAO_LIDA_DIAS} dias removida(s)`);
   }
 }

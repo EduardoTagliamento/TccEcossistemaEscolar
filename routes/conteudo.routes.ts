@@ -51,7 +51,13 @@ export default class ConteudoRoteador {
 
     this.#router.get("/:guid", ConteudoMiddleware.validarGUID, this.#controller.show);
 
-    this.#router.put("/:guid", ConteudoMiddleware.validarGUID, this.#controller.update);
+    this.#router.put(
+      "/:guid",
+      conteudoUploadMiddleware,
+      handleConteudoMulterError,
+      ConteudoMiddleware.validarGUID,
+      this.#controller.update
+    );
 
     this.#router.delete("/:guid", ConteudoMiddleware.validarGUID, this.#controller.destroy);
 

@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { Icon } from '@/components/Icon';
 import MateriaTurmaCard from '@/components/materias/MateriaTurmaCard';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 interface EscolaComFuncoes {
@@ -128,7 +129,7 @@ export default function MateriasPage() {
     return (
       <div className={styles.container}>
         <div className={styles.loadingContainer}>
-          <div className={styles.spinner} />
+          <Loader />
           <p>Carregando matérias...</p>
         </div>
       </div>
