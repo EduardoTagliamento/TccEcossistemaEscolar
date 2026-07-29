@@ -5,32 +5,37 @@ import styles from './Loader.module.css';
 interface LoaderProps {
   /** Altura do pássaro em px — a largura acompanha proporcionalmente. */
   size?: number;
-  /** Cor do pássaro. `currentColor` herda a cor do texto do elemento pai (útil dentro de botões coloridos). */
-  color?: string;
   /** Layout lado a lado (ex: dentro de um botão), em vez do bloco central padrão. */
   inline?: boolean;
   className?: string;
 }
 
+// Proporção original de frontend/refs/bird.gif (200x174) — recolorido pra
+// verde da marca (preto -> #17C077, alpha preservado) e salvo como APNG em
+// public/assets/baua-loader.png. Reprocessar manualmente (script one-off,
+// não versionado) só se o gif de referência mudar.
+const ASPECTO = 200 / 174;
+
 /**
- * Indicador de carregamento padrão do app — o pássaro do Bauá "pulando"
- * no lugar, em vez de um spinner circular genérico. Substitui 1-para-1 o
- * antigo `<div className={styles.spinner} />` usado em várias telas
- * (mesma técnica de mask-image do bird de BauaLogo/landing page).
+ * Indicador de carregamento padrão do app — o pássaro do Bauá voando (mesma
+ * animação de frontend/refs/bird.gif, recolorida pro verde da marca), em vez
+ * de um spinner circular genérico.
  */
-export default function Loader({ size = 36, color = 'var(--green-500, #17C077)', inline = false, className }: LoaderProps) {
+export default function Loader({ size = 36, inline = false, className }: LoaderProps) {
   return (
     <div
       className={`${inline ? styles.wrapInline : styles.wrap} ${className || ''}`}
       role="status"
       aria-label="Carregando"
     >
-      <span
-        className={styles.bird}
-        style={{ width: size * 0.92, height: size, backgroundColor: color }}
+      <img
+        src="/assets/baua-loader.png"
+        alt=""
         aria-hidden="true"
+        width={Math.round(size * ASPECTO)}
+        height={size}
+        className={styles.bird}
       />
-      <span className={styles.sombra} style={{ width: size * 0.72 }} aria-hidden="true" />
     </div>
   );
 }

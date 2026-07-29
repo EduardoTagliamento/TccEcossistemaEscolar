@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { listarTarefas } from '@/lib/api/tarefaacademica.api';
 import { TarefaListItem } from '@/types/tarefaacademica';
 import { Icon } from '@/components/Icon';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 export default function TarefasPage() {
@@ -194,7 +195,10 @@ export default function TarefasPage() {
   if (authLoading || loading) {
     return (
       <div className={styles.container}>
-        <p className={styles.loading}>Carregando tarefas...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+          <Loader />
+          <p className={styles.loading}>Carregando tarefas...</p>
+        </div>
       </div>
     );
   }

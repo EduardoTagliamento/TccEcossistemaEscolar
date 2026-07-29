@@ -80,8 +80,8 @@
 }
 
 .warning {
-  background: #fff3cd;
-  border: 2px solid #ffc107;
+  background: color-mix(in srgb, var(--color-warning) 15%, var(--bg-primary));
+  border: 2px solid var(--color-warning);
   border-radius: var(--radius-md);
   padding: 1rem;
   margin-bottom: 1.5rem;
@@ -89,13 +89,13 @@
 
 .warning strong {
   display: block;
-  color: #856404;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .warning p {
   margin: 0;
-  color: #856404;
+  color: var(--text-primary);
   font-size: 0.875rem;
 }
 

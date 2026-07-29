@@ -16,8 +16,8 @@
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  background: white;
+  box-shadow: var(--shadow-md);
+  background: var(--bg-primary);
   pointer-events: auto;
   animation: slideIn 0.3s ease-out;
   min-width: 300px;
@@ -45,7 +45,7 @@
 }
 
 .toast.clicavel:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
 }
 
 @keyframes slideOut {
@@ -69,19 +69,19 @@
 }
 
 .toast.success::before {
-  background: #28a745;
+  background: var(--color-success);
 }
 
 .toast.error::before {
-  background: #dc3545;
+  background: var(--color-error);
 }
 
 .toast.warning::before {
-  background: #ffc107;
+  background: var(--color-warning);
 }
 
 .toast.info::before {
-  background: #007bff;
+  background: var(--color-info);
 }
 
 .icone {
@@ -96,23 +96,23 @@
 }
 
 .toast.success .icone {
-  background: #d4edda;
-  color: #28a745;
+  background: color-mix(in srgb, var(--color-success) 18%, var(--bg-primary));
+  color: var(--color-success);
 }
 
 .toast.error .icone {
-  background: #f8d7da;
-  color: #dc3545;
+  background: color-mix(in srgb, var(--color-error) 18%, var(--bg-primary));
+  color: var(--color-error);
 }
 
 .toast.warning .icone {
-  background: #fff3cd;
-  color: #ffc107;
+  background: color-mix(in srgb, var(--color-warning) 18%, var(--bg-primary));
+  color: var(--color-warning);
 }
 
 .toast.info .icone {
-  background: #d1ecf1;
-  color: #007bff;
+  background: color-mix(in srgb, var(--color-info) 18%, var(--bg-primary));
+  color: var(--color-info);
 }
 
 .conteudo {
@@ -125,12 +125,12 @@
 .titulo {
   font-weight: 600;
   font-size: 0.9375rem;
-  color: #1a1a1a;
+  color: var(--text-primary);
 }
 
 .mensagem {
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text-secondary);
   line-height: 1.4;
 }
 
@@ -139,7 +139,7 @@
   border: none;
   padding: 0.25rem;
   cursor: pointer;
-  color: #999;
+  color: var(--text-tertiary);
   font-size: 1.25rem;
   line-height: 1;
   transition: color 0.2s;
@@ -147,7 +147,7 @@
 }
 
 .botaoFechar:hover {
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .progresso {
@@ -155,24 +155,24 @@
   bottom: 0;
   left: 0;
   height: 3px;
-  background: rgba(0, 0, 0, 0.1);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
   animation: progress linear forwards;
 }
 
 .toast.success .progresso {
-  background: #28a745;
+  background: var(--color-success);
 }
 
 .toast.error .progresso {
-  background: #dc3545;
+  background: var(--color-error);
 }
 
 .toast.warning .progresso {
-  background: #ffc107;
+  background: var(--color-warning);
 }
 
 .toast.info .progresso {
-  background: #007bff;
+  background: var(--color-info);
 }
 
 @keyframes progress {

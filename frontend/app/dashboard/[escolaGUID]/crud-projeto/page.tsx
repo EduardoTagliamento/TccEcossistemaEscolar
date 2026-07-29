@@ -8,6 +8,7 @@ import { criarProjeto } from '@/lib/api/projeto.api';
 import { listarTurmas, Turma } from '@/lib/api/turma.api';
 import { ProjetoPublicoAlvo } from '@/types/projeto';
 import { Icon } from '@/components/Icon';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 export default function CrudProjetoPage() {
@@ -115,7 +116,10 @@ export default function CrudProjetoPage() {
   if (authLoading || loading) {
     return (
       <div className={styles.container}>
-        <p className={styles.loading}>Carregando...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+          <Loader />
+          <p className={styles.loading}>Carregando...</p>
+        </div>
       </div>
     );
   }

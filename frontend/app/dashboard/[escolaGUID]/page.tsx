@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import * as PendenciaAPI from '@/lib/api/pendencia.api';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
+import MateriaTurmaCard from '@/components/materias/MateriaTurmaCard';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
@@ -18,6 +19,16 @@ interface Escola {
 interface EscolaComFuncoes {
   escola: { EscolaGUID: string };
   funcoes: Array<{ FuncaoId: number; Status: 'Ativo' | 'Inativo' | 'Finalizado' }>;
+}
+
+interface MateriaAtalho {
+  guid: string;
+  titulo: string;
+  subtitulo?: string;
+  imagemUrl: string | null;
+  corFundo: string | null;
+  avatarFotoUrl?: string | null;
+  href: string;
 }
 
 function capitalizar(texto: string): string {
@@ -56,6 +67,9 @@ export default function DashboardPage() {
   const [avisos, setAvisos] = useState<NotificacaoAPI.Notificacao[]>([]);
   const [carregandoAvisos, setCarregandoAvisos] = useState(true);
   const [erroAvisos, setErroAvisos] = useState('');
+
+  const [materiasAtalho, setMateriasAtalho] = useState<MateriaAtalho[]>([]);
+  const [carregandoMaterias, setCarregandoMaterias] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !usuario) {
@@ -130,10 +144,64 @@ export default function DashboardPage() {
       } else {
         setCarregandoAvaliacoes(false);
       }
+
+      // Atalho visual "Minhas Matérias" — prioriza a visão de aluno quando o
+      // usuário tem os dois papéis (mesma prioridade usada em materias/page.tsx).
+      if (funcoesAtivas.includes(5)) {
+        void carregarMateriasAlunoAtalho();
+      } else if (funcoesAtivas.includes(3)) {
+        void carregarMateriasProfessorAtalho();
+      } else {
+        setCarregandoMaterias(false);
+      }
     } catch (error) {
       console.error('Erro ao buscar funções da escola:', error);
       setFuncoesEscola([]);
       setCarregandoTarefas(false);
+      setCarregandoMaterias(false);
+    }
+  };
+
+  const carregarMateriasAlunoAtalho = async () => {
+    setCarregandoMaterias(true);
+    try {
+      if (!usuario) return;
+      const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioCPF, escolaGUID);
+      setMateriasAtalho(
+        materias.slice(0, 6).map((m) => ({
+          guid: m.MateriaGUID,
+          titulo: m.MateriaNome,
+          subtitulo: m.ProfessorNome,
+          imagemUrl: m.ImagemUrl,
+          corFundo: m.CorFundo,
+          avatarFotoUrl: m.ProfessorFotoUrl,
+          href: `/dashboard/${escolaGUID}/materias/${m.MateriaGUID}/turmas/${m.TurmaGUID}`,
+        }))
+      );
+    } catch (erro) {
+      console.error('Erro ao carregar atalho de matérias (aluno):', erro);
+    } finally {
+      setCarregandoMaterias(false);
+    }
+  };
+
+  const carregarMateriasProfessorAtalho = async () => {
+    setCarregandoMaterias(true);
+    try {
+      const materias = await MateriasModuloAPI.listarMateriasComCapaProfessor(escolaGUID);
+      setMateriasAtalho(
+        materias.slice(0, 6).map((m) => ({
+          guid: m.MateriaGUID,
+          titulo: m.MateriaNome,
+          imagemUrl: m.ImagemUrl,
+          corFundo: m.CorFundo,
+          href: `/dashboard/${escolaGUID}/materias/${m.MateriaGUID}/turmas`,
+        }))
+      );
+    } catch (erro) {
+      console.error('Erro ao carregar atalho de matérias (professor):', erro);
+    } finally {
+      setCarregandoMaterias(false);
     }
   };
 
@@ -249,6 +317,34 @@ export default function DashboardPage() {
               </p>
             </div>
           </section>
+
+          {(carregandoMaterias || materiasAtalho.length > 0) && (
+            <section className={styles.materiasAtalhoSection}>
+              <div className={styles.widgetHeader}>
+                <h3>Minhas Matérias</h3>
+                <Link href={`/dashboard/${escolaGUID}/materias`} className={styles.widgetVerTodas}>
+                  Ver todas
+                </Link>
+              </div>
+              {carregandoMaterias ? (
+                <p className={styles.widgetEstado}>Carregando...</p>
+              ) : (
+                <div className={styles.materiasAtalhoGrid}>
+                  {materiasAtalho.map((materia) => (
+                    <MateriaTurmaCard
+                      key={materia.guid}
+                      href={materia.href}
+                      titulo={materia.titulo}
+                      subtitulo={materia.subtitulo}
+                      imagemUrl={materia.imagemUrl}
+                      corFundo={materia.corFundo}
+                      avatarFotoUrl={materia.avatarFotoUrl}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           <section className={styles.widgetsGrid}>
             <div className={styles.widgetCard}>

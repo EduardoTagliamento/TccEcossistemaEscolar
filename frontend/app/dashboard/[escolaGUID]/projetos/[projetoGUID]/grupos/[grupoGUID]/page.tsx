@@ -18,6 +18,7 @@ import {
 import { solicitarEntrada } from '@/lib/api/convitegrupoprojeto.api';
 import { GrupoProjeto, Projeto } from '@/types/projeto';
 import { Icon } from '@/components/Icon';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 export default function GrupoProjetoDetalhePage() {
@@ -133,7 +134,10 @@ export default function GrupoProjetoDetalhePage() {
   if (authLoading || loading) {
     return (
       <div className={styles.container}>
-        <p className={styles.loading}>Carregando grupo...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+          <Loader />
+          <p className={styles.loading}>Carregando grupo...</p>
+        </div>
       </div>
     );
   }

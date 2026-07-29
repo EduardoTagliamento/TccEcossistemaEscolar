@@ -8,6 +8,7 @@ import { buscarProjeto, encerrarProjeto } from '@/lib/api/projeto.api';
 import { criarGrupo, entrarGrupo, listarGruposDoProjeto } from '@/lib/api/grupoprojeto.api';
 import { GrupoProjeto, GrupoProjetoVisibilidade, Projeto } from '@/types/projeto';
 import { Icon } from '@/components/Icon';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 export default function ProjetoDetalhePage() {
@@ -106,7 +107,10 @@ export default function ProjetoDetalhePage() {
   if (authLoading || loading) {
     return (
       <div className={styles.container}>
-        <p className={styles.loading}>Carregando projeto...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+          <Loader />
+          <p className={styles.loading}>Carregando projeto...</p>
+        </div>
       </div>
     );
   }
