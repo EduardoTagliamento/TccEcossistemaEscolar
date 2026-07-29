@@ -1,7 +1,7 @@
 # Planejamento: Tarefa tipo "Lista" (quiz estilo Forms)
 
 **Data:** 2026-07-29
-**Status:** Spec pronta — **aguardando aprovação do usuário para iniciar a implementação** (nada foi codificado ainda, este documento é só o plano).
+**Status:** Implementado (Fases 1-6 completas — backend, frontend e importação por planilha). **Pendente:** rodar a migration `backend/database/migrations/2026-07-29-add-tarefa-lista.ts` contra o banco (não executada automaticamente, precisa de confirmação explícita do usuário — ver Seção 8).
 **Escopo:** 3º tipo de `TarefaAcademica` (hoje só `digital`/`fisica`), um quiz estilo Google Forms: professor monta questões objetivas (com alternativas, uma marcada como correta, pontos customizáveis por alternativa) e/ou discursivas (correção manual por questão); aluno responde com correção automática instantânea nas objetivas, alimentando a barra de progresso em tempo real; professor corrige as discursivas individualmente, questão por questão, no mesmo estado laranja de "pendente" que a tarefa digital já usa hoje; ao final, planilha de desempenho quebrada por questão (não só o agregado que já existe). Inclui também importação de questões em massa via planilha Excel.
 
 ---

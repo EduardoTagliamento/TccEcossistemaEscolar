@@ -2,8 +2,14 @@ import { v4 as uuidv4 } from "uuid";
 import { RowDataPacket } from "mysql2";
 import TarefaAcademica from "../entities/tarefaacademica.model";
 import TarefaAcademicaMatricula from "../entities/tarefaacademica-matricula.model";
+import TarefaAcademicaQuestao from "../entities/tarefaacademica-questao.model";
+import TarefaAcademicaAlternativa from "../entities/tarefaacademica-alternativa.model";
+import TarefaAcademicaResposta from "../entities/tarefaacademica-resposta.model";
 import { TarefaAcademicaDAO, TarefaAcademicaFilters } from "../repositories/tarefaacademica.repository";
 import { TarefaAcademicaMatriculaDAO } from "../repositories/tarefaacademica-matricula.repository";
+import { TarefaAcademicaQuestaoDAO, AnexoQuestaoResumo } from "../repositories/tarefaacademica-questao.repository";
+import { TarefaAcademicaAlternativaDAO } from "../repositories/tarefaacademica-alternativa.repository";
+import { TarefaAcademicaRespostaDAO } from "../repositories/tarefaacademica-resposta.repository";
 import { AnexoDAO } from "../repositories/anexo.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
 import { CategoriaConteudoDAO } from "../repositories/categoriaconteudo.repository";
@@ -24,7 +30,7 @@ export interface TarefaAcademicaDTO {
   TarefaConteudo: string | null;
   TarefaPostagemData: string;
   TarefaPrazoData: string;
-  TarefaTipoEntrega: "digital" | "fisica";
+  TarefaTipoEntrega: "digital" | "fisica" | "lista";
   CategoriaGUID: string | null;
   TarefaCompartilhada: boolean;
   TarefaMinPessoas: number | null;
@@ -63,7 +69,7 @@ export interface TarefaAcademicaCreateDTO {
   TarefaTitulo: string;
   TarefaConteudo?: string;
   TarefaPrazoData: Date;
-  TarefaTipoEntrega: "digital" | "fisica";
+  TarefaTipoEntrega: "digital" | "fisica" | "lista";
   CategoriaGUID?: string | null;
   anexosDescricao?: string[]; // GUIDs de anexos já enviados para descrição
   TarefaCompartilhada?: boolean;
@@ -80,10 +86,140 @@ export interface TarefaAcademicaUpdateDTO {
   TarefaTitulo?: string;
   TarefaConteudo?: string;
   TarefaPrazoData?: Date;
-  TarefaTipoEntrega?: "digital" | "fisica";
+  TarefaTipoEntrega?: "digital" | "fisica" | "lista";
   CategoriaGUID?: string | null;
   TarefaMinPessoas?: number | null;
   TarefaMaxPessoas?: number | null;
+}
+
+/**
+ * DTOs - Questão de tarefa "lista" (quiz estilo Forms)
+ */
+
+export interface AlternativaInputDTO {
+  AlternativaTexto: string;
+  AlternativaCorreta: boolean;
+  AlternativaPontos: number;
+}
+
+export interface AlternativaDTO extends AlternativaInputDTO {
+  AlternativaGUID: string;
+  AlternativaOrdem: number;
+}
+
+export interface QuestaoCreateDTO {
+  QuestaoEnunciado: string;
+  QuestaoTipo: "objetiva" | "discursiva";
+  QuestaoPontosMaximos: number;
+  QuestaoExplicacao?: string | null;
+  Alternativas?: AlternativaInputDTO[];
+  AnexosGUID?: string[];
+}
+
+export interface QuestaoUpdateDTO {
+  QuestaoEnunciado?: string;
+  QuestaoTipo?: "objetiva" | "discursiva";
+  QuestaoPontosMaximos?: number;
+  QuestaoExplicacao?: string | null;
+  Alternativas?: AlternativaInputDTO[];
+}
+
+export interface QuestaoAnexoResumoDTO {
+  AnexoGUID: string;
+  AnexoNomeOriginal: string | null;
+  AnexoTamanho: number | null;
+  CreatedAt: string | null;
+}
+
+export interface QuestaoDTO {
+  QuestaoGUID: string;
+  TarefaGUID: string;
+  QuestaoEnunciado: string;
+  QuestaoTipo: "objetiva" | "discursiva";
+  QuestaoPontosMaximos: number;
+  QuestaoExplicacao: string | null;
+  QuestaoOrdem: number;
+  Alternativas: AlternativaDTO[];
+  Anexos: QuestaoAnexoResumoDTO[];
+  TemResposta: boolean;
+  CreatedAt: string | null;
+  UpdatedAt: string | null;
+}
+
+/** Uma linha já normalizada da planilha de importação (parse feito no frontend). */
+export interface QuestaoImportRowDTO extends QuestaoCreateDTO {
+  /** Linha original na planilha (1-based) — usado só pra apontar o erro no lugar certo. */
+  LinhaOriginal: number;
+}
+
+export interface ImportacaoErroDTO {
+  linha: number;
+  mensagem: string;
+}
+
+export interface ImportacaoResultadoDTO {
+  criadas: QuestaoDTO[];
+  count: number;
+  erros: ImportacaoErroDTO[];
+}
+
+export interface RespostaDTO {
+  RespostaGUID: string;
+  QuestaoGUID: string;
+  AlternativaGUID: string | null;
+  RespostaTextoDiscursiva: string | null;
+  RespostaPontosObtidos: number | null;
+  RespostaAvaliadoEm: string | null;
+  RespostaAvaliadoPorCPF: string | null;
+  RespondidoEm: string | null;
+}
+
+/** Alternativa na visão do aluno — gabarito (Correta/Pontos) só revelado depois que ele respondeu essa questão. */
+export interface AlternativaAlunoDTO {
+  AlternativaGUID: string;
+  AlternativaTexto: string;
+  AlternativaOrdem: number;
+  AlternativaCorreta: boolean | null;
+  AlternativaPontos: number | null;
+}
+
+/** Visão do professor (correção) — Alternativas sempre completas (gabarito nunca mascarado). */
+export interface QuestaoComRespostaProfessorDTO {
+  QuestaoGUID: string;
+  QuestaoEnunciado: string;
+  QuestaoTipo: "objetiva" | "discursiva";
+  QuestaoPontosMaximos: number;
+  QuestaoExplicacao: string | null;
+  QuestaoOrdem: number;
+  Alternativas: AlternativaDTO[];
+  Anexos: QuestaoAnexoResumoDTO[];
+  Resposta: {
+    RespostaGUID: string;
+    AlternativaGUID: string | null;
+    RespostaTextoDiscursiva: string | null;
+    RespostaPontosObtidos: number | null;
+    RespostaAvaliadoPorCPF: string | null;
+    RespondidoEm: string | null;
+  } | null;
+}
+
+export interface QuestaoComRespostaDTO {
+  QuestaoGUID: string;
+  QuestaoEnunciado: string;
+  QuestaoTipo: "objetiva" | "discursiva";
+  QuestaoPontosMaximos: number;
+  /** Só aparece depois de resolvida (objetiva: na hora; discursiva: só depois de corrigida). */
+  QuestaoExplicacao: string | null;
+  QuestaoOrdem: number;
+  Alternativas: AlternativaAlunoDTO[];
+  Anexos: QuestaoAnexoResumoDTO[];
+  MinhaResposta: {
+    RespostaGUID: string;
+    AlternativaGUID: string | null;
+    RespostaTextoDiscursiva: string | null;
+    RespostaPontosObtidos: number | null;
+    Corrigida: boolean;
+  } | null;
 }
 
 export interface TarefaAcademicaMarcarFeitoDTO {
@@ -115,13 +251,19 @@ export default class TarefaAcademicaService {
   #matriculaDAO: MatriculaDAO;
   #categoriaDAO: CategoriaConteudoDAO;
   #alocacaoDAO: MaterialProfessorTurmaDAO;
+  #questaoDAO: TarefaAcademicaQuestaoDAO;
+  #alternativaDAO: TarefaAcademicaAlternativaDAO;
+  #respostaDAO: TarefaAcademicaRespostaDAO;
   constructor(
     tarefaDAODependency: TarefaAcademicaDAO,
     tarefaMatriculaDAODependency: TarefaAcademicaMatriculaDAO,
     anexoDAODependency: AnexoDAO,
     matriculaDAODependency: MatriculaDAO,
     categoriaDAODependency: CategoriaConteudoDAO,
-    alocacaoDAODependency: MaterialProfessorTurmaDAO
+    alocacaoDAODependency: MaterialProfessorTurmaDAO,
+    questaoDAODependency: TarefaAcademicaQuestaoDAO,
+    alternativaDAODependency: TarefaAcademicaAlternativaDAO,
+    respostaDAODependency: TarefaAcademicaRespostaDAO
   ) {
     console.log("⬆️  TarefaAcademicaService.constructor()");
     this.#tarefaDAO = tarefaDAODependency;
@@ -130,6 +272,9 @@ export default class TarefaAcademicaService {
     this.#matriculaDAO = matriculaDAODependency;
     this.#categoriaDAO = categoriaDAODependency;
     this.#alocacaoDAO = alocacaoDAODependency;
+    this.#questaoDAO = questaoDAODependency;
+    this.#alternativaDAO = alternativaDAODependency;
+    this.#respostaDAO = respostaDAODependency;
   }
 
   /** Valida que a categoria (se informada) pertence ao professor e à mesma turma do alocação da tarefa. */
@@ -1153,5 +1298,809 @@ export default class TarefaAcademicaService {
     };
 
     return dto;
+  };
+
+  // ========== Questão de tarefa "lista" (quiz estilo Forms) ==========
+
+  /** Busca a tarefa, confirma que é do tipo 'lista' e que o professor é o dono. */
+  #validarTarefaListaDoProfessor = async (TarefaGUID: string, professorCPF: string): Promise<TarefaAcademica> => {
+    const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
+    if (!tarefa) {
+      throw new ErrorResponse(404, "Tarefa não encontrada", {
+        message: `Não existe tarefa com id ${TarefaGUID}`,
+      });
+    }
+    if (tarefa.TarefaTipoEntrega !== "lista") {
+      throw new ErrorResponse(400, "Tipo de tarefa inválido", {
+        message: "Esta operação só é válida para tarefas do tipo 'lista'.",
+      });
+    }
+    const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
+    if (!alocacao || alocacao.UsuarioCPF !== professorCPF) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Só o professor responsável por esta tarefa pode gerenciar suas questões.",
+      });
+    }
+    return tarefa;
+  };
+
+  /** Valida o conjunto de alternativas de uma questão objetiva: mínimo 2, exatamente 1 correta. */
+  #validarAlternativas = (alternativas: AlternativaInputDTO[] | undefined): void => {
+    if (!alternativas || alternativas.length < 2) {
+      throw new ErrorResponse(400, "Alternativas inválidas", {
+        message: "Uma questão objetiva precisa de ao menos 2 alternativas.",
+      });
+    }
+    const corretas = alternativas.filter((a) => a.AlternativaCorreta === true);
+    if (corretas.length !== 1) {
+      throw new ErrorResponse(400, "Alternativas inválidas", {
+        message: "Exatamente uma alternativa deve ser marcada como correta.",
+      });
+    }
+  };
+
+  /** Busca a questão criada/atualizada por trás, resolvendo alternativas/anexos/TemResposta, pra devolver o DTO completo. */
+  #buscarQuestaoDTO = async (QuestaoGUID: string): Promise<QuestaoDTO> => {
+    const questao = await this.#questaoDAO.findById(QuestaoGUID);
+    if (!questao) {
+      throw new ErrorResponse(404, "Questão não encontrada", {
+        message: `Não existe questão com id ${QuestaoGUID}`,
+      });
+    }
+    const alternativas = questao.QuestaoTipo === "objetiva" ? await this.#alternativaDAO.findByQuestao(QuestaoGUID) : [];
+    const anexosPorQuestao = await this.#questaoDAO.buscarAnexosPorQuestoes([QuestaoGUID]);
+    const temResposta = await this.#respostaDAO.existeRespostaParaQuestao(QuestaoGUID);
+    return this.#mapQuestaoParaDTO(questao, alternativas, anexosPorQuestao.get(QuestaoGUID) ?? [], temResposta);
+  };
+
+  #mapQuestaoParaDTO = (
+    questao: TarefaAcademicaQuestao,
+    alternativas: TarefaAcademicaAlternativa[],
+    anexos: AnexoQuestaoResumo[],
+    temResposta: boolean
+  ): QuestaoDTO => ({
+    QuestaoGUID: questao.QuestaoGUID,
+    TarefaGUID: questao.TarefaGUID,
+    QuestaoEnunciado: questao.QuestaoEnunciado,
+    QuestaoTipo: questao.QuestaoTipo,
+    QuestaoPontosMaximos: questao.QuestaoPontosMaximos,
+    QuestaoExplicacao: questao.QuestaoExplicacao,
+    QuestaoOrdem: questao.QuestaoOrdem,
+    Alternativas: alternativas.map((a) => ({
+      AlternativaGUID: a.AlternativaGUID,
+      AlternativaTexto: a.AlternativaTexto,
+      AlternativaCorreta: a.AlternativaCorreta,
+      AlternativaPontos: a.AlternativaPontos,
+      AlternativaOrdem: a.AlternativaOrdem,
+    })),
+    Anexos: anexos.map((a) => ({
+      AnexoGUID: a.AnexoGUID,
+      AnexoNomeOriginal: a.AnexoNomeOriginal,
+      AnexoTamanho: a.AnexoTamanho,
+      CreatedAt: a.CreatedAt ? new Date(a.CreatedAt).toISOString() : null,
+    })),
+    TemResposta: temResposta,
+    CreatedAt: questao.CreatedAt ? questao.CreatedAt.toISOString() : null,
+    UpdatedAt: questao.UpdatedAt ? questao.UpdatedAt.toISOString() : null,
+  });
+
+  /** Professor cria uma questão (objetiva ou discursiva) numa tarefa 'lista'. */
+  criarQuestao = async (TarefaGUID: string, data: QuestaoCreateDTO, professorCPF: string): Promise<QuestaoDTO> => {
+    console.log("🟣 TarefaAcademicaService.criarQuestao()");
+
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+
+    if (data.QuestaoTipo === "objetiva") {
+      this.#validarAlternativas(data.Alternativas);
+    }
+
+    const questoesExistentes = await this.#questaoDAO.findByTarefa(TarefaGUID);
+    const proximaOrdem = questoesExistentes.length > 0 ? Math.max(...questoesExistentes.map((q) => q.QuestaoOrdem)) + 1 : 0;
+
+    const questao = new TarefaAcademicaQuestao();
+    questao.QuestaoGUID = uuidv4();
+    questao.TarefaGUID = TarefaGUID;
+    questao.QuestaoEnunciado = data.QuestaoEnunciado;
+    questao.QuestaoTipo = data.QuestaoTipo;
+    questao.QuestaoPontosMaximos = data.QuestaoPontosMaximos;
+    questao.QuestaoExplicacao = data.QuestaoExplicacao ?? null;
+    questao.QuestaoOrdem = proximaOrdem;
+
+    await this.#questaoDAO.create(questao);
+
+    if (data.QuestaoTipo === "objetiva" && data.Alternativas) {
+      const alternativas = data.Alternativas.map((a, index) => {
+        const alternativa = new TarefaAcademicaAlternativa();
+        alternativa.AlternativaGUID = uuidv4();
+        alternativa.QuestaoGUID = questao.QuestaoGUID;
+        alternativa.AlternativaTexto = a.AlternativaTexto;
+        alternativa.AlternativaCorreta = a.AlternativaCorreta;
+        alternativa.AlternativaPontos = a.AlternativaPontos;
+        alternativa.AlternativaOrdem = index;
+        return alternativa;
+      });
+      await this.#alternativaDAO.createBatch(alternativas);
+    }
+
+    if (data.AnexosGUID && data.AnexosGUID.length > 0) {
+      for (const anexoGUID of data.AnexosGUID) {
+        const anexo = await this.#anexoDAO.findById(anexoGUID);
+        if (anexo && anexo.UsuarioCPF === professorCPF) {
+          await this.#questaoDAO.vincularAnexo(questao.QuestaoGUID, anexoGUID);
+        }
+      }
+    }
+
+    return this.#buscarQuestaoDTO(questao.QuestaoGUID);
+  };
+
+  /** Professor cria N questões de uma vez (usado pelo construtor manual do TarefaForm — 1 chamada, não N). */
+  criarQuestoesBatch = async (
+    TarefaGUID: string,
+    questoesData: QuestaoCreateDTO[],
+    professorCPF: string
+  ): Promise<{ criadas: QuestaoDTO[]; count: number }> => {
+    console.log(`🟣 TarefaAcademicaService.criarQuestoesBatch() - ${questoesData.length} questões`);
+
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+
+    if (questoesData.length === 0) {
+      throw new ErrorResponse(400, "Nenhuma questão fornecida", {
+        message: "É necessário fornecer ao menos uma questão.",
+      });
+    }
+
+    for (const data of questoesData) {
+      if (data.QuestaoTipo === "objetiva") {
+        this.#validarAlternativas(data.Alternativas);
+      }
+    }
+
+    const questoesExistentes = await this.#questaoDAO.findByTarefa(TarefaGUID);
+    let proximaOrdem = questoesExistentes.length > 0 ? Math.max(...questoesExistentes.map((q) => q.QuestaoOrdem)) + 1 : 0;
+
+    const questoesEntidade = questoesData.map((data) => {
+      const questao = new TarefaAcademicaQuestao();
+      questao.QuestaoGUID = uuidv4();
+      questao.TarefaGUID = TarefaGUID;
+      questao.QuestaoEnunciado = data.QuestaoEnunciado;
+      questao.QuestaoTipo = data.QuestaoTipo;
+      questao.QuestaoPontosMaximos = data.QuestaoPontosMaximos;
+      questao.QuestaoExplicacao = data.QuestaoExplicacao ?? null;
+      questao.QuestaoOrdem = proximaOrdem++;
+      return questao;
+    });
+
+    await this.#questaoDAO.createBatch(questoesEntidade);
+
+    const todasAlternativas: TarefaAcademicaAlternativa[] = [];
+    questoesEntidade.forEach((questao, idx) => {
+      const data = questoesData[idx];
+      if (data.QuestaoTipo === "objetiva" && data.Alternativas) {
+        data.Alternativas.forEach((a, index) => {
+          const alternativa = new TarefaAcademicaAlternativa();
+          alternativa.AlternativaGUID = uuidv4();
+          alternativa.QuestaoGUID = questao.QuestaoGUID;
+          alternativa.AlternativaTexto = a.AlternativaTexto;
+          alternativa.AlternativaCorreta = a.AlternativaCorreta;
+          alternativa.AlternativaPontos = a.AlternativaPontos;
+          alternativa.AlternativaOrdem = index;
+          todasAlternativas.push(alternativa);
+        });
+      }
+    });
+    if (todasAlternativas.length > 0) {
+      await this.#alternativaDAO.createBatch(todasAlternativas);
+    }
+
+    for (let idx = 0; idx < questoesEntidade.length; idx++) {
+      const anexosGUID = questoesData[idx].AnexosGUID;
+      if (anexosGUID && anexosGUID.length > 0) {
+        for (const anexoGUID of anexosGUID) {
+          const anexo = await this.#anexoDAO.findById(anexoGUID);
+          if (anexo && anexo.UsuarioCPF === professorCPF) {
+            await this.#questaoDAO.vincularAnexo(questoesEntidade[idx].QuestaoGUID, anexoGUID);
+          }
+        }
+      }
+    }
+
+    const criadas = await Promise.all(questoesEntidade.map((q) => this.#buscarQuestaoDTO(q.QuestaoGUID)));
+
+    return { criadas, count: criadas.length };
+  };
+
+  /**
+   * Professor importa questões de uma planilha (linhas já normalizadas pelo
+   * frontend). Diferente de criarQuestoesBatch: cada linha é tentada
+   * independentemente (try/catch por linha) — uma linha inválida não derruba
+   * as demais, e o erro é reportado apontando a linha original da planilha.
+   */
+  importarQuestoesPlanilha = async (
+    TarefaGUID: string,
+    linhas: QuestaoImportRowDTO[],
+    professorCPF: string
+  ): Promise<ImportacaoResultadoDTO> => {
+    console.log(`🟣 TarefaAcademicaService.importarQuestoesPlanilha() - ${linhas.length} linhas`);
+
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+
+    const questoesExistentes = await this.#questaoDAO.findByTarefa(TarefaGUID);
+    let proximaOrdem = questoesExistentes.length > 0 ? Math.max(...questoesExistentes.map((q) => q.QuestaoOrdem)) + 1 : 0;
+
+    const criadas: QuestaoDTO[] = [];
+    const erros: ImportacaoErroDTO[] = [];
+
+    for (const linha of linhas) {
+      try {
+        if (linha.QuestaoTipo === "objetiva") {
+          this.#validarAlternativas(linha.Alternativas);
+        }
+
+        const questao = new TarefaAcademicaQuestao();
+        questao.QuestaoGUID = uuidv4();
+        questao.TarefaGUID = TarefaGUID;
+        questao.QuestaoEnunciado = linha.QuestaoEnunciado;
+        questao.QuestaoTipo = linha.QuestaoTipo;
+        questao.QuestaoPontosMaximos = linha.QuestaoPontosMaximos;
+        questao.QuestaoExplicacao = linha.QuestaoExplicacao ?? null;
+        questao.QuestaoOrdem = proximaOrdem;
+
+        await this.#questaoDAO.create(questao);
+
+        if (linha.QuestaoTipo === "objetiva" && linha.Alternativas) {
+          const alternativas = linha.Alternativas.map((a, index) => {
+            const alternativa = new TarefaAcademicaAlternativa();
+            alternativa.AlternativaGUID = uuidv4();
+            alternativa.QuestaoGUID = questao.QuestaoGUID;
+            alternativa.AlternativaTexto = a.AlternativaTexto;
+            alternativa.AlternativaCorreta = a.AlternativaCorreta;
+            alternativa.AlternativaPontos = a.AlternativaPontos;
+            alternativa.AlternativaOrdem = index;
+            return alternativa;
+          });
+          await this.#alternativaDAO.createBatch(alternativas);
+        }
+
+        criadas.push(await this.#buscarQuestaoDTO(questao.QuestaoGUID));
+        proximaOrdem++;
+      } catch (erro: any) {
+        erros.push({ linha: linha.LinhaOriginal, mensagem: erro?.message || "Erro ao importar questão" });
+      }
+    }
+
+    return { criadas, count: criadas.length, erros };
+  };
+
+  /**
+   * Lista as questões de uma tarefa 'lista'. Só o professor dono da tarefa —
+   * a visão do aluno (com respostas e sem revelar gabarito antecipadamente)
+   * é `buscarQuestoesComRespostas`.
+   */
+  listarQuestoes = async (TarefaGUID: string, professorCPF: string): Promise<QuestaoDTO[]> => {
+    console.log("🟣 TarefaAcademicaService.listarQuestoes()");
+
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+
+    const questoes = await this.#questaoDAO.findByTarefa(TarefaGUID);
+    if (questoes.length === 0) return [];
+
+    const questaoGUIDs = questoes.map((q) => q.QuestaoGUID);
+    const alternativasPorQuestao = await this.#alternativaDAO.findByQuestoes(questaoGUIDs);
+    const anexosPorQuestao = await this.#questaoDAO.buscarAnexosPorQuestoes(questaoGUIDs);
+
+    return Promise.all(
+      questoes.map(async (questao) => {
+        const temResposta = await this.#respostaDAO.existeRespostaParaQuestao(questao.QuestaoGUID);
+        return this.#mapQuestaoParaDTO(
+          questao,
+          alternativasPorQuestao.get(questao.QuestaoGUID) ?? [],
+          anexosPorQuestao.get(questao.QuestaoGUID) ?? [],
+          temResposta
+        );
+      })
+    );
+  };
+
+  /** Professor atualiza uma questão. Mudança estrutural (Tipo, Alternativas) é bloqueada se já existir resposta. */
+  atualizarQuestao = async (QuestaoGUID: string, data: QuestaoUpdateDTO, professorCPF: string): Promise<QuestaoDTO> => {
+    console.log("🟣 TarefaAcademicaService.atualizarQuestao()");
+
+    const questao = await this.#questaoDAO.findById(QuestaoGUID);
+    if (!questao) {
+      throw new ErrorResponse(404, "Questão não encontrada", {
+        message: `Não existe questão com id ${QuestaoGUID}`,
+      });
+    }
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+
+    const temResposta = await this.#respostaDAO.existeRespostaParaQuestao(QuestaoGUID);
+
+    if (temResposta && data.QuestaoTipo !== undefined && data.QuestaoTipo !== questao.QuestaoTipo) {
+      throw new ErrorResponse(400, "Operação inválida", {
+        message: "Não é possível mudar o tipo de uma questão que já tem resposta registrada.",
+      });
+    }
+    if (temResposta && data.Alternativas !== undefined) {
+      throw new ErrorResponse(400, "Operação inválida", {
+        message: "Não é possível alterar as alternativas de uma questão que já tem resposta registrada.",
+      });
+    }
+
+    const tipoFinal = data.QuestaoTipo ?? questao.QuestaoTipo;
+    if (tipoFinal === "objetiva" && data.Alternativas !== undefined) {
+      this.#validarAlternativas(data.Alternativas);
+    }
+
+    const updates: Partial<Pick<TarefaAcademicaQuestao, "QuestaoEnunciado" | "QuestaoTipo" | "QuestaoPontosMaximos" | "QuestaoExplicacao">> = {};
+    if (data.QuestaoEnunciado !== undefined) updates.QuestaoEnunciado = data.QuestaoEnunciado;
+    if (data.QuestaoTipo !== undefined) updates.QuestaoTipo = data.QuestaoTipo;
+    if (data.QuestaoPontosMaximos !== undefined) updates.QuestaoPontosMaximos = data.QuestaoPontosMaximos;
+    if (data.QuestaoExplicacao !== undefined) updates.QuestaoExplicacao = data.QuestaoExplicacao;
+
+    await this.#questaoDAO.update(QuestaoGUID, updates);
+
+    if (data.Alternativas !== undefined) {
+      await this.#alternativaDAO.deleteByQuestao(QuestaoGUID);
+      const alternativas = data.Alternativas.map((a, index) => {
+        const alternativa = new TarefaAcademicaAlternativa();
+        alternativa.AlternativaGUID = uuidv4();
+        alternativa.QuestaoGUID = QuestaoGUID;
+        alternativa.AlternativaTexto = a.AlternativaTexto;
+        alternativa.AlternativaCorreta = a.AlternativaCorreta;
+        alternativa.AlternativaPontos = a.AlternativaPontos;
+        alternativa.AlternativaOrdem = index;
+        return alternativa;
+      });
+      await this.#alternativaDAO.createBatch(alternativas);
+    }
+
+    return this.#buscarQuestaoDTO(QuestaoGUID);
+  };
+
+  /** Professor exclui uma questão — bloqueado se já existir resposta registrada. */
+  excluirQuestao = async (QuestaoGUID: string, professorCPF: string): Promise<void> => {
+    console.log("🟣 TarefaAcademicaService.excluirQuestao()");
+
+    const questao = await this.#questaoDAO.findById(QuestaoGUID);
+    if (!questao) {
+      throw new ErrorResponse(404, "Questão não encontrada", {
+        message: `Não existe questão com id ${QuestaoGUID}`,
+      });
+    }
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+
+    const temResposta = await this.#respostaDAO.existeRespostaParaQuestao(QuestaoGUID);
+    if (temResposta) {
+      throw new ErrorResponse(400, "Operação inválida", {
+        message: "Não é possível excluir uma questão que já tem resposta registrada.",
+      });
+    }
+
+    await this.#questaoDAO.delete(QuestaoGUID);
+  };
+
+  /** Professor reordena as questões de uma tarefa 'lista' (drag-and-drop no construtor). */
+  reordenarQuestoes = async (
+    TarefaGUID: string,
+    ordens: Array<{ QuestaoGUID: string; QuestaoOrdem: number }>,
+    professorCPF: string
+  ): Promise<void> => {
+    console.log("🟣 TarefaAcademicaService.reordenarQuestoes()");
+
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+
+    const questoesExistentes = await this.#questaoDAO.findByTarefa(TarefaGUID);
+    const guidsValidos = new Set(questoesExistentes.map((q) => q.QuestaoGUID));
+    for (const { QuestaoGUID } of ordens) {
+      if (!guidsValidos.has(QuestaoGUID)) {
+        throw new ErrorResponse(400, "Questão inválida", {
+          message: `A questão ${QuestaoGUID} não pertence a esta tarefa.`,
+        });
+      }
+    }
+
+    await this.#questaoDAO.reordenar(ordens);
+  };
+
+  /** Professor vincula um anexo (que ele mesmo enviou) a uma questão — vários anexos por questão são permitidos. */
+  vincularAnexoQuestao = async (QuestaoGUID: string, AnexoGUID: string, professorCPF: string): Promise<void> => {
+    console.log("🟣 TarefaAcademicaService.vincularAnexoQuestao()");
+
+    const questao = await this.#questaoDAO.findById(QuestaoGUID);
+    if (!questao) {
+      throw new ErrorResponse(404, "Questão não encontrada", {
+        message: `Não existe questão com id ${QuestaoGUID}`,
+      });
+    }
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+
+    const anexo = await this.#anexoDAO.findById(AnexoGUID);
+    if (!anexo) {
+      throw new ErrorResponse(404, "Anexo não encontrado", {
+        message: `Não existe anexo com id ${AnexoGUID}`,
+      });
+    }
+    if (anexo.UsuarioCPF !== professorCPF) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você só pode vincular um anexo que você mesmo enviou.",
+      });
+    }
+
+    await this.#questaoDAO.vincularAnexo(QuestaoGUID, AnexoGUID);
+  };
+
+  /** Professor desvincula um anexo de uma questão. */
+  desvincularAnexoQuestao = async (QuestaoGUID: string, AnexoGUID: string, professorCPF: string): Promise<void> => {
+    console.log("🟣 TarefaAcademicaService.desvincularAnexoQuestao()");
+
+    const questao = await this.#questaoDAO.findById(QuestaoGUID);
+    if (!questao) {
+      throw new ErrorResponse(404, "Questão não encontrada", {
+        message: `Não existe questão com id ${QuestaoGUID}`,
+      });
+    }
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+
+    await this.#questaoDAO.desvincularAnexo(QuestaoGUID, AnexoGUID);
+  };
+
+  // ========== Resposta do aluno a tarefa "lista" ==========
+
+  #mapRespostaParaDTO = (resposta: TarefaAcademicaResposta): RespostaDTO => ({
+    RespostaGUID: resposta.RespostaGUID,
+    QuestaoGUID: resposta.QuestaoGUID,
+    AlternativaGUID: resposta.AlternativaGUID,
+    RespostaTextoDiscursiva: resposta.RespostaTextoDiscursiva,
+    RespostaPontosObtidos: resposta.RespostaPontosObtidos,
+    RespostaAvaliadoEm: resposta.RespostaAvaliadoEm ? resposta.RespostaAvaliadoEm.toISOString() : null,
+    RespostaAvaliadoPorCPF: resposta.RespostaAvaliadoPorCPF,
+    RespondidoEm: resposta.RespondidoEm ? resposta.RespondidoEm.toISOString() : null,
+  });
+
+  /** Resolve a tarefa (tipo 'lista') + a atribuição do aluno autenticado, com as checagens comuns a toda resposta. */
+  #resolverAtribuicaoListaDoAluno = async (
+    TarefaGUID: string,
+    alunoCPF: string
+  ): Promise<{ tarefa: TarefaAcademica; atribuicao: TarefaAcademicaMatricula }> => {
+    const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
+    if (!tarefa) {
+      throw new ErrorResponse(404, "Tarefa não encontrada", {
+        message: `Não existe tarefa com id ${TarefaGUID}`,
+      });
+    }
+    if (tarefa.TarefaTipoEntrega !== "lista") {
+      throw new ErrorResponse(400, "Tipo de tarefa inválido", {
+        message: "Esta operação só é válida para tarefas do tipo 'lista'.",
+      });
+    }
+
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(alunoCPF);
+    if (!matricula) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não tem matrícula ativa.",
+      });
+    }
+
+    const atribuicao = await this.#tarefaMatriculaDAO.findByTarefaAndMatricula(TarefaGUID, matricula.MatriculaGUID);
+    if (!atribuicao) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está atribuído a esta tarefa.",
+      });
+    }
+
+    if (atribuicao.TarefaFeito) {
+      throw new ErrorResponse(400, "Lista já concluída", {
+        message: "Esta lista já foi concluída e não aceita mais respostas.",
+      });
+    }
+
+    const prazoEfetivo = atribuicao.TarefaPrazoDataMatricula ?? tarefa.TarefaPrazoData;
+    if (prazoEfetivo.getTime() < Date.now()) {
+      throw new ErrorResponse(400, "Prazo vencido", {
+        message: "O prazo desta tarefa já venceu.",
+      });
+    }
+
+    return { tarefa, atribuicao };
+  };
+
+  /**
+   * Depois de toda resposta/correção: fecha a submissão (TarefaFeito=true)
+   * assim que todas as questões tiverem resposta, e só ESCREVE TarefaNota
+   * quando todas já estiverem corrigidas (objetivas: automático; discursivas:
+   * dependem do professor). TarefaAvaliadoPorCPF reflete correção humana se
+   * alguma discursiva foi corrigida por um professor, senão fica null
+   * (mantém o sinal canônico usado pelo scheduler/board).
+   */
+  #tentarSettleTarefaLista = async (TarefaMatriculaGUID: string): Promise<void> => {
+    const agregado = (await this.#respostaDAO.buscarAgregadoPorAluno([TarefaMatriculaGUID])).get(TarefaMatriculaGUID);
+    if (!agregado || agregado.TotalQuestoes === 0) return;
+
+    const updates: Partial<Pick<TarefaAcademicaMatricula, "TarefaFeito" | "TarefaNota" | "TarefaAvaliadoEm" | "TarefaAvaliadoPorCPF">> = {};
+
+    if (agregado.QuestoesRespondidas >= agregado.TotalQuestoes) {
+      updates.TarefaFeito = true;
+    }
+
+    if (agregado.QuestoesCorrigidas >= agregado.TotalQuestoes) {
+      const notaFinal = agregado.PontosMaximosTotal > 0
+        ? Math.round((agregado.PontosObtidos / agregado.PontosMaximosTotal) * 1000) / 100
+        : 0;
+      updates.TarefaNota = notaFinal;
+      updates.TarefaAvaliadoEm = new Date();
+      updates.TarefaAvaliadoPorCPF = await this.#respostaDAO.buscarAvaliadorHumano(TarefaMatriculaGUID);
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await this.#tarefaMatriculaDAO.update(TarefaMatriculaGUID, updates);
+    }
+  };
+
+  /** Aluno responde uma questão objetiva — correção automática, pontos resolvidos na hora. */
+  responderObjetiva = async (
+    TarefaGUID: string,
+    QuestaoGUID: string,
+    AlternativaGUID: string,
+    alunoCPF: string
+  ): Promise<RespostaDTO> => {
+    console.log("🟣 TarefaAcademicaService.responderObjetiva()");
+
+    const { atribuicao } = await this.#resolverAtribuicaoListaDoAluno(TarefaGUID, alunoCPF);
+
+    const questao = await this.#questaoDAO.findById(QuestaoGUID);
+    if (!questao || questao.TarefaGUID !== TarefaGUID) {
+      throw new ErrorResponse(404, "Questão não encontrada", {
+        message: `Não existe questão com id ${QuestaoGUID} nesta tarefa.`,
+      });
+    }
+    if (questao.QuestaoTipo !== "objetiva") {
+      throw new ErrorResponse(400, "Operação inválida", {
+        message: "Esta questão não é objetiva.",
+      });
+    }
+
+    const alternativa = await this.#alternativaDAO.findById(AlternativaGUID);
+    if (!alternativa || alternativa.QuestaoGUID !== QuestaoGUID) {
+      throw new ErrorResponse(404, "Alternativa não encontrada", {
+        message: `A alternativa ${AlternativaGUID} não pertence à questão ${QuestaoGUID}.`,
+      });
+    }
+
+    const resposta = await this.#respostaDAO.upsertObjetiva(
+      atribuicao.TarefaMatriculaGUID,
+      QuestaoGUID,
+      AlternativaGUID,
+      alternativa.AlternativaPontos
+    );
+
+    await this.#tentarSettleTarefaLista(atribuicao.TarefaMatriculaGUID);
+
+    return this.#mapRespostaParaDTO(resposta);
+  };
+
+  /** Aluno responde uma questão discursiva — pontos ficam null até correção do professor. */
+  responderDiscursiva = async (
+    TarefaGUID: string,
+    QuestaoGUID: string,
+    texto: string,
+    alunoCPF: string
+  ): Promise<RespostaDTO> => {
+    console.log("🟣 TarefaAcademicaService.responderDiscursiva()");
+
+    const { atribuicao } = await this.#resolverAtribuicaoListaDoAluno(TarefaGUID, alunoCPF);
+
+    const questao = await this.#questaoDAO.findById(QuestaoGUID);
+    if (!questao || questao.TarefaGUID !== TarefaGUID) {
+      throw new ErrorResponse(404, "Questão não encontrada", {
+        message: `Não existe questão com id ${QuestaoGUID} nesta tarefa.`,
+      });
+    }
+    if (questao.QuestaoTipo !== "discursiva") {
+      throw new ErrorResponse(400, "Operação inválida", {
+        message: "Esta questão não é discursiva.",
+      });
+    }
+
+    const resposta = await this.#respostaDAO.upsertDiscursiva(atribuicao.TarefaMatriculaGUID, QuestaoGUID, texto.trim());
+
+    await this.#tentarSettleTarefaLista(atribuicao.TarefaMatriculaGUID);
+
+    return this.#mapRespostaParaDTO(resposta);
+  };
+
+  /**
+   * Visão do aluno: todas as questões da tarefa + a resposta dele em cada
+   * uma (pra retomar de onde parou). Gabarito (AlternativaCorreta/Pontos) e
+   * QuestaoExplicacao só aparecem depois que a questão foi resolvida —
+   * objetiva na hora, discursiva só depois de corrigida.
+   */
+  buscarQuestoesComRespostas = async (TarefaGUID: string, alunoCPF: string): Promise<QuestaoComRespostaDTO[]> => {
+    console.log("🟣 TarefaAcademicaService.buscarQuestoesComRespostas()");
+
+    const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
+    if (!tarefa) {
+      throw new ErrorResponse(404, "Tarefa não encontrada", {
+        message: `Não existe tarefa com id ${TarefaGUID}`,
+      });
+    }
+    if (tarefa.TarefaTipoEntrega !== "lista") {
+      throw new ErrorResponse(400, "Tipo de tarefa inválido", {
+        message: "Esta operação só é válida para tarefas do tipo 'lista'.",
+      });
+    }
+
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(alunoCPF);
+    if (!matricula) {
+      throw new ErrorResponse(403, "Sem permissão", { message: "Você não tem matrícula ativa." });
+    }
+    const atribuicao = await this.#tarefaMatriculaDAO.findByTarefaAndMatricula(TarefaGUID, matricula.MatriculaGUID);
+    if (!atribuicao) {
+      throw new ErrorResponse(403, "Sem permissão", { message: "Você não está atribuído a esta tarefa." });
+    }
+
+    const questoes = await this.#questaoDAO.findByTarefa(TarefaGUID);
+    if (questoes.length === 0) return [];
+
+    const questaoGUIDs = questoes.map((q) => q.QuestaoGUID);
+    const alternativasPorQuestao = await this.#alternativaDAO.findByQuestoes(questaoGUIDs);
+    const anexosPorQuestao = await this.#questaoDAO.buscarAnexosPorQuestoes(questaoGUIDs);
+    const respostas = await this.#respostaDAO.findByMatricula(atribuicao.TarefaMatriculaGUID);
+    const respostaPorQuestao = new Map(respostas.map((r) => [r.QuestaoGUID, r]));
+
+    return questoes.map((questao) => {
+      const resposta = respostaPorQuestao.get(questao.QuestaoGUID) ?? null;
+      const respondida = resposta !== null;
+      const corrigida = resposta !== null && resposta.RespostaPontosObtidos !== null;
+      const resolvida = questao.QuestaoTipo === "objetiva" ? respondida : corrigida;
+      const alternativas = alternativasPorQuestao.get(questao.QuestaoGUID) ?? [];
+      const anexos = anexosPorQuestao.get(questao.QuestaoGUID) ?? [];
+
+      return {
+        QuestaoGUID: questao.QuestaoGUID,
+        QuestaoEnunciado: questao.QuestaoEnunciado,
+        QuestaoTipo: questao.QuestaoTipo,
+        QuestaoPontosMaximos: questao.QuestaoPontosMaximos,
+        QuestaoExplicacao: resolvida ? questao.QuestaoExplicacao : null,
+        QuestaoOrdem: questao.QuestaoOrdem,
+        Alternativas: alternativas.map((a) => ({
+          AlternativaGUID: a.AlternativaGUID,
+          AlternativaTexto: a.AlternativaTexto,
+          AlternativaOrdem: a.AlternativaOrdem,
+          AlternativaCorreta: respondida ? a.AlternativaCorreta : null,
+          AlternativaPontos: respondida ? a.AlternativaPontos : null,
+        })),
+        Anexos: anexos.map((a) => ({
+          AnexoGUID: a.AnexoGUID,
+          AnexoNomeOriginal: a.AnexoNomeOriginal,
+          AnexoTamanho: a.AnexoTamanho,
+          CreatedAt: a.CreatedAt ? new Date(a.CreatedAt).toISOString() : null,
+        })),
+        MinhaResposta: resposta
+          ? {
+              RespostaGUID: resposta.RespostaGUID,
+              AlternativaGUID: resposta.AlternativaGUID,
+              RespostaTextoDiscursiva: resposta.RespostaTextoDiscursiva,
+              RespostaPontosObtidos: resposta.RespostaPontosObtidos,
+              Corrigida: corrigida,
+            }
+          : null,
+      };
+    });
+  };
+
+  // ========== Correção do professor (tarefa "lista") ==========
+
+  /**
+   * Painel de correção do professor: todas as questões da tarefa + a
+   * resposta de UM aluno específico (TarefaMatriculaGUID) em cada uma —
+   * gabarito sempre completo (o professor não passa pela máscara que o
+   * aluno vê antes de responder).
+   */
+  buscarRespostasAluno = async (
+    TarefaGUID: string,
+    TarefaMatriculaGUID: string,
+    professorCPF: string
+  ): Promise<QuestaoComRespostaProfessorDTO[]> => {
+    console.log("🟣 TarefaAcademicaService.buscarRespostasAluno()");
+
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+
+    const atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
+    const atribuicao = atribuicoes.find((a) => a.TarefaMatriculaGUID === TarefaMatriculaGUID);
+    if (!atribuicao) {
+      throw new ErrorResponse(404, "Atribuição não encontrada", {
+        message: `A matrícula ${TarefaMatriculaGUID} não pertence a esta tarefa.`,
+      });
+    }
+
+    const questoes = await this.#questaoDAO.findByTarefa(TarefaGUID);
+    if (questoes.length === 0) return [];
+
+    const questaoGUIDs = questoes.map((q) => q.QuestaoGUID);
+    const alternativasPorQuestao = await this.#alternativaDAO.findByQuestoes(questaoGUIDs);
+    const anexosPorQuestao = await this.#questaoDAO.buscarAnexosPorQuestoes(questaoGUIDs);
+    const respostas = await this.#respostaDAO.findByMatricula(TarefaMatriculaGUID);
+    const respostaPorQuestao = new Map(respostas.map((r) => [r.QuestaoGUID, r]));
+
+    return questoes.map((questao) => {
+      const resposta = respostaPorQuestao.get(questao.QuestaoGUID) ?? null;
+      return {
+        QuestaoGUID: questao.QuestaoGUID,
+        QuestaoEnunciado: questao.QuestaoEnunciado,
+        QuestaoTipo: questao.QuestaoTipo,
+        QuestaoPontosMaximos: questao.QuestaoPontosMaximos,
+        QuestaoExplicacao: questao.QuestaoExplicacao,
+        QuestaoOrdem: questao.QuestaoOrdem,
+        Alternativas: (alternativasPorQuestao.get(questao.QuestaoGUID) ?? []).map((a) => ({
+          AlternativaGUID: a.AlternativaGUID,
+          AlternativaTexto: a.AlternativaTexto,
+          AlternativaCorreta: a.AlternativaCorreta,
+          AlternativaPontos: a.AlternativaPontos,
+          AlternativaOrdem: a.AlternativaOrdem,
+        })),
+        Anexos: (anexosPorQuestao.get(questao.QuestaoGUID) ?? []).map((a) => ({
+          AnexoGUID: a.AnexoGUID,
+          AnexoNomeOriginal: a.AnexoNomeOriginal,
+          AnexoTamanho: a.AnexoTamanho,
+          CreatedAt: a.CreatedAt ? new Date(a.CreatedAt).toISOString() : null,
+        })),
+        Resposta: resposta
+          ? {
+              RespostaGUID: resposta.RespostaGUID,
+              AlternativaGUID: resposta.AlternativaGUID,
+              RespostaTextoDiscursiva: resposta.RespostaTextoDiscursiva,
+              RespostaPontosObtidos: resposta.RespostaPontosObtidos,
+              RespostaAvaliadoPorCPF: resposta.RespostaAvaliadoPorCPF,
+              RespondidoEm: resposta.RespondidoEm ? resposta.RespondidoEm.toISOString() : null,
+            }
+          : null,
+      };
+    });
+  };
+
+  /**
+   * Professor corrige uma resposta discursiva (pontos por questão) — só
+   * exige que a questão tenha sido respondida, NÃO exige TarefaFeito=true da
+   * tarefa inteira (o professor pode corrigir discursivas de quem ainda não
+   * terminou a lista).
+   */
+  avaliarQuestaoDiscursiva = async (RespostaGUID: string, pontos: number, professorCPF: string): Promise<RespostaDTO> => {
+    console.log("🟣 TarefaAcademicaService.avaliarQuestaoDiscursiva()");
+
+    const resposta = await this.#respostaDAO.findById(RespostaGUID);
+    if (!resposta) {
+      throw new ErrorResponse(404, "Resposta não encontrada", {
+        message: `Não existe resposta com id ${RespostaGUID}`,
+      });
+    }
+    if (resposta.RespostaTextoDiscursiva === null) {
+      throw new ErrorResponse(400, "Operação inválida", {
+        message: "Esta resposta não é de uma questão discursiva.",
+      });
+    }
+
+    const questao = await this.#questaoDAO.findById(resposta.QuestaoGUID);
+    if (!questao) {
+      throw new ErrorResponse(404, "Questão não encontrada", {
+        message: `Não existe questão com id ${resposta.QuestaoGUID}`,
+      });
+    }
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+
+    if (pontos < 0 || pontos > questao.QuestaoPontosMaximos) {
+      throw new ErrorResponse(400, "Pontos inválidos", {
+        message: `Pontos deve ser um número entre 0 e ${questao.QuestaoPontosMaximos} (máximo desta questão).`,
+      });
+    }
+
+    const atualizada = await this.#respostaDAO.gradeDiscursiva(RespostaGUID, pontos, professorCPF);
+    if (!atualizada) {
+      throw new ErrorResponse(500, "Erro ao corrigir resposta");
+    }
+
+    await this.#tentarSettleTarefaLista(resposta.TarefaMatriculaGUID);
+
+    return this.#mapRespostaParaDTO(atualizada);
   };
 }

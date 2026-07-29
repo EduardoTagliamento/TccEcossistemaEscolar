@@ -15,7 +15,6 @@
 
 ## Matérias
 
-- [ ] Tarefa tipo "lista" (7º tipo de tarefa) — só digital/presencial existem hoje **(fora de escopo)**
 - [ ] Recomendação de estudo por IA — sem fonte de dado nem provedor escolhidos, `backend/ai/` só tem README **(fora de escopo)**
 - [ ] Nota de prova (`prova_nota`) — prova hoje é só leitura + "já vi", sem lançamento de nota **(fora de escopo)**
 - [ ] Categoria "do representante" (aluno representante de turma criar categoria própria) — hook de permissão pronto no backend, sem UI **(fora de escopo, função futura confirmada)**

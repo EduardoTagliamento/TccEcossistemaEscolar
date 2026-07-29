@@ -7,6 +7,7 @@ import { CategoriaConteudoDAO } from "../backend/repositories/categoriaconteudo.
 import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { TurmaDAO } from "../backend/repositories/turma.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
+import { TarefaAcademicaRespostaDAO } from "../backend/repositories/tarefaacademica-resposta.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class CategoriaConteudoRoteador {
@@ -60,6 +61,7 @@ export default class CategoriaConteudoRoteador {
       this.#controller.excluirCategoriaGeral
     );
     this.#router.get("/estatisticas/:tipo/:itemGUID/:turmaGUID", this.#controller.buscarEstatisticasItem);
+    this.#router.get("/estatisticas-por-questao/:TarefaGUID/:turmaGUID", this.#controller.buscarEstatisticasPorQuestao);
     this.#router.get("/completas/:materiaGUID/:turmaGUID", this.#controller.buscarCategoriasCompletas);
     this.#router.get("/tem-pendencia/:materiaGUID/:turmaGUID", this.#controller.temPendencia);
     this.#router.get("/tem-pendencia-agregado", this.#controller.temPendenciaAgregada);
@@ -81,7 +83,8 @@ export const categoriaConteudoRouterFactory = () => {
   const materiaDAO = new MateriaDAO(database);
   const turmaDAO = new TurmaDAO(database);
   const matriculaDAO = new MatriculaDAO(database);
-  const categoriaService = new CategoriaConteudoService(categoriaDAO, materiaDAO, turmaDAO, matriculaDAO);
+  const respostaDAO = new TarefaAcademicaRespostaDAO(database);
+  const categoriaService = new CategoriaConteudoService(categoriaDAO, materiaDAO, turmaDAO, matriculaDAO, respostaDAO);
   const controller = new CategoriaConteudoController(categoriaService);
   const roteador = new CategoriaConteudoRoteador(controller);
 
