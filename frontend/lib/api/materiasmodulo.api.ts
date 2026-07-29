@@ -230,6 +230,20 @@ export async function avaliarTarefa(tarefaMatriculaGUID: string, nota: number): 
   await extrairDados(response, 'Erro ao avaliar tarefa');
 }
 
+/**
+ * Vincula um anexo já enviado (via `POST /api/anexo`) como a entrega de uma
+ * tarefa digital. Enviar o anexo É a entrega — o backend marca a atribuição
+ * do aluno como feita automaticamente, sem precisar de um passo manual extra.
+ */
+export async function enviarAnexoEntregaTarefa(tarefaGUID: string, anexoGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}/anexo-entrega`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ AnexoGUID: anexoGUID }),
+  });
+  await extrairDados(response, 'Erro ao enviar entrega');
+}
+
 // ==================== Dashboard ====================
 
 export interface TarefaPendenteAluno {

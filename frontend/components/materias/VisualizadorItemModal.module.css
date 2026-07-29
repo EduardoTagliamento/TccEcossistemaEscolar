@@ -146,8 +146,20 @@
   font-size: 0.9rem;
 }
 
+.hint {
+  color: var(--slate-500, #647268);
+  font-size: 0.9rem;
+}
+
 .acoesAluno {
   margin-top: 1rem;
+}
+
+.envioDigital {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 
 .checkboxLabel {
