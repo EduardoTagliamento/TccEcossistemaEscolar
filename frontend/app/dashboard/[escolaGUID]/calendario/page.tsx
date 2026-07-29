@@ -15,6 +15,7 @@ import {
 } from '@/lib/api/anotacao.api';
 import { Evento, listarEventos } from '@/lib/api/evento.api';
 import { Icon } from './icons';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 interface AvisoCalendario {
@@ -563,7 +564,10 @@ export default function CalendarioAlunoPage() {
 
       <section className={styles.calendarGrid}>
         {loading ? (
-          <p className={styles.loading}>Carregando calendário...</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+            <Loader />
+            <p className={styles.loading}>Carregando calendário...</p>
+          </div>
         ) : (
           <>
             <div className={styles.weekDays}>

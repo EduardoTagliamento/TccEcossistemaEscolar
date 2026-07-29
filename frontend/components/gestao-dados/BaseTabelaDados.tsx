@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styles from './BaseTabelaDados.module.css';
 import { Icon } from '@/components/Icon';
+import Loader from '@/components/Loader';
 
 export interface Coluna<T = any> {
   id: string; // Alterado de keyof T para string para permitir IDs arbitrários
@@ -53,7 +54,7 @@ export default function BaseTabelaDados<T = any>({
           <h2 className={styles.titulo}>{titulo}</h2>
         </div>
         <div className={styles.carregando}>
-          <div className={styles.spinner}></div>
+          <Loader />
           <p>Carregando...</p>
         </div>
       </div>

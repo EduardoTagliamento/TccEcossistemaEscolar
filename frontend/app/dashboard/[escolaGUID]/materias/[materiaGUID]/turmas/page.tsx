@@ -7,6 +7,7 @@ import MateriaTurmaCard from '@/components/materias/MateriaTurmaCard';
 import NovoItemModal, { NovoItemAba } from '@/components/materias/NovoItemModal';
 import GerenciarCategoriasModal from '@/components/materias/GerenciarCategoriasModal';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 export default function TurmasDaMateriaPage() {
@@ -136,7 +137,10 @@ export default function TurmasDaMateriaPage() {
   if (carregando) {
     return (
       <div className={styles.container}>
-        <p>Carregando turmas...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+          <Loader />
+          <p>Carregando turmas...</p>
+        </div>
       </div>
     );
   }

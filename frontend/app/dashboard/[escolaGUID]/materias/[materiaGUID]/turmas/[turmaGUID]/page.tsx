@@ -12,6 +12,7 @@ import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
 import type { ItemCategoria } from '@/lib/api/materiasmodulo.api';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 interface EscolaComFuncoes {
@@ -271,7 +272,14 @@ function CategoriaPageConteudo() {
   };
 
   if (carregando) {
-    return <div className={styles.container}><p style={{ padding: '2rem' }}>Carregando...</p></div>;
+    return (
+      <div className={styles.container}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+          <Loader />
+          <p>Carregando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -516,7 +524,7 @@ function CategoriaPageConteudo() {
 
 export default function CategoriaPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '2rem' }}>Carregando...</div>}>
+    <Suspense fallback={<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 2rem' }}><Loader /><p>Carregando...</p></div>}>
       <CategoriaPageConteudo />
     </Suspense>
   );

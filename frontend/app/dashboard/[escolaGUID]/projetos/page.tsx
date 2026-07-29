@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { listarProjetos } from '@/lib/api/projeto.api';
 import { Projeto } from '@/types/projeto';
 import { Icon } from '@/components/Icon';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -74,7 +75,10 @@ export default function ProjetosPage() {
   if (authLoading || loading) {
     return (
       <div className={styles.container}>
-        <p className={styles.loading}>Carregando projetos...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+          <Loader />
+          <p className={styles.loading}>Carregando projetos...</p>
+        </div>
       </div>
     );
   }

@@ -9,7 +9,7 @@
   flex: 1;
   height: 6px;
   border-radius: 999px;
-  background: #E2EAE5;
+  background: var(--line-200, #E2EAE5);
   overflow: hidden;
   display: flex;
 }

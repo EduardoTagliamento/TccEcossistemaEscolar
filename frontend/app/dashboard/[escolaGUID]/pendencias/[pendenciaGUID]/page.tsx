@@ -34,6 +34,7 @@ import {
   marcarComoFeito,
 } from '@/lib/api/pendencia.api';
 import { uploadAnexo, ANEXO_TAMANHO_MAXIMO_BYTES, ANEXO_MIME_TYPES_PERMITIDOS } from '@/lib/api/anexo.api';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 function formatarTamanho(bytes: number | null): string {
@@ -134,7 +135,10 @@ export default function PendenciaDetalhesPage() {
   if (authLoading || loading) {
     return (
       <div className={styles.container}>
-        <p className={styles.loading}>Carregando pendência...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+          <Loader />
+          <p className={styles.loading}>Carregando pendência...</p>
+        </div>
       </div>
     );
   }

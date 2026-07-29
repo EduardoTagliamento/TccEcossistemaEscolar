@@ -96,6 +96,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - ⚠️ **Divergência encontrada:** `frontend/refs/Dashboard_ref.png` (imagem de referência anexada ao repo) é um mockup de um produto não relacionado ("Ferretto", plataforma de vestibular) — não bate em nada com o design system Bauá real. Foi tratada como não aplicável e ignorada nesta reconstrução; vale confirmar se é o arquivo errado antes de usá-la de novo como referência.
 - Pendente: os post-its "ícones de acesso rápido às matérias" e "identidade visual de entidades (turmas/matérias)" dependem do módulo de Matérias (seção 9), que segue não iniciado.
 
+**✅ Status atualizado (2026-07-29):** os 2 post-its pendentes acima foram fechados. A home já linkava pra Matérias (widgets "Tarefas a se esgotar"/"Avaliações pendentes" com deep-link pro item), mas só com texto puro — não existia nenhum card com a identidade visual (capa/cor) da matéria, só a navbar tinha o ícone "Matérias". Adicionada seção "Minhas Matérias" na home (`frontend/app/dashboard/[escolaGUID]/page.tsx`), acima dos widgets, reaproveitando o `MateriaTurmaCard` já usado na tela `/materias` — mostra até 6 matérias (aluno: turma+professor; professor: sem aluno matriculado, cai pra visão de professor) com capa/cor reais e link direto, mais "Ver todas".
+
 ---
 
 ## 4. Cadastro de Conteúdo Acadêmico (pág. 3)
@@ -152,10 +154,14 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 - **Post-its:** melhorar visual geral; dinamizar os cards de dados (hoje estáticos).
 - **Código real:** `frontend/app/dashboard/[escolaGUID]/gestao-dados/page.tsx` existe. Confirma-se via código que os cards mostrados na página (contagem de turmas/matérias/alunos etc.) precisam ser checados se já são dinâmicos ou ainda estáticos — não confirmado em detalhe.
 
+**✅ Status atualizado (2026-07-29):** já são dinâmicos — `carregarContadores()` busca via `Promise.all` os totais reais de cursos/matérias/turmas/alunos/professores/secretaria/coordenação (uma chamada por API, com `.catch()` individual pra não derrubar os outros contadores se um endpoint falhar) e popula o número em cada card. Não há mock/placeholder nessa tela.
+
 ### Tela de dados
 - **Board:** Backend ✅ | Frontend ✅
 - **Post-it:** incluir filtro de pesquisa na listagem.
 - **Código real:** módulo bem populado — `gestao-dados/cursos/page.tsx`, `gestao-dados/alunos/page.tsx`, `gestao-dados/professores/page.tsx`, `gestao-dados/materias/page.tsx`, `gestao-dados/turmas/page.tsx`, `gestao-dados/turmas/[turmaGUID]/cronograma/page.tsx`. Ação pendente: adicionar filtro de pesquisa.
+
+**✅ Status atualizado (2026-07-29):** filtro já existe — o componente compartilhado `BaseTabelaDados` (`frontend/components/gestao-dados/BaseTabelaDados.tsx`) tem um campo de busca embutido (prop `filtrarPor`), e as 7 telas de listagem (cursos, alunos, professores, matérias, turmas, secretaria, coordenação) já passam sua própria função de filtro.
 
 ### Tela de importação / Tela de adição
 - **Board:** Backend ✅ | Frontend ✅ ("pronto")
@@ -309,6 +315,8 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 **✅ Status atualizado (2026-07-21):** seção "Preferências de acessibilidade" implementada na mesma tela `/perfil` — 5 controles: tema (claro/escuro/sistema), modo daltônico, tamanho de texto (pequeno/médio/grande), reduzir animações e alto contraste. Persistência por conta via `PUT /api/usuario/:UsuarioCPF` (campos `UsuarioTema`/`UsuarioModoDaltonico`/`UsuarioEscalaFonte`/`UsuarioReduzirMovimento`/`UsuarioAltoContraste`, colunas novas — migration `2026-07-21-add-usuario-preferencias-visuais.sql`, **ainda não executada contra o banco real**, ver checklist), sem `localStorage`. Aplicado via atributos `data-theme`/`data-daltonico`/`data-font-scale`/`data-reduzir-movimento`/`data-alto-contraste` em `<html>` (`frontend/lib/theme/tema.ts`, disparado pelo `AuthContext` assim que o usuário autenticado carrega, com script de boot em `frontend/app/layout.tsx` pra evitar flash antes disso). Modo daltônico é um par de cores segura (verde/vermelho semântico → azul/laranja), **não** um filtro de simulação por tipo (protanopia/deuteranopia/tritanopia) — o post-it original citava esses tipos, mas o objetivo real (remover dependência só-de-cor nos estados de sucesso/erro) foi resolvido sem simulação, que segue fora de escopo.
 - **Cobertura de CSS (dark/daltônico/alto-contraste):** `frontend/styles/globals.css` (base, incl. `[data-theme="dark"]` que já existia mas nunca era ativado — agora é), `DashboardNavbar.module.css`, home do dashboard (`page.module.css`), `perfil/page.module.css`, `configuracoes/page.module.css` (config. da escola). Resto do app (gestão de dados, calendário, tarefas, chat, projetos etc.) não foi coberto nesta rodada. Escala de fonte é global de fato (escala o `font-size` raiz, afeta todo conteúdo em `rem`), mas texto em `px` (comum em títulos grandes herdados do design system) não escala.
 
+**✅ Status atualizado (2026-07-29):** essa leitura ficou parcialmente desatualizada — em sessões posteriores a esta, **gestão de dados** (7 telas + main page), **calendário**, **projetos** (4 telas) e a maior parte de **tarefas** já foram cobertos (grep confirma `data-theme="dark"`/`data-alto-contraste` em todos os `page.module.css` desses módulos). Existiam, porém, **9 arquivos** com cor hardcoded (fora do sistema de tokens, portanto realmente sem tema escuro/daltônico/alto-contraste), agora corrigidos: `Toast.module.css` (usado em todo o app), os 4 modais de grupo de tarefa (`ConviteGrupoModal`/`ConvitesPendentesModal`/`SolicitarEntradaModal`/`TransferirLiderancaModal`), `MinimizedChatBubble.module.css` (bolha de chat minimizada), e os componentes do módulo Matérias `ItemProgressoBar.module.css`/`MateriaTurmaCard.module.css`. A correção seguiu dois padrões já usados no resto do app: componentes que consomem os tokens globais (`--bg-primary`/`--text-secondary`/`--color-success`/`--color-error` etc.) passaram a usá-los em vez de hex fixo (cobertura automática, sem bloco de override); `MinimizedChatBubble.module.css`, que já redeclarava tokens do Bauá Design System localmente mas sem os overrides, ganhou o bloco `:global(html[data-theme="dark"])`/`[data-alto-contraste="true"]` correspondente (mesmo padrão de `VisualizadorItemModal.module.css`). Cadastro de conteúdo/tarefa/prova (`ConteudoForm`/`TarefaForm`/`ProvaAgendadaForm.module.css`) e a tela de Notificações já usavam só tokens globais — sem cor hardcoded, portanto já cobertos, mesmo sem bloco de override próprio.
+
 ### Configuração da escola
 - **Board:** Backend 🔁 | Frontend ⬜
 - **Post-its:** só acesso direção/coordenação; informar cronograma das turmas; alterar informações da escola; avaliar restringir customização de cor ao representante legal da escola.
@@ -445,5 +453,7 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 ### Outros
 - [ ] `frontend/refs/Dashboard_ref.png` parece pertencer a um projeto não relacionado ("Ferretto") — confirmar se é o arquivo errado antes de usar como referência de novo
 - [ ] Módulo em standby (pág. 11 do board) — sem informação suficiente no PDF original; só a equipe consegue esclarecer o que essa página reservava
-- [ ] Filtro de pesquisa na listagem de Gestão de Dados (post-it da seção 6)
-- [ ] Confirmar se cards da home de Gestão de Dados já são dinâmicos (post-it da seção 6, não verificado)
+- [x] Filtro de pesquisa na listagem de Gestão de Dados (post-it da seção 6) — já existe via `BaseTabelaDados` (prop `filtrarPor`) nas 7 telas de listagem
+- [x] Cards da home de Gestão de Dados já são dinâmicos (post-it da seção 6) — contadores reais via API, não estático
+- [x] Atalho visual "Minhas Matérias" na home do dashboard (post-its da seção 3) — seção nova com `MateriaTurmaCard` (capa/cor reais), antes só existia como ícone na navbar
+- [x] Cobertura de CSS de acessibilidade (dark/daltônico/alto-contraste) em Toast, modais de grupo de tarefa, bolha de chat minimizada e componentes do módulo Matérias — gestão de dados/calendário/projetos/tarefas já estavam cobertos de sessões anteriores (documentação é que estava desatualizada)

@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { Icon } from '@/components/Icon';
+import Loader from '@/components/Loader';
 import styles from './BaseUploadPlanilha.module.css';
 
 export interface DadosPlanilha<T = any> {
@@ -137,7 +138,7 @@ export default function BaseUploadPlanilha<T = any>({
         
         {carregando ? (
           <div className={styles.carregando}>
-            <div className={styles.spinner}></div>
+            <Loader />
             <p>Processando planilha...</p>
           </div>
         ) : isDragActive ? (

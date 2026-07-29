@@ -11,47 +11,5 @@
 }
 
 .bird {
-  display: inline-block;
-  flex-shrink: 0;
-  -webkit-mask-image: url('/assets/baua_fundo.png');
-  mask-image: url('/assets/baua_fundo.png');
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  animation: loaderBounce 0.9s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-}
-
-.sombra {
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  color: rgba(15, 29, 23, 0.16);
-  animation: loaderSombra 0.9s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-}
-
-.wrapInline .sombra {
-  display: none;
-}
-
-@keyframes loaderBounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-45%);
-  }
-}
-
-@keyframes loaderSombra {
-  0%, 100% {
-    transform: scaleX(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scaleX(0.6);
-    opacity: 0.3;
-  }
+  display: block;
 }

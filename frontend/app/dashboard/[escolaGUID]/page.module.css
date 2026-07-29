@@ -265,6 +265,21 @@
   font-size: 15px;
 }
 
+/* ---- Atalho visual "Minhas Matérias" (capa/cor de cada matéria/turma) ---- */
+.materiasAtalhoSection {
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+}
+
+.materiasAtalhoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
 /* ---- Widgets de conteúdo real (pendências / tarefas / avisos) ---- */
 .widgetsGrid {
   display: grid;

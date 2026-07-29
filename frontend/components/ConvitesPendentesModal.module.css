@@ -138,7 +138,7 @@
 }
 
 .status {
-  color: #FFC107;
+  color: var(--color-warning);
   font-weight: 600;
 }
 
@@ -162,21 +162,21 @@
 }
 
 .btnAceitar {
-  background: #4CAF50;
-  color: white;
+  background: var(--color-success);
+  color: var(--text-on-primary);
 }
 
 .btnAceitar:hover:not(:disabled) {
-  background: #45a049;
+  filter: brightness(0.9);
 }
 
 .btnRecusar {
-  background: #ff4444;
-  color: white;
+  background: var(--color-error);
+  color: var(--text-on-primary);
 }
 
 .btnRecusar:hover:not(:disabled) {
-  background: #cc0000;
+  filter: brightness(0.9);
 }
 
 .btnCancelar {

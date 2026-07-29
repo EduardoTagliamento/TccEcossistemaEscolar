@@ -13,6 +13,7 @@ import TransferirLiderancaModal from '@/components/TransferirLiderancaModal';
 import ConvitesPendentesModal from '@/components/ConvitesPendentesModal';
 import SolicitarEntradaModal from '@/components/SolicitarEntradaModal';
 import { Icon } from '@/components/Icon';
+import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 export default function TarefaDetalhesPage() {
@@ -137,7 +138,10 @@ export default function TarefaDetalhesPage() {
   if (authLoading || loading) {
     return (
       <div className={styles.container}>
-        <p className={styles.loading}>Carregando detalhes da tarefa...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
+          <Loader />
+          <p className={styles.loading}>Carregando detalhes da tarefa...</p>
+        </div>
       </div>
     );
   }
