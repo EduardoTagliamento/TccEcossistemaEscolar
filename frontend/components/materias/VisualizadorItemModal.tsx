@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import * as ConteudoAPI from '@/lib/api/conteudo.api';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
+import * as AnexoAPI from '@/lib/api/anexo.api';
 import type { ItemCategoria } from '@/lib/api/materiasmodulo.api';
 import styles from './VisualizadorItemModal.module.css';
 
@@ -32,11 +34,16 @@ interface VisualizadorItemModalProps {
 }
 
 export default function VisualizadorItemModal({ item, ehProfessor, onFechar, onProgressoAtualizado }: VisualizadorItemModalProps) {
+  const params = useParams();
+  const escolaGUIDParam = params?.escolaGUID;
+  const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
+
   const [carregando, setCarregando] = useState(true);
   const [conteudo, setConteudo] = useState<ConteudoAPI.Conteudo | null>(null);
   const [tarefaDetalhe, setTarefaDetalhe] = useState<any>(null);
   const [provaDetalhe, setProvaDetalhe] = useState<any>(null);
   const [paginaAtual, setPaginaAtual] = useState(0);
+  const [enviandoEntrega, setEnviandoEntrega] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const ultimoReporte = useRef(0);
 
@@ -115,6 +122,21 @@ export default function VisualizadorItemModal({ item, ehProfessor, onFechar, onP
       await carregarDetalhe();
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao marcar tarefa');
+    }
+  };
+
+  const enviarArquivoEntrega = async (arquivo: File | null) => {
+    if (!arquivo || !escolaGUID) return;
+    try {
+      setEnviandoEntrega(true);
+      const anexo = await AnexoAPI.uploadAnexo(arquivo, escolaGUID);
+      await MateriasModuloAPI.enviarAnexoEntregaTarefa(item.ItemGUID, anexo.AnexoGUID);
+      onProgressoAtualizado();
+      await carregarDetalhe();
+    } catch (erro: any) {
+      alert(erro?.message || 'Erro ao enviar entrega');
+    } finally {
+      setEnviandoEntrega(false);
     }
   };
 
@@ -220,7 +242,27 @@ export default function VisualizadorItemModal({ item, ehProfessor, onFechar, onP
                     Marcar como concluída
                   </label>
                 ) : (
-                  <p className={styles.hintFuturo}>Envio de anexo — ver tela completa da tarefa em Minhas Tarefas.</p>
+                  <div className={styles.envioDigital}>
+                    {tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaFeito ? (
+                      <p className={styles.hintFuturo}>
+                        <Icon name="check" size={16} /> Entregue
+                        {tarefaDetalhe.MatriculasAtribuidas[0].TarefaRealizacaoData &&
+                          ` em ${new Date(tarefaDetalhe.MatriculasAtribuidas[0].TarefaRealizacaoData).toLocaleString('pt-BR')}`}
+                        {' '}— envie outro arquivo abaixo pra substituir.
+                      </p>
+                    ) : (
+                      <p className={styles.hint}>Envie seu arquivo pra concluir a entrega.</p>
+                    )}
+                    <input
+                      type="file"
+                      disabled={enviandoEntrega}
+                      onChange={(e) => {
+                        void enviarArquivoEntrega(e.target.files?.[0] || null);
+                        e.target.value = '';
+                      }}
+                    />
+                    {enviandoEntrega && <p className={styles.hint}>Enviando...</p>}
+                  </div>
                 )}
               </div>
             )}
@@ -231,16 +273,22 @@ export default function VisualizadorItemModal({ item, ehProfessor, onFechar, onP
                 {(tarefaDetalhe.MatriculasAtribuidas || []).map((m: any) => (
                   <div key={m.TarefaMatriculaGUID} className={styles.linhaAluno}>
                     <span>{m.TarefaFeito ? '✅' : '—'} {m.MatriculaGUID}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={10}
-                      step={0.01}
-                      defaultValue={m.TarefaNota ?? ''}
-                      placeholder="Nota"
-                      className={styles.inputNota}
-                      onBlur={(e) => e.target.value && avaliarEntrega(m.TarefaMatriculaGUID, e.target.value)}
-                    />
+                    {m.TarefaFeito ? (
+                      <input
+                        type="number"
+                        min={0}
+                        max={10}
+                        step={0.01}
+                        defaultValue={m.TarefaNota ?? ''}
+                        placeholder="Nota"
+                        className={styles.inputNota}
+                        onBlur={(e) => e.target.value && avaliarEntrega(m.TarefaMatriculaGUID, e.target.value)}
+                      />
+                    ) : (
+                      <span className={styles.hintFuturo}>
+                        {m.TarefaNota !== null ? 'Prazo vencido — nota 0 automática' : 'Aguardando entrega'}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

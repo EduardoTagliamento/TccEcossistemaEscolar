@@ -123,7 +123,7 @@ export default class CategoriaConteudoService {
     const [tarefaRows] = await pool.execute<RowDataPacket[]>(
       `SELECT t.TarefaGUID, t.TarefaTitulo, t.TarefaTipoEntrega, t.CategoriaGUID, t.ItemOrdem,
               COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS Prazo,
-              tm.TarefaFeito, tm.TarefaNota
+              tm.TarefaFeito, tm.TarefaNota, tm.TarefaAvaliadoPorCPF
        FROM tarefaacademica t
        INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
        LEFT JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID AND tm.MatriculaGUID = ?
@@ -134,16 +134,21 @@ export default class CategoriaConteudoService {
       const prazoPassou = new Date(row.Prazo).getTime() < Date.now();
       const feito = Boolean(row.TarefaFeito);
       const nota: number | null = row.TarefaNota !== null ? Number(row.TarefaNota) : null;
+      // Zerado automaticamente pelo scheduler (prazo vencido sem entrega) tem
+      // TarefaAvaliadoPorCPF NULL — nota existe (0) mas não é uma correção de
+      // verdade, então continua contando como "atrasado" (vermelho + cadeado),
+      // não "avaliado" (que é só pra nota atribuída por um professor de fato).
+      const avaliadoManualmente = nota !== null && row.TarefaAvaliadoPorCPF !== null;
 
       let estado: ItemCategoriaDTO["Estado"] = "sem_progresso";
       let percentual: number | null = null;
-      if (nota !== null) {
+      if (avaliadoManualmente) {
         estado = "avaliado";
         percentual = Math.round((nota / 10) * 100);
       } else if (feito) {
         estado = "aguardando_avaliacao";
         percentual = 100;
-      } else if (prazoPassou) {
+      } else if (prazoPassou || nota !== null) {
         estado = "atrasado";
         percentual = 100;
       }

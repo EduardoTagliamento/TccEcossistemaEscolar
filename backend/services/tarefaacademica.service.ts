@@ -692,6 +692,17 @@ export default class TarefaAcademicaService {
       });
     }
 
+    // Só dá pra avaliar depois que o aluno enviou/marcou a entrega — antes
+    // disso não há o que corrigir. Se o prazo já venceu sem entrega, o
+    // scheduler (tarefaacademicanota.scheduler.ts) já zerou automaticamente;
+    // esse zero automático não é "corrigível" manualmente por aqui (o aluno
+    // nunca entregou).
+    if (!linha.TarefaFeito) {
+      throw new ErrorResponse(400, "Entrega pendente", {
+        message: "Só é possível avaliar depois que o aluno enviar ou marcar a tarefa como feita.",
+      });
+    }
+
     const atribuicaoAtualizada = await this.#tarefaMatriculaDAO.update(TarefaMatriculaGUID, {
       TarefaNota: nota,
       TarefaAvaliadoEm: new Date(),
@@ -894,6 +905,17 @@ export default class TarefaAcademicaService {
     }
 
     await this.#tarefaDAO.vincularAnexo(TarefaGUID, AnexoGUID, "resposta");
+
+    // Enviar o anexo É a entrega da tarefa digital — marca automaticamente
+    // como feito (mesmo efeito de marcarComoFeito(true)), sem exigir que o
+    // aluno também clique num checkbox separado depois de já ter enviado.
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF);
+    if (matricula) {
+      const atribuicao = await this.#tarefaMatriculaDAO.findByTarefaAndMatricula(TarefaGUID, matricula.MatriculaGUID);
+      if (atribuicao && !atribuicao.TarefaFeito) {
+        await this.#tarefaMatriculaDAO.update(atribuicao.TarefaMatriculaGUID, { TarefaFeito: true });
+      }
+    }
 
     this.#notificarTarefaRespostaRecebida(tarefa, usuarioCPF).catch((error) => {
       console.error("🔴 TarefaAcademicaService.#notificarTarefaRespostaRecebida() falhou:", error);
