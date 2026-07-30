@@ -98,6 +98,24 @@ export async function listarTarefas(filters?: {
   return result.data?.tarefas || [];
 }
 
+// READ - Buscar tarefa por GUID com o detalhe usado no visualizador de item (matrículas
+// atribuídas, entregas etc.). Para não-professor, `minhaMatricula=true` restringe a
+// resposta à atribuição do próprio aluno.
+export async function buscarTarefaItemDetalhe(tarefaGUID: string, ehProfessor: boolean): Promise<any> {
+  const query = ehProfessor ? '' : '?minhaMatricula=true';
+  const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}${query}`, {
+    headers: getHeaders()
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || result.message || 'Erro ao buscar tarefa');
+  }
+
+  return result.data.tarefa;
+}
+
 // UPDATE - Atualizar tarefa
 export async function atualizarTarefa(
   tarefaGUID: string,

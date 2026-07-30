@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/auth/AuthContext';
+import { QueryProvider } from '@/lib/query/QueryProvider';
 import '../styles/globals.css';
 
 export const dynamic = 'force-dynamic';
@@ -46,9 +47,11 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

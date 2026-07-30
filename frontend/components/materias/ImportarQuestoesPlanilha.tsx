@@ -17,7 +17,7 @@
 import { useState } from 'react';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
 import { Icon } from '@/components/Icon';
-import * as TarefaAcademicaAPI from '@/lib/api/tarefaacademica.api';
+import { useImportarQuestoesPlanilha } from '@/lib/tarefas/useTarefaMutations';
 import { exportarParaExcel } from '@/lib/exportarExcel';
 import type { AlternativaInput, Questao, QuestaoImportRow } from '@/types/tarefaacademica';
 import styles from './ImportarQuestoesPlanilha.module.css';
@@ -114,9 +114,10 @@ export default function ImportarQuestoesPlanilha({
 }: ImportarQuestoesPlanilhaProps) {
   const [linhasValidas, setLinhasValidas] = useState<QuestaoImportRow[]>([]);
   const [errosParse, setErrosParse] = useState<string[]>([]);
-  const [importando, setImportando] = useState(false);
   const [errosBackend, setErrosBackend] = useState<string[]>([]);
   const [totalImportado, setTotalImportado] = useState<number | null>(null);
+  const importarMutation = useImportarQuestoesPlanilha(tarefaGUID ?? '');
+  const importando = importarMutation.isPending;
 
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
     const validas: QuestaoImportRow[] = [];
@@ -185,16 +186,13 @@ export default function ImportarQuestoesPlanilha({
     }
 
     try {
-      setImportando(true);
-      const resultado = await TarefaAcademicaAPI.importarQuestoesPlanilha(tarefaGUID, linhasValidas);
+      const resultado = await importarMutation.mutateAsync(linhasValidas);
       setTotalImportado(resultado.count);
       setErrosBackend(resultado.erros.map((e) => `Linha ${e.linha}: ${e.mensagem}`));
       onImportadoBackend?.(resultado.criadas);
       setLinhasValidas([]);
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao importar questões');
-    } finally {
-      setImportando(false);
     }
   };
 

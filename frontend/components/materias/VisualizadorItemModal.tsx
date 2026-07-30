@@ -2,15 +2,33 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import { Icon } from '@/components/Icon';
 import * as ConteudoAPI from '@/lib/api/conteudo.api';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import * as AnexoAPI from '@/lib/api/anexo.api';
 import type { ItemCategoria } from '@/lib/api/materiasmodulo.api';
-import * as TarefaAcademicaAPI from '@/lib/api/tarefaacademica.api';
 import type { Questao } from '@/types/tarefaacademica';
 import { carregarYoutubeIframeAPI, YOUTUBE_PLAYER_STATE } from '@/lib/youtube/youtubeIframeApi';
 import { exportarParaExcel } from '@/lib/exportarExcel';
+import { tarefaKeys } from '@/lib/tarefas/queryKeys';
+import {
+  useTarefaItemDetalhe,
+  useQuestoes,
+  useQuestoesComRespostas,
+  useRespostasAluno,
+  useEstatisticasItem,
+  useEstatisticasPorQuestao,
+} from '@/lib/tarefas/useTarefaQueries';
+import {
+  useMarcarComoFeito,
+  useEnviarAnexoEntrega,
+  useResponderObjetiva,
+  useResponderDiscursiva,
+  useAvaliarQuestaoDiscursiva,
+  useAvaliarTarefa,
+  useExcluirTarefa,
+} from '@/lib/tarefas/useTarefaMutations';
 import styles from './VisualizadorItemModal.module.css';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -28,6 +46,40 @@ function getHeaders(): HeadersInit {
 function extrairYoutubeId(url: string): string | null {
   const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{11})/);
   return match ? match[1] : null;
+}
+
+const ehImagemAnexo = (nome: string | null): boolean => Boolean(nome && /\.(jpe?g|png|gif|webp)$/i.test(nome));
+
+interface AnexoQuestaoBasico {
+  AnexoGUID: string;
+  AnexoNomeOriginal: string | null;
+  AnexoCaminho: string;
+}
+
+/** Imagem: miniatura clicável (abre em tamanho real numa aba nova, URL pública). Outros tipos: botão de download autenticado, como já era. */
+function AnexoQuestaoPreview({ anexo }: { anexo: AnexoQuestaoBasico }) {
+  if (ehImagemAnexo(anexo.AnexoNomeOriginal)) {
+    return (
+      <a
+        href={anexo.AnexoCaminho}
+        target="_blank"
+        rel="noreferrer"
+        className={styles.anexoQuestaoThumbLink}
+        title={anexo.AnexoNomeOriginal || 'Imagem'}
+      >
+        <img src={anexo.AnexoCaminho} alt={anexo.AnexoNomeOriginal || ''} className={styles.anexoQuestaoThumb} />
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className={styles.anexoEntregado}
+      onClick={() => AnexoAPI.baixarAnexo(anexo.AnexoGUID, anexo.AnexoNomeOriginal || undefined)}
+    >
+      <Icon name="paperclip" size={14} /> {anexo.AnexoNomeOriginal || 'Anexo'}
+    </button>
+  );
 }
 
 type AbaAvaliacao = 'pendentes' | 'avaliados' | 'atrasados' | 'sem_postagem';
@@ -56,9 +108,12 @@ interface VisualizadorItemModalProps {
 }
 
 export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, turmaGUID, onFechar, onProgressoAtualizado, onEditar }: VisualizadorItemModalProps) {
-  const [carregando, setCarregando] = useState(true);
+  const queryClient = useQueryClient();
+  const isTarefa = item.Tipo === 'tarefa_digital' || item.Tipo === 'tarefa_presencial' || item.Tipo === 'tarefa_lista';
+  const isTarefaLista = item.Tipo === 'tarefa_lista';
+
+  const [carregandoLocal, setCarregandoLocal] = useState(true);
   const [conteudo, setConteudo] = useState<ConteudoAPI.Conteudo | null>(null);
-  const [tarefaDetalhe, setTarefaDetalhe] = useState<any>(null);
   const [provaDetalhe, setProvaDetalhe] = useState<any>(null);
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [arquivoEntrega, setArquivoEntrega] = useState<File | null>(null);
@@ -68,17 +123,30 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const [mostrarExclusao, setMostrarExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [mostrarEstatisticas, setMostrarEstatisticas] = useState(false);
-  const [estatisticas, setEstatisticas] = useState<MateriasModuloAPI.EstatisticasItem | null>(null);
-  const [carregandoEstatisticas, setCarregandoEstatisticas] = useState(false);
-  const [estatisticasPorQuestao, setEstatisticasPorQuestao] = useState<MateriasModuloAPI.EstatisticasPorQuestao | null>(null);
-  // ---- Tarefa "lista" (quiz estilo Forms) ----
-  const [questoesAluno, setQuestoesAluno] = useState<MateriasModuloAPI.QuestaoComResposta[]>([]);
-  const [questoesProfessor, setQuestoesProfessor] = useState<Questao[]>([]);
+  // ---- Tarefa (TanStack Query) ----
+  const tarefaQuery = useTarefaItemDetalhe(isTarefa ? item.ItemGUID : undefined, ehProfessor);
+  const tarefaDetalhe = tarefaQuery.data;
+  const questoesProfessorQuery = useQuestoes(isTarefaLista && ehProfessor ? item.ItemGUID : undefined);
+  const questoesAlunoQuery = useQuestoesComRespostas(isTarefaLista && !ehProfessor ? item.ItemGUID : undefined);
+  const questoesProfessor: Questao[] = questoesProfessorQuery.data ?? [];
+  const questoesAluno: MateriasModuloAPI.QuestaoComResposta[] = questoesAlunoQuery.data ?? [];
+  const estatisticasQuery = useEstatisticasItem(item.Tipo, item.ItemGUID, turmaGUID, ehProfessor && mostrarEstatisticas);
+  const estatisticasPorQuestaoQuery = useEstatisticasPorQuestao(item.ItemGUID, turmaGUID, ehProfessor && mostrarEstatisticas && isTarefaLista);
+  const estatisticas = estatisticasQuery.data ?? null;
+  const estatisticasPorQuestao = estatisticasPorQuestaoQuery.data ?? null;
+  const carregandoEstatisticas = estatisticasQuery.isFetching || (isTarefaLista && estatisticasPorQuestaoQuery.isFetching);
+  const questoesLoading = isTarefaLista ? (ehProfessor ? questoesProfessorQuery.isLoading : questoesAlunoQuery.isLoading) : false;
+  const carregando = isTarefa ? tarefaQuery.isLoading || questoesLoading : carregandoLocal;
+  const [mostrarQuestoesProfessor, setMostrarQuestoesProfessor] = useState(false);
   const [enviandoResposta, setEnviandoResposta] = useState<string | null>(null);
   const [textosDiscursiva, setTextosDiscursiva] = useState<Record<string, string>>({});
   // ---- Correção do professor (por questão) ----
-  const [respostasAlunoLista, setRespostasAlunoLista] = useState<Awaited<ReturnType<typeof TarefaAcademicaAPI.buscarRespostasAluno>>>([]);
-  const [carregandoRespostasAluno, setCarregandoRespostasAluno] = useState(false);
+  const respostasAlunoQuery = useRespostasAluno(
+    isTarefaLista && ehProfessor ? item.ItemGUID : undefined,
+    alunoDetalheGUID ?? undefined
+  );
+  const respostasAlunoLista = respostasAlunoQuery.data ?? [];
+  const carregandoRespostasAluno = respostasAlunoQuery.isLoading;
   const [pontosDiscursiva, setPontosDiscursiva] = useState<Record<string, string>>({});
   const [salvandoCorrecao, setSalvandoCorrecao] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -87,48 +155,63 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const youtubePlayerRef = useRef<any>(null);
   const youtubeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ---- Mutations de tarefa ----
+  const marcarComoFeitoMutation = useMarcarComoFeito(item.ItemGUID);
+  const enviarAnexoEntregaMutation = useEnviarAnexoEntrega(item.ItemGUID);
+  const responderObjetivaMutation = useResponderObjetiva(item.ItemGUID);
+  const responderDiscursivaMutation = useResponderDiscursiva(item.ItemGUID);
+  const avaliarQuestaoDiscursivaMutation = useAvaliarQuestaoDiscursiva(item.ItemGUID, alunoDetalheGUID ?? '');
+  const avaliarTarefaMutation = useAvaliarTarefa(item.ItemGUID);
+  const excluirTarefaMutation = useExcluirTarefa();
+
+  const invalidarItemDetalhe = () => {
+    queryClient.invalidateQueries({ queryKey: tarefaKeys.itemDetalhe(item.ItemGUID, ehProfessor) });
+  };
+
   useEffect(() => {
     setAbaAvaliacao('pendentes');
     setAlunoDetalheGUID(null);
     setMostrarEstatisticas(false);
-    setEstatisticas(null);
-    setEstatisticasPorQuestao(null);
-    void carregarDetalhe();
+    setMostrarQuestoesProfessor(false);
+    if (!isTarefa) {
+      void carregarDetalhe();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.ItemGUID]);
 
+  // Seed do textarea de resposta discursiva a partir do que já veio salvo do servidor.
+  useEffect(() => {
+    if (!questoesAlunoQuery.data) return;
+    const textos: Record<string, string> = {};
+    questoesAlunoQuery.data.forEach((q) => {
+      if (q.QuestaoTipo === 'discursiva') textos[q.QuestaoGUID] = q.MinhaResposta?.RespostaTextoDiscursiva || '';
+    });
+    setTextosDiscursiva(textos);
+  }, [questoesAlunoQuery.data]);
+
+  useEffect(() => {
+    if (respostasAlunoQuery.error) {
+      alert((respostasAlunoQuery.error as any)?.message || 'Erro ao carregar respostas do aluno');
+    }
+  }, [respostasAlunoQuery.error]);
+
+  useEffect(() => {
+    if (mostrarEstatisticas && estatisticasQuery.error) {
+      alert((estatisticasQuery.error as any)?.message || 'Erro ao carregar estatísticas');
+      setMostrarEstatisticas(false);
+    }
+  }, [estatisticasQuery.error]);
+
+  /** Conteúdo (texto/vídeo/imagem) e prova continuam com fetch manual — fora do escopo desta migração. */
   const carregarDetalhe = async () => {
     try {
-      setCarregando(true);
+      setCarregandoLocal(true);
       if (item.Tipo.startsWith('conteudo_')) {
         const dados = await ConteudoAPI.buscarConteudo(item.ItemGUID);
         setConteudo(dados);
         if (item.Tipo === 'conteudo_texto') {
           await MateriasModuloAPI.registrarProgressoTexto(item.ItemGUID);
           onProgressoAtualizado();
-        }
-      } else if (item.Tipo === 'tarefa_digital' || item.Tipo === 'tarefa_presencial' || item.Tipo === 'tarefa_lista') {
-        // Uma linha de TarefaAcademica é compartilhada por N alunos da turma —
-        // minhaMatricula=true restringe a resposta à atribuição do próprio
-        // aluno (professor continua vendo a turma inteira).
-        const query = ehProfessor ? '' : '?minhaMatricula=true';
-        const response = await fetch(`${API_URL}/tarefa/${item.ItemGUID}${query}`, { headers: getHeaders() });
-        const resultado = await response.json();
-        setTarefaDetalhe(resultado?.data?.tarefa);
-
-        if (item.Tipo === 'tarefa_lista') {
-          if (ehProfessor) {
-            const questoes = await TarefaAcademicaAPI.listarQuestoes(item.ItemGUID);
-            setQuestoesProfessor(questoes);
-          } else {
-            const questoes = await MateriasModuloAPI.buscarQuestoesComRespostas(item.ItemGUID);
-            setQuestoesAluno(questoes);
-            const textos: Record<string, string> = {};
-            questoes.forEach((q) => {
-              if (q.QuestaoTipo === 'discursiva') textos[q.QuestaoGUID] = q.MinhaResposta?.RespostaTextoDiscursiva || '';
-            });
-            setTextosDiscursiva(textos);
-          }
         }
       } else if (item.Tipo === 'prova') {
         const response = await fetch(`${API_URL}/prova/${item.ItemGUID}`, { headers: getHeaders() });
@@ -148,7 +231,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     } catch (erro) {
       console.error('Erro ao carregar item:', erro);
     } finally {
-      setCarregando(false);
+      setCarregandoLocal(false);
     }
   };
 
@@ -246,15 +329,12 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
 
   const marcarTarefaFeita = async (feito: boolean) => {
     try {
-      const response = await fetch(`${API_URL}/tarefa/${item.ItemGUID}/marcar-feito`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-        body: JSON.stringify({ MatriculaGUID: tarefaDetalhe?.MatriculasAtribuidas?.[0]?.MatriculaGUID, TarefaFeito: feito }),
+      await marcarComoFeitoMutation.mutateAsync({
+        matriculaGUID: tarefaDetalhe?.MatriculasAtribuidas?.[0]?.MatriculaGUID,
+        tarefaFeito: feito,
       });
-      const resultado = await response.json();
-      if (!resultado.success) throw new Error(resultado.message);
       onProgressoAtualizado();
-      await carregarDetalhe();
+      invalidarItemDetalhe();
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao marcar tarefa');
     }
@@ -266,11 +346,11 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     try {
       setEnviandoEntrega(true);
       const anexo = await AnexoAPI.uploadAnexo(arquivoEntrega, escolaGUID);
-      await TarefaAcademicaAPI.enviarAnexoEntrega(item.ItemGUID, anexo.AnexoGUID);
-      await TarefaAcademicaAPI.marcarComoFeito(item.ItemGUID, minhaAtribuicao.MatriculaGUID, true);
+      await enviarAnexoEntregaMutation.mutateAsync(anexo.AnexoGUID);
+      await marcarComoFeitoMutation.mutateAsync({ matriculaGUID: minhaAtribuicao.MatriculaGUID, tarefaFeito: true });
       setArquivoEntrega(null);
       onProgressoAtualizado();
-      await carregarDetalhe();
+      invalidarItemDetalhe();
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao enviar entrega');
     } finally {
@@ -281,9 +361,9 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const responderQuestaoObjetiva = async (questaoGUID: string, alternativaGUID: string) => {
     try {
       setEnviandoResposta(questaoGUID);
-      await MateriasModuloAPI.responderObjetiva(item.ItemGUID, questaoGUID, alternativaGUID);
+      await responderObjetivaMutation.mutateAsync({ questaoGUID, alternativaGUID });
       onProgressoAtualizado();
-      await carregarDetalhe();
+      invalidarItemDetalhe();
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao responder questão');
     } finally {
@@ -299,36 +379,15 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     }
     try {
       setEnviandoResposta(questaoGUID);
-      await MateriasModuloAPI.responderDiscursiva(item.ItemGUID, questaoGUID, texto);
+      await responderDiscursivaMutation.mutateAsync({ questaoGUID, texto });
       onProgressoAtualizado();
-      await carregarDetalhe();
+      invalidarItemDetalhe();
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao responder questão');
     } finally {
       setEnviandoResposta(null);
     }
   };
-
-  // Painel de correção do professor: recarrega as respostas do aluno
-  // selecionado sempre que a seleção muda (não dá pra reaproveitar
-  // tarefaDetalhe.MatriculasAtribuidas — aquele é o agregado, não por questão).
-  useEffect(() => {
-    if (item.Tipo !== 'tarefa_lista' || !ehProfessor || !alunoDetalheGUID) {
-      setRespostasAlunoLista([]);
-      return;
-    }
-    (async () => {
-      try {
-        setCarregandoRespostasAluno(true);
-        const questoes = await TarefaAcademicaAPI.buscarRespostasAluno(item.ItemGUID, alunoDetalheGUID);
-        setRespostasAlunoLista(questoes);
-      } catch (erro: any) {
-        alert(erro?.message || 'Erro ao carregar respostas do aluno');
-      } finally {
-        setCarregandoRespostasAluno(false);
-      }
-    })();
-  }, [alunoDetalheGUID, item.Tipo, item.ItemGUID, ehProfessor]);
 
   const corrigirDiscursiva = async (respostaGUID: string, pontosMaximos: number) => {
     const valor = pontosDiscursiva[respostaGUID];
@@ -339,13 +398,9 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     }
     try {
       setSalvandoCorrecao(respostaGUID);
-      await TarefaAcademicaAPI.avaliarQuestaoDiscursiva(respostaGUID, pontos);
+      await avaliarQuestaoDiscursivaMutation.mutateAsync({ respostaGUID, pontos });
       onProgressoAtualizado();
-      if (alunoDetalheGUID) {
-        const questoes = await TarefaAcademicaAPI.buscarRespostasAluno(item.ItemGUID, alunoDetalheGUID);
-        setRespostasAlunoLista(questoes);
-      }
-      await carregarDetalhe();
+      invalidarItemDetalhe();
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao corrigir resposta');
     } finally {
@@ -374,9 +429,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
         const resultado = await response.json();
         if (!resultado.success) throw new Error(resultado.message);
       } else {
-        const response = await fetch(`${API_URL}/tarefa/${item.ItemGUID}`, { method: 'DELETE', headers: getHeaders() });
-        const resultado = await response.json();
-        if (!resultado.success) throw new Error(resultado.message);
+        await excluirTarefaMutation.mutateAsync(item.ItemGUID);
       }
       onProgressoAtualizado();
       onFechar();
@@ -386,24 +439,8 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     }
   };
 
-  const alternarEstatisticas = async () => {
-    const abrindo = !mostrarEstatisticas;
-    setMostrarEstatisticas(abrindo);
-    if (!abrindo || estatisticas || carregandoEstatisticas) return;
-    try {
-      setCarregandoEstatisticas(true);
-      const dados = await MateriasModuloAPI.buscarEstatisticasItem(item.Tipo, item.ItemGUID, turmaGUID);
-      setEstatisticas(dados);
-      if (item.Tipo === 'tarefa_lista') {
-        const porQuestao = await MateriasModuloAPI.buscarEstatisticasPorQuestao(item.ItemGUID, turmaGUID);
-        setEstatisticasPorQuestao(porQuestao);
-      }
-    } catch (erro: any) {
-      alert(erro?.message || 'Erro ao carregar estatísticas');
-      setMostrarEstatisticas(false);
-    } finally {
-      setCarregandoEstatisticas(false);
-    }
+  const alternarEstatisticas = () => {
+    setMostrarEstatisticas((atual) => !atual);
   };
 
   const exportarEstatisticasExcel = () => {
@@ -450,9 +487,9 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
       return;
     }
     try {
-      await MateriasModuloAPI.avaliarTarefa(tarefaMatriculaGUID, nota);
+      await avaliarTarefaMutation.mutateAsync({ tarefaMatriculaGUID, nota });
       onProgressoAtualizado();
-      await carregarDetalhe();
+      invalidarItemDetalhe();
       // O aluno acabou de sair de "pendentes" — segue a mesma pessoa,
       // agora na aba "avaliados", em vez de sumir da tela.
       setAbaAvaliacao('avaliados');
@@ -650,6 +687,61 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
               </Link>
             )}
 
+            {ehProfessor && item.Tipo === 'tarefa_lista' && questoesProfessor.length > 0 && (
+              <div className={styles.listaQuestoesProfessorBloco}>
+                <button
+                  type="button"
+                  className={styles.linkGrupo}
+                  onClick={() => setMostrarQuestoesProfessor((v) => !v)}
+                >
+                  <Icon name="list" size={16} />
+                  {mostrarQuestoesProfessor ? 'Ocultar questões' : `Ver questões (${questoesProfessor.length})`}
+                </button>
+
+                {mostrarQuestoesProfessor && (
+                  <div className={styles.listaQuestoesAluno}>
+                    {questoesProfessor.map((q, indice) => (
+                      <div key={q.QuestaoGUID} className={styles.questaoAlunoCard}>
+                        <p className={styles.questaoAlunoEnunciado}>
+                          <strong>{indice + 1}.</strong> {q.QuestaoEnunciado}
+                          <span className={styles.questaoAlunoPontos}>
+                            {' '}({q.QuestaoPontosMaximos} pt{q.QuestaoPontosMaximos === 1 ? '' : 's'} · {q.QuestaoTipo === 'objetiva' ? 'objetiva' : 'discursiva'})
+                          </span>
+                        </p>
+
+                        {q.Anexos.length > 0 && (
+                          <div className={styles.anexosQuestaoDetalhe}>
+                            {q.Anexos.map((anexo) => (
+                              <AnexoQuestaoPreview key={anexo.AnexoGUID} anexo={anexo} />
+                            ))}
+                          </div>
+                        )}
+
+                        {q.QuestaoTipo === 'objetiva' ? (
+                          <div className={styles.alternativasAlunoList}>
+                            {q.Alternativas.map((a) => (
+                              <div key={a.AlternativaGUID} className={a.AlternativaCorreta ? styles.alternativaCorreta : styles.alternativaAluno}>
+                                {a.AlternativaCorreta && <Icon name="check" size={14} />} {a.AlternativaTexto}
+                                {a.AlternativaPontos > 0 && ` — ${a.AlternativaPontos} pt${a.AlternativaPontos === 1 ? '' : 's'}`}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className={styles.hintFuturo}>Questão discursiva — corrigida individualmente na aba de avaliação abaixo.</p>
+                        )}
+
+                        {q.QuestaoExplicacao && (
+                          <p className={styles.explicacaoQuestao}>
+                            <Icon name="help-circle" size={14} /> {q.QuestaoExplicacao}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {!ehProfessor && item.Tipo === 'tarefa_lista' && (() => {
               const tarefaFechada = Boolean(tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaFeito);
               const respondidas = questoesAluno.filter((q) => q.MinhaResposta).length;
@@ -672,6 +764,14 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
                         <strong>{indice + 1}.</strong> {q.QuestaoEnunciado}
                         <span className={styles.questaoAlunoPontos}> ({q.QuestaoPontosMaximos} pt{q.QuestaoPontosMaximos === 1 ? '' : 's'})</span>
                       </p>
+
+                      {q.Anexos.length > 0 && (
+                        <div className={styles.anexosQuestaoDetalhe}>
+                          {q.Anexos.map((anexo) => (
+                            <AnexoQuestaoPreview key={anexo.AnexoGUID} anexo={anexo} />
+                          ))}
+                        </div>
+                      )}
 
                       {q.QuestaoTipo === 'objetiva' ? (
                         <div className={styles.alternativasAlunoList}>
@@ -912,6 +1012,14 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
                                 <strong>{indice + 1}.</strong> {q.QuestaoEnunciado}
                                 <span className={styles.questaoAlunoPontos}> ({q.QuestaoPontosMaximos} pt{q.QuestaoPontosMaximos === 1 ? '' : 's'})</span>
                               </p>
+
+                              {q.Anexos.length > 0 && (
+                                <div className={styles.anexosQuestaoDetalhe}>
+                                  {q.Anexos.map((anexo) => (
+                                    <AnexoQuestaoPreview key={anexo.AnexoGUID} anexo={anexo} />
+                                  ))}
+                                </div>
+                              )}
 
                               {!q.Resposta ? (
                                 <p className={styles.hintFuturo}>Ainda não respondida.</p>

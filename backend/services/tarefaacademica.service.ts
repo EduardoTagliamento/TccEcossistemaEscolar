@@ -128,6 +128,8 @@ export interface QuestaoAnexoResumoDTO {
   AnexoGUID: string;
   AnexoNomeOriginal: string | null;
   AnexoTamanho: number | null;
+  /** URL pública (R2) — dá pra usar direto como <img src> pra preview, sem passar pelo download autenticado. */
+  AnexoCaminho: string;
   CreatedAt: string | null;
 }
 
@@ -1377,6 +1379,7 @@ export default class TarefaAcademicaService {
       AnexoGUID: a.AnexoGUID,
       AnexoNomeOriginal: a.AnexoNomeOriginal,
       AnexoTamanho: a.AnexoTamanho,
+      AnexoCaminho: a.AnexoCaminho,
       CreatedAt: a.CreatedAt ? new Date(a.CreatedAt).toISOString() : null,
     })),
     TemResposta: temResposta,
@@ -1974,6 +1977,7 @@ export default class TarefaAcademicaService {
           AnexoGUID: a.AnexoGUID,
           AnexoNomeOriginal: a.AnexoNomeOriginal,
           AnexoTamanho: a.AnexoTamanho,
+          AnexoCaminho: a.AnexoCaminho,
           CreatedAt: a.CreatedAt ? new Date(a.CreatedAt).toISOString() : null,
         })),
         MinhaResposta: resposta
@@ -2043,6 +2047,7 @@ export default class TarefaAcademicaService {
           AnexoGUID: a.AnexoGUID,
           AnexoNomeOriginal: a.AnexoNomeOriginal,
           AnexoTamanho: a.AnexoTamanho,
+          AnexoCaminho: a.AnexoCaminho,
           CreatedAt: a.CreatedAt ? new Date(a.CreatedAt).toISOString() : null,
         })),
         Resposta: resposta

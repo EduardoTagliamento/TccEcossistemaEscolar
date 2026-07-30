@@ -8,18 +8,35 @@
  * dashboard já é persistente via layout.tsx).
  */
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { useForm, type FieldErrors } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
 import * as TarefaAcademicaAPI from '@/lib/api/tarefaacademica.api';
+import * as AnexoAPI from '@/lib/api/anexo.api';
 import { QuestaoCreateInput } from '@/types/tarefaacademica';
 import { DiaSemana, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
 import { Icon } from '@/components/Icon';
 import ImportarQuestoesPlanilha from '@/components/materias/ImportarQuestoesPlanilha';
 import type { QuestaoImportRow, Questao } from '@/types/tarefaacademica';
+import { tarefaKeys } from '@/lib/tarefas/queryKeys';
+import { useTarefas } from '@/lib/tarefas/useTarefaQueries';
+import {
+  useAtualizarTarefa,
+  useExcluirTarefa,
+  useCriarQuestao,
+  useAtualizarQuestao,
+  useExcluirQuestao,
+  useReordenarQuestoes,
+  useVincularAnexoQuestao,
+  useDesvincularAnexoQuestao,
+} from '@/lib/tarefas/useTarefaMutations';
 import styles from './TarefaForm.module.css';
 
 interface Tarefa {
@@ -41,6 +58,15 @@ interface AlternativaRascunho {
   Pontos: number;
 }
 
+interface AnexoQuestaoRascunho {
+  AnexoGUID: string;
+  AnexoNomeOriginal: string | null;
+  AnexoCaminho: string;
+}
+
+/** Preview de imagem só pra extensões conhecidas — o resto (pdf/docx/etc) fica só com ícone + nome. */
+const ehImagemAnexo = (nome: string | null): boolean => Boolean(nome && /\.(jpe?g|png|gif|webp)$/i.test(nome));
+
 interface QuestaoRascunho {
   clientId: string;
   /** Presente só em modo edição, quando a questão já existe no backend. */
@@ -50,6 +76,10 @@ interface QuestaoRascunho {
   PontosMaximos: number;
   Explicacao: string;
   Alternativas: AlternativaRascunho[];
+  /** Já enviados via POST /api/anexo — se QuestaoGUID existe, já estão vinculados
+   * no backend (vincularAnexoQuestao imediato); se não, vão junto no AnexosGUID
+   * do payload de criação da questão. */
+  Anexos: AnexoQuestaoRascunho[];
   /** Vem do backend (modo edição) — bloqueia mudar Tipo/Alternativas/excluir. */
   TemResposta: boolean;
 }
@@ -64,6 +94,7 @@ const novaQuestaoRascunho = (): QuestaoRascunho => ({
   PontosMaximos: 1,
   Explicacao: '',
   TemResposta: false,
+  Anexos: [],
   Alternativas: [
     { clientId: novoClientId(), Texto: '', Correta: true, Pontos: 1 },
     { clientId: novoClientId(), Texto: '', Correta: false, Pontos: 0 },
@@ -112,6 +143,30 @@ interface SerieItem {
   expanded: boolean;
 }
 
+/**
+ * Espelha (sem compartilhar arquivo — não há workspace configurado entre
+ * backend/ e frontend/) o schema Zod de `backend/schemas/tarefaacademica.schema.ts`
+ * pros campos que este formulário edita diretamente. Não modela
+ * MatriculasGUID/anexosDescricao/DatasPorMatricula — são resolvidos por fora
+ * (modal de alunos, agendamento automático), não fazem parte de `form`.
+ */
+const TarefaFormSchema = z.object({
+  matXprofXturxescGUID: z.string().min(1, 'Selecione uma matéria.'),
+  CategoriaNome: z.string(),
+  TarefaTitulo: z
+    .string()
+    .trim()
+    .min(1, 'O título é obrigatório.')
+    .max(128, 'O título deve ter no máximo 128 caracteres.'),
+  TarefaConteudo: z.string().max(1024, 'O conteúdo deve ter no máximo 1024 caracteres.'),
+  TarefaPrazoData: z.string().min(1, 'O prazo é obrigatório.'),
+  TarefaTipoEntrega: z.enum(['digital', 'fisica', 'lista']),
+  TarefaCompartilhada: z.boolean(),
+  TarefaMinPessoas: z.number().nullable(),
+  TarefaMaxPessoas: z.number().nullable(),
+});
+type TarefaFormValues = z.infer<typeof TarefaFormSchema>;
+
 interface TarefaFormProps {
   materiaGUIDInicial?: string;
   turmaGUIDInicial?: string;
@@ -155,13 +210,23 @@ export default function TarefaForm({
     setMostrarAvisoTimezone(usuarioForaDoBrasil());
   }, []);
 
-  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const queryClient = useQueryClient();
+  const tarefasQuery = useTarefas(undefined, !!usuario);
+  const tarefas = tarefasQuery.data ?? [];
+
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [series, setSeries] = useState<SerieItem[]>([]);
   const [categoriaNomes, setCategoriaNomes] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingGUID, setEditingGUID] = useState<string | null>(null);
+  const atualizarTarefaMutation = useAtualizarTarefa(editingGUID ?? '');
+  const excluirTarefaMutation = useExcluirTarefa();
+  const criarQuestaoMutation = useCriarQuestao(editingGUID ?? '');
+  const atualizarQuestaoMutation = useAtualizarQuestao(editingGUID ?? '');
+  const excluirQuestaoMutation = useExcluirQuestao(editingGUID ?? '');
+  const reordenarQuestoesMutation = useReordenarQuestoes(editingGUID ?? '');
+  const vincularAnexoQuestaoMutation = useVincularAnexoQuestao(editingGUID ?? '');
+  const desvincularAnexoQuestaoMutation = useDesvincularAnexoQuestao(editingGUID ?? '');
   const [erro, setErro] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
@@ -171,17 +236,31 @@ export default function TarefaForm({
   const [deslocamentoMinutos, setDeslocamentoMinutos] = useState(0);
   const [calculandoDatas, setCalculandoDatas] = useState(false);
   const [resultadosCalculo, setResultadosCalculo] = useState<Record<string, ResultadoCalculoUI>>({});
-  const [form, setForm] = useState({
-    matXprofXturxescGUID: '',
-    CategoriaNome: '',
-    TarefaTitulo: '',
-    TarefaConteudo: '',
-    TarefaPrazoData: '',
-    TarefaTipoEntrega: 'digital' as 'digital' | 'fisica' | 'lista',
-    TarefaCompartilhada: false,
-    TarefaMinPessoas: null as number | null,
-    TarefaMaxPessoas: null as number | null,
+  const {
+    handleSubmit: handleSubmitRHF,
+    watch,
+    setValue,
+    reset: resetForm,
+  } = useForm<TarefaFormValues>({
+    resolver: zodResolver(TarefaFormSchema),
+    defaultValues: {
+      matXprofXturxescGUID: '',
+      CategoriaNome: '',
+      TarefaTitulo: '',
+      TarefaConteudo: '',
+      TarefaPrazoData: '',
+      TarefaTipoEntrega: 'digital',
+      TarefaCompartilhada: false,
+      TarefaMinPessoas: null,
+      TarefaMaxPessoas: null,
+    },
   });
+  const form = watch();
+
+  const onInvalidoRHF = (formErrors: FieldErrors<TarefaFormValues>) => {
+    const primeiraMensagem = Object.values(formErrors)[0]?.message;
+    setErro(typeof primeiraMensagem === 'string' ? primeiraMensagem : 'Corrija os campos destacados antes de salvar.');
+  };
 
   // ========== Lista de questões (tarefa tipo "lista") ==========
   const [questoes, setQuestoes] = useState<QuestaoRascunho[]>([]);
@@ -287,7 +366,50 @@ export default function TarefaForm({
       q.Tipo === 'objetiva'
         ? q.Alternativas.map((a) => ({ AlternativaTexto: a.Texto.trim(), AlternativaCorreta: a.Correta, AlternativaPontos: a.Pontos }))
         : undefined,
+    // Só relevante pra questão nova (sem QuestaoGUID ainda) — se já existe no
+    // backend, os anexos já foram vinculados na hora do upload (ver
+    // adicionarAnexoQuestao), reenviar aqui seria redundante (e
+    // QuestaoUpdateInput nem tem esse campo).
+    AnexosGUID: q.QuestaoGUID ? undefined : q.Anexos.map((a) => a.AnexoGUID),
   });
+
+  /** Envia o arquivo pro storage genérico e vincula à questão — se a questão já
+   * existe no backend (modo edição), vincula na hora; senão fica só no
+   * rascunho local, e vai junto no AnexosGUID quando a questão for criada. */
+  const [enviandoAnexoQuestao, setEnviandoAnexoQuestao] = useState<string | null>(null);
+
+  const adicionarAnexoQuestao = async (questaoClientId: string, arquivo: File) => {
+    const questao = questoes.find((q) => q.clientId === questaoClientId);
+    if (!questao) return;
+    try {
+      setEnviandoAnexoQuestao(questaoClientId);
+      const anexo = await AnexoAPI.uploadAnexo(arquivo, escolaGUID);
+      if (questao.QuestaoGUID) {
+        await vincularAnexoQuestaoMutation.mutateAsync({ questaoGUID: questao.QuestaoGUID, anexoGUID: anexo.AnexoGUID });
+      }
+      atualizarCampoQuestao(questaoClientId, 'Anexos', [
+        ...questao.Anexos,
+        { AnexoGUID: anexo.AnexoGUID, AnexoNomeOriginal: anexo.AnexoNomeOriginal, AnexoCaminho: anexo.AnexoCaminho },
+      ]);
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao enviar anexo');
+    } finally {
+      setEnviandoAnexoQuestao(null);
+    }
+  };
+
+  const removerAnexoQuestao = async (questaoClientId: string, anexoGUID: string) => {
+    const questao = questoes.find((q) => q.clientId === questaoClientId);
+    if (!questao) return;
+    try {
+      if (questao.QuestaoGUID) {
+        await desvincularAnexoQuestaoMutation.mutateAsync({ questaoGUID: questao.QuestaoGUID, anexoGUID });
+      }
+      atualizarCampoQuestao(questaoClientId, 'Anexos', questao.Anexos.filter((a) => a.AnexoGUID !== anexoGUID));
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao remover anexo');
+    }
+  };
 
   /** Modo edição: carrega as questões já cadastradas dessa tarefa lista. */
   const carregarQuestoesParaEdicao = async (tarefaGUID: string) => {
@@ -303,6 +425,7 @@ export default function TarefaForm({
           PontosMaximos: q.QuestaoPontosMaximos,
           Explicacao: q.QuestaoExplicacao || '',
           TemResposta: q.TemResposta,
+          Anexos: q.Anexos.map((a) => ({ AnexoGUID: a.AnexoGUID, AnexoNomeOriginal: a.AnexoNomeOriginal, AnexoCaminho: a.AnexoCaminho })),
           Alternativas: q.Alternativas.map((a) => ({
             clientId: novoClientId(),
             Texto: a.AlternativaTexto,
@@ -322,7 +445,7 @@ export default function TarefaForm({
     const excluidas = Array.from(questoesOriginaisGUIDsRef.current).filter((guid) => !guidsAtuais.has(guid));
 
     for (const guid of excluidas) {
-      await TarefaAcademicaAPI.excluirQuestao(guid);
+      await excluirQuestaoMutation.mutateAsync(guid);
     }
 
     const ordens: Array<{ QuestaoGUID: string; QuestaoOrdem: number }> = [];
@@ -330,21 +453,24 @@ export default function TarefaForm({
     for (let i = 0; i < questoes.length; i++) {
       const q = questoes[i];
       if (q.QuestaoGUID) {
-        const atualizada = await TarefaAcademicaAPI.atualizarQuestao(q.QuestaoGUID, {
-          QuestaoEnunciado: q.Enunciado.trim(),
-          QuestaoPontosMaximos: q.PontosMaximos,
-          QuestaoExplicacao: q.Explicacao.trim() || null,
-          ...(q.TemResposta ? {} : { QuestaoTipo: q.Tipo, Alternativas: questaoParaInput(q).Alternativas }),
+        const atualizada = await atualizarQuestaoMutation.mutateAsync({
+          questaoGUID: q.QuestaoGUID,
+          questao: {
+            QuestaoEnunciado: q.Enunciado.trim(),
+            QuestaoPontosMaximos: q.PontosMaximos,
+            QuestaoExplicacao: q.Explicacao.trim() || null,
+            ...(q.TemResposta ? {} : { QuestaoTipo: q.Tipo, Alternativas: questaoParaInput(q).Alternativas }),
+          },
         });
         ordens.push({ QuestaoGUID: atualizada.QuestaoGUID, QuestaoOrdem: i });
       } else {
-        const criada = await TarefaAcademicaAPI.criarQuestao(tarefaGUID, questaoParaInput(q));
+        const criada = await criarQuestaoMutation.mutateAsync(questaoParaInput(q));
         ordens.push({ QuestaoGUID: criada.QuestaoGUID, QuestaoOrdem: i });
       }
     }
 
     if (ordens.length > 0) {
-      await TarefaAcademicaAPI.reordenarQuestoes(tarefaGUID, ordens);
+      await reordenarQuestoesMutation.mutateAsync(ordens);
     }
   };
 
@@ -359,6 +485,7 @@ export default function TarefaForm({
         PontosMaximos: l.QuestaoPontosMaximos,
         Explicacao: l.QuestaoExplicacao || '',
         TemResposta: false,
+        Anexos: [],
         Alternativas: (l.Alternativas || []).map((a) => ({
           clientId: novoClientId(),
           Texto: a.AlternativaTexto,
@@ -383,6 +510,7 @@ export default function TarefaForm({
         PontosMaximos: q.QuestaoPontosMaximos,
         Explicacao: q.QuestaoExplicacao || '',
         TemResposta: q.TemResposta,
+        Anexos: q.Anexos.map((a) => ({ AnexoGUID: a.AnexoGUID, AnexoNomeOriginal: a.AnexoNomeOriginal, AnexoCaminho: a.AnexoCaminho })),
         Alternativas: q.Alternativas.map((a) => ({
           clientId: novoClientId(),
           Texto: a.AlternativaTexto,
@@ -405,7 +533,7 @@ export default function TarefaForm({
     const dia = String(hoje.getDate()).padStart(2, '0');
     const dataPadrao = `${ano}-${mes}-${dia}T23:59`;
 
-    setForm(prev => ({ ...prev, TarefaPrazoData: dataPadrao }));
+    setValue('TarefaPrazoData', dataPadrao);
   }, []);
 
   useEffect(() => {
@@ -415,7 +543,6 @@ export default function TarefaForm({
     }
     if (usuario) {
       void carregarMaterias();
-      void carregarTarefas();
     }
   }, [usuario, authLoading]);
 
@@ -433,7 +560,7 @@ export default function TarefaForm({
       // quando o professor leciona uma ÚNICA matéria (não uma única linha).
       const nomesUnicos = new Set(materiasData.map((m) => m.MateriaNome));
       if (nomesUnicos.size === 1) {
-        setForm(prev => ({ ...prev, matXprofXturxescGUID: materiasData[0].MatProfTurGUID }));
+        setValue('matXprofXturxescGUID', materiasData[0].MatProfTurGUID);
       }
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar matérias');
@@ -453,23 +580,6 @@ export default function TarefaForm({
     });
     return Array.from(mapa.values());
   }, [materias]);
-
-  const carregarTarefas = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const response = await fetch('/api/tarefa', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.message || 'Erro ao carregar tarefas');
-      setTarefas(data?.data?.tarefas || []);
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar tarefas');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const buscarSeriesAlunos = async (matProfTurGUID: string, turmaGUIDPreSelecionada?: string): Promise<SerieItem[]> => {
     const url = `/api/professor/turmas-alunos?MatProfTurGUID=${matProfTurGUID}`;
@@ -693,7 +803,7 @@ export default function TarefaForm({
     const match = materiasUnicas.find((m) => m.MateriaGUID === materiaGUIDQuery);
     if (match) {
       materiaPreenchidaRef.current = true;
-      setForm((prev) => ({ ...prev, matXprofXturxescGUID: match.MatProfTurGUID }));
+      setValue('matXprofXturxescGUID', match.MatProfTurGUID);
     }
   }, [materiaGUIDQuery, materiasUnicas]);
 
@@ -720,7 +830,7 @@ export default function TarefaForm({
     CategoriaConteudoAPI.listarCategorias({ MateriaGUID: materiaAtual.MateriaGUID, TurmaGUID: turmaGUIDQuery })
       .then((lista) => {
         const match = lista.find((c) => c.CategoriaGUID === categoriaGUIDQuery);
-        if (match) setForm((prev) => ({ ...prev, CategoriaNome: match.CategoriaNome }));
+        if (match) setValue('CategoriaNome', match.CategoriaNome);
       })
       .catch(() => {
         // pré-preenchimento é best-effort — o professor ainda pode escolher a categoria manualmente
@@ -853,7 +963,7 @@ export default function TarefaForm({
   const limparFormulario = () => {
     setEditingGUID(null);
     setCompartilhadaReadonly(false);
-    setForm({
+    resetForm({
       matXprofXturxescGUID: materiasUnicas.length === 1 ? materiasUnicas[0].MatProfTurGUID : '',
       CategoriaNome: '',
       TarefaTitulo: '',
@@ -875,8 +985,7 @@ export default function TarefaForm({
     questoesOriginaisGUIDsRef.current = new Set();
   };
 
-  const onSubmit = async (event: FormEvent) => {
-    event.preventDefault();
+  const onSubmit = async () => {
     setSubmitting(true);
     setErro(null);
 
@@ -890,30 +999,14 @@ export default function TarefaForm({
           }
         }
 
-        const payload = {
-          tarefa: {
-            TarefaTitulo: form.TarefaTitulo,
-            TarefaConteudo: form.TarefaConteudo || undefined,
-            TarefaPrazoData: converterParaBrasil(form.TarefaPrazoData), // Converte do timezone do usuário para GMT-3
-            TarefaTipoEntrega: form.TarefaTipoEntrega,
-            TarefaMinPessoas: form.TarefaCompartilhada ? form.TarefaMinPessoas : null,
-            TarefaMaxPessoas: form.TarefaCompartilhada ? form.TarefaMaxPessoas : null,
-          },
-        };
-
-        const response = await fetch(`/api/tarefa/${editingGUID}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
+        await atualizarTarefaMutation.mutateAsync({
+          TarefaTitulo: form.TarefaTitulo,
+          TarefaConteudo: form.TarefaConteudo || undefined,
+          TarefaPrazoData: converterParaBrasil(form.TarefaPrazoData), // Converte do timezone do usuário para GMT-3
+          TarefaTipoEntrega: form.TarefaTipoEntrega,
+          TarefaMinPessoas: form.TarefaCompartilhada ? form.TarefaMinPessoas : null,
+          TarefaMaxPessoas: form.TarefaCompartilhada ? form.TarefaMaxPessoas : null,
         });
-
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data?.message || 'Erro ao atualizar tarefa');
-        }
 
         if (form.TarefaTipoEntrega === 'lista') {
           await sincronizarQuestoesEdicao(editingGUID);
@@ -921,7 +1014,7 @@ export default function TarefaForm({
 
         alert('Tarefa atualizada com sucesso!');
         limparFormulario();
-        await carregarTarefas();
+        queryClient.invalidateQueries({ queryKey: tarefaKeys.all });
         onCriado?.();
         return;
       }
@@ -1031,7 +1124,7 @@ export default function TarefaForm({
 
       alert(`${totalCriadas} tarefa(s) criada(s) com sucesso!`);
       limparFormulario();
-      await carregarTarefas();
+      queryClient.invalidateQueries({ queryKey: tarefaKeys.all });
       setModalAberto(false);
       onCriado?.();
     } catch (err: any) {
@@ -1044,7 +1137,7 @@ export default function TarefaForm({
   const editarTarefa = (tarefa: any) => {
     setEditingGUID(tarefa.TarefaGUID);
     setCompartilhadaReadonly(!!tarefa.TarefaCompartilhada);
-    setForm({
+    resetForm({
       matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
       CategoriaNome: '',
       TarefaTitulo: tarefa.TarefaTitulo,
@@ -1068,13 +1161,7 @@ export default function TarefaForm({
   const excluirTarefa = async (tarefaGUID: string) => {
     if (!confirm('Deseja excluir esta tarefa?')) return;
     try {
-      const response = await fetch(`/api/tarefa/${tarefaGUID}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.message || 'Erro ao excluir tarefa');
-      await carregarTarefas();
+      await excluirTarefaMutation.mutateAsync(tarefaGUID);
     } catch (err: any) {
       setErro(err?.message || 'Falha ao excluir tarefa');
     }
@@ -1093,7 +1180,7 @@ export default function TarefaForm({
         </div>
       )}
 
-      <form className={styles.form} onSubmit={onSubmit}>
+      <form className={styles.form} onSubmit={handleSubmitRHF(onSubmit, onInvalidoRHF)}>
         {/* Campo de Matéria */}
         <div className={styles.formGroup}>
           <label>Matéria *</label>
@@ -1109,7 +1196,7 @@ export default function TarefaForm({
             <select
               value={form.matXprofXturxescGUID}
               onChange={(e) => {
-                setForm(prev => ({ ...prev, matXprofXturxescGUID: e.target.value }));
+                setValue('matXprofXturxescGUID', e.target.value);
                 setSeries([]); // Limpar seleção de alunos ao mudar matéria
               }}
               required
@@ -1154,7 +1241,7 @@ export default function TarefaForm({
               list="categoria-nomes-lista"
               placeholder="Sem categoria (opcional)"
               value={form.CategoriaNome}
-              onChange={(e) => setForm((prev) => ({ ...prev, CategoriaNome: e.target.value }))}
+              onChange={(e) => setValue('CategoriaNome', e.target.value)}
               disabled={!form.matXprofXturxescGUID}
             />
             <datalist id="categoria-nomes-lista">
@@ -1171,13 +1258,13 @@ export default function TarefaForm({
         <input
           placeholder="Título *"
           value={form.TarefaTitulo}
-          onChange={(e) => setForm((prev) => ({ ...prev, TarefaTitulo: e.target.value }))}
+          onChange={(e) => setValue('TarefaTitulo', e.target.value)}
           required
         />
         <textarea
           placeholder="Conteúdo"
           value={form.TarefaConteudo}
-          onChange={(e) => setForm((prev) => ({ ...prev, TarefaConteudo: e.target.value }))}
+          onChange={(e) => setValue('TarefaConteudo', e.target.value)}
         />
         {!editingGUID && (
           <div className={styles.autoAgendamento}>
@@ -1328,13 +1415,13 @@ export default function TarefaForm({
           <input
             type="datetime-local"
             value={form.TarefaPrazoData}
-            onChange={(e) => setForm((prev) => ({ ...prev, TarefaPrazoData: e.target.value }))}
+            onChange={(e) => setValue('TarefaPrazoData', e.target.value)}
             required
           />
         )}
         <select
           value={form.TarefaTipoEntrega}
-          onChange={(e) => setForm((prev) => ({ ...prev, TarefaTipoEntrega: e.target.value as 'digital' | 'fisica' | 'lista' }))}
+          onChange={(e) => setValue('TarefaTipoEntrega', e.target.value as 'digital' | 'fisica' | 'lista')}
         >
           <option value="digital">Digital</option>
           <option value="fisica">Física</option>
@@ -1433,6 +1520,43 @@ export default function TarefaForm({
                         onChange={(e) => atualizarCampoQuestao(questao.clientId, 'Explicacao', e.target.value)}
                       />
 
+                      <div className={styles.anexosQuestaoBloco}>
+                        <label>Anexo(s) da questão</label>
+                        <div className={styles.anexosQuestaoList}>
+                          {questao.Anexos.map((anexo) => (
+                            <span key={anexo.AnexoGUID} className={styles.anexoQuestaoChip}>
+                              {ehImagemAnexo(anexo.AnexoNomeOriginal) ? (
+                                <img src={anexo.AnexoCaminho} alt="" className={styles.anexoQuestaoThumb} />
+                              ) : (
+                                <Icon name="paperclip" size={13} />
+                              )}
+                              {anexo.AnexoNomeOriginal || 'Arquivo'}
+                              <button
+                                type="button"
+                                onClick={() => removerAnexoQuestao(questao.clientId, anexo.AnexoGUID)}
+                                title="Remover anexo"
+                              >
+                                <Icon name="x" size={12} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                        <label className={styles.anexoQuestaoInput}>
+                          <Icon name="paperclip" size={14} />
+                          {enviandoAnexoQuestao === questao.clientId ? 'Enviando...' : 'Adicionar anexo'}
+                          <input
+                            type="file"
+                            hidden
+                            disabled={enviandoAnexoQuestao === questao.clientId}
+                            onChange={(e) => {
+                              const arquivo = e.target.files?.[0];
+                              if (arquivo) void adicionarAnexoQuestao(questao.clientId, arquivo);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      </div>
+
                       {questao.Tipo === 'objetiva' && (
                         <div className={styles.alternativasList}>
                           <label>Alternativas (marque a correta)</label>
@@ -1449,6 +1573,7 @@ export default function TarefaForm({
                                 type="text"
                                 placeholder="Texto da alternativa"
                                 value={alt.Texto}
+                                disabled={questao.TemResposta}
                                 onChange={(e) => atualizarAlternativa(questao.clientId, alt.clientId, 'Texto', e.target.value)}
                               />
                               <input
@@ -1458,6 +1583,7 @@ export default function TarefaForm({
                                 className={styles.alternativaPontos}
                                 title="Pontos dessa alternativa"
                                 value={alt.Pontos}
+                                disabled={questao.TemResposta}
                                 onChange={(e) => atualizarAlternativa(questao.clientId, alt.clientId, 'Pontos', parseFloat(e.target.value) || 0)}
                               />
                               <button
@@ -1509,12 +1635,9 @@ export default function TarefaForm({
               disabled={compartilhadaReadonly}
               onChange={(e) => {
                 const checked = e.target.checked;
-                setForm({
-                  ...form,
-                  TarefaCompartilhada: checked,
-                  TarefaMinPessoas: checked ? 1 : null,
-                  TarefaMaxPessoas: checked ? 5 : null
-                });
+                setValue('TarefaCompartilhada', checked);
+                setValue('TarefaMinPessoas', checked ? 1 : null);
+                setValue('TarefaMaxPessoas', checked ? 5 : null);
               }}
             />
             <span>Tarefa Compartilhada (alunos trabalham em grupos)</span>
@@ -1545,11 +1668,8 @@ export default function TarefaForm({
                   value={form.TarefaMinPessoas || 1}
                   onChange={(e) => {
                     const min = parseInt(e.target.value);
-                    setForm({
-                      ...form,
-                      TarefaMinPessoas: min,
-                      TarefaMaxPessoas: Math.max(min, form.TarefaMaxPessoas || min)
-                    });
+                    setValue('TarefaMinPessoas', min);
+                    setValue('TarefaMaxPessoas', Math.max(min, form.TarefaMaxPessoas || min));
                   }}
                   required
                 />
@@ -1564,10 +1684,7 @@ export default function TarefaForm({
                   name="maxPessoas"
                   min={form.TarefaMinPessoas || 1}
                   value={form.TarefaMaxPessoas || 5}
-                  onChange={(e) => setForm({
-                    ...form,
-                    TarefaMaxPessoas: parseInt(e.target.value)
-                  })}
+                  onChange={(e) => setValue('TarefaMaxPessoas', parseInt(e.target.value))}
                   required
                 />
                 <p className={styles.helpText}>Quantidade máxima de pessoas por grupo</p>
@@ -1719,7 +1836,7 @@ export default function TarefaForm({
       {!ocultarListagem && (
         <section className={styles.listSection}>
           <h2>Tarefas cadastradas</h2>
-          {loading ? (
+          {tarefasQuery.isLoading ? (
             <p>Carregando...</p>
           ) : (
             <ul className={styles.list}>
