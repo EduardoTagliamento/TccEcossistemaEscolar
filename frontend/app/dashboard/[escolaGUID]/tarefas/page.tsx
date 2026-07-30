@@ -1,10 +1,10 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { listarTarefas } from '@/lib/api/tarefaacademica.api';
+import { useTarefas } from '@/lib/tarefas/useTarefaQueries';
 import { TarefaListItem } from '@/types/tarefaacademica';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
@@ -13,79 +13,40 @@ import styles from './page.module.css';
 export default function TarefasPage() {
   const params = useParams();
   const router = useRouter();
-  const { usuario, token, isLoading: authLoading } = useAuth();
+  const { usuario, isLoading: authLoading } = useAuth();
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
-  const [tarefas, setTarefas] = useState<TarefaListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<'todas' | 'individual' | 'compartilhada'>('todas');
 
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
-      return;
     }
-    if (usuario) {
-      void carregarTarefas();
-    }
-  }, [usuario, authLoading, filtroTipo]);
+  }, [usuario, authLoading, router]);
 
-  const carregarTarefas = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const filters: any = {};
-      
-      if (filtroTipo === 'individual') {
-        filters.TarefaCompartilhada = false;
-      } else if (filtroTipo === 'compartilhada') {
-        filters.TarefaCompartilhada = true;
-      }
+  const filters = useMemo(() => {
+    if (filtroTipo === 'individual') return { TarefaCompartilhada: false };
+    if (filtroTipo === 'compartilhada') return { TarefaCompartilhada: true };
+    return undefined;
+  }, [filtroTipo]);
 
-      const dados = await listarTarefas(filters);
-      
-      // DEBUG: Verificar dados recebidos
-      console.log('🔍 DEBUG Frontend - Tarefas recebidas:', dados.map(t => ({
-        TarefaGUID: t.TarefaGUID,
-        TarefaTitulo: t.TarefaTitulo,
-        TarefaCompartilhada: t.TarefaCompartilhada,
-        tipo: typeof t.TarefaCompartilhada
-      })));
-      
-      // Calcular status de cada tarefa
-      const tarefasComStatus = dados.map((tarefa) => {
-        const prazo = new Date(tarefa.TarefaPrazoData);
-        const agora = new Date();
-        
-        let status: TarefaListItem['Status'];
-        if (prazo < agora) {
-          status = 'Atrasada';
-        } else {
-          status = 'Pendente';
-        }
-        
-        // Garantir que TarefaCompartilhada seja tratado como boolean
-        return { 
-          ...tarefa, 
-          TarefaCompartilhada: Boolean(tarefa.TarefaCompartilhada),
-          Status: status 
-        };
-      });
+  const { data: tarefasBrutas, isLoading, error } = useTarefas(usuario ? filters : undefined);
+  const erro = error instanceof Error ? error.message : null;
 
-      // Ordenar por prazo (mais próximo primeiro)
-      tarefasComStatus.sort((a, b) => 
-        new Date(a.TarefaPrazoData).getTime() - new Date(b.TarefaPrazoData).getTime()
-      );
+  const tarefas: TarefaListItem[] = useMemo(() => {
+    if (!tarefasBrutas) return [];
 
-      setTarefas(tarefasComStatus);
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar tarefas');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const agora = new Date();
+    const comStatus = tarefasBrutas.map((tarefa) => {
+      const prazo = new Date(tarefa.TarefaPrazoData);
+      const status: TarefaListItem['Status'] = prazo < agora ? 'Atrasada' : 'Pendente';
+      return { ...tarefa, TarefaCompartilhada: Boolean(tarefa.TarefaCompartilhada), Status: status };
+    });
+
+    comStatus.sort((a, b) => new Date(a.TarefaPrazoData).getTime() - new Date(b.TarefaPrazoData).getTime());
+    return comStatus;
+  }, [tarefasBrutas]);
 
   // Agrupar tarefas por período
   const agruparTarefasPorPeriodo = () => {
@@ -136,8 +97,8 @@ export default function TarefasPage() {
     const statusClass = tarefa.Status === 'Atrasada' ? styles.cardAtrasada : styles.cardPendente;
 
     return (
-      <Link 
-        key={tarefa.TarefaGUID} 
+      <Link
+        key={tarefa.TarefaGUID}
         href={`/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`}
         className={`${styles.tarefaCard} ${statusClass}`}
       >
@@ -192,7 +153,7 @@ export default function TarefasPage() {
     );
   };
 
-  if (authLoading || loading) {
+  if (authLoading || isLoading) {
     return (
       <div className={styles.container}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
@@ -211,19 +172,19 @@ export default function TarefasPage() {
 
       {/* Filtros */}
       <div className={styles.filtros}>
-        <button 
+        <button
           className={filtroTipo === 'todas' ? styles.filtroAtivo : styles.filtro}
           onClick={() => setFiltroTipo('todas')}
         >
           Todas
         </button>
-        <button 
+        <button
           className={filtroTipo === 'individual' ? styles.filtroAtivo : styles.filtro}
           onClick={() => setFiltroTipo('individual')}
         >
           Individuais
         </button>
-        <button 
+        <button
           className={filtroTipo === 'compartilhada' ? styles.filtroAtivo : styles.filtro}
           onClick={() => setFiltroTipo('compartilhada')}
         >

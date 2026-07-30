@@ -692,6 +692,66 @@
   cursor: not-allowed;
 }
 
+.anexosQuestaoBloco {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.anexosQuestaoList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.anexoQuestaoChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.anexoQuestaoThumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.anexoQuestaoChip button {
+  display: flex;
+  align-items: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-error);
+  padding: 0;
+}
+
+.anexoQuestaoInput {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: flex-start;
+  padding: 0.35rem 0.7rem;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.anexoQuestaoInput:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .formRow {

@@ -18,6 +18,8 @@ export interface AnexoQuestaoResumo {
   AnexoGUID: string;
   AnexoNomeOriginal: string | null;
   AnexoTamanho: number | null;
+  /** URL pública (R2) — permite montar preview de imagem direto no frontend, sem passar pelo download autenticado. */
+  AnexoCaminho: string;
   CreatedAt: Date | null;
 }
 
@@ -210,7 +212,7 @@ export class TarefaAcademicaQuestaoDAO {
 
     const placeholders = unicos.map(() => "?").join(", ");
     const SQL = `
-      SELECT qa.QuestaoGUID, a.AnexoGUID, a.AnexoNomeOriginal, a.AnexoTamanho, a.CreatedAt
+      SELECT qa.QuestaoGUID, a.AnexoGUID, a.AnexoNomeOriginal, a.AnexoTamanho, a.AnexoCaminho, a.CreatedAt
       FROM tarefaacademica_questao_anexo qa
       INNER JOIN anexo a ON a.AnexoGUID = qa.AnexoGUID
       WHERE qa.QuestaoGUID IN (${placeholders})
@@ -224,6 +226,7 @@ export class TarefaAcademicaQuestaoDAO {
         AnexoGUID: row.AnexoGUID,
         AnexoNomeOriginal: row.AnexoNomeOriginal,
         AnexoTamanho: row.AnexoTamanho,
+        AnexoCaminho: row.AnexoCaminho,
         CreatedAt: row.CreatedAt ?? null,
       });
       mapa.set(row.QuestaoGUID, lista);

@@ -322,6 +322,8 @@ export interface QuestaoAnexoResumo {
   AnexoGUID: string;
   AnexoNomeOriginal: string | null;
   AnexoTamanho: number | null;
+  /** URL pública (R2) — dá pra usar direto como <img src> pra preview de imagem. */
+  AnexoCaminho: string;
   CreatedAt: string | null;
 }
 

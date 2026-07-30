@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { buscarTarefa } from '@/lib/api/tarefaacademica.api';
+import { useTarefa } from '@/lib/tarefas/useTarefaQueries';
 import { buscarGrupoComMembros, atualizarNomeGrupo, expulsarMembro } from '@/lib/api/grupotarefa.api';
-import { TarefaAcademica } from '@/types/tarefaacademica';
 import { GrupoTarefaComMembros } from '@/types/grupotarefa';
 import ConviteGrupoModal from '@/components/ConviteGrupoModal';
 import TransferirLiderancaModal from '@/components/TransferirLiderancaModal';
@@ -19,34 +18,31 @@ import styles from './page.module.css';
 export default function TarefaDetalhesPage() {
   const params = useParams();
   const router = useRouter();
-  const { usuario, token, isLoading: authLoading } = useAuth();
+  const { usuario, isLoading: authLoading } = useAuth();
   const escolaGUIDParam = params?.escolaGUID;
   const tarefaGUIDParam = params?.tarefaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
   const tarefaGUID = Array.isArray(tarefaGUIDParam) ? tarefaGUIDParam[0] : tarefaGUIDParam || '';
 
-  const [tarefa, setTarefa] = useState<TarefaAcademica | null>(null);
+  const { data: tarefaBruta, isLoading: tarefaLoading, error: tarefaError } = useTarefa(usuario ? tarefaGUID : undefined);
+  const tarefa = tarefaBruta ? { ...tarefaBruta, TarefaCompartilhada: Boolean(tarefaBruta.TarefaCompartilhada) } : null;
+  const erro = tarefaError instanceof Error ? tarefaError.message : null;
+
   const [grupo, setGrupo] = useState<GrupoTarefaComMembros | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
-  
+
   const [modalConvite, setModalConvite] = useState(false);
   const [modalTransferir, setModalTransferir] = useState(false);
   const [modalConvitesPendentes, setModalConvitesPendentes] = useState(false);
   const [modalSolicitar, setModalSolicitar] = useState(false);
-  
+
   const [grupoNomeEditado, setGrupoNomeEditado] = useState('');
   const [salvandoNome, setSalvandoNome] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
-      return;
     }
-    if (usuario && tarefaGUID) {
-      void carregarDados();
-    }
-  }, [usuario, authLoading, tarefaGUID]);
+  }, [usuario, authLoading, router]);
 
   useEffect(() => {
     if (grupo) {
@@ -54,65 +50,50 @@ export default function TarefaDetalhesPage() {
     }
   }, [grupo]);
 
-  const carregarDados = async () => {
-    setLoading(true);
-    setErro(null);
+  const recarregarGrupo = async () => {
+    if (!tarefa?.TarefaCompartilhada || !usuario) {
+      setGrupo(null);
+      return;
+    }
     try {
-      const tarefaData = await buscarTarefa(tarefaGUID);
-      
-      // DEBUG: Verificar dados recebidos
-      console.log('🔍 DEBUG Frontend - Tarefa recebida:', {
-        TarefaGUID: tarefaData.TarefaGUID,
-        TarefaTitulo: tarefaData.TarefaTitulo,
-        TarefaCompartilhada: tarefaData.TarefaCompartilhada,
-        tipo: typeof tarefaData.TarefaCompartilhada,
-        valorOriginal: tarefaData.TarefaCompartilhada
+      const tokenStr = localStorage.getItem('@baua:token');
+      const response = await fetch(`/api/grupotarefa/${tarefaGUID}`, {
+        headers: { 'Authorization': `Bearer ${tokenStr}` }
       });
-      
-      // Garantir que TarefaCompartilhada seja tratado como boolean
-      tarefaData.TarefaCompartilhada = Boolean(tarefaData.TarefaCompartilhada);
-      
-      console.log('🔍 DEBUG Frontend - Após Boolean():', tarefaData.TarefaCompartilhada);
-      
-      setTarefa(tarefaData);
+      const result = await response.json();
 
-      if (tarefaData.TarefaCompartilhada && usuario) {
-        try {
-          const tokenStr = localStorage.getItem('@baua:token');
-          const response = await fetch(`/api/grupotarefa/${tarefaGUID}`, {
-            headers: { 'Authorization': `Bearer ${tokenStr}` }
-          });
-          const result = await response.json();
-          
-          if (response.ok && result.data) {
-            const meuGrupo = result.data.find((g: any) => 
-              g.UsuarioCPFLider === usuario.UsuarioCPF || 
-              g.Membros?.some((m: any) => m.UsuarioCPF === usuario.UsuarioCPF)
-            );
-            
-            if (meuGrupo) {
-              const grupoCompleto = await buscarGrupoComMembros(meuGrupo.GrupoTarefaGUID);
-              setGrupo(grupoCompleto);
-            }
-          }
-        } catch (err) {
-          console.error('Erro ao buscar grupo:', err);
+      if (response.ok && result.data) {
+        const meuGrupo = result.data.find((g: any) =>
+          g.UsuarioCPFLider === usuario.UsuarioCPF ||
+          g.Membros?.some((m: any) => m.UsuarioCPF === usuario.UsuarioCPF)
+        );
+
+        if (meuGrupo) {
+          const grupoCompleto = await buscarGrupoComMembros(meuGrupo.GrupoTarefaGUID);
+          setGrupo(grupoCompleto);
+        } else {
+          setGrupo(null);
         }
       }
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar tarefa');
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error('Erro ao buscar grupo:', err);
     }
   };
 
+  useEffect(() => {
+    if (tarefa?.TarefaCompartilhada && usuario) {
+      void recarregarGrupo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tarefa?.TarefaCompartilhada, tarefaGUID, usuario]);
+
   const salvarNomeGrupo = async () => {
     if (!grupo || !usuarioELider) return;
-    
+
     setSalvandoNome(true);
     try {
       await atualizarNomeGrupo(grupo.GrupoTarefaGUID, grupoNomeEditado);
-      await carregarDados();
+      await recarregarGrupo();
       alert('Nome do grupo atualizado!');
     } catch (err: any) {
       alert(err?.message || 'Erro ao atualizar nome');
@@ -123,19 +104,19 @@ export default function TarefaDetalhesPage() {
 
   const handleExpulsarMembro = async (cpf: string, nome: string) => {
     if (!grupo || !usuarioELider) return;
-    
+
     if (!confirm(`Deseja expulsar ${nome} do grupo?`)) return;
-    
+
     try {
       await expulsarMembro(grupo.GrupoTarefaGUID, cpf);
       alert('Membro expulso do grupo.');
-      await carregarDados();
+      await recarregarGrupo();
     } catch (err: any) {
       alert(err?.message || 'Erro ao expulsar membro');
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || tarefaLoading) {
     return (
       <div className={styles.container}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '3rem 0' }}>
@@ -173,7 +154,7 @@ export default function TarefaDetalhesPage() {
             onClose={() => setModalConvite(false)}
             grupoGUID={grupo.GrupoTarefaGUID}
             turmaGUID={grupo.TurmaGUID}
-            onConviteEnviado={carregarDados}
+            onConviteEnviado={recarregarGrupo}
           />
           <TransferirLiderancaModal
             isOpen={modalTransferir}
@@ -181,7 +162,7 @@ export default function TarefaDetalhesPage() {
             grupoGUID={grupo.GrupoTarefaGUID}
             membros={grupo.Membros}
             liderAtualCPF={grupo.UsuarioCPFLider}
-            onTransferido={carregarDados}
+            onTransferido={recarregarGrupo}
           />
         </>
       )}
@@ -190,13 +171,13 @@ export default function TarefaDetalhesPage() {
           <ConvitesPendentesModal
             isOpen={modalConvitesPendentes}
             onClose={() => setModalConvitesPendentes(false)}
-            onConviteRespondido={carregarDados}
+            onConviteRespondido={recarregarGrupo}
           />
           <SolicitarEntradaModal
             isOpen={modalSolicitar}
             onClose={() => setModalSolicitar(false)}
             tarefaGUID={tarefaGUID}
-            onSolicitacaoEnviada={carregarDados}
+            onSolicitacaoEnviada={recarregarGrupo}
           />
         </>
       )}
@@ -300,13 +281,13 @@ export default function TarefaDetalhesPage() {
                     </div>
                     {usuarioELider && !membro.IsLider && (
                       <div className={styles.membroAcoes}>
-                        <button 
+                        <button
                           className={styles.btnExpulsar}
                           onClick={() => handleExpulsarMembro(membro.UsuarioCPF, membro.UsuarioNome)}
                         >
                           Expulsar
                         </button>
-                        <button 
+                        <button
                           className={styles.btnTransferir}
                           onClick={() => setModalTransferir(true)}
                         >
@@ -358,11 +339,11 @@ export default function TarefaDetalhesPage() {
         {tarefa.TarefaTipoEntrega === 'digital' ? (
           <div className={styles.anexosArea}>
             <p className={styles.infoText}>
-              {tarefa.TarefaCompartilhada 
+              {tarefa.TarefaCompartilhada
                 ? 'Qualquer membro pode adicionar ou remover arquivos enquanto em rascunho.'
                 : 'Adicione seus arquivos para envio.'}
             </p>
-            
+
             <div className={styles.anexosList}>
               <p className={styles.empty}>Nenhum arquivo anexado ainda</p>
             </div>
