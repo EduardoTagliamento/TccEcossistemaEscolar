@@ -136,7 +136,7 @@
 
 .backLink {
   text-decoration: none;
-  color: var(--green-700);
+  color: var(--color-primary, var(--green-700));
   font-weight: 700;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
@@ -169,14 +169,14 @@
 }
 
 .filtro:hover {
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
   background: var(--green-50);
 }
 
 .filtroAtivo {
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
   color: var(--white);
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
 }
 
 /* Grupos de Tarefas */
@@ -226,7 +226,7 @@
 .tarefaCard:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-md);
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
 }
 
 .cardAtrasada {
@@ -234,6 +234,8 @@
   background: linear-gradient(to right, var(--danger-50), var(--white));
 }
 
+/* Verde fixo intencional (não a cor da escola): contraste com o vermelho de
+   .cardAtrasada no mesmo sistema de status (atrasada/pendente/rascunho). */
 .cardPendente {
   border-left: 6px solid var(--green-500);
 }
@@ -248,7 +250,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--green-500), var(--green-700));
+  background: linear-gradient(135deg, var(--color-primary, var(--green-500)), var(--color-secondary, var(--green-700)));
   color: var(--white);
   display: flex;
   align-items: center;
@@ -279,7 +281,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
   color: var(--white);
   padding: 0.25rem 0.75rem;
   border-radius: var(--radius-pill);

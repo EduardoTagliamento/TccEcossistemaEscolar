@@ -18,10 +18,13 @@
  * normalmente, sem condensar.
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Icon, IconName } from '@/components/Icon';
-import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
-import type { BoardGeral, ItemBoardGeral } from '@/lib/api/categoriaconteudo.api';
+import type { ItemBoardGeral } from '@/lib/api/categoriaconteudo.api';
+import { useBoardGeral } from '@/lib/categoriaconteudo/useCategoriaConteudoQueries';
+import { useCriarCategoriaGeral, useReordenarCategoriasGerais, useMoverItemBoardGeral } from '@/lib/categoriaconteudo/useCategoriaConteudoMutations';
+import { categoriaConteudoKeys } from '@/lib/categoriaconteudo/queryKeys';
 import styles from './GerenciarCategoriasModal.module.css';
 
 const ICONE_POR_TIPO: Record<ItemBoardGeral['Tipo'], IconName> = {
@@ -40,15 +43,22 @@ interface GerenciarCategoriasModalProps {
 }
 
 export default function GerenciarCategoriasModal({ materiaGUID, onFechar }: GerenciarCategoriasModalProps) {
-  const [board, setBoard] = useState<BoardGeral | null>(null);
-  const [carregando, setCarregando] = useState(true);
+  const queryClient = useQueryClient();
+  const boardQuery = useBoardGeral(materiaGUID);
+  const board = boardQuery.data ?? null;
+  const carregando = boardQuery.isLoading;
+
   const [novoNome, setNovoNome] = useState('');
-  const [criando, setCriando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const [categoriaArrastando, setCategoriaArrastando] = useState<string | null>(null);
   const [itemArrastando, setItemArrastando] = useState<ItemBoardGeral | null>(null);
   const [categoriasColapsadas, setCategoriasColapsadas] = useState<Set<string>>(new Set());
+
+  const criarCategoriaMutation = useCriarCategoriaGeral();
+  const reordenarCategoriasMutation = useReordenarCategoriasGerais();
+  const moverItemMutation = useMoverItemBoardGeral();
+  const criando = criarCategoriaMutation.isPending;
 
   const alternarColapso = (chave: string) => {
     setCategoriasColapsadas((prev) => {
@@ -59,36 +69,15 @@ export default function GerenciarCategoriasModal({ materiaGUID, onFechar }: Gere
     });
   };
 
-  useEffect(() => {
-    void carregarBoard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [materiaGUID]);
-
-  const carregarBoard = async () => {
-    try {
-      setCarregando(true);
-      const resultado = await CategoriaConteudoAPI.buscarBoardGeral(materiaGUID);
-      setBoard(resultado);
-    } catch (erro) {
-      console.error('Erro ao carregar categorias:', erro);
-    } finally {
-      setCarregando(false);
-    }
-  };
-
   const criarCategoria = async () => {
     const nome = novoNome.trim();
     if (!nome) return;
+    setErro(null);
     try {
-      setCriando(true);
-      setErro(null);
-      const resultado = await CategoriaConteudoAPI.criarCategoriaGeral(materiaGUID, nome);
-      setBoard(resultado);
+      await criarCategoriaMutation.mutateAsync({ materiaGUID, categoriaNome: nome });
       setNovoNome('');
     } catch (erro: any) {
       setErro(erro?.message || 'Erro ao criar categoria');
-    } finally {
-      setCriando(false);
     }
   };
 
@@ -107,18 +96,17 @@ export default function GerenciarCategoriasModal({ materiaGUID, onFechar }: Gere
     ordemAtual.splice(destinoIdx, 0, categoriaArrastando);
 
     setCategoriaArrastando(null);
-    setBoard((prev) => {
+    queryClient.setQueryData(categoriaConteudoKeys.boardGeral(materiaGUID), (prev: typeof board) => {
       if (!prev) return prev;
       const mapa = new Map(prev.Categorias.map((c) => [c.CategoriaNome, c]));
       return { ...prev, Categorias: ordemAtual.map((nome) => mapa.get(nome)!) };
     });
 
     try {
-      const resultado = await CategoriaConteudoAPI.reordenarCategoriasGerais(materiaGUID, ordemAtual);
-      setBoard(resultado);
+      await reordenarCategoriasMutation.mutateAsync({ materiaGUID, ordemNomes: ordemAtual });
     } catch (erro) {
       console.error('Erro ao reordenar categorias:', erro);
-      await carregarBoard();
+      await boardQuery.refetch();
     }
   };
 
@@ -132,15 +120,14 @@ export default function GerenciarCategoriasModal({ materiaGUID, onFechar }: Gere
     const item = itemArrastando;
     setItemArrastando(null);
     try {
-      const resultado = await CategoriaConteudoAPI.moverItemBoardGeral(
+      await moverItemMutation.mutateAsync({
         materiaGUID,
-        { ItemGUID: item.ItemGUID, Tipo: item.Tipo, TurmaGUID: item.Turmas[0].TurmaGUID },
-        categoriaNomeDestino
-      );
-      setBoard(resultado);
+        item: { ItemGUID: item.ItemGUID, Tipo: item.Tipo, TurmaGUID: item.Turmas[0].TurmaGUID },
+        categoriaNomeDestino,
+      });
     } catch (erro) {
       console.error('Erro ao mover item:', erro);
-      await carregarBoard();
+      await boardQuery.refetch();
     }
   };
 

@@ -25,14 +25,8 @@ import { ChangeEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import {
-  Pendencia,
-  PendenciaAnexo,
-  buscarPendencia,
-  listarAnexosPendencia,
-  vincularAnexoPendencia,
-  marcarComoFeito,
-} from '@/lib/api/pendencia.api';
+import { usePendencia, useAnexosPendencia } from '@/lib/pendencia/usePendenciaQueries';
+import { useMarcarComoFeito, useVincularAnexoPendencia } from '@/lib/pendencia/usePendenciaMutations';
 import { uploadAnexo, ANEXO_TAMANHO_MAXIMO_BYTES, ANEXO_MIME_TYPES_PERMITIDOS } from '@/lib/api/anexo.api';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -53,38 +47,24 @@ export default function PendenciaDetalhesPage() {
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
   const pendenciaGUID = Array.isArray(pendenciaGUIDParam) ? pendenciaGUIDParam[0] : pendenciaGUIDParam || '';
 
-  const [pendencia, setPendencia] = useState<Pendencia | null>(null);
-  const [anexos, setAnexos] = useState<PendenciaAnexo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
-  const [concluindo, setConcluindo] = useState(false);
+
+  const pendenciaQuery = usePendencia(pendenciaGUID || undefined);
+  const pendencia = pendenciaQuery.data ?? null;
+  const anexosQuery = useAnexosPendencia(pendenciaGUID || undefined);
+  const anexos = anexosQuery.data ?? [];
+  const loading = pendenciaQuery.isLoading;
+  const erro = pendenciaQuery.error instanceof Error ? pendenciaQuery.error.message : null;
+
+  const vincularAnexoMutation = useVincularAnexoPendencia();
+  const marcarComoFeitoMutation = useMarcarComoFeito();
+  const concluindo = marcarComoFeitoMutation.isPending;
 
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
-      return;
     }
-    if (usuario && pendenciaGUID) {
-      void carregarDados();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario, authLoading, pendenciaGUID]);
-
-  const carregarDados = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const pendenciaData = await buscarPendencia(pendenciaGUID);
-      setPendencia(pendenciaData);
-      const anexosData = await listarAnexosPendencia(pendenciaGUID);
-      setAnexos(anexosData);
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar pendência');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [usuario, authLoading, router]);
 
   const souDestinatario = !!usuario && !!pendencia && usuario.UsuarioCPF === pendencia.UsuarioCPF;
 
@@ -105,9 +85,7 @@ export default function PendenciaDetalhesPage() {
     setEnviandoAnexo(true);
     try {
       const anexo = await uploadAnexo(arquivo, escolaGUID);
-      await vincularAnexoPendencia(pendencia.PendenciaGUID, anexo.AnexoGUID);
-      const anexosAtualizados = await listarAnexosPendencia(pendencia.PendenciaGUID);
-      setAnexos(anexosAtualizados);
+      await vincularAnexoMutation.mutateAsync({ pendenciaGUID: pendencia.PendenciaGUID, anexoGUID: anexo.AnexoGUID });
     } catch (err: any) {
       alert(err?.message || 'Erro ao anexar arquivo');
     } finally {
@@ -119,16 +97,11 @@ export default function PendenciaDetalhesPage() {
     if (!pendencia) return;
     if (!confirm('Marcar esta pendência como concluída?')) return;
 
-    setConcluindo(true);
     try {
-      const pendenciaAtualizada = await marcarComoFeito(pendencia.PendenciaGUID);
-      setPendencia(pendenciaAtualizada);
-      window.dispatchEvent(new CustomEvent('baua:pendencia-atualizada'));
+      await marcarComoFeitoMutation.mutateAsync(pendencia.PendenciaGUID);
       alert('Pendência concluída!');
     } catch (err: any) {
       alert(err?.message || 'Erro ao concluir pendência');
-    } finally {
-      setConcluindo(false);
     }
   };
 

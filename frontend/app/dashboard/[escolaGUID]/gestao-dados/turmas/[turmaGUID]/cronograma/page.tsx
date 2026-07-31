@@ -10,6 +10,8 @@ import * as EscolaConfiguracaoAPI from '@/lib/api/escolaconfiguracao.api';
 import { DiaSemana, DIA_SEMANA_LABEL, SlotAula, SlotsPorDia } from '@/lib/api/escolaconfiguracao.api';
 import * as HorarioTurmaAPI from '@/lib/api/horarioturma.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
+import { useCronograma } from '@/lib/horarioturma/useHorarioTurmaQueries';
+import { useAlocarSlot, useRemoverSlot } from '@/lib/horarioturma/useHorarioTurmaMutations';
 import { Icon } from '@/components/Icon';
 
 type Turno = 'Manha' | 'Tarde';
@@ -30,11 +32,15 @@ export default function CronogramaTurmaPage() {
   const [turma, setTurma] = useState<TurmaAPI.Turma | null>(null);
   const [config, setConfig] = useState<EscolaConfiguracaoAPI.EscolaConfiguracao | null>(null);
   const [slotsPorDia, setSlotsPorDia] = useState<SlotsPorDia[]>([]);
-  const [cronograma, setCronograma] = useState<HorarioTurmaAPI.CronogramaTurma | null>(null);
   const [celulaSobre, setCelulaSobre] = useState<string | null>(null);
   const [bancoSobre, setBancoSobre] = useState(false);
   const [mostrarManha, setMostrarManha] = useState(true);
   const [mostrarTarde, setMostrarTarde] = useState(true);
+
+  const cronogramaQuery = useCronograma(turmaGUID, !!config?.Configurada);
+  const cronograma = cronogramaQuery.data ?? null;
+  const alocarSlotMutation = useAlocarSlot(turmaGUID);
+  const removerSlotMutation = useRemoverSlot(turmaGUID);
 
   useEffect(() => {
     if (escolaGUID && turmaGUID) {
@@ -55,27 +61,14 @@ export default function CronogramaTurmaPage() {
       setConfig(configResp);
 
       if (configResp.Configurada) {
-        const [slotsResp, cronogramaResp] = await Promise.all([
-          EscolaConfiguracaoAPI.obterSlots(escolaGUID),
-          HorarioTurmaAPI.obterCronograma(turmaGUID),
-        ]);
+        const slotsResp = await EscolaConfiguracaoAPI.obterSlots(escolaGUID);
         setSlotsPorDia(slotsResp);
-        setCronograma(cronogramaResp);
       }
     } catch (err: any) {
       console.error('Erro ao carregar cronograma:', err);
       setErro(err.message || 'Erro ao carregar cronograma da turma');
     } finally {
       setCarregando(false);
-    }
-  };
-
-  const recarregarCronograma = async () => {
-    try {
-      const cronogramaResp = await HorarioTurmaAPI.obterCronograma(turmaGUID);
-      setCronograma(cronogramaResp);
-    } catch (err: any) {
-      alert('Erro ao recarregar cronograma: ' + err.message);
     }
   };
 
@@ -134,20 +127,18 @@ export default function CronogramaTurmaPage() {
     // fica livre e volta para o banco, como o esperado.
     try {
       if (payload.tipo === 'slot' && payload.HorarioTurmaGUID) {
-        await HorarioTurmaAPI.removerSlot(turmaGUID, payload.HorarioTurmaGUID);
+        await removerSlotMutation.mutateAsync(payload.HorarioTurmaGUID);
       }
 
-      await HorarioTurmaAPI.alocarSlot(turmaGUID, {
+      await alocarSlotMutation.mutateAsync({
         MatProfTurGUID: payload.MatProfTurGUID,
         DiaSemana: dia,
         HoraInicio: slot.HoraInicio,
         HoraFim: slot.HoraFim,
       });
-
-      await recarregarCronograma();
     } catch (err: any) {
       alert(err.message || 'Não foi possível alocar neste horário');
-      await recarregarCronograma();
+      await cronogramaQuery.refetch();
     }
   };
 
@@ -161,8 +152,7 @@ export default function CronogramaTurmaPage() {
 
     if (payload.tipo === 'slot' && payload.HorarioTurmaGUID) {
       try {
-        await HorarioTurmaAPI.removerSlot(turmaGUID, payload.HorarioTurmaGUID);
-        await recarregarCronograma();
+        await removerSlotMutation.mutateAsync(payload.HorarioTurmaGUID);
       } catch (err: any) {
         alert(err.message || 'Não foi possível remover este horário');
       }
@@ -171,8 +161,7 @@ export default function CronogramaTurmaPage() {
 
   const handleRemoverSlot = async (horarioTurmaGUID: string) => {
     try {
-      await HorarioTurmaAPI.removerSlot(turmaGUID, horarioTurmaGUID);
-      await recarregarCronograma();
+      await removerSlotMutation.mutateAsync(horarioTurmaGUID);
     } catch (err: any) {
       alert(err.message || 'Não foi possível remover este horário');
     }
@@ -255,7 +244,7 @@ export default function CronogramaTurmaPage() {
     );
   };
 
-  if (carregando) {
+  if (carregando || (config?.Configurada && cronogramaQuery.isLoading)) {
     return (
       <div className={styles.loadingContainer}>
         <Loader />

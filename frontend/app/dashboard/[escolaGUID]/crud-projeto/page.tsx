@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { criarProjeto } from '@/lib/api/projeto.api';
+import { useCriarProjeto } from '@/lib/projeto/useProjetoMutations';
 import { listarTurmas, Turma } from '@/lib/api/turma.api';
 import { ProjetoPublicoAlvo } from '@/types/projeto';
 import { Icon } from '@/components/Icon';
@@ -21,8 +21,9 @@ export default function CrudProjetoPage() {
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [turmasSelecionadas, setTurmasSelecionadas] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const criarProjetoMutation = useCriarProjeto();
+  const submitting = criarProjetoMutation.isPending;
 
   const [form, setForm] = useState({
     ProjetoTitulo: '',
@@ -88,9 +89,8 @@ export default function CrudProjetoPage() {
       return;
     }
 
-    setSubmitting(true);
     try {
-      const projeto = await criarProjeto({
+      const projeto = await criarProjetoMutation.mutateAsync({
         EscolaGUID: escolaGUID,
         ProjetoTitulo: form.ProjetoTitulo,
         ProjetoDescricao: form.ProjetoDescricao,
@@ -108,8 +108,6 @@ export default function CrudProjetoPage() {
       router.push(`/dashboard/${escolaGUID}/projetos/${projeto.ProjetoGUID}`);
     } catch (err: any) {
       setErro(err?.message || 'Falha ao criar projeto');
-    } finally {
-      setSubmitting(false);
     }
   };
 

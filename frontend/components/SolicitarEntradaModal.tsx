@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { GrupoTarefaComMembros } from '@/types/grupotarefa';
+import { useState } from 'react';
+import { useGruposDaTarefa } from '@/lib/grupotarefa/useGrupoTarefaQueries';
+import { useSolicitarEntrada as useSolicitarEntradaMutation } from '@/lib/convitegrupotarefa/useConviteGrupoTarefaMutations';
 import styles from './SolicitarEntradaModal.module.css';
 
 interface SolicitarEntradaModalProps {
@@ -17,77 +18,29 @@ export default function SolicitarEntradaModal({
   tarefaGUID,
   onSolicitacaoEnviada
 }: SolicitarEntradaModalProps) {
-  const [grupos, setGrupos] = useState<GrupoTarefaComMembros[]>([]);
-  const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
   const [filtro, setFiltro] = useState('');
-
-  useEffect(() => {
-    if (isOpen) {
-      carregarGruposDisponiveis();
-    }
-  }, [isOpen, tarefaGUID]);
-
-  const carregarGruposDisponiveis = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const token = localStorage.getItem('@baua:token');
-      const response = await fetch(`/api/grupotarefa/${tarefaGUID}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao carregar grupos');
-      }
-
-      // Filtrar apenas grupos que não estão cheios
-      const gruposDisponiveis = result.data.filter((g: GrupoTarefaComMembros) => {
-        const totalMembros = g.Membros.length + 1; // +1 para contar o líder
-        return totalMembros < 5; // TODO: pegar MaxPessoas da tarefa
-      });
-
-      setGrupos(gruposDisponiveis);
-    } catch (err: any) {
-      setErro(err?.message || 'Erro ao carregar grupos');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const gruposQuery = useGruposDaTarefa(tarefaGUID, isOpen);
+  const loading = gruposQuery.isLoading;
+  // Filtrar apenas grupos que não estão cheios
+  const grupos = (gruposQuery.data ?? []).filter((g) => {
+    const totalMembros = g.Membros.length + 1; // +1 para contar o líder
+    return totalMembros < 5; // TODO: pegar MaxPessoas da tarefa
+  });
+  const solicitarEntradaMutation = useSolicitarEntradaMutation();
+  const enviando = solicitarEntradaMutation.isPending;
 
   const solicitarEntrada = async (grupoGUID: string) => {
     if (!confirm('Deseja solicitar entrada neste grupo?')) return;
 
-    setEnviando(true);
     setErro(null);
     try {
-      const token = localStorage.getItem('@baua:token');
-      const response = await fetch(`/api/convitegrupotarefa/${grupoGUID}/solicitacoes`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao solicitar entrada');
-      }
-
+      await solicitarEntradaMutation.mutateAsync(grupoGUID);
       alert('Solicitação enviada! Aguarde aprovação do líder.');
       onSolicitacaoEnviada();
       onClose();
     } catch (err: any) {
       setErro(err?.message || 'Erro ao solicitar entrada');
-    } finally {
-      setEnviando(false);
     }
   };
 

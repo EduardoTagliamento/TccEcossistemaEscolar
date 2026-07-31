@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
-import * as PendenciaAPI from '@/lib/api/pendencia.api';
+import { usePendencias } from '@/lib/pendencia/usePendenciaQueries';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import MateriaTurmaCard from '@/components/materias/MateriaTurmaCard';
@@ -52,9 +52,12 @@ export default function DashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // ---------- Widgets de conteúdo real ----------
-  const [pendencias, setPendencias] = useState<PendenciaAPI.Pendencia[]>([]);
-  const [carregandoPendencias, setCarregandoPendencias] = useState(true);
-  const [erroPendencias, setErroPendencias] = useState('');
+  const pendenciasQuery = usePendencias({ EscolaGUID: escolaGUID, PendenciaFeito: false, limit: 5 }, !!usuario && !!escolaGUID);
+  const pendencias = [...(pendenciasQuery.data?.pendencias ?? [])].sort(
+    (a, b) => new Date(a.PendenciaPrazoData).getTime() - new Date(b.PendenciaPrazoData).getTime()
+  );
+  const carregandoPendencias = pendenciasQuery.isLoading;
+  const erroPendencias = pendenciasQuery.error instanceof Error ? pendenciasQuery.error.message : '';
 
   const [tarefas, setTarefas] = useState<MateriasModuloAPI.TarefaPendenteAluno[]>([]);
   const [carregandoTarefas, setCarregandoTarefas] = useState(true);
@@ -80,7 +83,6 @@ export default function DashboardPage() {
     if (usuario && escolaGUID) {
       buscarEscola();
       buscarFuncoesDaEscola();
-      void carregarPendencias();
       void carregarAvisos();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,22 +204,6 @@ export default function DashboardPage() {
       console.error('Erro ao carregar atalho de matérias (professor):', erro);
     } finally {
       setCarregandoMaterias(false);
-    }
-  };
-
-  const carregarPendencias = async () => {
-    setCarregandoPendencias(true);
-    setErroPendencias('');
-    try {
-      const resultado = await PendenciaAPI.listarPendencias({ EscolaGUID: escolaGUID, PendenciaFeito: false, limit: 5 });
-      const ordenadas = [...resultado.pendencias].sort(
-        (a, b) => new Date(a.PendenciaPrazoData).getTime() - new Date(b.PendenciaPrazoData).getTime()
-      );
-      setPendencias(ordenadas);
-    } catch (erro: any) {
-      setErroPendencias(erro?.message || 'Erro ao carregar pendências');
-    } finally {
-      setCarregandoPendencias(false);
     }
   };
 

@@ -91,8 +91,8 @@
 }
 
 .botaoIcone:hover {
-  border-color: var(--green-500, #17C077);
-  color: var(--green-500, #17C077);
+  border-color: var(--color-primary, var(--green-500, #17C077));
+  color: var(--color-primary, var(--green-500, #17C077));
 }
 
 .filtro {

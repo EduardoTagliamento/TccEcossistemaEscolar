@@ -14,6 +14,7 @@ import {
   atualizarAnotacao
 } from '@/lib/api/anotacao.api';
 import { Evento, listarEventos } from '@/lib/api/evento.api';
+import { useCalendario } from '@/lib/calendario/useCalendarioQueries';
 import { Icon } from './icons';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -56,9 +57,6 @@ export default function CalendarioAlunoPage() {
   }, []);
 
   const [dataAtual, setDataAtual] = useState(() => new Date());
-  const [avisos, setAvisos] = useState<AvisoCalendario[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState<DiaCalendario | null>(null);
   const [indiceDiaModal, setIndiceDiaModal] = useState(0);
@@ -75,66 +73,60 @@ export default function CalendarioAlunoPage() {
     return `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}`;
   }, [dataAtual]);
 
+  const periodoSelecionado = useMemo(() => {
+    const [ano, mes] = mesSelecionado.split('-').map(Number);
+    const inicio = new Date(ano, mes - 1, 1);
+    const fim = new Date(ano, mes, 0, 23, 59, 59);
+    return { inicio, fim };
+  }, [mesSelecionado]);
+
+  const avisosQuery = useCalendario(
+    escolaGUID
+      ? { EscolaGUID: escolaGUID, DataInicio: periodoSelecionado.inicio.toISOString(), DataFim: periodoSelecionado.fim.toISOString() }
+      : undefined,
+    !!usuario
+  );
+  const avisos = avisosQuery.data ?? [];
+  const loading = avisosQuery.isLoading;
+  const erro = avisosQuery.error instanceof Error ? avisosQuery.error.message : null;
+
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
       return;
     }
     if (usuario && escolaGUID) {
-      void carregarCalendario();
+      void carregarAnotacoesEEventos();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario, authLoading, escolaGUID, mesSelecionado]);
 
-  const carregarCalendario = async () => {
-    setLoading(true);
-    setErro(null);
+  const carregarAnotacoesEEventos = async () => {
+    const { inicio, fim } = periodoSelecionado;
 
+    // Buscar anotações do período
     try {
-      const [ano, mes] = mesSelecionado.split('-').map(Number);
-      const inicio = new Date(ano, mes - 1, 1);
-      const fim = new Date(ano, mes, 0, 23, 59, 59);
+      const anotacoesData = await listarAnotacoesPorPeriodo(
+        escolaGUID,
+        inicio.toISOString().split('T')[0],
+        fim.toISOString().split('T')[0]
+      );
+      setAnotacoes(anotacoesData);
+    } catch (err) {
+      console.error('Erro ao carregar anotações:', err);
+    }
 
-      const paramsUrl = new URLSearchParams({
+    // Buscar eventos do período (avisos amplos da escola, sempre exibidos —
+    // não é gated pelo toggle "Mostrar Anotações")
+    try {
+      const eventosData = await listarEventos({
         EscolaGUID: escolaGUID,
-        DataInicio: inicio.toISOString(),
-        DataFim: fim.toISOString(),
+        dataInicio: inicio.toISOString(),
+        dataFim: fim.toISOString(),
       });
-
-      const response = await fetch(`/api/calendario?${paramsUrl.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data?.message || 'Erro ao carregar calendário');
-      setAvisos(data?.data?.avisos || []);
-
-      // Buscar anotações do período
-      try {
-        const anotacoesData = await listarAnotacoesPorPeriodo(
-          escolaGUID,
-          inicio.toISOString().split('T')[0],
-          fim.toISOString().split('T')[0]
-        );
-        setAnotacoes(anotacoesData);
-      } catch (err) {
-        console.error('Erro ao carregar anotações:', err);
-      }
-
-      // Buscar eventos do período (avisos amplos da escola, sempre exibidos —
-      // não é gated pelo toggle "Mostrar Anotações")
-      try {
-        const eventosData = await listarEventos({
-          EscolaGUID: escolaGUID,
-          dataInicio: inicio.toISOString(),
-          dataFim: fim.toISOString(),
-        });
-        setEventos(eventosData.eventos);
-      } catch (err) {
-        console.error('Erro ao carregar eventos:', err);
-      }
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar calendário');
-    } finally {
-      setLoading(false);
+      setEventos(eventosData.eventos);
+    } catch (err) {
+      console.error('Erro ao carregar eventos:', err);
     }
   };
 
@@ -174,7 +166,7 @@ export default function CalendarioAlunoPage() {
     for (let dia = 1; dia <= diasNoMes; dia++) {
       const data = new Date(ano, mes, dia);
       const dataStr = data.toISOString().split('T')[0];
-      const avisosNoDia = avisos.filter(aviso => {
+      const avisosNoDia: AvisoCalendario[] = avisos.filter(aviso => {
         const avisoData = new Date(aviso.DataPrazo);
         return avisoData.toISOString().split('T')[0] === dataStr;
       });
@@ -323,7 +315,7 @@ export default function CalendarioAlunoPage() {
 
       setFormNovaAnotacao({ titulo: '', descricao: '' });
       setModalCriarAnotacaoAberto(false);
-      await carregarCalendario();
+      await carregarAnotacoesEEventos();
     } catch (error: any) {
       alert(error.message || 'Erro ao criar anotação');
     }
@@ -332,7 +324,7 @@ export default function CalendarioAlunoPage() {
   const handleToggleAnotacao = async (guid: string) => {
     try {
       await toggleAnotacaoFeito(guid);
-      await carregarCalendario();
+      await carregarAnotacoesEEventos();
     } catch (error: any) {
       alert(error.message || 'Erro ao atualizar status');
     }
@@ -343,7 +335,7 @@ export default function CalendarioAlunoPage() {
 
     try {
       await excluirAnotacao(guid);
-      await carregarCalendario();
+      await carregarAnotacoesEEventos();
     } catch (error: any) {
       alert(error.message || 'Erro ao excluir anotação');
     }
@@ -363,7 +355,7 @@ export default function CalendarioAlunoPage() {
 
       setModoEdicaoAnotacao(null);
       setFormEdicaoAnotacao({ titulo: '', descricao: '' });
-      await carregarCalendario();
+      await carregarAnotacoesEEventos();
     } catch (error: any) {
       alert(error.message || 'Erro ao editar anotação');
     }
@@ -397,7 +389,7 @@ export default function CalendarioAlunoPage() {
         throw new Error(result?.message || 'Erro ao atualizar tarefa');
       }
 
-      await carregarCalendario();
+      await avisosQuery.refetch();
     } catch (error: any) {
       alert(error.message || 'Erro ao atualizar tarefa física');
     }

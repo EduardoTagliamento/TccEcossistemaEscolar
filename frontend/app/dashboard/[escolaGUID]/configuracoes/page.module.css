@@ -295,7 +295,7 @@
 }
 
 .input:focus {
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
   box-shadow: var(--shadow-focus);
 }
 
@@ -339,13 +339,13 @@
 }
 
 .diaChip:hover {
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
 }
 
 .diaChipAtivo {
   background: var(--green-50);
-  border-color: var(--green-500);
-  color: var(--green-700);
+  border-color: var(--color-primary, var(--green-500));
+  color: var(--color-primary, var(--green-700));
 }
 
 .diaChipInput {
@@ -407,7 +407,7 @@
 }
 
 .switchInput:checked + .switchTrack {
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
 }
 
 .switchInput:checked + .switchTrack .switchThumb {

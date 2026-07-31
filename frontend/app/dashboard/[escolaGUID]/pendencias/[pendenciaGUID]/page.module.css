@@ -150,7 +150,7 @@
 }
 
 .backLink:hover {
-  color: var(--green-700);
+  color: var(--color-primary, var(--green-700));
   text-decoration: none;
 }
 

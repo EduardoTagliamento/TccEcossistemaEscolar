@@ -351,7 +351,7 @@
 
 .inputBusca:focus {
   outline: none;
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
 }
 
 .botaoBuscar {
@@ -392,7 +392,7 @@
   padding: 1.25rem;
   background: var(--surface-50);
   border-radius: var(--radius-md);
-  border-left: 3px solid var(--green-500);
+  border-left: 3px solid var(--color-primary, var(--green-500));
 }
 
 .usuarioEncontradoNome {
@@ -545,7 +545,7 @@
   padding: 0.75rem;
   background: var(--white);
   border-radius: var(--radius-sm);
-  border-left: 3px solid var(--green-500);
+  border-left: 3px solid var(--color-primary, var(--green-500));
   display: flex;
   align-items: center;
   gap: 0.5rem;

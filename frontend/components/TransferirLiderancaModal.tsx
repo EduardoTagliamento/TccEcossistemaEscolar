@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { MembroGrupo } from '@/types/grupotarefa';
+import { useTransferirLideranca } from '@/lib/grupotarefa/useGrupoTarefaMutations';
 import styles from './TransferirLiderancaModal.module.css';
 
 interface TransferirLiderancaModalProps {
@@ -22,8 +23,9 @@ export default function TransferirLiderancaModal({
   onTransferido
 }: TransferirLiderancaModalProps) {
   const [cpfSelecionado, setCpfSelecionado] = useState<string | null>(null);
-  const [transferindo, setTransferindo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const transferirLiderancaMutation = useTransferirLideranca();
+  const transferindo = transferirLiderancaMutation.isPending;
 
   const membrosDisponiveis = membros.filter(m => !m.IsLider);
 
@@ -37,33 +39,15 @@ export default function TransferirLiderancaModal({
       return;
     }
 
-    setTransferindo(true);
     setErro(null);
 
     try {
-      const token = localStorage.getItem('@baua:token');
-      const response = await fetch(`/api/grupotarefa/${grupoGUID}/transferir-lider`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ NovoCPFLider: cpfSelecionado })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao transferir liderança');
-      }
-
+      await transferirLiderancaMutation.mutateAsync({ grupoGUID, novoCPFLider: cpfSelecionado });
       alert('Liderança transferida com sucesso!');
       onTransferido();
       onClose();
     } catch (err: any) {
       setErro(err?.message || 'Erro ao transferir liderança');
-    } finally {
-      setTransferindo(false);
     }
   };
 

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
 import { Icon } from '@/components/Icon';
-import * as ConteudoAPI from '@/lib/api/conteudo.api';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import * as AnexoAPI from '@/lib/api/anexo.api';
 import type { ItemCategoria } from '@/lib/api/materiasmodulo.api';
@@ -29,19 +28,17 @@ import {
   useAvaliarTarefa,
   useExcluirTarefa,
 } from '@/lib/tarefas/useTarefaMutations';
+import { useConteudo } from '@/lib/conteudo/useConteudoQueries';
+import {
+  useExcluirConteudo,
+  useRemoverConteudoDeTurma,
+  useRegistrarProgressoVideo,
+  useRegistrarProgressoTexto,
+  useRegistrarProgressoPagina,
+} from '@/lib/conteudo/useConteudoMutations';
+import { useProva } from '@/lib/provaagendada/useProvaQueries';
+import { useExcluirProva, useRemoverProvaDeTurma, useRegistrarVisualizacaoProva } from '@/lib/provaagendada/useProvaMutations';
 import styles from './VisualizadorItemModal.module.css';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
-
-function getToken(): string {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('@baua:token') || '';
-}
-
-function getHeaders(): HeadersInit {
-  const token = getToken();
-  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
-}
 
 function extrairYoutubeId(url: string): string | null {
   const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w-]{11})/);
@@ -111,10 +108,9 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const queryClient = useQueryClient();
   const isTarefa = item.Tipo === 'tarefa_digital' || item.Tipo === 'tarefa_presencial' || item.Tipo === 'tarefa_lista';
   const isTarefaLista = item.Tipo === 'tarefa_lista';
+  const isConteudo = item.Tipo.startsWith('conteudo_');
+  const isProva = item.Tipo === 'prova';
 
-  const [carregandoLocal, setCarregandoLocal] = useState(true);
-  const [conteudo, setConteudo] = useState<ConteudoAPI.Conteudo | null>(null);
-  const [provaDetalhe, setProvaDetalhe] = useState<any>(null);
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [arquivoEntrega, setArquivoEntrega] = useState<File | null>(null);
   const [enviandoEntrega, setEnviandoEntrega] = useState(false);
@@ -136,7 +132,18 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const estatisticasPorQuestao = estatisticasPorQuestaoQuery.data ?? null;
   const carregandoEstatisticas = estatisticasQuery.isFetching || (isTarefaLista && estatisticasPorQuestaoQuery.isFetching);
   const questoesLoading = isTarefaLista ? (ehProfessor ? questoesProfessorQuery.isLoading : questoesAlunoQuery.isLoading) : false;
-  const carregando = isTarefa ? tarefaQuery.isLoading || questoesLoading : carregandoLocal;
+  // ---- Conteúdo / Prova (TanStack Query) ----
+  const conteudoQuery = useConteudo(isConteudo ? item.ItemGUID : undefined);
+  const conteudo = conteudoQuery.data ?? null;
+  const provaQuery = useProva(isProva ? item.ItemGUID : undefined);
+  const provaDetalhe = provaQuery.data ?? null;
+  const carregando = isTarefa
+    ? tarefaQuery.isLoading || questoesLoading
+    : isConteudo
+      ? conteudoQuery.isLoading
+      : isProva
+        ? provaQuery.isLoading
+        : false;
   const [mostrarQuestoesProfessor, setMostrarQuestoesProfessor] = useState(false);
   const [enviandoResposta, setEnviandoResposta] = useState<string | null>(null);
   const [textosDiscursiva, setTextosDiscursiva] = useState<Record<string, string>>({});
@@ -164,6 +171,16 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const avaliarTarefaMutation = useAvaliarTarefa(item.ItemGUID);
   const excluirTarefaMutation = useExcluirTarefa();
 
+  // ---- Mutations de conteúdo / prova ----
+  const excluirConteudoMutation = useExcluirConteudo();
+  const removerConteudoDeTurmaMutation = useRemoverConteudoDeTurma();
+  const registrarProgressoVideoMutation = useRegistrarProgressoVideo(item.ItemGUID);
+  const registrarProgressoTextoMutation = useRegistrarProgressoTexto();
+  const registrarProgressoPaginaMutation = useRegistrarProgressoPagina();
+  const excluirProvaMutation = useExcluirProva();
+  const removerProvaDeTurmaMutation = useRemoverProvaDeTurma();
+  const registrarVisualizacaoProvaMutation = useRegistrarVisualizacaoProva();
+
   const invalidarItemDetalhe = () => {
     queryClient.invalidateQueries({ queryKey: tarefaKeys.itemDetalhe(item.ItemGUID, ehProfessor) });
   };
@@ -173,11 +190,32 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     setAlunoDetalheGUID(null);
     setMostrarEstatisticas(false);
     setMostrarQuestoesProfessor(false);
-    if (!isTarefa) {
-      void carregarDetalhe();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item.ItemGUID]);
+
+  // Registrar progresso de leitura (conteúdo texto) e visualização (prova)
+  // assim que o detalhe carrega — uma vez por item aberto, não a cada refetch.
+  const progressoTextoRegistradoRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (item.Tipo !== 'conteudo_texto' || !conteudoQuery.data) return;
+    if (progressoTextoRegistradoRef.current === item.ItemGUID) return;
+    progressoTextoRegistradoRef.current = item.ItemGUID;
+    registrarProgressoTextoMutation.mutate(item.ItemGUID, { onSuccess: onProgressoAtualizado });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.Tipo, item.ItemGUID, conteudoQuery.data]);
+
+  const visualizacaoProvaRegistradaRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Sem gate de ehProfessor — o backend já resolve a matrícula pelo CPF
+    // autenticado e devolve 404 (silencioso) se não houver nenhuma. Gatear
+    // aqui deixaria de registrar visualização pra contas com os dois papéis
+    // (professor + aluno), que têm matrícula válida mas eram tratadas só
+    // como professor.
+    if (item.Tipo !== 'prova' || !provaQuery.data || !item.RefTurmaGUID) return;
+    if (visualizacaoProvaRegistradaRef.current === item.ItemGUID) return;
+    visualizacaoProvaRegistradaRef.current = item.ItemGUID;
+    registrarVisualizacaoProvaMutation.mutate(item.RefTurmaGUID, { onSuccess: onProgressoAtualizado });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.Tipo, item.ItemGUID, provaQuery.data, item.RefTurmaGUID]);
 
   // Seed do textarea de resposta discursiva a partir do que já veio salvo do servidor.
   useEffect(() => {
@@ -202,52 +240,25 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     }
   }, [estatisticasQuery.error]);
 
-  /** Conteúdo (texto/vídeo/imagem) e prova continuam com fetch manual — fora do escopo desta migração. */
-  const carregarDetalhe = async () => {
-    try {
-      setCarregandoLocal(true);
-      if (item.Tipo.startsWith('conteudo_')) {
-        const dados = await ConteudoAPI.buscarConteudo(item.ItemGUID);
-        setConteudo(dados);
-        if (item.Tipo === 'conteudo_texto') {
-          await MateriasModuloAPI.registrarProgressoTexto(item.ItemGUID);
-          onProgressoAtualizado();
-        }
-      } else if (item.Tipo === 'prova') {
-        const response = await fetch(`${API_URL}/prova/${item.ItemGUID}`, { headers: getHeaders() });
-        const resultado = await response.json();
-        setProvaDetalhe(resultado?.data?.prova);
-        // Sem gate de ehProfessor — mesmo padrão de texto/vídeo (nunca checam
-        // o papel aqui): o backend já resolve a matrícula pelo CPF autenticado
-        // e devolve 404 (silencioso, pego pelo catch abaixo) se não houver
-        // nenhuma. Gatear por ehProfessor deixava de registrar progresso pra
-        // contas com os dois papéis (professor + aluno), que têm matrícula
-        // válida mas eram tratadas só como professor aqui.
-        if (item.RefTurmaGUID) {
-          await MateriasModuloAPI.registrarVisualizacaoProva(item.RefTurmaGUID);
-          onProgressoAtualizado();
-        }
-      }
-    } catch (erro) {
-      console.error('Erro ao carregar item:', erro);
-    } finally {
-      setCarregandoLocal(false);
-    }
-  };
-
   const handleVideoTimeUpdate = () => {
     const video = videoRef.current;
     if (!video || !video.duration) return;
     const agora = Date.now();
     if (agora - ultimoReporte.current < 5000) return;
     ultimoReporte.current = agora;
-    void MateriasModuloAPI.registrarProgressoVideo(item.ItemGUID, video.currentTime, video.duration).then(onProgressoAtualizado);
+    registrarProgressoVideoMutation.mutate(
+      { segundosAssistidos: video.currentTime, duracaoTotalSegundos: video.duration },
+      { onSuccess: onProgressoAtualizado }
+    );
   };
 
   const handleVideoEnded = () => {
     const video = videoRef.current;
     if (!video) return;
-    void MateriasModuloAPI.registrarProgressoVideo(item.ItemGUID, video.duration, video.duration).then(onProgressoAtualizado);
+    registrarProgressoVideoMutation.mutate(
+      { segundosAssistidos: video.duration, duracaoTotalSegundos: video.duration },
+      { onSuccess: onProgressoAtualizado }
+    );
   };
 
   const reportarProgressoYoutube = (concluido: boolean) => {
@@ -256,7 +267,10 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     const duracao = player.getDuration();
     if (!duracao) return;
     const segundosAssistidos = concluido ? duracao : player.getCurrentTime();
-    void MateriasModuloAPI.registrarProgressoVideo(item.ItemGUID, segundosAssistidos, duracao).then(onProgressoAtualizado);
+    registrarProgressoVideoMutation.mutate(
+      { segundosAssistidos, duracaoTotalSegundos: duracao },
+      { onSuccess: onProgressoAtualizado }
+    );
   };
 
   const handleYoutubeStateChange = (event: any) => {
@@ -317,11 +331,12 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     if (item.Tipo === 'conteudo_imagem' && paginas.length > 0) {
       const pagina = paginas[paginaAtual];
       if (pagina) {
-        void MateriasModuloAPI.registrarProgressoPagina(pagina.ConteudoPaginadoArquivoGUID)
-          .then(onProgressoAtualizado)
-          .catch(() => {
+        registrarProgressoPaginaMutation.mutate(pagina.ConteudoPaginadoArquivoGUID, {
+          onSuccess: onProgressoAtualizado,
+          onError: () => {
             // Sem matrícula ativa (ex.: conta só-professor abrindo o item) — no-op silencioso, mesmo padrão de texto/prova.
-          });
+          },
+        });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -417,17 +432,16 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     try {
       if (item.Tipo.startsWith('conteudo_')) {
         if (todasAsTurmas) {
-          await ConteudoAPI.excluirConteudo(item.ItemGUID);
+          await excluirConteudoMutation.mutateAsync(item.ItemGUID);
         } else {
-          await ConteudoAPI.removerConteudoDeTurma(item.ItemGUID, turmaGUID);
+          await removerConteudoDeTurmaMutation.mutateAsync({ conteudoGUID: item.ItemGUID, turmaGUID });
         }
       } else if (item.Tipo === 'prova') {
-        const url = todasAsTurmas
-          ? `${API_URL}/prova/${item.ItemGUID}`
-          : `${API_URL}/prova/${item.ItemGUID}/turma/${turmaGUID}`;
-        const response = await fetch(url, { method: 'DELETE', headers: getHeaders() });
-        const resultado = await response.json();
-        if (!resultado.success) throw new Error(resultado.message);
+        if (todasAsTurmas) {
+          await excluirProvaMutation.mutateAsync(item.ItemGUID);
+        } else {
+          await removerProvaDeTurmaMutation.mutateAsync({ provaAgendadaGUID: item.ItemGUID, turmaGUID });
+        }
       } else {
         await excluirTarefaMutation.mutateAsync(item.ItemGUID);
       }

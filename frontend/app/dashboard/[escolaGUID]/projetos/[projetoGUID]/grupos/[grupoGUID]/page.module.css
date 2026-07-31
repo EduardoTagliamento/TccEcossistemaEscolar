@@ -108,7 +108,7 @@
 
 .backLink {
   text-decoration: none;
-  color: var(--green-600);
+  color: var(--color-primary, var(--green-600));
   font-weight: 700;
 }
 
@@ -336,5 +336,5 @@
 
 .inlineForm input:focus {
   outline: none;
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
 }

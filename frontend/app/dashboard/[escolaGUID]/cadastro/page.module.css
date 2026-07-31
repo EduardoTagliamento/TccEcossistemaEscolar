@@ -99,14 +99,14 @@
 }
 
 .abaAtiva {
-  background: var(--green-500);
-  border-color: var(--green-500);
+  background: var(--color-primary, var(--green-500));
+  border-color: var(--color-primary, var(--green-500));
   color: #fff;
 }
 
 .aba:hover {
-  border-color: var(--green-500);
-  color: var(--green-600);
+  border-color: var(--color-primary, var(--green-500));
+  color: var(--color-primary, var(--green-600));
 }
 
 .abaConteudo {

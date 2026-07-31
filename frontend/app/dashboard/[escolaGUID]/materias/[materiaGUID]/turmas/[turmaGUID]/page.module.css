@@ -152,7 +152,7 @@
   color: var(--ink-900, #0F1D17);
   font-size: 1.05rem;
   border: none;
-  border-bottom: 1.5px solid var(--green-500, #17C077);
+  border-bottom: 1.5px solid var(--color-primary, var(--green-500, #17C077));
   background: transparent;
   padding: 0 0 2px 0;
   outline: none;

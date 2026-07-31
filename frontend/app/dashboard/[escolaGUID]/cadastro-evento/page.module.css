@@ -208,7 +208,7 @@
 }
 
 .inputFull:focus {
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
   box-shadow: var(--shadow-focus);
 }
 
@@ -228,7 +228,7 @@
 }
 
 .textarea:focus {
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
   box-shadow: var(--shadow-focus);
 }
 
@@ -421,6 +421,8 @@
   border: 1.5px solid var(--blue-500);
 }
 
+/* Verde fixo intencional (não a cor da escola): status "realizado" no
+   mesmo sistema de badges de .badgeAgendado (azul) / .badgeCancelado (vermelho). */
 .badgeRealizado {
   background: var(--green-50);
   color: var(--green-700);

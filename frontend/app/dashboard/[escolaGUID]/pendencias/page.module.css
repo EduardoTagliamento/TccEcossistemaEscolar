@@ -209,6 +209,7 @@
   border-left-color: var(--blue-500);
 }
 
+/* Verde fixo intencional: status "feito" no sistema pendente(azul)/feito(verde)/atrasada(vermelho). */
 .cardFeito {
   border-left-color: var(--green-500);
 }
