@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useTarefa } from '@/lib/tarefas/useTarefaQueries';
-import { buscarGrupoComMembros, atualizarNomeGrupo, expulsarMembro } from '@/lib/api/grupotarefa.api';
-import { GrupoTarefaComMembros } from '@/types/grupotarefa';
+import { useGruposDaTarefa, useGrupoComMembros } from '@/lib/grupotarefa/useGrupoTarefaQueries';
+import { useAtualizarNomeGrupo, useExpulsarMembro } from '@/lib/grupotarefa/useGrupoTarefaMutations';
+import { grupoTarefaKeys } from '@/lib/grupotarefa/queryKeys';
 import ConviteGrupoModal from '@/components/ConviteGrupoModal';
 import TransferirLiderancaModal from '@/components/TransferirLiderancaModal';
 import ConvitesPendentesModal from '@/components/ConvitesPendentesModal';
@@ -28,7 +30,24 @@ export default function TarefaDetalhesPage() {
   const tarefa = tarefaBruta ? { ...tarefaBruta, TarefaCompartilhada: Boolean(tarefaBruta.TarefaCompartilhada) } : null;
   const erro = tarefaError instanceof Error ? tarefaError.message : null;
 
-  const [grupo, setGrupo] = useState<GrupoTarefaComMembros | null>(null);
+  const queryClient = useQueryClient();
+
+  // "Meu grupo" é resolvido em duas etapas: lista os grupos da tarefa (já vem
+  // com os membros de cada um) e acha o que o usuário faz parte; só então
+  // busca o detalhe completo desse grupo específico.
+  const gruposQuery = useGruposDaTarefa(tarefaGUID, Boolean(tarefa?.TarefaCompartilhada) && !!usuario);
+  const meuGrupoResumo = gruposQuery.data?.find(
+    (g) => g.UsuarioCPFLider === usuario?.UsuarioCPF || g.Membros?.some((m) => m.UsuarioCPF === usuario?.UsuarioCPF)
+  );
+  const grupoDetalheQuery = useGrupoComMembros(meuGrupoResumo?.GrupoTarefaGUID);
+  const grupo = grupoDetalheQuery.data ?? null;
+
+  const recarregarGrupo = () => {
+    queryClient.invalidateQueries({ queryKey: grupoTarefaKeys.all });
+  };
+
+  const atualizarNomeGrupoMutation = useAtualizarNomeGrupo();
+  const expulsarMembroMutation = useExpulsarMembro();
 
   const [modalConvite, setModalConvite] = useState(false);
   const [modalTransferir, setModalTransferir] = useState(false);
@@ -50,50 +69,12 @@ export default function TarefaDetalhesPage() {
     }
   }, [grupo]);
 
-  const recarregarGrupo = async () => {
-    if (!tarefa?.TarefaCompartilhada || !usuario) {
-      setGrupo(null);
-      return;
-    }
-    try {
-      const tokenStr = localStorage.getItem('@baua:token');
-      const response = await fetch(`/api/grupotarefa/${tarefaGUID}`, {
-        headers: { 'Authorization': `Bearer ${tokenStr}` }
-      });
-      const result = await response.json();
-
-      if (response.ok && result.data) {
-        const meuGrupo = result.data.find((g: any) =>
-          g.UsuarioCPFLider === usuario.UsuarioCPF ||
-          g.Membros?.some((m: any) => m.UsuarioCPF === usuario.UsuarioCPF)
-        );
-
-        if (meuGrupo) {
-          const grupoCompleto = await buscarGrupoComMembros(meuGrupo.GrupoTarefaGUID);
-          setGrupo(grupoCompleto);
-        } else {
-          setGrupo(null);
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao buscar grupo:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (tarefa?.TarefaCompartilhada && usuario) {
-      void recarregarGrupo();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tarefa?.TarefaCompartilhada, tarefaGUID, usuario]);
-
   const salvarNomeGrupo = async () => {
     if (!grupo || !usuarioELider) return;
 
     setSalvandoNome(true);
     try {
-      await atualizarNomeGrupo(grupo.GrupoTarefaGUID, grupoNomeEditado);
-      await recarregarGrupo();
+      await atualizarNomeGrupoMutation.mutateAsync({ grupoGUID: grupo.GrupoTarefaGUID, novoNome: grupoNomeEditado });
       alert('Nome do grupo atualizado!');
     } catch (err: any) {
       alert(err?.message || 'Erro ao atualizar nome');
@@ -108,9 +89,8 @@ export default function TarefaDetalhesPage() {
     if (!confirm(`Deseja expulsar ${nome} do grupo?`)) return;
 
     try {
-      await expulsarMembro(grupo.GrupoTarefaGUID, cpf);
+      await expulsarMembroMutation.mutateAsync({ grupoGUID: grupo.GrupoTarefaGUID, membroCPF: cpf });
       alert('Membro expulso do grupo.');
-      await recarregarGrupo();
     } catch (err: any) {
       alert(err?.message || 'Erro ao expulsar membro');
     }

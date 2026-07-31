@@ -4,19 +4,18 @@ import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { buscarProjeto } from '@/lib/api/projeto.api';
+import { useProjeto } from '@/lib/projeto/useProjetoQueries';
+import { useGrupo } from '@/lib/grupoprojeto/useGrupoProjetoQueries';
 import {
-  adicionarMembro,
-  atualizarGrupo,
-  atualizarPontuacao,
-  buscarGrupo,
-  entrarGrupo,
-  expulsarMembro,
-  sairGrupo,
-  transferirLideranca
-} from '@/lib/api/grupoprojeto.api';
-import { solicitarEntrada } from '@/lib/api/convitegrupoprojeto.api';
-import { GrupoProjeto, Projeto } from '@/types/projeto';
+  useAdicionarMembro,
+  useAtualizarGrupo,
+  useAtualizarPontuacao,
+  useEntrarGrupo,
+  useExpulsarMembro,
+  useSairGrupo,
+  useTransferirLideranca,
+} from '@/lib/grupoprojeto/useGrupoProjetoMutations';
+import { useSolicitarEntrada } from '@/lib/convitegrupoprojeto/useConviteGrupoProjetoMutations';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -32,39 +31,44 @@ export default function GrupoProjetoDetalhePage() {
   const grupoGUIDParam = params?.grupoGUID;
   const grupoGUID = Array.isArray(grupoGUIDParam) ? grupoGUIDParam[0] : grupoGUIDParam || '';
 
-  const [grupo, setGrupo] = useState<GrupoProjeto | null>(null);
-  const [projeto, setProjeto] = useState<Projeto | null>(null);
-  const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [acaoErro, setAcaoErro] = useState<string | null>(null);
   const [acaoMensagem, setAcaoMensagem] = useState<string | null>(null);
   const [novoCPF, setNovoCPF] = useState('');
   const [pontuacaoInput, setPontuacaoInput] = useState('');
 
+  const projetoQuery = useProjeto(usuario ? projetoGUID : undefined);
+  const projeto = projetoQuery.data ?? null;
+  const grupoQuery = useGrupo(grupoGUID);
+  const grupo = grupoQuery.data ?? null;
+  const loading = projetoQuery.isLoading || grupoQuery.isLoading;
+
+  const entrarGrupoMutation = useEntrarGrupo();
+  const solicitarEntradaMutation = useSolicitarEntrada();
+  const sairGrupoMutation = useSairGrupo();
+  const expulsarMembroMutation = useExpulsarMembro();
+  const transferirLiderancaMutation = useTransferirLideranca();
+  const atualizarGrupoMutation = useAtualizarGrupo();
+  const adicionarMembroMutation = useAdicionarMembro();
+  const atualizarPontuacaoMutation = useAtualizarPontuacao();
+
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
-      return;
     }
-    if (usuario) {
-      void carregarDados();
-    }
-  }, [usuario, authLoading]);
+  }, [usuario, authLoading, router]);
 
-  const carregarDados = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const [grupoDados, projetoDados] = await Promise.all([buscarGrupo(grupoGUID), buscarProjeto(projetoGUID)]);
-      setGrupo(grupoDados);
-      setProjeto(projetoDados);
-      setPontuacaoInput(grupoDados.GrupoProjetoPontuacao?.toString() || '');
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar grupo');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (projetoQuery.error) {
+      setErro(projetoQuery.error instanceof Error ? projetoQuery.error.message : 'Falha ao carregar grupo');
     }
-  };
+  }, [projetoQuery.error]);
+
+  useEffect(() => {
+    if (grupo) {
+      setPontuacaoInput(grupo.GrupoProjetoPontuacao?.toString() || '');
+    }
+  }, [grupo]);
 
   const souLider = grupo?.UsuarioCPFLider === usuario?.UsuarioCPF;
   const souCriadorProjeto = projeto?.UsuarioCPFCriador === usuario?.UsuarioCPF;
@@ -76,38 +80,37 @@ export default function GrupoProjetoDetalhePage() {
     try {
       await acao();
       setAcaoMensagem(mensagemSucesso);
-      void carregarDados();
     } catch (err: any) {
       setAcaoErro(err?.message || 'Falha ao executar ação');
     }
   };
 
-  const handleEntrar = () => executar(() => entrarGrupo(grupoGUID), 'Você entrou no grupo!');
+  const handleEntrar = () => executar(() => entrarGrupoMutation.mutateAsync(grupoGUID), 'Você entrou no grupo!');
 
   const handleSolicitar = () => executar(async () => {
-    await solicitarEntrada(grupoGUID);
+    await solicitarEntradaMutation.mutateAsync(grupoGUID);
   }, 'Solicitação enviada ao líder!');
 
   const handleSair = () => {
     if (!confirm('Tem certeza que deseja sair do grupo?')) return;
-    void executar(() => sairGrupo(grupoGUID), 'Você saiu do grupo.');
+    void executar(() => sairGrupoMutation.mutateAsync(grupoGUID), 'Você saiu do grupo.');
   };
 
   const handleExpulsar = (cpf: string) => {
     if (!confirm('Tem certeza que deseja remover este membro?')) return;
-    void executar(() => expulsarMembro(grupoGUID, cpf), 'Membro removido.');
+    void executar(() => expulsarMembroMutation.mutateAsync({ grupoGUID, cpf }), 'Membro removido.');
   };
 
   const handleTransferir = (cpf: string) => {
     if (!confirm('Tem certeza que deseja transferir a liderança?')) return;
-    void executar(() => transferirLideranca(grupoGUID, cpf), 'Liderança transferida.');
+    void executar(() => transferirLiderancaMutation.mutateAsync({ grupoGUID, novoLiderCPF: cpf }), 'Liderança transferida.');
   };
 
   const handleToggleVisibilidade = () => {
     if (!grupo) return;
     const novaVisibilidade = grupo.GrupoProjetoVisibilidade === 'Aberto' ? 'Fechado' : 'Aberto';
     void executar(
-      () => atualizarGrupo(grupoGUID, { GrupoProjetoVisibilidade: novaVisibilidade }),
+      () => atualizarGrupoMutation.mutateAsync({ grupoGUID, dados: { GrupoProjetoVisibilidade: novaVisibilidade } }),
       `Grupo agora está ${novaVisibilidade}.`
     );
   };
@@ -116,7 +119,7 @@ export default function GrupoProjetoDetalhePage() {
     event.preventDefault();
     if (!novoCPF.trim()) return;
     void executar(async () => {
-      await adicionarMembro(grupoGUID, novoCPF.trim());
+      await adicionarMembroMutation.mutateAsync({ grupoGUID, usuarioCPF: novoCPF.trim() });
       setNovoCPF('');
     }, 'Membro adicionado.');
   };
@@ -128,7 +131,7 @@ export default function GrupoProjetoDetalhePage() {
       setAcaoErro('Pontuação inválida');
       return;
     }
-    void executar(() => atualizarPontuacao(grupoGUID, pontuacao), 'Pontuação atribuída.');
+    void executar(() => atualizarPontuacaoMutation.mutateAsync({ grupoGUID, pontuacao }), 'Pontuação atribuída.');
   };
 
   if (authLoading || loading) {

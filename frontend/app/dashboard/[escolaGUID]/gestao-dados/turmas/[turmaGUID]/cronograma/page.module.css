@@ -156,8 +156,8 @@
 }
 
 .botaoVoltar:hover {
-  border-color: var(--green-500);
-  color: var(--green-700);
+  border-color: var(--color-primary, var(--green-500));
+  color: var(--color-primary, var(--green-700));
 }
 
 .aviso {

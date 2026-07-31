@@ -16,8 +16,8 @@ function getHeaders(): HeadersInit {
   };
 }
 
-// READ - Listar grupos de uma tarefa
-export async function listarGruposDaTarefa(tarefaGUID: string): Promise<GrupoTarefa[]> {
+// READ - Listar grupos de uma tarefa (o backend já devolve os membros de cada grupo, não só o resumo)
+export async function listarGruposDaTarefa(tarefaGUID: string): Promise<GrupoTarefaComMembros[]> {
   const response = await fetch(`${API_URL}/grupotarefa/${tarefaGUID}`, {
     headers: getHeaders()
   });
@@ -50,7 +50,7 @@ export async function buscarGrupoComMembros(grupoGUID: string): Promise<GrupoTar
 export async function atualizarNomeGrupo(
   grupoGUID: string,
   novoNome: string
-): Promise<GrupoTarefa> {
+): Promise<void> {
   const response = await fetch(`${API_URL}/grupotarefa/${grupoGUID}/nome`, {
     method: 'PATCH',
     headers: getHeaders(),
@@ -62,8 +62,6 @@ export async function atualizarNomeGrupo(
   if (!response.ok) {
     throw new Error(result.error || result.message || 'Erro ao atualizar nome do grupo');
   }
-
-  return result.data;
 }
 
 // DELETE - Expulsar membro do grupo (só líder)
@@ -87,11 +85,11 @@ export async function expulsarMembro(
 export async function transferirLideranca(
   grupoGUID: string,
   novoCPFLider: string
-): Promise<GrupoTarefa> {
+): Promise<void> {
   const response = await fetch(`${API_URL}/grupotarefa/${grupoGUID}/transferir-lider`, {
     method: 'PATCH',
     headers: getHeaders(),
-    body: JSON.stringify({ NovoCPFLider: novoCPFLider })
+    body: JSON.stringify({ NovoLiderCPF: novoCPFLider })
   });
 
   const result = await response.json();
@@ -99,6 +97,4 @@ export async function transferirLideranca(
   if (!response.ok) {
     throw new Error(result.error || result.message || 'Erro ao transferir liderança');
   }
-
-  return result.data;
 }

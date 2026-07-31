@@ -4,9 +4,11 @@ import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { buscarProjeto, encerrarProjeto } from '@/lib/api/projeto.api';
-import { criarGrupo, entrarGrupo, listarGruposDoProjeto } from '@/lib/api/grupoprojeto.api';
-import { GrupoProjeto, GrupoProjetoVisibilidade, Projeto } from '@/types/projeto';
+import { useProjeto } from '@/lib/projeto/useProjetoQueries';
+import { useEncerrarProjeto } from '@/lib/projeto/useProjetoMutations';
+import { useGruposDoProjeto } from '@/lib/grupoprojeto/useGrupoProjetoQueries';
+import { useCriarGrupo, useEntrarGrupo } from '@/lib/grupoprojeto/useGrupoProjetoMutations';
+import { GrupoProjetoVisibilidade } from '@/types/projeto';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -20,46 +22,37 @@ export default function ProjetoDetalhePage() {
   const projetoGUIDParam = params?.projetoGUID;
   const projetoGUID = Array.isArray(projetoGUIDParam) ? projetoGUIDParam[0] : projetoGUIDParam || '';
 
-  const [projeto, setProjeto] = useState<Projeto | null>(null);
-  const [grupos, setGrupos] = useState<GrupoProjeto[]>([]);
-  const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [acaoErro, setAcaoErro] = useState<string | null>(null);
   const [mostrarFormGrupo, setMostrarFormGrupo] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [novoGrupo, setNovoGrupo] = useState({
     GrupoProjetoNome: '',
     GrupoProjetoProposta: '',
     GrupoProjetoVisibilidade: 'Aberto' as GrupoProjetoVisibilidade
   });
 
+  const projetoQuery = useProjeto(usuario ? projetoGUID : undefined);
+  const projeto = projetoQuery.data ?? null;
+  const encerrarProjetoMutation = useEncerrarProjeto(projetoGUID);
+  const gruposQuery = useGruposDoProjeto(projetoGUID, !!usuario);
+  const grupos = gruposQuery.data ?? [];
+  const criarGrupoMutation = useCriarGrupo();
+  const entrarGrupoMutation = useEntrarGrupo();
+  const submitting = criarGrupoMutation.isPending;
+
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
-      return;
     }
-    if (usuario) {
-      void carregarDados();
-    }
-  }, [usuario, authLoading]);
+  }, [usuario, authLoading, router]);
 
-  const carregarDados = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const [projetoDados, gruposDados] = await Promise.all([
-        buscarProjeto(projetoGUID),
-        listarGruposDoProjeto(projetoGUID)
-      ]);
-      setProjeto(projetoDados);
-      setGrupos(gruposDados);
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar projeto');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (projetoQuery.error) {
+      setErro(projetoQuery.error instanceof Error ? projetoQuery.error.message : 'Falha ao carregar projeto');
     }
-  };
+  }, [projetoQuery.error]);
 
+  const loading = projetoQuery.isLoading || gruposQuery.isLoading;
   const meuGrupo = grupos.find((g) => g.Membros.some((m) => m.UsuarioCPF === usuario?.UsuarioCPF));
   const souCriador = projeto?.UsuarioCPFCriador === usuario?.UsuarioCPF;
   const projetoEncerrado = projeto?.ProjetoStatus === 'Encerrado';
@@ -68,9 +61,8 @@ export default function ProjetoDetalhePage() {
   const handleCriarGrupo = async (event: FormEvent) => {
     event.preventDefault();
     setAcaoErro(null);
-    setSubmitting(true);
     try {
-      const grupo = await criarGrupo({
+      const grupo = await criarGrupoMutation.mutateAsync({
         ProjetoGUID: projetoGUID,
         GrupoProjetoNome: novoGrupo.GrupoProjetoNome || undefined,
         GrupoProjetoProposta: novoGrupo.GrupoProjetoProposta,
@@ -79,15 +71,13 @@ export default function ProjetoDetalhePage() {
       router.push(`/dashboard/${escolaGUID}/projetos/${projetoGUID}/grupos/${grupo.GrupoProjetoGUID}`);
     } catch (err: any) {
       setAcaoErro(err?.message || 'Falha ao criar grupo');
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const handleEntrarGrupo = async (grupoGUID: string) => {
     setAcaoErro(null);
     try {
-      await entrarGrupo(grupoGUID);
+      await entrarGrupoMutation.mutateAsync(grupoGUID);
       router.push(`/dashboard/${escolaGUID}/projetos/${projetoGUID}/grupos/${grupoGUID}`);
     } catch (err: any) {
       setAcaoErro(err?.message || 'Falha ao entrar no grupo');
@@ -97,8 +87,7 @@ export default function ProjetoDetalhePage() {
   const handleEncerrarProjeto = async () => {
     if (!confirm('Tem certeza que deseja encerrar este projeto?')) return;
     try {
-      await encerrarProjeto(projetoGUID);
-      void carregarDados();
+      await encerrarProjetoMutation.mutateAsync();
     } catch (err: any) {
       setAcaoErro(err?.message || 'Falha ao encerrar projeto');
     }

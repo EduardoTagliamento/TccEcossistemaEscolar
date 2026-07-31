@@ -96,7 +96,12 @@ const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(function AuthInpu
         )}
       </div>
       {(error || hint) && (
-        <span className={`${styles.helper} ${error ? styles.helperError : ''}`}>{error || hint}</span>
+        // key força o remount do <span> a cada troca de texto, reiniciando a
+        // animação de fade (helperFadeIn) — sem isso o React só atualiza o
+        // texto no lugar, e a keyframe não dispara de novo.
+        <span key={error || hint} className={`${styles.helper} ${error ? styles.helperError : ''}`}>
+          {error || hint}
+        </span>
       )}
     </div>
   );

@@ -260,7 +260,7 @@
 }
 
 .label input:focus {
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
 }
 
 .erro {
@@ -386,7 +386,7 @@
 }
 
 .switchInput:checked + .switchTrack {
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
 }
 
 .switchInput:checked + .switchTrack .switchThumb {
@@ -432,7 +432,7 @@
 }
 
 .segmentedOptionActivo {
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
   color: #fff;
 }
 

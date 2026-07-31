@@ -29,13 +29,9 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil } from '@/lib/timezone-utils';
-import {
-  Pendencia,
-  criarPendencia,
-  atualizarPendencia,
-  excluirPendencia,
-  listarPendencias,
-} from '@/lib/api/pendencia.api';
+import { Pendencia } from '@/lib/api/pendencia.api';
+import { usePendencias } from '@/lib/pendencia/usePendenciaQueries';
+import { useCriarPendencia, useAtualizarPendencia, useExcluirPendencia } from '@/lib/pendencia/usePendenciaMutations';
 import * as AlunoAPI from '@/lib/api/aluno.api';
 import * as ProfessorAPI from '@/lib/api/professor.api';
 import styles from './page.module.css';
@@ -68,10 +64,7 @@ export default function CadastroPendenciaPage() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
-  const [pendencias, setPendencias] = useState<Pendencia[]>([]);
   const [membrosEscola, setMembrosEscola] = useState<MembroEscola[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [editingGUID, setEditingGUID] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -84,6 +77,15 @@ export default function CadastroPendenciaPage() {
 
   const [buscaDestinatario, setBuscaDestinatario] = useState('');
 
+  const pendenciasQuery = usePendencias({ EscolaGUID: escolaGUID }, !!usuario && !!escolaGUID);
+  const pendencias = pendenciasQuery.data?.pendencias ?? [];
+  const loading = pendenciasQuery.isLoading;
+
+  const criarPendenciaMutation = useCriarPendencia();
+  const atualizarPendenciaMutation = useAtualizarPendencia();
+  const excluirPendenciaMutation = useExcluirPendencia();
+  const submitting = criarPendenciaMutation.isPending || atualizarPendenciaMutation.isPending;
+
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
@@ -91,7 +93,6 @@ export default function CadastroPendenciaPage() {
     }
     if (usuario && escolaGUID) {
       void carregarMembros();
-      void carregarPendencias();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario, authLoading, escolaGUID]);
@@ -115,19 +116,6 @@ export default function CadastroPendenciaPage() {
       setMembrosEscola([...alunos, ...professores]);
     } catch (err) {
       console.error('Erro ao carregar membros da escola:', err);
-    }
-  };
-
-  const carregarPendencias = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const resultado = await listarPendencias({ EscolaGUID: escolaGUID });
-      setPendencias(resultado.pendencias);
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar pendências');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -186,19 +174,21 @@ export default function CadastroPendenciaPage() {
       return;
     }
 
-    setSubmitting(true);
     setErro(null);
 
     try {
       if (editingGUID) {
-        await atualizarPendencia(editingGUID, {
-          PendenciaTitulo: form.PendenciaTitulo,
-          PendenciaConteudo: form.PendenciaConteudo || null,
-          PendenciaPrazoData: converterParaBrasil(form.PendenciaPrazoData),
+        await atualizarPendenciaMutation.mutateAsync({
+          pendenciaGUID: editingGUID,
+          data: {
+            PendenciaTitulo: form.PendenciaTitulo,
+            PendenciaConteudo: form.PendenciaConteudo || null,
+            PendenciaPrazoData: converterParaBrasil(form.PendenciaPrazoData),
+          },
         });
         alert('Pendência atualizada com sucesso!');
       } else {
-        await criarPendencia({
+        await criarPendenciaMutation.mutateAsync({
           UsuarioCPFDestino: form.UsuarioCPFDestino,
           EscolaGUID: escolaGUID,
           PendenciaTitulo: form.PendenciaTitulo,
@@ -209,19 +199,15 @@ export default function CadastroPendenciaPage() {
       }
 
       limparFormulario();
-      await carregarPendencias();
     } catch (err: any) {
       setErro(err?.message || 'Falha ao salvar pendência');
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const handleExcluir = async (pendenciaGUID: string) => {
     if (!confirm('Deseja realmente excluir esta pendência? Esta ação não pode ser desfeita.')) return;
     try {
-      await excluirPendencia(pendenciaGUID);
-      await carregarPendencias();
+      await excluirPendenciaMutation.mutateAsync(pendenciaGUID);
     } catch (err: any) {
       alert(err?.message || 'Erro ao excluir pendência');
     }

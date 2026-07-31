@@ -139,7 +139,7 @@
 
 .backLink {
   text-decoration: none;
-  color: var(--green-600);
+  color: var(--color-primary, var(--green-600));
   font-weight: 700;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
@@ -183,7 +183,7 @@
 }
 
 .projetoCard:hover {
-  border-color: var(--green-500);
+  border-color: var(--color-primary, var(--green-500));
   transform: translateY(-2px);
 }
 
@@ -212,6 +212,7 @@
   white-space: nowrap;
 }
 
+/* Verde fixo intencional: status "aberto" do projeto (sinalização, não marca). */
 .statusAberto {
   background: var(--green-500);
   color: var(--white);

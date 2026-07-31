@@ -296,12 +296,12 @@
 }
 
 .moduleItem:hover {
-  color: var(--green-600);
+  color: var(--color-primary, var(--green-600));
   text-decoration: none;
 }
 
 .moduleItemActive {
-  color: var(--green-600);
+  color: var(--color-primary, var(--green-600));
   font-weight: 700;
 }
 
@@ -337,7 +337,7 @@
   align-items: center;
   justify-content: center;
   background: var(--green-50);
-  color: var(--green-700);
+  color: var(--color-primary, var(--green-700));
   border: 1.5px solid transparent;
   cursor: pointer;
   text-decoration: none;
@@ -483,7 +483,7 @@
   border-top: 1px solid var(--line-100);
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--green-600);
+  color: var(--color-primary, var(--green-600));
   text-decoration: none;
 }
 

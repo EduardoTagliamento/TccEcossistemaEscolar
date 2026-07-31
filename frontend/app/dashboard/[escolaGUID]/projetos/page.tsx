@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { listarProjetos } from '@/lib/api/projeto.api';
-import { Projeto } from '@/types/projeto';
+import { useProjetos } from '@/lib/projeto/useProjetoQueries';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -20,10 +19,12 @@ export default function ProjetosPage() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
-  const [projetos, setProjetos] = useState<Projeto[]>([]);
-  const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [podeCriar, setPodeCriar] = useState(false);
+
+  const projetosQuery = useProjetos(escolaGUID, !!usuario);
+  const projetos = [...(projetosQuery.data ?? [])].sort((a, b) => new Date(b.CreatedAt).getTime() - new Date(a.CreatedAt).getTime());
+  const loading = projetosQuery.isLoading;
 
   useEffect(() => {
     if (!authLoading && !usuario) {
@@ -31,24 +32,16 @@ export default function ProjetosPage() {
       return;
     }
     if (usuario) {
-      void carregarProjetos();
       void verificarPermissaoCriacao();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario, authLoading]);
 
-  const carregarProjetos = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const dados = await listarProjetos(escolaGUID);
-      dados.sort((a, b) => new Date(b.CreatedAt).getTime() - new Date(a.CreatedAt).getTime());
-      setProjetos(dados);
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar projetos');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (projetosQuery.error) {
+      setErro(projetosQuery.error instanceof Error ? projetosQuery.error.message : 'Falha ao carregar projetos');
     }
-  };
+  }, [projetosQuery.error]);
 
   const verificarPermissaoCriacao = async () => {
     if (!usuario) return;

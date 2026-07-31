@@ -130,7 +130,7 @@
 
 .backLink {
   text-decoration: none;
-  color: var(--green-700);
+  color: var(--color-primary, var(--green-700));
   font-weight: 700;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
@@ -147,7 +147,7 @@
   align-items: center;
   gap: 6px;
   padding: 0.5rem 1rem;
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
   color: var(--white);
   border: none;
   border-radius: var(--radius-pill);
@@ -157,7 +157,7 @@
 }
 
 .btnNotificacoes:hover {
-  background: var(--green-600);
+  background: var(--color-primary, var(--green-600));
   transform: translateY(-2px);
 }
 
@@ -184,7 +184,7 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--green-500), var(--green-700));
+  background: linear-gradient(135deg, var(--color-primary, var(--green-500)), var(--color-primary, var(--green-700)));
   color: var(--white);
   display: flex;
   align-items: center;
@@ -216,7 +216,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
   color: var(--white);
   padding: 0.5rem 1rem;
   border-radius: var(--radius-pill);
@@ -262,7 +262,7 @@
   background: var(--surface-50);
   padding: var(--space-4);
   border-radius: var(--radius-md);
-  border-left: 4px solid var(--green-500);
+  border-left: 4px solid var(--color-primary, var(--green-500));
 }
 
 .tarefaConteudo h3 {
@@ -372,7 +372,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
   color: var(--white);
   display: flex;
   align-items: center;

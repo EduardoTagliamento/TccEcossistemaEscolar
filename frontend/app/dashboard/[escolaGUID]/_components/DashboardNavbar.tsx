@@ -21,7 +21,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useSocket } from '@/lib/socket/SocketContext';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import type { Notificacao } from '@/lib/api/notificacao.api';
-import { contarPendencias } from '@/lib/api/pendencia.api';
+import { useContadorPendencias } from '@/lib/pendencia/usePendenciaQueries';
 import { verificarPendenciaAgregada } from '@/lib/api/categoriaconteudo.api';
 import styles from './DashboardNavbar.module.css';
 
@@ -248,7 +248,7 @@ export default function DashboardNavbar() {
   const [naoLidas, setNaoLidas] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  const [pendenciasPendentesCount, setPendenciasPendentesCount] = useState(0);
+  const pendenciasPendentesCount = useContadorPendencias(escolaGUID, !!usuario).data ?? 0;
   const [temPendenciaMaterias, setTemPendenciaMaterias] = useState(false);
 
   // Setas de rolagem da nav de módulos — só aparecem quando os itens não
@@ -320,13 +320,6 @@ export default function DashboardNavbar() {
     };
   }, [socket]);
 
-  useEffect(() => {
-    if (!usuario) return;
-    contarPendencias(escolaGUID)
-      .then(setPendenciasPendentesCount)
-      .catch(() => setPendenciasPendentesCount(0));
-  }, [usuario, escolaGUID]);
-
   // Badge vermelho agregado no ícone "Matérias" — mesma regra usada por
   // matéria/turma (ver categoriaconteudo.service.ts), só que sem escopo.
   useEffect(() => {
@@ -357,22 +350,6 @@ export default function DashboardNavbar() {
     return () => window.removeEventListener('baua:escola-atualizada', aoAtualizarEscola);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [escolaGUID]);
-
-  useEffect(() => {
-    // Disparado pela tela de recebimento de pendência
-    // (`/pendencias/[pendenciaGUID]`) após `PATCH .../feito`. Sem isso o item
-    // "Minhas Pendências" só sumiria da navbar depois de um refresh manual,
-    // já que ela é montada uma única vez no layout e não remonta entre rotas.
-    const aoAtualizarPendencia = () => {
-      if (!usuario) return;
-      contarPendencias(escolaGUID)
-        .then(setPendenciasPendentesCount)
-        .catch(() => setPendenciasPendentesCount(0));
-    };
-    window.addEventListener('baua:pendencia-atualizada', aoAtualizarPendencia);
-    return () => window.removeEventListener('baua:pendencia-atualizada', aoAtualizarPendencia);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario, escolaGUID]);
 
   useEffect(() => {
     const fecharAoClicarFora = (evento: MouseEvent) => {

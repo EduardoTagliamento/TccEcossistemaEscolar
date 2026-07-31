@@ -7,11 +7,12 @@
  * `frontend/app/dashboard/[escolaGUID]/tarefas/page.tsx`.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { Pendencia, listarPendencias } from '@/lib/api/pendencia.api';
+import { Pendencia } from '@/lib/api/pendencia.api';
+import { usePendencias } from '@/lib/pendencia/usePendenciaQueries';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
@@ -22,36 +23,18 @@ export default function PendenciasPage() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
-  const [pendencias, setPendencias] = useState<Pendencia[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+  const pendenciasQuery = usePendencias({ EscolaGUID: escolaGUID }, !!usuario && !!escolaGUID);
+  const pendencias = [...(pendenciasQuery.data?.pendencias ?? [])].sort(
+    (a, b) => new Date(a.PendenciaPrazoData).getTime() - new Date(b.PendenciaPrazoData).getTime()
+  );
+  const loading = pendenciasQuery.isLoading;
+  const erro = pendenciasQuery.error instanceof Error ? pendenciasQuery.error.message : null;
 
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
-      return;
     }
-    if (usuario && escolaGUID) {
-      void carregarPendencias();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario, authLoading, escolaGUID]);
-
-  const carregarPendencias = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const resultado = await listarPendencias({ EscolaGUID: escolaGUID });
-      const ordenadas = [...resultado.pendencias].sort(
-        (a, b) => new Date(a.PendenciaPrazoData).getTime() - new Date(b.PendenciaPrazoData).getTime()
-      );
-      setPendencias(ordenadas);
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar pendências');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [usuario, authLoading, router]);
 
   const obterStatus = (pendencia: Pendencia): { texto: string; badge: string; card: string } => {
     if (pendencia.PendenciaFeito) {

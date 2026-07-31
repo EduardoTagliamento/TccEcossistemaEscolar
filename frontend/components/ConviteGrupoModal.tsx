@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useEnviarConvite } from '@/lib/convitegrupotarefa/useConviteGrupoTarefaMutations';
 import styles from './ConviteGrupoModal.module.css';
 
 interface Aluno {
@@ -29,7 +30,8 @@ export default function ConviteGrupoModal({
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [filtro, setFiltro] = useState('');
-  const [enviando, setEnviando] = useState(false);
+  const enviarConviteMutation = useEnviarConvite();
+  const enviando = enviarConviteMutation.isPending;
 
   useEffect(() => {
     if (isOpen) {
@@ -56,32 +58,14 @@ export default function ConviteGrupoModal({
   };
 
   const enviarConvite = async (cpf: string) => {
-    setEnviando(true);
     setErro(null);
     try {
-      const token = localStorage.getItem('@baua:token');
-      const response = await fetch(`/api/convitegrupotarefa/${grupoGUID}/convites`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ UsuarioCPFConvidado: cpf })
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao enviar convite');
-      }
-
+      await enviarConviteMutation.mutateAsync({ grupoGUID, cpfConvidado: cpf });
       alert('Convite enviado com sucesso!');
       onConviteEnviado();
       onClose();
     } catch (err: any) {
       setErro(err?.message || 'Erro ao enviar convite');
-    } finally {
-      setEnviando(false);
     }
   };
 

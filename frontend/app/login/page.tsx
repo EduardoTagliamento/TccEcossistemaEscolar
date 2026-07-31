@@ -50,6 +50,26 @@ function LoginPageContent() {
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
 
+  // Campo aceita CPF, e-mail ou telefone — enquanto vazio, o hint/placeholder
+  // troca de exemplo a cada poucos segundos pra deixar isso óbvio sem
+  // precisar de um texto fixo tipo "CPF, e-mail ou telefone" (que não mostra
+  // o formato esperado de cada um). Para assim que o usuário começa a digitar.
+  const IDENTIFIER_EXAMPLES = [
+    { label: 'e-mail', example: 'voce@escola.com' },
+    { label: 'CPF', example: '000.000.000-00' },
+    { label: 'telefone', example: '(11) 91234-5678' },
+  ];
+  const [exemploIndex, setExemploIndex] = useState(0);
+
+  useEffect(() => {
+    if (identifier) return;
+    const intervalo = setInterval(() => {
+      setExemploIndex((i) => (i + 1) % IDENTIFIER_EXAMPLES.length);
+    }, 2200);
+    return () => clearInterval(intervalo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identifier]);
+
   // Sessão expirada (redirect do interceptor de fetch em @/lib/auth/AuthContext)
   useEffect(() => {
     if (searchParams?.get('sessao') === 'expirada') {
@@ -169,12 +189,16 @@ function LoginPageContent() {
         <AuthInput
           label="CPF, e-mail ou telefone"
           leadingIcon="user"
-          placeholder="voce@escola.com"
+          placeholder={IDENTIFIER_EXAMPLES[exemploIndex].example}
           value={identifier}
           onChange={(e) => handleIdentifierChange(e.target.value)}
           autoComplete="username"
           disabled={isLoading}
-          hint={identifier ? `Detectado como: ${identifierType}` : undefined}
+          hint={
+            identifier
+              ? `Detectado como: ${identifierType}`
+              : `Ex.: ${IDENTIFIER_EXAMPLES[exemploIndex].example} (${IDENTIFIER_EXAMPLES[exemploIndex].label})`
+          }
         />
 
         <AuthInput

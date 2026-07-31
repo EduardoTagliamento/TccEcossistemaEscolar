@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { listarConvitesPendentes, aceitarConvite, recusarConvite } from '@/lib/api/convitegrupotarefa.api';
-import { ConvitePendente } from '@/types/convitegrupotarefa';
+import { useState } from 'react';
+import { useConvitesPendentes } from '@/lib/convitegrupotarefa/useConviteGrupoTarefaQueries';
+import { useAceitarConvite, useRecusarConvite } from '@/lib/convitegrupotarefa/useConviteGrupoTarefaMutations';
 import styles from './ConvitesPendentesModal.module.css';
 
 interface ConvitesPendentesModalProps {
@@ -16,38 +16,21 @@ export default function ConvitesPendentesModal({
   onClose,
   onConviteRespondido
 }: ConvitesPendentesModalProps) {
-  const [convites, setConvites] = useState<ConvitePendente[]>([]);
-  const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [processando, setProcessando] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      carregarConvites();
-    }
-  }, [isOpen]);
-
-  const carregarConvites = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const dados = await listarConvitesPendentes();
-      setConvites(dados);
-    } catch (err: any) {
-      setErro(err?.message || 'Erro ao carregar convites');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const convitesQuery = useConvitesPendentes(isOpen);
+  const convites = convitesQuery.data ?? [];
+  const loading = convitesQuery.isLoading;
+  const aceitarConviteMutation = useAceitarConvite();
+  const recusarConviteMutation = useRecusarConvite();
 
   const handleAceitar = async (conviteGUID: string) => {
     setProcessando(conviteGUID);
     setErro(null);
     try {
-      await aceitarConvite(conviteGUID);
+      await aceitarConviteMutation.mutateAsync(conviteGUID);
       alert('Convite aceito! Você agora faz parte do grupo.');
       onConviteRespondido();
-      await carregarConvites();
     } catch (err: any) {
       setErro(err?.message || 'Erro ao aceitar convite');
     } finally {
@@ -61,9 +44,8 @@ export default function ConvitesPendentesModal({
     setProcessando(conviteGUID);
     setErro(null);
     try {
-      await recusarConvite(conviteGUID);
+      await recusarConviteMutation.mutateAsync(conviteGUID);
       alert('Convite recusado.');
-      await carregarConvites();
     } catch (err: any) {
       setErro(err?.message || 'Erro ao recusar convite');
     } finally {

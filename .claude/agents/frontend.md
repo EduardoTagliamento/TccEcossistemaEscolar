@@ -66,16 +66,21 @@ frontend/
 
 ## Tema Dinâmico por Escola
 
-Cada escola tem 4 cores customizáveis, injetadas como CSS Variables:
+Cada escola tem 4 cores customizáveis (`EscolaCorPriEs`/`EscolaCorPriCl`/`EscolaCorSecEs`/`EscolaCorSecCl`), injetadas por `DashboardNavbar.tsx` como CSS Variables no `<html>`:
 
 ```css
---cor-primaria-dark:    #1E3A8A;   /* EscolaCorPrimariaDark */
---cor-primaria-light:   #FFFFFF;   /* EscolaCorPrimariaLight */
---cor-secundaria-dark:  #FF5733;   /* EscolaCorSecundariaDark */
---cor-secundaria-light: #FFF3F0;   /* EscolaCorSecundariaLight */
+--color-primary    /* Primária Escura */
+--color-secondary  /* Primária Clara */
+--color-tertiary   /* Secundária Escura */
+--color-accent     /* Secundária Clara */
 ```
 
-Sempre use as CSS Variables (nunca valores hardcoded) para que o tema funcione em qualquer escola.
+Isso sobrescreve os defaults Bauá declarados em `frontend/styles/globals.css` (`:root`, ex. `--green-500: #1cc47b`). **Nem todo elemento colorido deve seguir a cor da escola** — ver decisão completa em `docs/PADRAO_COR_ESCOLA.md`. Resumo:
+
+- **Segue a cor da escola** (`var(--color-primary, var(--green-500))`, sempre com fallback pro verde Bauá): elementos de marca/decorativos — navegação ativa/hover, avatares, ícones de marca, bordas de destaque genéricas, badges que não são status.
+- **Fica fixo** (verde/vermelho/dourado/azul, nunca `var(--color-primary...)`): botões de ação com significado (Salvar, Criar, Cadastrar, Confirmar, Concluir, Convidar, etc. — a cor sinaliza "positivo/seguro", igual Cancelar/Excluir), indicadores de status (Feito/Aberto/Ativo/Pendente vs. Atrasada — precisam de contraste fixo entre si), e a wordmark "bauá" (marca do próprio Bauá, não da escola).
+
+Na dúvida sobre um elemento específico, pare e pergunte ao orquestrador em vez de adivinhar — não é opcional, já causou trabalho real de reverter em massa uma vez.
 
 O `escolaGUID` vem da URL: `/dashboard/[escolaGUID]/...`
 
@@ -143,7 +148,7 @@ O `escolaGUID` vem da URL: `/dashboard/[escolaGUID]/...`
 ## Regras Gerais
 
 - Idioma do código: **português** (variáveis, funções, comentários)
-- Nunca hardcodar cores — sempre usar CSS Variables do tema
+- Cores de marca/decorativas: usar `var(--color-primary, var(--green-500))` (cor da escola, nunca hardcoded). Botões de ação com significado e indicadores de status: cor fixa, NÃO usar a cor da escola — ver `docs/PADRAO_COR_ESCOLA.md`
 - Nunca acessar `localStorage` diretamente fora do `AuthContext`
 - Imagens de escola (logo) chegam da API como string Base64
 - Sempre verificar autenticação antes de chamar endpoints protegidos

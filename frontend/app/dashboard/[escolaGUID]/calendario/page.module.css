@@ -254,7 +254,7 @@
   flex-shrink: 0;
   border-radius: var(--radius-md);
   background: var(--mint-wash);
-  color: var(--green-700);
+  color: var(--color-primary, var(--green-700));
 }
 
 .pageTitle {
@@ -310,8 +310,8 @@
   gap: 6px;
   padding: 8px 16px;
   background-color: var(--white);
-  color: var(--green-700);
-  border: 1.5px solid var(--green-500);
+  color: var(--color-primary, var(--green-700));
+  border: 1.5px solid var(--color-primary, var(--green-500));
   border-radius: var(--radius-pill);
   cursor: pointer;
   font-size: var(--text-sm);
@@ -425,11 +425,11 @@
 
 .hoje {
   background-color: var(--mint-wash);
-  border: 2px solid var(--green-500);
+  border: 2px solid var(--color-primary, var(--green-500));
 }
 
 .hoje .diaNumero {
-  color: var(--green-700);
+  color: var(--color-primary, var(--green-700));
   font-weight: var(--weight-extrabold);
 }
 
@@ -542,7 +542,7 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: var(--green-500);
+  accent-color: var(--color-primary, var(--green-500));
 }
 
 /* ============================================================
@@ -584,7 +584,7 @@
 
 .badgeEvento {
   background: var(--green-50);
-  color: var(--green-700);
+  color: var(--color-primary, var(--green-700));
 }
 
 .badgeAnotacao {
@@ -703,8 +703,8 @@
 
 .modalNavButton:hover:not(:disabled) {
   background-color: var(--green-50);
-  color: var(--green-700);
-  border-color: var(--green-500);
+  color: var(--color-primary, var(--green-700));
+  border-color: var(--color-primary, var(--green-500));
 }
 
 .modalNavButton:disabled {
@@ -812,7 +812,7 @@
 }
 
 .semAvisosLink:focus-visible {
-  outline: 2px solid var(--green-500);
+  outline: 2px solid var(--color-primary, var(--green-500));
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -1009,7 +1009,7 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: var(--green-500);
+  accent-color: var(--color-primary, var(--green-500));
 }
 
 .tarefaCheckboxInline input:disabled {
@@ -1073,7 +1073,7 @@
 
 .iconBtnAnotacao:hover {
   background-color: var(--surface-50);
-  color: var(--green-700);
+  color: var(--color-primary, var(--green-700));
 }
 
 .iconBtnAnotacao:active {
@@ -1093,7 +1093,7 @@
   cursor: pointer;
   margin-top: 2px;
   flex-shrink: 0;
-  accent-color: var(--green-500);
+  accent-color: var(--color-primary, var(--green-500));
 }
 
 .anotacaoCheckTitle h3 {
