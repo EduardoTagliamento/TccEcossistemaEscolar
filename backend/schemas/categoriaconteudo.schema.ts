@@ -30,18 +30,18 @@ const TIPOS_ITEM_ENUM = [
  */
 const MENSAGENS_TOPO: Record<string, string> = {
   categoria: "Dados inválidos",
-  MateriaGUID: "MateriaGUID inválido",
-  TurmaGUID: "TurmaGUID inválido",
-  CategoriaNome: "CategoriaNome inválido",
+  MateriaGUID: "Matéria inválida",
+  TurmaGUID: "Turma inválida",
+  CategoriaNome: "Nome da categoria inválido",
   ordem: "Ordem inválida",
-  CategoriaNomeAtual: "CategoriaNomeAtual inválido",
-  NovoNome: "NovoNome inválido",
-  ItemGUID: "ItemGUID inválido",
+  CategoriaNomeAtual: "Categoria inválida",
+  NovoNome: "Novo nome inválido",
+  ItemGUID: "Item inválido",
   Tipo: "Tipo inválido",
-  TurmasGUID: "TurmasGUID inválido",
-  CategoriaGUID: "CategoriaGUID inválido",
+  TurmasGUID: "Turmas inválidas",
+  CategoriaGUID: "Categoria inválida",
   itens: "Itens inválidos",
-  guid: "GUID inválido",
+  guid: "Identificador inválido",
 };
 
 export function mensagemTopoCategoriaConteudo(campo: string | undefined): string {

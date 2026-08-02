@@ -569,7 +569,15 @@ export default function DashboardNavbar() {
             ref={moduleNavRef}
           >
             {modulosNav.map((modulo) => {
-              const ativo = modulo.key === 'dashboard' ? pathname === modulo.href : (pathname || '').startsWith(modulo.href);
+              // startsWith puro dava falso positivo: "/cadastro-evento" e
+              // "/cadastro-pendencia" começam com a string "/cadastro", então
+              // acendiam o item "Cadastro" junto. Exige o path completo ou
+              // seguido de "/" (próxima rota aninhada) como fronteira.
+              const caminhoAtual = pathname || '';
+              const ativo =
+                modulo.key === 'dashboard'
+                  ? caminhoAtual === modulo.href
+                  : caminhoAtual === modulo.href || caminhoAtual.startsWith(`${modulo.href}/`);
               return (
                 <Link
                   key={modulo.key}

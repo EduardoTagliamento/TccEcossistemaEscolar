@@ -11,12 +11,12 @@ const DIAS_SEMANA_ENUM = ["Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Saba
 const DIAS_SEMANA_MSG = `DiaSemana deve ser um dos: ${DIAS_SEMANA_ENUM.join(", ")}`;
 
 const MENSAGENS_TOPO: Record<string, string> = {
-  MateriaGUID: "MateriaGUID inválido",
-  Escolhas: "Escolhas inválido",
-  TurmaGUID: "TurmaGUID inválido",
-  SemanaBase: "SemanaBase inválida",
-  DiaSemana: "DiaSemana inválido",
-  DeslocamentoMinutos: "DeslocamentoMinutos inválido",
+  MateriaGUID: "Matéria inválida",
+  Escolhas: "Escolhas inválidas",
+  TurmaGUID: "Turma inválida",
+  SemanaBase: "Semana base inválida",
+  DiaSemana: "Dia da semana inválido",
+  DeslocamentoMinutos: "Deslocamento inválido",
 };
 
 export function mensagemTopoGradeHoraria(campo: string | undefined): string {

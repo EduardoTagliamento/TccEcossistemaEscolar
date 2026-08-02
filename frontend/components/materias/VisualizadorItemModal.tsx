@@ -665,21 +665,48 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
           </div>
         )}
 
-        {!carregando && conteudo && item.Tipo === 'conteudo_imagem' && paginas.length > 0 && (
-          <div>
-            <h2 className={styles.titulo}>{conteudo.ConteudoTitulo}</h2>
-            <img className={styles.imagem} src={paginas[paginaAtual]?.ArquivoUrl} alt={`Página ${paginaAtual + 1}`} />
-            <div className={styles.navegacaoPaginas}>
-              <button disabled={paginaAtual === 0} onClick={() => setPaginaAtual((p) => p - 1)}>
-                <Icon name="chevron-left" size={18} />
-              </button>
-              <span>{paginaAtual + 1} / {paginas.length}</span>
-              <button disabled={paginaAtual === paginas.length - 1} onClick={() => setPaginaAtual((p) => p + 1)}>
-                <Icon name="chevron-right" size={18} />
-              </button>
+        {!carregando && conteudo && item.Tipo === 'conteudo_imagem' && paginas.length > 0 && (() => {
+          // "paginado" aceita imagem, PDF, PPTX ou DOCX (ver ConteudoForm) —
+          // um <img> só renderiza imagem de verdade; PDF precisa de iframe
+          // (o navegador tem visualizador nativo pra isso) e PPTX/DOCX não
+          // têm prévia possível no navegador, só um link pra abrir/baixar.
+          const paginaArquivo = paginas[paginaAtual];
+          const mime = paginaArquivo?.ArquivoMimeType || '';
+          const ehImagem = mime.startsWith('image/');
+          const ehPdf = mime === 'application/pdf';
+          return (
+            <div>
+              <h2 className={styles.titulo}>{conteudo.ConteudoTitulo}</h2>
+              {ehImagem ? (
+                <img className={styles.imagem} src={paginaArquivo?.ArquivoUrl} alt={`Página ${paginaAtual + 1}`} />
+              ) : ehPdf ? (
+                <iframe
+                  className={styles.pdfFrame}
+                  src={paginaArquivo?.ArquivoUrl}
+                  title={`Página ${paginaAtual + 1}`}
+                />
+              ) : (
+                <a
+                  href={paginaArquivo?.ArquivoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.arquivoSemPreview}
+                >
+                  <Icon name="paperclip" size={16} /> Abrir arquivo (sem prévia neste formato)
+                </a>
+              )}
+              <div className={styles.navegacaoPaginas}>
+                <button disabled={paginaAtual === 0} onClick={() => setPaginaAtual((p) => p - 1)}>
+                  <Icon name="chevron-left" size={18} />
+                </button>
+                <span>{paginaAtual + 1} / {paginas.length}</span>
+                <button disabled={paginaAtual === paginas.length - 1} onClick={() => setPaginaAtual((p) => p + 1)}>
+                  <Icon name="chevron-right" size={18} />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {!carregando && provaDetalhe && (
           <div>
