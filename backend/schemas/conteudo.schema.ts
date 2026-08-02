@@ -12,14 +12,14 @@ const TIPOS_VALIDOS = ["cronometrado", "texto", "paginado"] as const;
  * nome do campo (primeiro segmento do `path` do issue Zod).
  */
 const MENSAGENS_TOPO: Record<string, string> = {
-  MateriaGUID: "MateriaGUID inválido",
-  ConteudoTitulo: "ConteudoTitulo inválido",
-  ConteudoTipo: "ConteudoTipo inválido",
-  TurmasGUID: "TurmasGUID inválido",
-  ConteudoDataPublicacao: "ConteudoDataPublicacao inválida",
-  OrigemTipo: "OrigemTipo inválido",
-  ConteudoHtml: "ConteudoHtml obrigatório",
-  guid: "GUID inválido",
+  MateriaGUID: "Matéria inválida",
+  ConteudoTitulo: "Título inválido",
+  ConteudoTipo: "Tipo de conteúdo inválido",
+  TurmasGUID: "Turmas inválidas",
+  ConteudoDataPublicacao: "Data de publicação inválida",
+  OrigemTipo: "Origem inválida",
+  ConteudoHtml: "Texto do conteúdo obrigatório",
+  guid: "Identificador inválido",
 };
 
 export function mensagemTopoConteudo(campo: string | undefined): string {
@@ -40,22 +40,22 @@ export const ConteudoGuidParamSchema = z.object({
  */
 export const ConteudoCriacaoBodySchema = z
   .object({
-    MateriaGUID: z.string().regex(CONTEUDO_GUID_REGEX, "MateriaGUID é obrigatório e deve ser um UUID válido"),
-    ConteudoTitulo: z.string().trim().min(2, "ConteudoTitulo é obrigatório (mínimo 2 caracteres)"),
-    ConteudoTipo: z.enum(TIPOS_VALIDOS, { message: `ConteudoTipo deve ser um dos: ${TIPOS_VALIDOS.join(", ")}` }),
-    TurmasGUID: z.string().min(1, "TurmasGUID é obrigatório (array JSON de UUIDs)"),
+    MateriaGUID: z.string().regex(CONTEUDO_GUID_REGEX, "Selecione uma matéria válida"),
+    ConteudoTitulo: z.string().trim().min(2, "O título é obrigatório (mínimo 2 caracteres)"),
+    ConteudoTipo: z.enum(TIPOS_VALIDOS, { message: `O tipo de conteúdo deve ser um dos: ${TIPOS_VALIDOS.join(", ")}` }),
+    TurmasGUID: z.string().min(1, "Selecione ao menos uma turma"),
     ConteudoDataPublicacao: z
       .string()
-      .min(1, "ConteudoDataPublicacao é obrigatória e deve ser uma data válida")
-      .refine((v) => !isNaN(new Date(v).getTime()), "ConteudoDataPublicacao é obrigatória e deve ser uma data válida"),
+      .min(1, "Informe a data de publicação")
+      .refine((v) => !isNaN(new Date(v).getTime()), "Informe uma data de publicação válida"),
     OrigemTipo: z.string().optional(),
     ConteudoHtml: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.ConteudoTipo === "cronometrado" && data.OrigemTipo !== "upload" && data.OrigemTipo !== "link") {
-      ctx.addIssue({ code: "custom", path: ["OrigemTipo"], message: "OrigemTipo deve ser 'upload' ou 'link' para conteúdo cronometrado" });
+      ctx.addIssue({ code: "custom", path: ["OrigemTipo"], message: "Escolha upload de arquivo ou link para este conteúdo" });
     }
     if (data.ConteudoTipo === "texto" && (!data.ConteudoHtml || !data.ConteudoHtml.trim())) {
-      ctx.addIssue({ code: "custom", path: ["ConteudoHtml"], message: "ConteudoHtml é obrigatório para conteúdo de texto" });
+      ctx.addIssue({ code: "custom", path: ["ConteudoHtml"], message: "O texto do conteúdo não pode ficar vazio" });
     }
   });

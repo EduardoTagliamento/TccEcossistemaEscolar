@@ -10,33 +10,33 @@ const booleanTexto = (campo: string) =>
 
 export const PendenciaGUIDParamSchema = z.object({
   PendenciaGUID: z
-    .string({ message: "PendenciaGUID é obrigatório na URL" })
-    .regex(UUID_V4_REGEX, "PendenciaGUID inválido (deve ser UUID v4)"),
+    .string({ message: "Informe uma pendência válida" })
+    .regex(UUID_V4_REGEX, "Informe uma pendência válida"),
 });
 
 export const CreatePendenciaBodySchema = z.object({
   UsuarioCPFDestino: z
-    .string({ message: "UsuarioCPFDestino é obrigatório" })
-    .min(1, "UsuarioCPFDestino é obrigatório")
+    .string({ message: "Selecione o destinatário da pendência" })
+    .min(1, "Selecione o destinatário da pendência")
     .transform((v) => v.replace(/\D/g, ""))
-    .refine((v) => v.length === 11, "UsuarioCPFDestino deve ter 11 dígitos"),
+    .refine((v) => v.length === 11, "CPF do destinatário inválido"),
   EscolaGUID: z
-    .string({ message: "EscolaGUID é obrigatório" })
-    .min(1, "EscolaGUID é obrigatório")
-    .regex(UUID_V4_REGEX, "EscolaGUID inválido (deve ser UUID v4)"),
+    .string({ message: "Escola inválida" })
+    .min(1, "Escola inválida")
+    .regex(UUID_V4_REGEX, "Escola inválida"),
   PendenciaTitulo: z
-    .string({ message: "PendenciaTitulo é obrigatório" })
+    .string({ message: "O título é obrigatório" })
     .trim()
-    .min(3, "PendenciaTitulo deve ter entre 3 e 128 caracteres")
-    .max(128, "PendenciaTitulo deve ter entre 3 e 128 caracteres"),
+    .min(3, "O título deve ter entre 3 e 128 caracteres")
+    .max(128, "O título deve ter entre 3 e 128 caracteres"),
   PendenciaPrazoData: z
-    .string({ message: "PendenciaPrazoData é obrigatório" })
-    .min(1, "PendenciaPrazoData é obrigatório")
-    .refine((v) => !isNaN(new Date(v).getTime()), "PendenciaPrazoData deve ser uma data válida (ISO 8601)"),
+    .string({ message: "Informe o prazo" })
+    .min(1, "Informe o prazo")
+    .refine((v) => !isNaN(new Date(v).getTime()), "Informe um prazo válido"),
   PendenciaConteudo: z
     .string()
     .trim()
-    .max(1024, "PendenciaConteudo deve ter no máximo 1024 caracteres")
+    .max(1024, "A descrição deve ter no máximo 1024 caracteres")
     .optional(),
 });
 
@@ -45,17 +45,17 @@ export const UpdatePendenciaBodySchema = z
     PendenciaTitulo: z
       .string()
       .trim()
-      .min(3, "PendenciaTitulo deve ter entre 3 e 128 caracteres")
-      .max(128, "PendenciaTitulo deve ter entre 3 e 128 caracteres")
+      .min(3, "O título deve ter entre 3 e 128 caracteres")
+      .max(128, "O título deve ter entre 3 e 128 caracteres")
       .optional(),
     PendenciaConteudo: z
       .string()
       .trim()
-      .max(1024, "PendenciaConteudo deve ter no máximo 1024 caracteres")
+      .max(1024, "A descrição deve ter no máximo 1024 caracteres")
       .optional(),
     PendenciaPrazoData: z
       .string()
-      .refine((v) => !isNaN(new Date(v).getTime()), "PendenciaPrazoData deve ser uma data válida (ISO 8601)")
+      .refine((v) => !isNaN(new Date(v).getTime()), "Informe um prazo válido")
       .optional(),
   })
   .refine(
@@ -64,25 +64,25 @@ export const UpdatePendenciaBodySchema = z
   );
 
 export const PendenciaQueryParamsSchema = z.object({
-  EscolaGUID: z.string().regex(UUID_V4_REGEX, "EscolaGUID inválido (deve ser UUID v4)").optional(),
-  PendenciaFeito: booleanTexto("PendenciaFeito").optional(),
-  atrasadas: booleanTexto("atrasadas").optional(),
+  EscolaGUID: z.string().regex(UUID_V4_REGEX, "Escola inválida").optional(),
+  PendenciaFeito: booleanTexto("O filtro 'feito'").optional(),
+  atrasadas: booleanTexto("O filtro 'atrasadas'").optional(),
   limit: z
     .string()
     .refine((v) => {
       const n = parseInt(v, 10);
       return !isNaN(n) && n >= 1 && n <= 100;
-    }, "limit deve ser um número entre 1 e 100")
+    }, "O limite deve ser um número entre 1 e 100")
     .optional(),
   offset: z
     .string()
     .refine((v) => {
       const n = parseInt(v, 10);
       return !isNaN(n) && n >= 0;
-    }, "offset deve ser um número >= 0")
+    }, "O deslocamento (offset) deve ser um número maior ou igual a 0")
     .optional(),
 });
 
 export const PendenciaQueryContadorSchema = z.object({
-  EscolaGUID: z.string().regex(UUID_V4_REGEX, "EscolaGUID inválido (deve ser UUID v4)").optional(),
+  EscolaGUID: z.string().regex(UUID_V4_REGEX, "Escola inválida").optional(),
 });

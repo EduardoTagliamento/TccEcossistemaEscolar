@@ -5,11 +5,11 @@ const GUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9
 const DIAS_SEMANA_ENUM = ["Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado", "Domingo"] as const;
 
 const MENSAGENS_TOPO: Record<string, string> = {
-  turmaGUID: "TurmaGUID inválido",
-  horarioTurmaGUID: "HorarioTurmaGUID inválido",
+  turmaGUID: "Turma inválida",
+  horarioTurmaGUID: "Horário inválido",
   slot: "Dados inválidos",
-  MatProfTurGUID: "MatProfTurGUID inválido",
-  DiaSemana: "DiaSemana inválido",
+  MatProfTurGUID: "Alocação inválida",
+  DiaSemana: "Dia da semana inválido",
   HoraInicio: "Horário inválido",
   HoraFim: "Horário inválido",
 };

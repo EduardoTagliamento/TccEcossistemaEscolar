@@ -647,6 +647,9 @@
   gap: var(--space-3);
   margin-bottom: var(--space-5);
   padding-bottom: var(--space-4);
+  /* Reserva espaço pro botão de fechar (.modalClose), que é posicionado em
+     absolute no canto do modal e senão fica em cima do botão "Próximo dia". */
+  padding-right: 42px;
   border-bottom: 1px solid var(--border-subtle);
 }
 

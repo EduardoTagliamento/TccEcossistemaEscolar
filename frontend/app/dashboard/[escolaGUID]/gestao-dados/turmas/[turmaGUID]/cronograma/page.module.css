@@ -324,11 +324,50 @@
   border-color: var(--gold-500);
 }
 
+/* Fixado: acompanha a tela ao rolar em vez de ficar preso no fim da página,
+   já que a grade acima pode ficar bem mais alta que a viewport. */
+.bancoFixado {
+  position: sticky;
+  bottom: 1rem;
+  z-index: 10;
+  box-shadow: 0 -4px 16px rgba(15, 29, 23, 0.12);
+}
+
+.bancoCabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 .bancoTitulo {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--ink-900);
-  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.botaoFixarBanco {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line-200);
+  background: var(--surface-50);
+  color: var(--slate-600);
+  border-radius: var(--radius-md);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.botaoFixarBanco:hover {
+  border-color: var(--green-500);
+  color: var(--green-700);
 }
 
 .bancoLista {

@@ -27,6 +27,13 @@ interface EscolaComFuncoes {
   funcoes: FuncaoEscola[];
 }
 
+// O backend guarda a cor sem "#" (coluna CHAR(6)) — <input type="color">
+// exige o "#" pra funcionar, então recolocamos aqui ao ler da API.
+function comHash(cor: string | null | undefined, fallback: string): string {
+  if (!cor) return fallback;
+  return cor.startsWith('#') ? cor : `#${cor}`;
+}
+
 export default function ConfiguracoesEscolaPage() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
@@ -116,10 +123,10 @@ export default function ConfiguracoesEscolaPage() {
       const { escola } = await EscolaAPI.buscarEscola(escolaGUID);
       setEscolaNome(escola.EscolaNome || '');
       setEscolaEmail(escola.EscolaEmail || '');
-      setCorPriEs(escola.EscolaCorPriEs || '#1E3A8A');
-      setCorPriCl(escola.EscolaCorPriCl || '#FFFFFF');
-      setCorSecEs(escola.EscolaCorSecEs || '#FF5733');
-      setCorSecCl(escola.EscolaCorSecCl || '#FFF3F0');
+      setCorPriEs(comHash(escola.EscolaCorPriEs, '#1E3A8A'));
+      setCorPriCl(comHash(escola.EscolaCorPriCl, '#FFFFFF'));
+      setCorSecEs(comHash(escola.EscolaCorSecEs, '#FF5733'));
+      setCorSecCl(comHash(escola.EscolaCorSecCl, '#FFF3F0'));
       setIconeAtualBase64(escola.EscolaIcone || null);
       setIconeRemovido(false);
       setIconeArquivo(null);
@@ -198,10 +205,10 @@ export default function ConfiguracoesEscolaPage() {
 
       setEscolaNome(escola.EscolaNome || '');
       setEscolaEmail(escola.EscolaEmail || '');
-      setCorPriEs(escola.EscolaCorPriEs || corPriEs);
-      setCorPriCl(escola.EscolaCorPriCl || corPriCl);
-      setCorSecEs(escola.EscolaCorSecEs || corSecEs);
-      setCorSecCl(escola.EscolaCorSecCl || corSecCl);
+      setCorPriEs(comHash(escola.EscolaCorPriEs, corPriEs));
+      setCorPriCl(comHash(escola.EscolaCorPriCl, corPriCl));
+      setCorSecEs(comHash(escola.EscolaCorSecEs, corSecEs));
+      setCorSecCl(comHash(escola.EscolaCorSecCl, corSecCl));
       setIconeAtualBase64(escola.EscolaIcone || null);
       setIconeArquivo(null);
       setIconePreview(null);

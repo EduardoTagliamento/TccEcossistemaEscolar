@@ -36,6 +36,7 @@ export default function CronogramaTurmaPage() {
   const [bancoSobre, setBancoSobre] = useState(false);
   const [mostrarManha, setMostrarManha] = useState(true);
   const [mostrarTarde, setMostrarTarde] = useState(true);
+  const [bancoFixado, setBancoFixado] = useState(true);
 
   const cronogramaQuery = useCronograma(turmaGUID, !!config?.Configurada);
   const cronograma = cronogramaQuery.data ?? null;
@@ -120,11 +121,18 @@ export default function CronogramaTurmaPage() {
     if (!raw) return;
     const payload: DragPayload = JSON.parse(raw);
 
+    // Slot de origem (se a peça arrastada já estava alocada em algum
+    // horário) — guardado ANTES de mexer em qualquer coisa, pra poder
+    // devolver a matéria pro mesmo lugar se a nova alocação falhar (ex:
+    // conflito de professor), em vez de deixá-la solta no banco.
+    const slotOrigem =
+      payload.tipo === 'slot' && payload.HorarioTurmaGUID
+        ? cronograma?.Slots.find((s) => s.HorarioTurmaGUID === payload.HorarioTurmaGUID)
+        : undefined;
+
     // Ao mover uma peça já alocada, o slot antigo é liberado ANTES de tentar
     // alocar o novo — senão a contagem de aulas/semana ainda inclui a alocação
     // antiga e bloqueia o próprio reposicionamento com "limite atingido".
-    // Se a nova alocação falhar (ex: conflito de professor), a matéria já
-    // fica livre e volta para o banco, como o esperado.
     try {
       if (payload.tipo === 'slot' && payload.HorarioTurmaGUID) {
         await removerSlotMutation.mutateAsync(payload.HorarioTurmaGUID);
@@ -138,6 +146,23 @@ export default function CronogramaTurmaPage() {
       });
     } catch (err: any) {
       alert(err.message || 'Não foi possível alocar neste horário');
+
+      // A nova alocação falhou — se o slot antigo já tinha sido liberado
+      // acima, devolve a matéria pro horário original em vez de deixá-la
+      // parada no banco (só quem estava arrastando decidiu tirá-la dali).
+      if (slotOrigem) {
+        try {
+          await alocarSlotMutation.mutateAsync({
+            MatProfTurGUID: slotOrigem.MatProfTurGUID,
+            DiaSemana: slotOrigem.DiaSemana,
+            HoraInicio: slotOrigem.HoraInicio,
+            HoraFim: slotOrigem.HoraFim,
+          });
+        } catch (erroRestauracao: any) {
+          alert(erroRestauracao.message || 'Não foi possível devolver a matéria ao horário original');
+        }
+      }
+
       await cronogramaQuery.refetch();
     }
   };
@@ -312,7 +337,7 @@ export default function CronogramaTurmaPage() {
           {mostrarTarde && renderTurno('Tarde', 'Tarde')}
 
           <div
-            className={`${styles.bancoSecao} ${bancoSobre ? styles.arrastandoSobre : ''}`}
+            className={`${styles.bancoSecao} ${bancoFixado ? styles.bancoFixado : ''} ${bancoSobre ? styles.arrastandoSobre : ''}`}
             onDragOver={(e) => {
               e.preventDefault();
               setBancoSobre(true);
@@ -320,7 +345,17 @@ export default function CronogramaTurmaPage() {
             onDragLeave={() => setBancoSobre(false)}
             onDrop={handleDropBanco}
           >
-            <h2 className={styles.bancoTitulo}><Icon name="book-open" size={20} /> Banco de matérias</h2>
+            <div className={styles.bancoCabecalho}>
+              <h2 className={styles.bancoTitulo}><Icon name="book-open" size={20} /> Banco de matérias</h2>
+              <button
+                type="button"
+                className={styles.botaoFixarBanco}
+                onClick={() => setBancoFixado((atual) => !atual)}
+                title={bancoFixado ? 'Desafixar (o banco volta a rolar com a página)' : 'Fixar (o banco acompanha a tela ao rolar)'}
+              >
+                📌 {bancoFixado ? 'Fixado' : 'Fixar'}
+              </button>
+            </div>
             {!cronograma || cronograma.Banco.length === 0 ? (
               <p className={styles.bancoVazio}>
                 Nenhuma matéria alocada a esta turma ainda. Associe matérias e professores na tela de

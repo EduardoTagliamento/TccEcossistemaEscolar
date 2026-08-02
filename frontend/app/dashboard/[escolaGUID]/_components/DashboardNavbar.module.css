@@ -230,6 +230,16 @@
   background: var(--slate-400);
 }
 
+/* justify-content: center + overflow-x: auto corta o início do conteúdo
+   quando ele não cabe (o navegador desloca o começo pra uma posição
+   negativa inacessível por scroll) — por isso troca pra flex-start assim
+   que há overflow em qualquer direção, senão o primeiro item ("Dashboard")
+   fica cortado e nem a seta nem scrollLeft:0 conseguem revelá-lo por completo. */
+.moduleNavComSetaEsquerda,
+.moduleNavComSetaDireita {
+  justify-content: flex-start;
+}
+
 .moduleNavComSetaEsquerda {
   padding-left: 26px;
 }

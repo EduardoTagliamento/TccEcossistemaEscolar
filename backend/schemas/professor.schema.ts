@@ -5,28 +5,28 @@ const GUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9
 
 export const ProfessorListagemQuerySchema = z.object({
   EscolaGUID: z
-    .string({ message: "EscolaGUID é obrigatório na query string" })
-    .regex(GUID_REGEX, "EscolaGUID deve ser um UUID válido"),
+    .string({ message: "Escola inválida" })
+    .regex(GUID_REGEX, "Escola inválida"),
 });
 
 export const ProfessorAlocacoesParamsSchema = z.object({
   cpf: z
-    .string({ message: "CPF do professor é obrigatório" })
-    .refine((v) => v.replace(/\D/g, "").length === 11, "CPF deve ter 11 dígitos"),
+    .string({ message: "Informe o professor" })
+    .refine((v) => v.replace(/\D/g, "").length === 11, "CPF do professor inválido"),
   escolaGUID: z
-    .string({ message: "EscolaGUID é obrigatório" })
-    .regex(GUID_REGEX, "EscolaGUID deve ser um UUID válido"),
+    .string({ message: "Escola inválida" })
+    .regex(GUID_REGEX, "Escola inválida"),
 });
 
 const ALOCACAO_STATUS_ENUM = ["Ativa", "Inativa"] as const;
-const ALOCACAO_STATUS_MSG = 'AlocacaoStatus deve ser "Ativa" ou "Inativa"';
+const ALOCACAO_STATUS_MSG = 'O status deve ser "Ativa" ou "Inativa"';
 
 const aulasPorSemanaCampo = () =>
   z
     .unknown()
     .refine(
       (v) => v === undefined || v === null || (typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 20),
-      "AulasPorSemana deve ser um número inteiro entre 1 e 20"
+      "O número de aulas por semana deve ser um inteiro entre 1 e 20"
     )
     .optional();
 
@@ -34,18 +34,18 @@ export const CriarAlocacaoBodySchema = z.object({
   alocacao: z.object(
     {
       MateriaGUID: z
-        .string({ message: "MateriaGUID é obrigatório" })
-        .regex(GUID_REGEX, "MateriaGUID deve ser um UUID válido"),
+        .string({ message: "Selecione uma matéria" })
+        .regex(GUID_REGEX, "Matéria inválida"),
       TurmaGUID: z
-        .string({ message: "TurmaGUID é obrigatório" })
-        .regex(GUID_REGEX, "TurmaGUID deve ser um UUID válido"),
+        .string({ message: "Selecione uma turma" })
+        .regex(GUID_REGEX, "Turma inválida"),
       UsuarioCPF: z
-        .string({ message: "UsuarioCPF é obrigatório" })
-        .refine((v) => v.replace(/\D/g, "").length === 11, "UsuarioCPF deve ter 11 dígitos"),
+        .string({ message: "Selecione o professor" })
+        .refine((v) => v.replace(/\D/g, "").length === 11, "CPF do professor inválido"),
       AlocacaoStatus: z.enum(ALOCACAO_STATUS_ENUM, { message: ALOCACAO_STATUS_MSG }).optional(),
       AulasPorSemana: aulasPorSemanaCampo(),
     },
-    { message: 'Campo "alocacao" é obrigatório e deve ser um objeto' }
+    { message: "Dados da alocação inválidos" }
   ),
 });
 
@@ -56,7 +56,7 @@ export const AtualizarAlocacaoBodySchema = z.object({
         AlocacaoStatus: z.enum(ALOCACAO_STATUS_ENUM, { message: ALOCACAO_STATUS_MSG }).optional(),
         AulasPorSemana: aulasPorSemanaCampo(),
       },
-      { message: 'Campo "alocacao" é obrigatório e deve ser um objeto' }
+      { message: "Dados da alocação inválidos" }
     )
     .refine(
       (v) => v.AlocacaoStatus !== undefined || v.AulasPorSemana !== undefined,
@@ -66,6 +66,6 @@ export const AtualizarAlocacaoBodySchema = z.object({
 
 export const AlocacaoGUIDParamSchema = z.object({
   guid: z
-    .string({ message: "GUID da alocação é obrigatório" })
-    .regex(GUID_REGEX, "GUID da alocação deve ser um UUID válido"),
+    .string({ message: "Informe uma alocação válida" })
+    .regex(GUID_REGEX, "Informe uma alocação válida"),
 });

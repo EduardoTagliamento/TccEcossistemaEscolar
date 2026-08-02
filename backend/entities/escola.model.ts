@@ -319,11 +319,15 @@ export default class Escola {
       throw new Error(`${fieldName} deve ser uma string.`);
     }
 
-    const hex = value.trim();
+    const trimmed = value.trim();
+    // Aceita com ou sem "#" na entrada (o frontend sempre envia com "#",
+    // vindo de <input type="color">) — armazenado sempre sem "#" pra bater
+    // com a coluna CHAR(6) do schema.
+    const hex = trimmed.startsWith("#") ? trimmed.slice(1) : trimmed;
     if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
       throw new Error(`${fieldName} deve ser um HEX com 6 caracteres.`);
     }
 
-    return hex;
+    return hex.toUpperCase();
   }
 }
