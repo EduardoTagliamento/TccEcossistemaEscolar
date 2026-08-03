@@ -373,6 +373,7 @@ export default function HomePage() {
             <span className={styles.logoBird} aria-hidden="true" />
             <span className={styles.logoWordmark}>bauá</span>
           </Link>
+          <div className={styles.navSpacerLeft} />
           <div className={styles.navLinks}>
             {NAV_LINKS.map((link) => (
               <a key={link.href} href={link.href} className={styles.navLink}>

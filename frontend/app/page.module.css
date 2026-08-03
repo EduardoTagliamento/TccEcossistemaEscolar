@@ -93,9 +93,6 @@
   margin: 0;
 }
 
-.page p {
-  margin: 0;
-}
 
 /* ---- Utilitários de marca (baua-grid-bg / baua-dot-bg / mint band) ---- */
 .gridBg {
@@ -208,6 +205,13 @@
 }
 
 .navSpacer {
+  flex: 1;
+  min-width: 8px;
+}
+
+/* Dois spacers (antes e depois de .navLinks) centralizam os links da navbar
+   entre a logo e o botão "Assinar", em vez de deixá-los colados na logo. */
+.navSpacerLeft {
   flex: 1;
   min-width: 8px;
 }
@@ -325,7 +329,7 @@
 }
 
 .heroAccent {
-  color: var(--blue-500);
+  color: #004e9a;
 }
 
 .heroSubtitle {
@@ -778,7 +782,7 @@
 
 .faqAnswer {
   margin: 0;
-  padding: 0 18px 18px;
+  padding: 12px 18px 18px;
   font-size: 0.875rem;
   line-height: 1.55;
   color: var(--slate-500);
