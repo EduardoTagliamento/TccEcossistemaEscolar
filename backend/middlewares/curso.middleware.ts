@@ -1,199 +1,23 @@
 import { Request, Response, NextFunction } from "express";
 import ErrorResponse from "../utils/ErrorResponse";
+import { CriarCursoBodySchema, AtualizarCursoBodySchema, CursoGUIDParamSchema, ehCorpoEmMassa } from "../schemas/curso.schema";
+import { zodValidate } from "../utils/zodValidate";
 
-/**
- * Middleware de validação para rotas de Curso
- * 
- * Valida:
- * - Formato de campos (tipos, tamanhos, padrões)
- * - UUIDs válidos
- * - Campos obrigatórios vs opcionais
- */
+const validarCriacaoZod = zodValidate(CriarCursoBodySchema, "body", "", { semDetails: true });
+
 export class CursoMiddleware {
-  /**
-   * Valida body para criação de curso (POST)
-   * Aceita tanto cadastro individual quanto em massa
-   */
-  static validarCriacao = (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): void => {
-    try {
-      const { curso, cursos } = req.body;
-
-      // Se for cadastro em massa, pular validação detalhada (controller valida)
-      if (cursos && Array.isArray(cursos)) {
-        if (cursos.length === 0) {
-          throw new ErrorResponse(400, 'Array "cursos" não pode estar vazio');
-        }
-        next();
-        return;
+  static validarCriacao = (req: Request, res: Response, next: NextFunction): void => {
+    if (ehCorpoEmMassa(req.body)) {
+      if ((req.body.cursos as unknown[]).length === 0) {
+        throw new ErrorResponse(400, 'Array "cursos" não pode estar vazio');
       }
-
-      // Validação para cadastro individual
-      if (!curso || typeof curso !== "object") {
-        throw new ErrorResponse(
-          400,
-          'Campo "curso" é obrigatório e deve ser um objeto'
-        );
-      }
-
-      // EscolaGUID: obrigatório, UUID
-      if (!curso.EscolaGUID || typeof curso.EscolaGUID !== "string") {
-        throw new ErrorResponse(400, "EscolaGUID é obrigatório");
-      }
-
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(curso.EscolaGUID)) {
-        throw new ErrorResponse(400, "EscolaGUID deve ser um UUID válido");
-      }
-
-      // CursoNome: obrigatório, 3-100 caracteres
-      if (!curso.CursoNome || typeof curso.CursoNome !== "string") {
-        throw new ErrorResponse(400, "CursoNome é obrigatório");
-      }
-
-      const nomeTrimmed = curso.CursoNome.trim();
-      if (nomeTrimmed.length < 3 || nomeTrimmed.length > 100) {
-        throw new ErrorResponse(
-          400,
-          "CursoNome deve ter entre 3 e 100 caracteres"
-        );
-      }
-
-      // CursoStatus: opcional, enum
-      if (
-        curso.CursoStatus !== undefined &&
-        curso.CursoStatus !== "Ativo" &&
-        curso.CursoStatus !== "Inativo"
-      ) {
-        throw new ErrorResponse(
-          400,
-          'CursoStatus deve ser "Ativo" ou "Inativo"'
-        );
-      }
-
       next();
-    } catch (error) {
-      if (error instanceof ErrorResponse) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message,
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: "Erro ao validar dados do curso",
-        });
-      }
+      return;
     }
+    validarCriacaoZod(req, res, next);
   };
 
-  /**
-   * Valida body para atualização de curso (PUT)
-   */
-  static validarAtualizacao = (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): void => {
-    try {
-      const { curso } = req.body;
+  static validarAtualizacao = zodValidate(AtualizarCursoBodySchema, "body", "", { semDetails: true });
 
-      if (!curso || typeof curso !== "object") {
-        throw new ErrorResponse(
-          400,
-          'Campo "curso" é obrigatório e deve ser um objeto'
-        );
-      }
-
-      // Pelo menos um campo deve ser fornecido
-      if (!curso.CursoNome && !curso.CursoStatus) {
-        throw new ErrorResponse(
-          400,
-          "É necessário fornecer ao menos um campo para atualização"
-        );
-      }
-
-      // CursoNome: opcional, 3-100 caracteres
-      if (curso.CursoNome !== undefined) {
-        if (typeof curso.CursoNome !== "string") {
-          throw new ErrorResponse(400, "CursoNome deve ser uma string");
-        }
-
-        const nomeTrimmed = curso.CursoNome.trim();
-        if (nomeTrimmed.length < 3 || nomeTrimmed.length > 100) {
-          throw new ErrorResponse(
-            400,
-            "CursoNome deve ter entre 3 e 100 caracteres"
-          );
-        }
-      }
-
-      // CursoStatus: opcional, enum
-      if (
-        curso.CursoStatus !== undefined &&
-        curso.CursoStatus !== "Ativo" &&
-        curso.CursoStatus !== "Inativo"
-      ) {
-        throw new ErrorResponse(
-          400,
-          'CursoStatus deve ser "Ativo" ou "Inativo"'
-        );
-      }
-
-      next();
-    } catch (error) {
-      if (error instanceof ErrorResponse) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message,
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: "Erro ao validar dados do curso",
-        });
-      }
-    }
-  };
-
-  /**
-   * Valida GUID nos params da URL
-   */
-  static validarGUID = (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): void => {
-    try {
-      const { guid } = req.params;
-
-      if (!guid || typeof guid !== "string") {
-        throw new ErrorResponse(400, "GUID do curso é obrigatório");
-      }
-
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(guid)) {
-        throw new ErrorResponse(400, "GUID do curso deve ser um UUID válido");
-      }
-
-      next();
-    } catch (error) {
-      if (error instanceof ErrorResponse) {
-        res.status(error.statusCode).json({
-          success: false,
-          message: error.message,
-        });
-      } else {
-        res.status(500).json({
-          success: false,
-          message: "Erro ao validar GUID do curso",
-        });
-      }
-    }
-  };
+  static validarGUID = zodValidate(CursoGUIDParamSchema, "params", "", { semDetails: true });
 }

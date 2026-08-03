@@ -28,6 +28,16 @@ interface ZodValidateOpcoes {
    * vira a mensagem de topo.
    */
   semDetails?: boolean;
+  /**
+   * `usuario` precisa que o dado VALIDADO (já normalizado por `.transform()`,
+   * ex.: CPF cru "12345678901" virando "123.456.789-01") seja escrito de
+   * volta no `request` antes do `next()` — o controller depende disso
+   * (`request.body.usuario` já normalizado). Nenhum domínio anterior
+   * precisou disso (todos só validavam e deixavam o `request` original
+   * seguir intocado). Quando fornecida, é chamada com `(request, dadosValidados)`
+   * em caso de sucesso, antes do `next()`.
+   */
+  aposSucesso?: (request: Request, dados: unknown) => void;
 }
 
 /**
@@ -54,6 +64,7 @@ export function zodValidate(schema: ZodType, origem: Origem = "body", mensagemTo
       });
     }
 
+    opcoes.aposSucesso?.(request, resultado.data);
     next();
   };
 }

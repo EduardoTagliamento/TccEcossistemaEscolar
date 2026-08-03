@@ -5,16 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import { converterParaBrasil, converterDoBrasil } from '@/lib/timezone-utils';
-import { Anotacao } from '@/types/anotacao';
-import {
-  criarAnotacao,
-  listarAnotacoesPorPeriodo,
-  toggleAnotacaoFeito,
-  excluirAnotacao,
-  atualizarAnotacao
-} from '@/lib/api/anotacao.api';
-import { Evento, listarEventos } from '@/lib/api/evento.api';
 import { useCalendario } from '@/lib/calendario/useCalendarioQueries';
+import { useEventos } from '@/lib/evento/useEventoQueries';
+import { useAnotacoesPorPeriodo } from '@/lib/anotacao/useAnotacaoQueries';
+import { useCriarAnotacao, useAtualizarAnotacao, useToggleAnotacaoFeito, useExcluirAnotacao } from '@/lib/anotacao/useAnotacaoMutations';
 import { Icon } from './icons';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -60,8 +54,6 @@ export default function CalendarioAlunoPage() {
   const [modalAberto, setModalAberto] = useState(false);
   const [diaSelecionado, setDiaSelecionado] = useState<DiaCalendario | null>(null);
   const [indiceDiaModal, setIndiceDiaModal] = useState(0);
-  const [anotacoes, setAnotacoes] = useState<Anotacao[]>([]);
-  const [eventos, setEventos] = useState<Evento[]>([]);
   const [mostrarAnotacoes, setMostrarAnotacoes] = useState(true);
   const [modoEdicaoAnotacao, setModoEdicaoAnotacao] = useState<string | null>(null);
   const [modalCriarAnotacaoAberto, setModalCriarAnotacaoAberto] = useState(false);
@@ -90,45 +82,32 @@ export default function CalendarioAlunoPage() {
   const loading = avisosQuery.isLoading;
   const erro = avisosQuery.error instanceof Error ? avisosQuery.error.message : null;
 
+  const anotacoesQuery = useAnotacoesPorPeriodo(
+    escolaGUID || undefined,
+    periodoSelecionado.inicio.toISOString().split('T')[0],
+    periodoSelecionado.fim.toISOString().split('T')[0],
+    !!usuario
+  );
+  const anotacoes = anotacoesQuery.data ?? [];
+
+  const criarAnotacaoMutation = useCriarAnotacao();
+  const atualizarAnotacaoMutation = useAtualizarAnotacao();
+  const toggleAnotacaoMutation = useToggleAnotacaoFeito();
+  const excluirAnotacaoMutation = useExcluirAnotacao();
+
+  // Eventos (avisos amplos da escola, sempre exibidos — não é gated pelo
+  // toggle "Mostrar Anotações").
+  const eventosQuery = useEventos(
+    { EscolaGUID: escolaGUID, dataInicio: periodoSelecionado.inicio.toISOString(), dataFim: periodoSelecionado.fim.toISOString() },
+    !!usuario && !!escolaGUID
+  );
+  const eventos = eventosQuery.data?.eventos ?? [];
+
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
-      return;
     }
-    if (usuario && escolaGUID) {
-      void carregarAnotacoesEEventos();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario, authLoading, escolaGUID, mesSelecionado]);
-
-  const carregarAnotacoesEEventos = async () => {
-    const { inicio, fim } = periodoSelecionado;
-
-    // Buscar anotações do período
-    try {
-      const anotacoesData = await listarAnotacoesPorPeriodo(
-        escolaGUID,
-        inicio.toISOString().split('T')[0],
-        fim.toISOString().split('T')[0]
-      );
-      setAnotacoes(anotacoesData);
-    } catch (err) {
-      console.error('Erro ao carregar anotações:', err);
-    }
-
-    // Buscar eventos do período (avisos amplos da escola, sempre exibidos —
-    // não é gated pelo toggle "Mostrar Anotações")
-    try {
-      const eventosData = await listarEventos({
-        EscolaGUID: escolaGUID,
-        dataInicio: inicio.toISOString(),
-        dataFim: fim.toISOString(),
-      });
-      setEventos(eventosData.eventos);
-    } catch (err) {
-      console.error('Erro ao carregar eventos:', err);
-    }
-  };
+  }, [usuario, authLoading, router]);
 
   const diasDoCalendario = useMemo(() => {
     const ano = dataAtual.getFullYear();
@@ -306,16 +285,15 @@ export default function CalendarioAlunoPage() {
         `${diaSelecionado.data.toISOString().split('T')[0]}T12:00:00`
       );
 
-      await criarAnotacao(
+      await criarAnotacaoMutation.mutateAsync({
         escolaGUID,
-        dataGMT3,
-        formNovaAnotacao.titulo,
-        formNovaAnotacao.descricao || undefined
-      );
+        data: dataGMT3,
+        titulo: formNovaAnotacao.titulo,
+        descricao: formNovaAnotacao.descricao || undefined,
+      });
 
       setFormNovaAnotacao({ titulo: '', descricao: '' });
       setModalCriarAnotacaoAberto(false);
-      await carregarAnotacoesEEventos();
     } catch (error: any) {
       alert(error.message || 'Erro ao criar anotação');
     }
@@ -323,8 +301,7 @@ export default function CalendarioAlunoPage() {
 
   const handleToggleAnotacao = async (guid: string) => {
     try {
-      await toggleAnotacaoFeito(guid);
-      await carregarAnotacoesEEventos();
+      await toggleAnotacaoMutation.mutateAsync(guid);
     } catch (error: any) {
       alert(error.message || 'Erro ao atualizar status');
     }
@@ -334,8 +311,7 @@ export default function CalendarioAlunoPage() {
     if (!confirm('Deseja realmente excluir esta anotação?')) return;
 
     try {
-      await excluirAnotacao(guid);
-      await carregarAnotacoesEEventos();
+      await excluirAnotacaoMutation.mutateAsync(guid);
     } catch (error: any) {
       alert(error.message || 'Erro ao excluir anotação');
     }
@@ -348,14 +324,16 @@ export default function CalendarioAlunoPage() {
     }
 
     try {
-      await atualizarAnotacao(guid, {
-        AnotacaoTitulo: formEdicaoAnotacao.titulo,
-        AnotacaoDescricao: formEdicaoAnotacao.descricao || null
+      await atualizarAnotacaoMutation.mutateAsync({
+        guid,
+        updates: {
+          AnotacaoTitulo: formEdicaoAnotacao.titulo,
+          AnotacaoDescricao: formEdicaoAnotacao.descricao || null,
+        },
       });
 
       setModoEdicaoAnotacao(null);
       setFormEdicaoAnotacao({ titulo: '', descricao: '' });
-      await carregarAnotacoesEEventos();
     } catch (error: any) {
       alert(error.message || 'Erro ao editar anotação');
     }
