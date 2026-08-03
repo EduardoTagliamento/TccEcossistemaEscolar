@@ -211,6 +211,14 @@
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--line-200) transparent;
+  /* Fixo (não condicionado à seta estar visível): se esse padding entra/sai
+     em tempo real durante o scroll, scrollWidth muda NO MEIO da animação de
+     scrollTo({ left: el.scrollWidth }) — o alvo já calculado fica ~26px
+     curto do fim de verdade e a seta direita passa a precisar de 2 cliques
+     pra completar (a esquerda não sofre disso porque o alvo dela é sempre
+     o valor fixo left:0, imune a mudança de scrollWidth). */
+  padding-left: 26px;
+  padding-right: 26px;
 }
 
 .moduleNav::-webkit-scrollbar {
@@ -238,14 +246,6 @@
 .moduleNavComSetaEsquerda,
 .moduleNavComSetaDireita {
   justify-content: flex-start;
-}
-
-.moduleNavComSetaEsquerda {
-  padding-left: 26px;
-}
-
-.moduleNavComSetaDireita {
-  padding-right: 26px;
 }
 
 /* Setas de rolagem — só renderizadas (via JS) quando os módulos não cabem
