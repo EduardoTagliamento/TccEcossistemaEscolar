@@ -36,7 +36,9 @@ export default function CronogramaTurmaPage() {
   const [bancoSobre, setBancoSobre] = useState(false);
   const [mostrarManha, setMostrarManha] = useState(true);
   const [mostrarTarde, setMostrarTarde] = useState(true);
-  const [bancoFixado, setBancoFixado] = useState(true);
+  // Default desligado: o banco rola junto com a página (acompanha a
+  // scrollbar normal), só vira sticky se o usuário fixar explicitamente.
+  const [bancoFixado, setBancoFixado] = useState(false);
 
   const cronogramaQuery = useCronograma(turmaGUID, !!config?.Configurada);
   const cronograma = cronogramaQuery.data ?? null;
@@ -349,11 +351,11 @@ export default function CronogramaTurmaPage() {
               <h2 className={styles.bancoTitulo}><Icon name="book-open" size={20} /> Banco de matérias</h2>
               <button
                 type="button"
-                className={styles.botaoFixarBanco}
+                className={`${styles.botaoFixarBanco} ${bancoFixado ? styles.botaoFixarBancoAtivo : ''}`}
                 onClick={() => setBancoFixado((atual) => !atual)}
                 title={bancoFixado ? 'Desafixar (o banco volta a rolar com a página)' : 'Fixar (o banco acompanha a tela ao rolar)'}
               >
-                📌 {bancoFixado ? 'Fixado' : 'Fixar'}
+                <Icon name="map-pin" size={14} /> {bancoFixado ? 'Fixado' : 'Fixar'}
               </button>
             </div>
             {!cronograma || cronograma.Banco.length === 0 ? (

@@ -370,6 +370,12 @@
   color: var(--green-700);
 }
 
+.botaoFixarBancoAtivo {
+  background: var(--green-50);
+  border-color: var(--green-500);
+  color: var(--green-700);
+}
+
 .bancoLista {
   display: flex;
   flex-wrap: wrap;
