@@ -40,7 +40,12 @@ interface EscolaComFuncoes {
   funcoes: FuncaoEscola[];
 }
 
-const LIMITE_PAGINA = 50;
+// Opções de "registros por página" — o padrão (10) é pensado pra caber na
+// tela sem precisar rolar pra ver a tabela inteira (a seção de Filtros já
+// ocupa bastante altura acima dela); o backend aceita até 100
+// (LIMIT_MAXIMO em backend/repositories/registroauditoria.repository.ts).
+const OPCOES_LIMITE_PAGINA = [10, 25, 50, 100] as const;
+const LIMITE_PAGINA_PADRAO = 10;
 
 function categoriaClasse(nome: string): string {
   switch (nome) {
@@ -74,6 +79,7 @@ export default function AuditoriaPage() {
 
   const [offset, setOffset] = useState(0);
   const [temMais, setTemMais] = useState(false);
+  const [limitePagina, setLimitePagina] = useState(LIMITE_PAGINA_PADRAO);
 
   // Filtros (aplicados só ao clicar em "Filtrar")
   const [filtroAcaoTipo, setFiltroAcaoTipo] = useState<AcaoAuditoriaTipo | ''>('');
@@ -135,29 +141,34 @@ export default function AuditoriaPage() {
     }
   };
 
-  const montarFiltros = (): AuditoriaAPI.AuditoriaFiltros => ({
+  const montarFiltros = (limite: number): AuditoriaAPI.AuditoriaFiltros => ({
     AcaoTipo: filtroAcaoTipo || undefined,
     EntidadeTipo: filtroEntidadeTipo || undefined,
     CategoriaAuditoriaId: filtroCategoriaId ? Number(filtroCategoriaId) : undefined,
     UsuarioCPFAtor: filtroCPFAtor.trim() ? filtroCPFAtor.replace(/\D/g, '') : undefined,
     dataInicio: filtroDataInicio || undefined,
     dataFim: filtroDataFim || undefined,
-    limit: LIMITE_PAGINA,
+    limit: limite,
   });
 
-  const carregarRegistros = async (novoOffset: number) => {
+  // Aceita um `limiteOverride` pra quando o próprio limite muda (troca do
+  // seletor "registros por página") — nesse caso não dá pra confiar no
+  // `limitePagina` do estado, porque `setLimitePagina` ainda não teria
+  // propagado pro closure antes desta chamada.
+  const carregarRegistros = async (novoOffset: number, limiteOverride?: number) => {
+    const limite = limiteOverride ?? limitePagina;
     try {
       setCarregando(true);
       setErro('');
 
       const { registros: lista } = await AuditoriaAPI.listarRegistros(escolaGUID, {
-        ...montarFiltros(),
+        ...montarFiltros(limite),
         offset: novoOffset,
       });
 
       setRegistros(lista);
       setOffset(novoOffset);
-      setTemMais(lista.length === LIMITE_PAGINA);
+      setTemMais(lista.length === limite);
     } catch (err: any) {
       console.error('Erro ao carregar registros de auditoria:', err);
       setErro(err.message || 'Erro ao carregar registros de auditoria');
@@ -183,12 +194,17 @@ export default function AuditoriaPage() {
   };
 
   const handleAnterior = () => {
-    const novoOffset = Math.max(0, offset - LIMITE_PAGINA);
+    const novoOffset = Math.max(0, offset - limitePagina);
     void carregarRegistros(novoOffset);
   };
 
   const handleProxima = () => {
-    void carregarRegistros(offset + LIMITE_PAGINA);
+    void carregarRegistros(offset + limitePagina);
+  };
+
+  const handleAlterarLimitePagina = (novoLimite: number) => {
+    setLimitePagina(novoLimite);
+    void carregarRegistros(0, novoLimite);
   };
 
   const truncarGUID = (guid: string) => (guid.length > 12 ? `${guid.slice(0, 8)}…${guid.slice(-4)}` : guid);
@@ -377,25 +393,45 @@ export default function AuditoriaPage() {
             </div>
 
             <div className={styles.paginacao}>
-              <button
-                type="button"
-                className={styles.botaoSecundario}
-                onClick={handleAnterior}
-                disabled={carregando || offset === 0}
-              >
-                ← Anterior
-              </button>
-              <span className={styles.paginacaoInfo}>
-                Mostrando {registros.length} registro{registros.length === 1 ? '' : 's'}
-              </span>
-              <button
-                type="button"
-                className={styles.botaoSecundario}
-                onClick={handleProxima}
-                disabled={carregando || !temMais}
-              >
-                Próxima →
-              </button>
+              <div className={styles.paginacaoEsquerda}>
+                <label className={styles.paginacaoLabel} htmlFor="registrosPorPagina">
+                  Registros por página
+                </label>
+                <select
+                  id="registrosPorPagina"
+                  className={styles.seletorLimite}
+                  value={limitePagina}
+                  onChange={(e) => handleAlterarLimitePagina(Number(e.target.value))}
+                  disabled={carregando}
+                >
+                  {OPCOES_LIMITE_PAGINA.map((opcao) => (
+                    <option key={opcao} value={opcao}>
+                      {opcao}
+                    </option>
+                  ))}
+                </select>
+                <span className={styles.paginacaoInfo}>
+                  Mostrando {registros.length} registro{registros.length === 1 ? '' : 's'}
+                </span>
+              </div>
+              <div className={styles.paginacaoBotoes}>
+                <button
+                  type="button"
+                  className={styles.botaoSecundario}
+                  onClick={handleAnterior}
+                  disabled={carregando || offset === 0}
+                >
+                  ← Anterior
+                </button>
+                <button
+                  type="button"
+                  className={styles.botaoSecundario}
+                  onClick={handleProxima}
+                  disabled={carregando || !temMais}
+                >
+                  Próxima →
+                </button>
+              </div>
             </div>
           </>
         )}
