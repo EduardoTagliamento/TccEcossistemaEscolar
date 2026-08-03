@@ -27,6 +27,7 @@ import {
   vincularAnexoEvento,
 } from '@/lib/api/evento.api';
 import { uploadAnexo, ANEXO_TAMANHO_MAXIMO_BYTES, ANEXO_MIME_TYPES_PERMITIDOS } from '@/lib/api/anexo.api';
+import AnexoUploadField from '@/components/AnexoUploadField';
 import styles from './page.module.css';
 
 /**
@@ -264,15 +265,12 @@ export default function CadastroEventoPage() {
 
           <div className={styles.campoContainer}>
             <label className={styles.label} htmlFor="eventoAnexo">Anexo (opcional)</label>
-            <input
+            <AnexoUploadField
               id="eventoAnexo"
-              type="file"
-              className={styles.inputFile}
-              onChange={(e) => setArquivoAnexo(e.target.files?.[0] || null)}
+              arquivo={arquivoAnexo}
+              onChange={setArquivoAnexo}
+              hint="PDF, imagens, Word, Excel, TXT ou ZIP — até 50MB."
             />
-            <p className={styles.hint}>
-              PDF, imagens, Word, Excel, TXT ou ZIP — até 50MB.
-            </p>
 
             {anexosDoEvento.length > 0 && (
               <ul className={styles.listaAnexos}>
