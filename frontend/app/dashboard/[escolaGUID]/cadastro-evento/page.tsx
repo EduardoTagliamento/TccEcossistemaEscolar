@@ -16,16 +16,9 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil } from '@/lib/timezone-utils';
-import {
-  Evento,
-  EventoAnexo,
-  criarEvento,
-  atualizarEvento,
-  cancelarEvento,
-  listarEventos,
-  listarAnexosEvento,
-  vincularAnexoEvento,
-} from '@/lib/api/evento.api';
+import { Evento } from '@/lib/api/evento.api';
+import { useEventos, useAnexosEvento } from '@/lib/evento/useEventoQueries';
+import { useCriarEvento, useAtualizarEvento, useCancelarEvento, useVincularAnexoEvento } from '@/lib/evento/useEventoMutations';
 import { uploadAnexo, ANEXO_TAMANHO_MAXIMO_BYTES, ANEXO_MIME_TYPES_PERMITIDOS } from '@/lib/api/anexo.api';
 import AnexoUploadField from '@/components/AnexoUploadField';
 import styles from './page.module.css';
@@ -52,8 +45,6 @@ export default function CadastroEventoPage() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
 
-  const [eventos, setEventos] = useState<Evento[]>([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingGUID, setEditingGUID] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -66,31 +57,24 @@ export default function CadastroEventoPage() {
 
   const [arquivoAnexo, setArquivoAnexo] = useState<File | null>(null);
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
-  const [anexosDoEvento, setAnexosDoEvento] = useState<EventoAnexo[]>([]);
+
+  const eventosQuery = useEventos({ EscolaGUID: escolaGUID }, !!usuario && !!escolaGUID);
+  const eventos = eventosQuery.data?.eventos ?? [];
+  const loading = eventosQuery.isLoading;
+
+  const anexosDoEventoQuery = useAnexosEvento(editingGUID || undefined);
+  const anexosDoEvento = anexosDoEventoQuery.data ?? [];
+
+  const criarEventoMutation = useCriarEvento();
+  const atualizarEventoMutation = useAtualizarEvento();
+  const cancelarEventoMutation = useCancelarEvento();
+  const vincularAnexoEventoMutation = useVincularAnexoEvento();
 
   useEffect(() => {
     if (!authLoading && !usuario) {
       router.push('/login');
-      return;
     }
-    if (usuario && escolaGUID) {
-      void carregarEventos();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario, authLoading, escolaGUID]);
-
-  const carregarEventos = async () => {
-    setLoading(true);
-    setErro(null);
-    try {
-      const resultado = await listarEventos({ EscolaGUID: escolaGUID });
-      setEventos(resultado.eventos);
-    } catch (err: any) {
-      setErro(err?.message || 'Falha ao carregar eventos');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [usuario, authLoading, router]);
 
   const limparFormulario = () => {
     setEditingGUID(null);
@@ -100,10 +84,9 @@ export default function CadastroEventoPage() {
       EventoData: obterDataPadrao(),
     });
     setArquivoAnexo(null);
-    setAnexosDoEvento([]);
   };
 
-  const editarEvento = async (evento: Evento) => {
+  const editarEvento = (evento: Evento) => {
     setEditingGUID(evento.EventoGUID);
     setForm({
       EventoTitulo: evento.EventoTitulo,
@@ -112,13 +95,7 @@ export default function CadastroEventoPage() {
     });
     setArquivoAnexo(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    try {
-      const anexos = await listarAnexosEvento(evento.EventoGUID);
-      setAnexosDoEvento(anexos);
-    } catch {
-      setAnexosDoEvento([]);
-    }
+    // anexosDoEventoQuery reage sozinha à mudança de editingGUID (enabled: !!editingGUID)
   };
 
   const anexarArquivoAoEvento = async (eventoGUID: string) => {
@@ -136,7 +113,7 @@ export default function CadastroEventoPage() {
     setEnviandoAnexo(true);
     try {
       const anexo = await uploadAnexo(arquivoAnexo, escolaGUID);
-      await vincularAnexoEvento(eventoGUID, anexo.AnexoGUID);
+      await vincularAnexoEventoMutation.mutateAsync({ eventoGUID, anexoGUID: anexo.AnexoGUID });
     } catch (err: any) {
       alert(err?.message || 'Evento salvo, mas houve falha ao anexar o arquivo.');
     } finally {
@@ -151,10 +128,13 @@ export default function CadastroEventoPage() {
 
     try {
       if (editingGUID) {
-        await atualizarEvento(editingGUID, {
-          EventoTitulo: form.EventoTitulo,
-          EventoDescricao: form.EventoDescricao || null,
-          EventoData: converterParaBrasil(form.EventoData),
+        await atualizarEventoMutation.mutateAsync({
+          eventoGUID: editingGUID,
+          data: {
+            EventoTitulo: form.EventoTitulo,
+            EventoDescricao: form.EventoDescricao || null,
+            EventoData: converterParaBrasil(form.EventoData),
+          },
         });
 
         if (arquivoAnexo) {
@@ -163,7 +143,7 @@ export default function CadastroEventoPage() {
 
         alert('Evento atualizado com sucesso!');
       } else {
-        const eventoCriado = await criarEvento({
+        const eventoCriado = await criarEventoMutation.mutateAsync({
           EscolaGUID: escolaGUID,
           EventoTitulo: form.EventoTitulo,
           EventoDescricao: form.EventoDescricao || undefined,
@@ -178,7 +158,6 @@ export default function CadastroEventoPage() {
       }
 
       limparFormulario();
-      await carregarEventos();
     } catch (err: any) {
       setErro(err?.message || 'Falha ao salvar evento');
     } finally {
@@ -189,8 +168,7 @@ export default function CadastroEventoPage() {
   const handleCancelarEvento = async (eventoGUID: string) => {
     if (!confirm('Deseja realmente cancelar este evento?')) return;
     try {
-      await cancelarEvento(eventoGUID);
-      await carregarEventos();
+      await cancelarEventoMutation.mutateAsync(eventoGUID);
     } catch (err: any) {
       alert(err?.message || 'Erro ao cancelar evento');
     }

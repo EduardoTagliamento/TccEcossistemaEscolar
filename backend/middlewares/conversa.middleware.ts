@@ -1,81 +1,41 @@
-import { Request, Response, NextFunction } from 'express';
-import ErrorResponse from '../utils/ErrorResponse';
-import { EMOJIS_REACAO_PERMITIDOS } from '../repositories/mensagem.repository';
+import { Request, Response, NextFunction } from "express";
+import ErrorResponse from "../utils/ErrorResponse";
+import {
+  ConversaGUIDParamSchema,
+  MensagemGUIDParamSchema,
+  IniciarIndividualBodySchema,
+  CPFBodySchema,
+  CPFParamSchema,
+  EditarBodySchema,
+  ReacaoBodySchema,
+} from "../schemas/conversa.schema";
+import { zodValidate } from "../utils/zodValidate";
+
+const validarDestinatarioCPFZod = zodValidate(IniciarIndividualBodySchema, "body", "", { semDetails: true });
 
 export class ConversaMiddleware {
-  static validarGUID = (req: Request, _res: Response, next: NextFunction): void => {
-    console.log('🔷 ConversaMiddleware.validarGUID()');
-    const { guid } = req.params;
-    if (!guid || guid.trim().length !== 36) {
-      return next(new ErrorResponse(400, 'ConversaGUID inválido', {
-        message: 'O identificador da conversa deve ser um UUID de 36 caracteres',
-      }));
-    }
-    next();
+  static validarGUID = zodValidate(ConversaGUIDParamSchema, "params", "", { semDetails: true });
+
+  static validarMsgGUID = zodValidate(MensagemGUIDParamSchema, "params", "", { semDetails: true });
+
+  // Além de validar o formato via Zod, precisa comparar com `req.user`
+  // (setado pelo AuthMiddleware) — fora do alcance de `schema.safeParse`,
+  // que só enxerga body/params/query. Encadeado como uma checagem extra
+  // depois da validação de schema, não dá pra modelar só com Zod.
+  static validarIniciarIndividual = (req: Request, res: Response, next: NextFunction): void => {
+    validarDestinatarioCPFZod(req, res, () => {
+      if (req.body.DestinatarioCPF.trim() === req.user?.UsuarioCPF) {
+        throw new ErrorResponse(400, "Não é possível iniciar uma conversa consigo mesmo");
+      }
+      next();
+    });
   };
 
-  static validarMsgGUID = (req: Request, _res: Response, next: NextFunction): void => {
-    console.log('🔷 ConversaMiddleware.validarMsgGUID()');
-    const { msgGuid } = req.params;
-    if (!msgGuid || msgGuid.trim().length !== 36) {
-      return next(new ErrorResponse(400, 'MensagemGUID inválido', {
-        message: 'O identificador da mensagem deve ser um UUID de 36 caracteres',
-      }));
-    }
-    next();
-  };
+  static validarCPFBody = zodValidate(CPFBodySchema, "body", "", { semDetails: true });
 
-  static validarIniciarIndividual = (req: Request, _res: Response, next: NextFunction): void => {
-    console.log('🔷 ConversaMiddleware.validarIniciarIndividual()');
-    const { DestinatarioCPF } = req.body;
+  static validarCPFParam = zodValidate(CPFParamSchema, "params", "", { semDetails: true });
 
-    if (!DestinatarioCPF || typeof DestinatarioCPF !== 'string' || DestinatarioCPF.trim().length === 0) {
-      return next(new ErrorResponse(400, 'DestinatarioCPF é obrigatório'));
-    }
+  static validarEditarBody = zodValidate(EditarBodySchema, "body", "", { semDetails: true });
 
-    if (DestinatarioCPF.trim() === req.user?.UsuarioCPF) {
-      return next(new ErrorResponse(400, 'Não é possível iniciar uma conversa consigo mesmo'));
-    }
-
-    next();
-  };
-
-  static validarCPFBody = (req: Request, _res: Response, next: NextFunction): void => {
-    console.log('🔷 ConversaMiddleware.validarCPFBody()');
-    const { UsuarioCPF } = req.body;
-    if (!UsuarioCPF || typeof UsuarioCPF !== 'string' || UsuarioCPF.trim().length === 0) {
-      return next(new ErrorResponse(400, 'UsuarioCPF é obrigatório'));
-    }
-    next();
-  };
-
-  static validarCPFParam = (req: Request, _res: Response, next: NextFunction): void => {
-    console.log('🔷 ConversaMiddleware.validarCPFParam()');
-    const { cpf } = req.params;
-    if (!cpf || cpf.trim().length === 0) {
-      return next(new ErrorResponse(400, 'CPF inválido'));
-    }
-    next();
-  };
-
-  static validarEditarBody = (req: Request, _res: Response, next: NextFunction): void => {
-    console.log('🔷 ConversaMiddleware.validarEditarBody()');
-    const { MensagemConteudo } = req.body;
-    if (!MensagemConteudo || typeof MensagemConteudo !== 'string' || MensagemConteudo.trim().length === 0) {
-      return next(new ErrorResponse(400, 'MensagemConteudo é obrigatório'));
-    }
-    if (MensagemConteudo.trim().length > 4000) {
-      return next(new ErrorResponse(400, 'MensagemConteudo não pode exceder 4000 caracteres'));
-    }
-    next();
-  };
-
-  static validarReacaoBody = (req: Request, _res: Response, next: NextFunction): void => {
-    console.log('🔷 ConversaMiddleware.validarReacaoBody()');
-    const { ReacaoEmoji } = req.body;
-    if (!ReacaoEmoji || typeof ReacaoEmoji !== 'string' || !(EMOJIS_REACAO_PERMITIDOS as readonly string[]).includes(ReacaoEmoji.trim())) {
-      return next(new ErrorResponse(400, `ReacaoEmoji deve ser um dos suportados: ${EMOJIS_REACAO_PERMITIDOS.join(' ')}`));
-    }
-    next();
-  };
+  static validarReacaoBody = zodValidate(ReacaoBodySchema, "body", "", { semDetails: true });
 }

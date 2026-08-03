@@ -10,25 +10,33 @@ import { Icon } from '@/components/Icon';
 
 import * as ProfessorAPI from '@/lib/api/professor.api';
 import * as EscolaAPI from '@/lib/api/escola.api';
+import { useProfessores, useAlocacoesProfessor } from '@/lib/professor/useProfessorQueries';
+import {
+  useCriarProfessor,
+  useAtualizarProfessor,
+  useCriarProfessoresEmMassa,
+  useInativarProfessor,
+  useReativarProfessor,
+  useCriarAlocacao,
+  useAtualizarAlocacao,
+  useExcluirAlocacao,
+} from '@/lib/professor/useProfessorMutations';
 
 export default function ProfessoresPage() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
 
   // Estados
-  const [professores, setProfessores] = useState<ProfessorAPI.Professor[]>([]);
   const [materias, setMaterias] = useState<ProfessorAPI.Materia[]>([]);
   const [turmas, setTurmas] = useState<ProfessorAPI.Turma[]>([]);
   const [escola, setEscola] = useState<any>(null);
-  const [carregando, setCarregando] = useState(true);
+  const [carregandoAuxiliares, setCarregandoAuxiliares] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
   const [modalUploadAberto, setModalUploadAberto] = useState(false);
   const [dadosImportados, setDadosImportados] = useState<DadosPlanilha<any> | null>(null);
   const [processandoBatch, setProcessandoBatch] = useState(false);
   const [resultadoBatch, setResultadoBatch] = useState<ProfessorAPI.BatchCreateResponse | null>(null);
   const [professorEditando, setProfessorEditando] = useState<ProfessorAPI.Professor | null>(null);
-  const [alocacoesProfessor, setAlocacoesProfessor] = useState<ProfessorAPI.Alocacao[]>([]);
-  const [carregandoAlocacoes, setCarregandoAlocacoes] = useState(false);
   const [novaAlocacaoTurma, setNovaAlocacaoTurma] = useState('');
   const [novaAlocacaoMateria, setNovaAlocacaoMateria] = useState('');
   const [novaAlocacaoAulasPorSemana, setNovaAlocacaoAulasPorSemana] = useState('');
@@ -56,21 +64,35 @@ export default function ProfessoresPage() {
   const [salvandoFormulario, setSalvandoFormulario] = useState(false);
   const [erroFormulario, setErroFormulario] = useState('');
 
-  // Carregar dados
+  const professoresQuery = useProfessores(escolaGUID);
+  const professores = professoresQuery.data?.professores ?? [];
+  const alocacoesQuery = useAlocacoesProfessor(professorEditando?.UsuarioCPF, escolaGUID, !!professorEditando);
+  const alocacoesProfessor = (alocacoesQuery.data?.alocacoes ?? []).filter((a) => a.AlocacaoStatus === 'Ativa');
+  const carregandoAlocacoes = alocacoesQuery.isLoading;
+  const carregando = professoresQuery.isLoading || carregandoAuxiliares;
+
+  const criarProfessorMutation = useCriarProfessor();
+  const atualizarProfessorMutation = useAtualizarProfessor();
+  const criarProfessoresEmMassaMutation = useCriarProfessoresEmMassa();
+  const inativarProfessorMutation = useInativarProfessor();
+  const reativarProfessorMutation = useReativarProfessor();
+  const criarAlocacaoMutation = useCriarAlocacao();
+  const atualizarAlocacaoMutation = useAtualizarAlocacao();
+  const excluirAlocacaoMutation = useExcluirAlocacao();
+
+  // Carregar dados auxiliares (matérias/turmas/escola — domínios fora do escopo desta migração)
   useEffect(() => {
-    carregarDados();
+    carregarDadosAuxiliares();
   }, [escolaGUID]);
 
-  const carregarDados = async () => {
+  const carregarDadosAuxiliares = async () => {
     try {
-      setCarregando(true);
-      const [resultadoProfessores, resultadoMaterias, resultadoTurmas, resultadoEscola] = await Promise.all([
-        ProfessorAPI.listarProfessores({ EscolaGUID: escolaGUID }),
+      setCarregandoAuxiliares(true);
+      const [resultadoMaterias, resultadoTurmas, resultadoEscola] = await Promise.all([
         ProfessorAPI.listarMaterias(escolaGUID),
         ProfessorAPI.listarTurmas(escolaGUID),
         EscolaAPI.buscarEscola(escolaGUID)
       ]);
-      setProfessores(resultadoProfessores.professores);
       setMaterias(resultadoMaterias);
       setTurmas(resultadoTurmas);
       setEscola(resultadoEscola.escola);
@@ -78,7 +100,7 @@ export default function ProfessoresPage() {
       console.error('Erro ao carregar dados:', erro);
       alert('Erro ao carregar dados: ' + erro.message);
     } finally {
-      setCarregando(false);
+      setCarregandoAuxiliares(false);
     }
   };
 
@@ -185,24 +207,31 @@ export default function ProfessoresPage() {
 
       if (professorEditando) {
         // Editar professor existente
-        await ProfessorAPI.atualizarProfessor(professorEditando.UsuarioCPF, {
-          UsuarioNome: valoresFormulario.UsuarioNome,
-          UsuarioEmail: valoresFormulario.UsuarioEmail,
-          UsuarioTelefone: valoresFormulario.UsuarioTelefone,
-          UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento
+        await atualizarProfessorMutation.mutateAsync({
+          cpf: professorEditando.UsuarioCPF,
+          updates: {
+            UsuarioNome: valoresFormulario.UsuarioNome,
+            UsuarioEmail: valoresFormulario.UsuarioEmail,
+            UsuarioTelefone: valoresFormulario.UsuarioTelefone,
+            UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento
+          },
         });
         alert('Professor atualizado com sucesso!');
       } else {
         // Criar novo professor
-        await ProfessorAPI.criarProfessor({
-          UsuarioCPF: valoresFormulario.UsuarioCPF,
-          UsuarioNome: valoresFormulario.UsuarioNome,
-          UsuarioEmail: valoresFormulario.UsuarioEmail,
-          UsuarioTelefone: valoresFormulario.UsuarioTelefone,
-          UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento,
-          Materias: valoresFormulario.Materias,
-          Turmas: valoresFormulario.Turmas
-        }, escolaGUID, escola?.EscolaNome || 'Escola');
+        await criarProfessorMutation.mutateAsync({
+          dados: {
+            UsuarioCPF: valoresFormulario.UsuarioCPF,
+            UsuarioNome: valoresFormulario.UsuarioNome,
+            UsuarioEmail: valoresFormulario.UsuarioEmail,
+            UsuarioTelefone: valoresFormulario.UsuarioTelefone,
+            UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento,
+            Materias: valoresFormulario.Materias,
+            Turmas: valoresFormulario.Turmas
+          },
+          escolaGUID,
+          escolaNome: escola?.EscolaNome || 'Escola',
+        });
         alert('Professor criado com sucesso! Um email foi enviado com as credenciais de acesso.');
       }
 
@@ -217,7 +246,6 @@ export default function ProfessoresPage() {
         Materias: '',
         Turmas: ''
       });
-      carregarDados();
 
     } catch (erro: any) {
       console.error('Erro ao salvar professor:', erro);
@@ -227,9 +255,8 @@ export default function ProfessoresPage() {
     }
   };
 
-  const handleEditar = async (professor: ProfessorAPI.Professor) => {
+  const handleEditar = (professor: ProfessorAPI.Professor) => {
     setProfessorEditando(professor);
-    setAlocacoesProfessor([]);
     setValoresFormulario({
       UsuarioCPF: professor.UsuarioCPF,
       UsuarioNome: professor.UsuarioNome,
@@ -242,28 +269,13 @@ export default function ProfessoresPage() {
       Turmas: ''
     });
     setModalAberto(true);
-
-    try {
-      setCarregandoAlocacoes(true);
-      const { alocacoes } = await ProfessorAPI.buscarAlocacoesProfessor(professor.UsuarioCPF, escolaGUID);
-      const ativas = alocacoes.filter(a => a.AlocacaoStatus === 'Ativa');
-      setAlocacoesProfessor(ativas);
-    } catch (erro: any) {
-      console.error('Erro ao buscar alocações:', erro);
-    } finally {
-      setCarregandoAlocacoes(false);
-    }
-  };
-
-  const recarregarAlocacoes = async (cpf: string) => {
-    const { alocacoes } = await ProfessorAPI.buscarAlocacoesProfessor(cpf, escolaGUID);
-    setAlocacoesProfessor(alocacoes.filter(a => a.AlocacaoStatus === 'Ativa'));
+    // alocacoesQuery reage sozinha à mudança de professorEditando (enabled: !!professorEditando)
   };
 
   const handleDesassociarMateria = async (alocacaoGUID: string) => {
     try {
-      await ProfessorAPI.excluirAlocacao(alocacaoGUID);
-      await recarregarAlocacoes(professorEditando!.UsuarioCPF);
+      await excluirAlocacaoMutation.mutateAsync(alocacaoGUID);
+      await alocacoesQuery.refetch();
     } catch (erro: any) {
       alert('Erro ao desassociar: ' + erro.message);
     }
@@ -274,8 +286,8 @@ export default function ProfessoresPage() {
     const mat = materias.find(m => m.MateriaGUID === materiaGUID);
     if (!confirm(`Remover "${mat?.MateriaNome ?? materiaGUID}" de todas as turmas deste professor?`)) return;
     try {
-      await Promise.all(alvos.map(a => ProfessorAPI.excluirAlocacao(a.MatProfTurGUID)));
-      await recarregarAlocacoes(professorEditando!.UsuarioCPF);
+      await Promise.all(alvos.map(a => excluirAlocacaoMutation.mutateAsync(a.MatProfTurGUID)));
+      await alocacoesQuery.refetch();
     } catch (erro: any) {
       alert('Erro ao desassociar matéria: ' + erro.message);
     }
@@ -285,17 +297,17 @@ export default function ProfessoresPage() {
     try {
       setSalvandoAlocacao(true);
       setErroAlocacao('');
-      await ProfessorAPI.criarAlocacao(
-        {
+      await criarAlocacaoMutation.mutateAsync({
+        alocacao: {
           UsuarioCPF: professorEditando!.UsuarioCPF,
           MateriaGUID: novaAlocacaoMateria,
           TurmaGUID: novaAlocacaoTurma,
           AlocacaoStatus: 'Ativa',
           AulasPorSemana: novaAlocacaoAulasPorSemana ? parseInt(novaAlocacaoAulasPorSemana, 10) : null,
         },
-        escolaGUID
-      );
-      await recarregarAlocacoes(professorEditando!.UsuarioCPF);
+        escolaGUID,
+      });
+      await alocacoesQuery.refetch();
       setNovaAlocacaoTurma('');
       setNovaAlocacaoMateria('');
       setNovaAlocacaoAulasPorSemana('');
@@ -308,11 +320,12 @@ export default function ProfessoresPage() {
 
   const salvarAulasPorSemana = async (matProfTurGUID: string) => {
     try {
-      await ProfessorAPI.atualizarAlocacao(matProfTurGUID, {
-        AulasPorSemana: valorAulasPorSemanaEditando ? parseInt(valorAulasPorSemanaEditando, 10) : null,
+      await atualizarAlocacaoMutation.mutateAsync({
+        alocacaoGUID: matProfTurGUID,
+        updates: { AulasPorSemana: valorAulasPorSemanaEditando ? parseInt(valorAulasPorSemanaEditando, 10) : null },
       });
       setEditandoAulasPorSemana(null);
-      await recarregarAlocacoes(professorEditando!.UsuarioCPF);
+      await alocacoesQuery.refetch();
     } catch (erro: any) {
       alert('Erro ao atualizar aulas por semana: ' + erro.message);
     }
@@ -363,9 +376,8 @@ export default function ProfessoresPage() {
     }
 
     try {
-      await ProfessorAPI.inativarProfessor(professor.UsuarioCPF, escolaGUID);
+      await inativarProfessorMutation.mutateAsync({ cpf: professor.UsuarioCPF, escolaGUID });
       alert('Professor inativado com sucesso!');
-      carregarDados();
     } catch (erro: any) {
       console.error('Erro ao inativar professor:', erro);
       alert('Erro ao inativar professor: ' + erro.message);
@@ -378,9 +390,8 @@ export default function ProfessoresPage() {
     }
 
     try {
-      await ProfessorAPI.reativarProfessor(professor.UsuarioCPF);
+      await reativarProfessorMutation.mutateAsync(professor.UsuarioCPF);
       alert('Professor reativado com sucesso!');
-      carregarDados();
     } catch (erro: any) {
       console.error('Erro ao reativar professor:', erro);
       alert('Erro ao reativar professor: ' + erro.message);
@@ -410,15 +421,14 @@ export default function ProfessoresPage() {
       }));
 
       // Enviar para API
-      const resultado = await ProfessorAPI.criarProfessoresEmMassa(
-        professoresDTO,
+      const resultado = await criarProfessoresEmMassaMutation.mutateAsync({
+        professores: professoresDTO,
         escolaGUID,
-        escola?.EscolaNome || 'Escola'
-      );
-      
+        escolaNome: escola?.EscolaNome || 'Escola',
+      });
+
       setResultadoBatch(resultado);
       setDadosImportados(null);
-      carregarDados();
 
     } catch (erro: any) {
       console.error('Erro ao importar professores:', erro);
@@ -512,7 +522,6 @@ export default function ProfessoresPage() {
               onCancel={() => {
                 setModalAberto(false);
                 setProfessorEditando(null);
-                setAlocacoesProfessor([]);
                 setNovaAlocacaoTurma('');
                 setNovaAlocacaoMateria('');
                 setErroAlocacao('');
