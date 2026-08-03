@@ -21,7 +21,7 @@
  * `souDestinatario`, calculado a partir do CPF do usuário logado.
  */
 
-import { ChangeEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -29,6 +29,7 @@ import { usePendencia, useAnexosPendencia } from '@/lib/pendencia/usePendenciaQu
 import { useMarcarComoFeito, useVincularAnexoPendencia } from '@/lib/pendencia/usePendenciaMutations';
 import { uploadAnexo, ANEXO_TAMANHO_MAXIMO_BYTES, ANEXO_MIME_TYPES_PERMITIDOS } from '@/lib/api/anexo.api';
 import Loader from '@/components/Loader';
+import AnexoUploadField from '@/components/AnexoUploadField';
 import styles from './page.module.css';
 
 function formatarTamanho(bytes: number | null): string {
@@ -68,9 +69,7 @@ export default function PendenciaDetalhesPage() {
 
   const souDestinatario = !!usuario && !!pendencia && usuario.UsuarioCPF === pendencia.UsuarioCPF;
 
-  const handleSelecionarArquivo = async (event: ChangeEvent<HTMLInputElement>) => {
-    const arquivo = event.target.files?.[0];
-    event.target.value = '';
+  const handleSelecionarArquivo = async (arquivo: File | null) => {
     if (!arquivo || !pendencia) return;
 
     if (arquivo.size > ANEXO_TAMANHO_MAXIMO_BYTES) {
@@ -177,20 +176,14 @@ export default function PendenciaDetalhesPage() {
 
         {souDestinatario ? (
           !pendencia.PendenciaFeito && (
-            <>
-              <input
-                id="pendenciaAnexo"
-                type="file"
-                className={styles.inputFile}
-                onChange={handleSelecionarArquivo}
-                disabled={enviandoAnexo}
-              />
-              <p className={styles.hint}>
-                {enviandoAnexo
-                  ? 'Enviando arquivo...'
-                  : 'PDF, imagens, Word, Excel, TXT ou ZIP — até 50MB.'}
-              </p>
-            </>
+            <AnexoUploadField
+              id="pendenciaAnexo"
+              arquivo={null}
+              onChange={handleSelecionarArquivo}
+              disabled={enviandoAnexo}
+              textoArea={enviandoAnexo ? 'Enviando arquivo...' : 'Clique ou arraste um arquivo aqui'}
+              hint="PDF, imagens, Word, Excel, TXT ou ZIP — até 50MB."
+            />
           )
         ) : (
           <p className={styles.avisoSomenteDestinatario}>Apenas o destinatário pode anexar arquivos.</p>
