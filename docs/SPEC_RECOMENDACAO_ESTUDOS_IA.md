@@ -1,8 +1,9 @@
 # 📋 SPEC — Recomendação de Estudos por IA (Prova Agendada)
 
 **Data:** 2026-08-03
-**Status:** Spec final — decisões consolidadas do bakeoff, aguardando revisão do usuário; depois disso vira plano de implementação (faseado)
-**Documento de origem (o "porquê" de cada escolha):** `docs/PLANO_IMPLEMENTACAO_RECOMENDACAO_ESTUDOS_IA.md`
+**Status:** Spec final — decisões consolidadas do bakeoff
+**Documento de origem (o "porquê" de cada escolha):** `docs/BAKEOFF_RECOMENDACAO_ESTUDOS_IA.md`
+**Plano de execução faseado (o "como" e "quando"):** `docs/PLANO_IMPLEMENTACAO_RECOMENDACAO_ESTUDOS_IA.md`
 **Escopo:** Módulo **Matérias**, item "prova" (`ProvaAgendada`)
 
 ---

@@ -138,6 +138,61 @@ export async function removerProvaDeTurma(provaAgendadaGUID: string, turmaGUID: 
   return result.data;
 }
 
+export interface RecomendacaoVideo {
+  titulo: string;
+  url: string;
+  canal: string;
+  thumbnailUrl: string | null;
+}
+
+export interface RecomendacaoFonte {
+  tipo: 'Conteudo' | 'MaterialDidatico';
+  guid: string;
+  rotulo: string;
+}
+
+export interface RecomendacaoPaginaLivro {
+  materialDidaticoGUID: string;
+  materialDidaticoTitulo: string;
+  capituloGUID: string;
+  capituloTitulo: string;
+  paginaInicio: number;
+  paginaFim: number;
+}
+
+export interface RecomendacaoEstudo {
+  ProvaAgendadaGUID: string;
+  Videos: RecomendacaoVideo[];
+  Resumo: string | null;
+  FontesUsadas: RecomendacaoFonte[];
+  PaginaLivro: RecomendacaoPaginaLivro | null;
+  SubMateriaGlobalGUID: string | null;
+  StatusGeracao: 'Pendente' | 'Concluida' | 'Falhou';
+  GeradoEm: string | null;
+}
+
+/**
+ * A recomendação é gerada de forma assíncrona (fire-and-forget) na criação/
+ * edição da prova — 404 é um estado normal logo depois de criar (ainda não
+ * chegou a existir a linha de cache), por isso devolve `null` em vez de
+ * lançar erro.
+ */
+export async function buscarRecomendacaoProva(provaAgendadaGUID: string): Promise<RecomendacaoEstudo | null> {
+  const response = await fetch(`${API_URL}/prova/${provaAgendadaGUID}/recomendacao`, {
+    headers: getHeaders(),
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao buscar recomendação de estudo');
+  }
+  return result.data.recomendacao;
+}
+
 export async function registrarVisualizacaoProva(provaAgendadaTurmaGUID: string): Promise<void> {
   const response = await fetch(`${API_URL}/prova/turma/${provaAgendadaTurmaGUID}/visualizar`, {
     method: 'POST',

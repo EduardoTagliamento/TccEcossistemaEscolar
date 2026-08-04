@@ -24,6 +24,8 @@ const ProvaPayloadBaseSchema = z.object({
   ProvaDescricao: z.string().max(1024, "O campo 'ProvaDescricao' deve ter no máximo 1024 caracteres.").optional().nullable(),
   anexosDescricao: z.array(guid("anexosDescricao")).optional(),
   DatasPorTurma: z.record(z.string(), z.any()).optional(),
+  AssuntoGUIDs: z.array(guid("AssuntoGUIDs")).optional(),
+  MaterialDidaticoCapituloGUID: guid("MaterialDidaticoCapituloGUID").optional().nullable(),
 });
 
 function refinarDatasPorTurma(prova: z.infer<typeof ProvaPayloadBaseSchema>, ctx: z.RefinementCtx) {
@@ -52,10 +54,13 @@ export const ProvaUpdateBodySchema = z.object({
       ProvaData: dataValida("ProvaData"),
       ProvaDescricao: z.string().max(1024, "O campo 'ProvaDescricao' deve ter no máximo 1024 caracteres.").optional().nullable(),
       ProvaStatus: z.enum(STATUS_VALID, { message: "O campo 'ProvaStatus' deve ser 'Agendada', 'Realizada' ou 'Cancelada'." }),
+      AssuntoGUIDs: z.array(guid("AssuntoGUIDs")),
+      MaterialDidaticoCapituloGUID: guid("MaterialDidaticoCapituloGUID").nullable(),
     })
     .partial()
     .refine((obj) => Object.values(obj).some((v) => v !== undefined), {
-      message: "É necessário fornecer ao menos um campo para atualização: ProvaData, ProvaDescricao, ProvaStatus",
+      message:
+        "É necessário fornecer ao menos um campo para atualização: ProvaData, ProvaDescricao, ProvaStatus, AssuntoGUIDs, MaterialDidaticoCapituloGUID",
     }),
 });
 

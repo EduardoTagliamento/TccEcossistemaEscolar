@@ -14,6 +14,8 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
 import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
+import * as AssuntoAPI from '@/lib/api/assunto.api';
+import * as MaterialDidaticoAPI from '@/lib/api/materialdidatico.api';
 import { DiaSemana, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
 import { Icon } from '@/components/Icon';
 import styles from './ProvaAgendadaForm.module.css';
@@ -25,6 +27,8 @@ interface Prova {
   ProvaDescricao: string | null;
   ProvaStatus: 'Agendada' | 'Realizada' | 'Cancelada';
   TurmasAtribuidas: string[];
+  AssuntoGUIDs?: string[];
+  MaterialDidaticoCapituloGUID?: string | null;
 }
 
 interface ResultadoCalculoUI extends GradeHorariaAPI.ResultadoCalculo {
@@ -100,6 +104,18 @@ export default function ProvaAgendadaForm({
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
   const [series, setSeries] = useState<SerieItem[]>([]);
   const [categoriaNomes, setCategoriaNomes] = useState<string[]>([]);
+  const [assuntos, setAssuntos] = useState<AssuntoAPI.Assunto[]>([]);
+  const [assuntoGUIDsSelecionados, setAssuntoGUIDsSelecionados] = useState<string[]>([]);
+  const [novoAssuntoNome, setNovoAssuntoNome] = useState('');
+  const [criandoAssunto, setCriandoAssunto] = useState(false);
+  const [livrosDisponiveis, setLivrosDisponiveis] = useState<MaterialDidaticoAPI.MaterialDidatico[]>([]);
+  const [livroEscolhidoGUID, setLivroEscolhidoGUID] = useState('');
+  const [capitulosDoLivro, setCapitulosDoLivro] = useState<MaterialDidaticoAPI.MaterialDidaticoCapitulo[]>([]);
+  const [capituloEscolhidoGUID, setCapituloEscolhidoGUID] = useState('');
+  // Só entra no payload de UPDATE se o professor mexeu nesta sessão — sem
+  // isso, editar a prova por outro motivo (ex.: só a data) apagaria
+  // silenciosamente uma referência de capítulo já existente.
+  const [capituloTocado, setCapituloTocado] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingGUID, setEditingGUID] = useState<string | null>(null);
@@ -313,11 +329,70 @@ export default function ProvaAgendadaForm({
   useEffect(() => {
     if (form.MateriaGUID) {
       void carregarCategoriaNomes(form.MateriaGUID);
+      void carregarAssuntos(form.MateriaGUID);
+      void carregarLivros(form.MateriaGUID);
     } else {
       setCategoriaNomes([]);
+      setAssuntos([]);
+      setLivrosDisponiveis([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.MateriaGUID]);
+
+  // Página de livro (spec item 9) — 1º passo: livros que têm capítulo desta
+  // matéria; 2º passo (abaixo): capítulos daquele livro específico.
+  const carregarLivros = async (materiaGUID: string) => {
+    try {
+      setLivrosDisponiveis(await MaterialDidaticoAPI.listarLivrosPorMateria(materiaGUID));
+    } catch (err: any) {
+      setErro(err?.message || 'Falha ao carregar materiais didáticos');
+    }
+  };
+
+  useEffect(() => {
+    if (!livroEscolhidoGUID || !form.MateriaGUID) {
+      setCapitulosDoLivro([]);
+      return;
+    }
+    MaterialDidaticoAPI.listarCapitulosPorMateria(livroEscolhidoGUID, form.MateriaGUID)
+      .then(setCapitulosDoLivro)
+      .catch((err) => setErro(err?.message || 'Falha ao carregar capítulos'));
+  }, [livroEscolhidoGUID, form.MateriaGUID]);
+
+  // Lista de Assunto pra travamento manual (spec item 3) — opcional; sem
+  // nenhum assunto cadastrado pra matéria, o bloco simplesmente não aparece
+  // (mesmo princípio de omissão silenciosa do resto da feature de IA).
+  const carregarAssuntos = async (materiaGUID: string) => {
+    try {
+      setAssuntos(await AssuntoAPI.listarAssuntos(materiaGUID));
+    } catch (err: any) {
+      setErro(err?.message || 'Falha ao carregar assuntos');
+    }
+  };
+
+  const toggleAssunto = (assuntoGUID: string) => {
+    setAssuntoGUIDsSelecionados((prev) =>
+      prev.includes(assuntoGUID) ? prev.filter((g) => g !== assuntoGUID) : [...prev, assuntoGUID]
+    );
+  };
+
+  const handleCriarAssunto = async () => {
+    const nome = novoAssuntoNome.trim();
+    if (!nome || !form.MateriaGUID) return;
+
+    setCriandoAssunto(true);
+    setErro(null);
+    try {
+      const criado = await AssuntoAPI.criarAssunto({ MateriaGUID: form.MateriaGUID, Nome: nome });
+      setAssuntos((prev) => [...prev, criado].sort((a, b) => a.Nome.localeCompare(b.Nome)));
+      setAssuntoGUIDsSelecionados((prev) => [...prev, criado.AssuntoGUID]);
+      setNovoAssuntoNome('');
+    } catch (err: any) {
+      setErro(err?.message || 'Falha ao criar assunto');
+    } finally {
+      setCriandoAssunto(false);
+    }
+  };
 
   // Pré-preenchimento: matéria vinda da URL, assim que a lista carregar
   useEffect(() => {
@@ -496,6 +571,12 @@ export default function ProvaAgendadaForm({
     setResultadosCalculo({});
     setSemanaBase('');
     setDeslocamentoMinutos(0);
+    setAssuntoGUIDsSelecionados([]);
+    setNovoAssuntoNome('');
+    setLivroEscolhidoGUID('');
+    setCapituloEscolhidoGUID('');
+    setCapitulosDoLivro([]);
+    setCapituloTocado(false);
   };
 
   const onSubmit = async (event: FormEvent) => {
@@ -511,6 +592,8 @@ export default function ProvaAgendadaForm({
             ProvaData: converterParaBrasil(form.ProvaData), // Converte do timezone do usuário para GMT-3
             ProvaDescricao: form.ProvaDescricao || undefined,
             ProvaStatus: form.ProvaStatus,
+            AssuntoGUIDs: assuntoGUIDsSelecionados,
+            ...(capituloTocado ? { MaterialDidaticoCapituloGUID: capituloEscolhidoGUID || null } : {}),
           },
         };
 
@@ -584,6 +667,8 @@ export default function ProvaAgendadaForm({
           ProvaDescricao: form.ProvaDescricao || undefined,
           DatasPorTurma: datasPorTurma,
           CategoriasPorTurma: categoriasPorTurma,
+          AssuntoGUIDs: assuntoGUIDsSelecionados.length > 0 ? assuntoGUIDsSelecionados : undefined,
+          MaterialDidaticoCapituloGUID: capituloEscolhidoGUID || undefined,
         },
       };
 
@@ -623,6 +708,7 @@ export default function ProvaAgendadaForm({
       ProvaDescricao: prova.ProvaDescricao || '',
       ProvaStatus: prova.ProvaStatus,
     });
+    setAssuntoGUIDsSelecionados(prova.AssuntoGUIDs || []);
     // Scroll para o topo para visualizar o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -733,6 +819,89 @@ export default function ProvaAgendadaForm({
             <p className={styles.hint}>
               Escolha um nome já usado ou digite um novo — a categoria é aplicada nas turmas marcadas acima.
             </p>
+          </div>
+        )}
+
+        {/* Assunto — travamento manual (spec item 3): opcional; sem nada
+            marcado, a IA classifica sozinha ao gerar a recomendação de
+            estudo. */}
+        {form.MateriaGUID && (
+          <div className={styles.formGroup}>
+            <label>Assunto (opcional)</label>
+            {assuntos.length > 0 && (
+              <div className={styles.assuntoLista}>
+                {assuntos.map((assunto) => (
+                  <label key={assunto.AssuntoGUID} className={styles.assuntoItem}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkbox}
+                      checked={assuntoGUIDsSelecionados.includes(assunto.AssuntoGUID)}
+                      onChange={() => toggleAssunto(assunto.AssuntoGUID)}
+                    />
+                    {assunto.Nome}
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className={styles.assuntoNovo}>
+              <input
+                placeholder="Novo assunto (ex: Trigonometria)"
+                value={novoAssuntoNome}
+                onChange={(e) => setNovoAssuntoNome(e.target.value)}
+              />
+              <button
+                type="button"
+                className={styles.selectButton}
+                onClick={handleCriarAssunto}
+                disabled={criandoAssunto || !novoAssuntoNome.trim()}
+              >
+                {criandoAssunto ? 'Adicionando...' : 'Adicionar'}
+              </button>
+            </div>
+            <p className={styles.hint}>
+              Sem nenhum assunto marcado, a IA identifica sozinha ao gerar a recomendação de estudo.
+            </p>
+          </div>
+        )}
+
+        {/* Página de livro didático (spec item 9) — opcional, 2 passos:
+            primeiro escolhe QUAL livro (entre os que têm capítulo desta
+            matéria), depois o capítulo dentro dele. */}
+        {form.MateriaGUID && livrosDisponiveis.length > 0 && (
+          <div className={styles.formGroup}>
+            <label>Página de livro didático (opcional)</label>
+            <select
+              value={livroEscolhidoGUID}
+              onChange={(e) => {
+                setLivroEscolhidoGUID(e.target.value);
+                setCapituloEscolhidoGUID('');
+                setCapituloTocado(true);
+              }}
+            >
+              <option value="">Nenhum livro referenciado</option>
+              {livrosDisponiveis.map((livro) => (
+                <option key={livro.MaterialDidaticoGUID} value={livro.MaterialDidaticoGUID}>
+                  {livro.Titulo}
+                </option>
+              ))}
+            </select>
+
+            {livroEscolhidoGUID && (
+              <select
+                value={capituloEscolhidoGUID}
+                onChange={(e) => {
+                  setCapituloEscolhidoGUID(e.target.value);
+                  setCapituloTocado(true);
+                }}
+              >
+                <option value="">Selecione o capítulo...</option>
+                {capitulosDoLivro.map((capitulo) => (
+                  <option key={capitulo.MaterialDidaticoCapituloGUID} value={capitulo.MaterialDidaticoCapituloGUID}>
+                    {capitulo.Titulo} (p. {capitulo.PaginaInicio}–{capitulo.PaginaFim})
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         )}
 

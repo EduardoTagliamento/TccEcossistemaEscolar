@@ -9,6 +9,7 @@ export default class Materia {
   #MateriaGUID!: string;
   #EscolaGUID!: string;
   #CursoGUID: string | null = null;
+  #MateriaGlobalGUID: string | null = null;
   #MateriaNome: string | null = null;
   #MateriaIsTecnica: boolean = false;
   #MateriaAulasPorSemanaPadrao: number | null = null;
@@ -77,6 +78,31 @@ export default class Materia {
     }
 
     this.#CursoGUID = guid;
+  }
+
+  // ========== MateriaGlobalGUID ==========
+  // Ponte pra taxonomia global (spec item 15) — resolvida automaticamente
+  // via MateriaGlobalService, nunca digitada diretamente pelo usuário.
+  get MateriaGlobalGUID(): string | null {
+    return this.#MateriaGlobalGUID;
+  }
+
+  set MateriaGlobalGUID(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#MateriaGlobalGUID = null;
+      return;
+    }
+
+    if (typeof value !== "string") {
+      throw new Error("MateriaGlobalGUID deve ser uma string.");
+    }
+
+    const guid = value.trim();
+    if (guid.length !== 36) {
+      throw new Error("MateriaGlobalGUID deve ter 36 caracteres.");
+    }
+
+    this.#MateriaGlobalGUID = guid;
   }
 
   // ========== MateriaNome ==========

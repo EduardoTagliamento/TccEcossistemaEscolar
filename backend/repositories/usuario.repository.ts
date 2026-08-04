@@ -17,6 +17,7 @@ interface UsuarioRow {
   UsuarioEmailVerificado: number; // MySQL retorna 0 ou 1
   UsuarioDataNascimento: Date | null;
   UsuarioStatus: "Ativo" | "Inativo" | "Bloqueado";
+  UsuarioIsPlataformaAdmin: number; // MySQL retorna 0 ou 1
   UsuarioUltimoAcesso: Date | null;
   UsuarioCreatedAt: Date;
   UsuarioUpdatedAt: Date;
@@ -70,6 +71,21 @@ export class UsuarioDAO {
 
     const pool = await this.#database.getPool();
     const [resultado] = await pool.execute(SQL, params);
+
+    return (resultado as { affectedRows: number }).affectedRows > 0;
+  };
+
+  /**
+   * Concede/revoga a flag de admin de plataforma (spec item 13) — fora do
+   * fluxo normal de update de perfil; hoje só usado via script/acesso
+   * direto ao banco (bootstrap manual), sem tela própria nesta fase.
+   */
+  atualizarPlataformaAdmin = async (usuarioCPF: string, isPlataformaAdmin: boolean): Promise<boolean> => {
+    console.log("🟢 UsuarioDAO.atualizarPlataformaAdmin()");
+
+    const SQL = `UPDATE usuario SET UsuarioIsPlataformaAdmin = ? WHERE UsuarioCPF = ?`;
+    const pool = await this.#database.getPool();
+    const [resultado] = await pool.execute(SQL, [isPlataformaAdmin, usuarioCPF]);
 
     return (resultado as { affectedRows: number }).affectedRows > 0;
   };
@@ -271,6 +287,7 @@ export class UsuarioDAO {
     usuario.UsuarioEmailVerificado = Boolean(row.UsuarioEmailVerificado);
     usuario.UsuarioDataNascimento = row.UsuarioDataNascimento ? new Date(row.UsuarioDataNascimento) : null;
     usuario.UsuarioStatus = row.UsuarioStatus;
+    usuario.UsuarioIsPlataformaAdmin = Boolean(row.UsuarioIsPlataformaAdmin);
     usuario.UsuarioUltimoAcesso = row.UsuarioUltimoAcesso ? new Date(row.UsuarioUltimoAcesso) : null;
     usuario.UsuarioCreatedAt = new Date(row.UsuarioCreatedAt);
     usuario.UsuarioUpdatedAt = new Date(row.UsuarioUpdatedAt);

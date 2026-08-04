@@ -7,6 +7,7 @@ import styles from '../page.module.css';
 import BaseFormularioCadastro, { CampoFormulario } from '@/components/gestao-dados/BaseFormularioCadastro';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
 import BaseTabelaDados, { Coluna } from '@/components/gestao-dados/BaseTabelaDados';
+import MateriaGlobalBadge from '@/components/gestao-dados/MateriaGlobalBadge';
 import { Icon } from '@/components/Icon';
 
 import * as MateriaAPI from '@/lib/api/materia.api';
@@ -140,6 +141,12 @@ export default function MateriasPage() {
       label: 'Aulas/semana',
       width: '10%',
       render: (valor: any) => valor ?? <span className={styles.textoSecundario}>—</span>
+    },
+    {
+      id: 'MateriaGlobalGUID',
+      label: 'Matéria Global',
+      width: '20%',
+      render: (_valor: any, materia: MateriaAPI.Materia) => <MateriaGlobalBadge materiaGUID={materia.MateriaGUID} />
     },
     {
       id: 'MateriaStatus',

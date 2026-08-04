@@ -24,6 +24,7 @@ export default class Usuario {
   #UsuarioEmailVerificado: boolean = false;
   #UsuarioDataNascimento: Date | null = null;
   #UsuarioStatus: "Ativo" | "Inativo" | "Bloqueado" = "Ativo";
+  #UsuarioIsPlataformaAdmin: boolean = false;
   #UsuarioUltimoAcesso: Date | null = null;
   #UsuarioCreatedAt: Date | null = null;
   #UsuarioUpdatedAt: Date | null = null;
@@ -305,6 +306,21 @@ export default class Usuario {
       throw new Error("UsuarioStatus deve ser 'Ativo', 'Inativo' ou 'Bloqueado'.");
     }
     this.#UsuarioStatus = value;
+  }
+
+  // ========== UsuarioIsPlataformaAdmin ==========
+  // Flag de admin de plataforma (spec item 13) — fora do sistema de papéis
+  // por escola (EscolaXUsuarioXFuncao); dá acesso ao CRUD do banco de
+  // questões universal e à fila de revisão de MateriaGlobal.
+  get UsuarioIsPlataformaAdmin(): boolean {
+    return this.#UsuarioIsPlataformaAdmin;
+  }
+
+  set UsuarioIsPlataformaAdmin(value: boolean) {
+    if (typeof value !== "boolean") {
+      throw new Error("UsuarioIsPlataformaAdmin deve ser um booleano.");
+    }
+    this.#UsuarioIsPlataformaAdmin = value;
   }
 
   // ========== Último Acesso ==========

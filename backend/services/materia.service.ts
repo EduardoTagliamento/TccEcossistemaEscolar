@@ -10,11 +10,13 @@ import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxtur
 import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import { getAuditoriaService } from "./auditoria.service";
+import { getMateriaGlobalService } from "./materiaglobal.service";
 
 export interface MateriaDTO {
   MateriaGUID: string;
   EscolaGUID: string;
   CursoGUID: string | null;
+  MateriaGlobalGUID: string | null;
   MateriaNome: string;
   MateriaIsTecnica: boolean;
   MateriaAulasPorSemanaPadrao: number | null;
@@ -216,7 +218,31 @@ export default class MateriaService {
       CategoriaAuditoriaId: 2,
     });
 
+    await this.#resolverMapeamentoGlobal(materia);
+
     return this.toDTO(materia);
+  };
+
+  /**
+   * Mapeamento self-service `Materia → MateriaGlobal` (spec item 15/16):
+   * roda no create/update, persiste sozinho quando confiante o bastante
+   * ('Confirmado'/'NovoPendente' não pedem confirmação humana) — quando
+   * ambíguo, deixa `MateriaGlobalGUID` em aberto pro gestor resolver via
+   * `GET/PUT /api/materia/:guid/mapeamento-global`. Nunca bloqueia o
+   * cadastro da matéria em si.
+   */
+  #resolverMapeamentoGlobal = async (materia: Materia): Promise<void> => {
+    if (!materia.MateriaNome) return;
+
+    try {
+      const resultado = await getMateriaGlobalService().resolverMapeamento(materia.MateriaNome);
+      if (resultado.Status === "Ambiguo") return;
+
+      await this.#materiaDAO.atualizarMateriaGlobal(materia.MateriaGUID, resultado.MateriaGlobalGUID);
+      materia.MateriaGlobalGUID = resultado.MateriaGlobalGUID;
+    } catch (error) {
+      console.warn("🟡 MateriaService.#resolverMapeamentoGlobal() falhou, seguindo sem MateriaGlobal:", error);
+    }
   };
 
   /**
@@ -477,6 +503,13 @@ export default class MateriaService {
       CategoriaAuditoriaId: 2,
     });
 
+    // Só re-resolve se o nome mudou e ainda não há mapeamento — nunca
+    // clobbera silenciosamente uma escolha já confirmada/curada.
+    const nomeMudou = data.MateriaNome !== undefined && data.MateriaNome.trim() !== materiaExistente.MateriaNome;
+    if (nomeMudou && !resultado.MateriaGlobalGUID) {
+      await this.#resolverMapeamentoGlobal(resultado);
+    }
+
     return this.toDTO(resultado);
   };
 
@@ -552,6 +585,7 @@ export default class MateriaService {
       MateriaGUID: materia.MateriaGUID,
       EscolaGUID: materia.EscolaGUID,
       CursoGUID: materia.CursoGUID,
+      MateriaGlobalGUID: materia.MateriaGlobalGUID,
       MateriaNome: materia.MateriaNome || "",
       MateriaIsTecnica: materia.MateriaIsTecnica,
       MateriaAulasPorSemanaPadrao: materia.MateriaAulasPorSemanaPadrao,

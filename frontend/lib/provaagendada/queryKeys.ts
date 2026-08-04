@@ -6,4 +6,5 @@ export const provaKeys = {
   all: ['provas'] as const,
   lista: (filtros?: ProvaFiltros) => ['provas', filtros ?? {}] as const,
   detalhe: (provaAgendadaGUID: string) => ['prova', provaAgendadaGUID] as const,
+  recomendacao: (provaAgendadaGUID: string) => ['prova', provaAgendadaGUID, 'recomendacao'] as const,
 };

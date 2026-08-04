@@ -39,6 +39,7 @@ interface Usuario {
   UsuarioEscalaFonte?: EscalaFonte;
   UsuarioReduzirMovimento?: boolean;
   UsuarioAltoContraste?: boolean;
+  UsuarioIsPlataformaAdmin?: boolean;
   UsuarioStatus: 'Ativo' | 'Inativo' | 'Pendente';
 }
 

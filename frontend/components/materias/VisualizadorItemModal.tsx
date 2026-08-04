@@ -36,7 +36,8 @@ import {
   useRegistrarProgressoTexto,
   useRegistrarProgressoPagina,
 } from '@/lib/conteudo/useConteudoMutations';
-import { useProva } from '@/lib/provaagendada/useProvaQueries';
+import { useProva, useRecomendacaoProva } from '@/lib/provaagendada/useProvaQueries';
+import PraticarQuestoesModal from './PraticarQuestoesModal';
 import { useExcluirProva, useRemoverProvaDeTurma, useRegistrarVisualizacaoProva } from '@/lib/provaagendada/useProvaMutations';
 import styles from './VisualizadorItemModal.module.css';
 
@@ -137,6 +138,9 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const conteudo = conteudoQuery.data ?? null;
   const provaQuery = useProva(isProva ? item.ItemGUID : undefined);
   const provaDetalhe = provaQuery.data ?? null;
+  const recomendacaoQuery = useRecomendacaoProva(isProva ? item.ItemGUID : undefined);
+  const recomendacao = recomendacaoQuery.data ?? null;
+  const [modalPraticarAberto, setModalPraticarAberto] = useState(false);
   const carregando = isTarefa
     ? tarefaQuery.isLoading || questoesLoading
     : isConteudo
@@ -520,6 +524,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
         : [];
 
   return (
+    <>
     <div className={styles.overlay} onClick={onFechar}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.acoesHeader}>
@@ -712,7 +717,79 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
           <div>
             <h2 className={styles.titulo}><Icon name="award" size={20} /> {provaDetalhe.ProvaDescricao || 'Prova'}</h2>
             <p className={styles.dataProva}>Data: {new Date(provaDetalhe.ProvaData).toLocaleString('pt-BR')}</p>
-            <p className={styles.hintFuturo}>Recomendação de estudo por IA: em breve.</p>
+
+            {recomendacao?.StatusGeracao === 'Concluida' &&
+              (recomendacao.Resumo || recomendacao.Videos.length > 0 || recomendacao.PaginaLivro || recomendacao.SubMateriaGlobalGUID) && (
+              <div className={styles.recomendacaoBloco}>
+                <h3 className={styles.recomendacaoTitulo}>
+                  <Icon name="star" size={16} /> Recomendação de estudo
+                </h3>
+
+                {recomendacao.Resumo && (
+                  <div className={styles.recomendacaoCard}>
+                    <h4 className={styles.recomendacaoCardTitulo}>
+                      <Icon name="file-text" size={14} /> Resumo
+                    </h4>
+                    <p className={styles.recomendacaoResumoTexto}>{recomendacao.Resumo}</p>
+                  </div>
+                )}
+
+                {recomendacao.Videos.length > 0 && (
+                  <div className={styles.recomendacaoCard}>
+                    <h4 className={styles.recomendacaoCardTitulo}>Vídeos</h4>
+                    <div className={styles.recomendacaoVideosLista}>
+                      {recomendacao.Videos.map((video) => (
+                        <a
+                          key={video.url}
+                          href={video.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.recomendacaoVideoItem}
+                        >
+                          {video.thumbnailUrl && (
+                            <img src={video.thumbnailUrl} alt="" className={styles.recomendacaoVideoThumb} />
+                          )}
+                          <div>
+                            <p className={styles.recomendacaoVideoTitulo}>{video.titulo}</p>
+                            <p className={styles.recomendacaoVideoCanal}>{video.canal}</p>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {recomendacao.PaginaLivro && (
+                  <div className={styles.recomendacaoCard}>
+                    <h4 className={styles.recomendacaoCardTitulo}>
+                      <Icon name="book-open" size={14} /> Página de livro
+                    </h4>
+                    <p className={styles.recomendacaoResumoTexto}>
+                      {recomendacao.PaginaLivro.materialDidaticoTitulo} — {recomendacao.PaginaLivro.capituloTitulo}
+                      <br />
+                      Páginas {recomendacao.PaginaLivro.paginaInicio}–{recomendacao.PaginaLivro.paginaFim}
+                    </p>
+                  </div>
+                )}
+
+                {recomendacao.SubMateriaGlobalGUID && (
+                  <div className={styles.recomendacaoCard}>
+                    <h4 className={styles.recomendacaoCardTitulo}>Praticar</h4>
+                    <button
+                      type="button"
+                      className={styles.linkGrupo}
+                      onClick={() => setModalPraticarAberto(true)}
+                    >
+                      <Icon name="edit" size={16} /> Exercícios de vestibular
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(!recomendacao || recomendacao.StatusGeracao === 'Pendente') && (
+              <p className={styles.hintFuturo}>Gerando recomendação de estudo...</p>
+            )}
           </div>
         )}
 
@@ -1180,5 +1257,12 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
         )}
       </div>
     </div>
+    {modalPraticarAberto && recomendacao?.SubMateriaGlobalGUID && (
+      <PraticarQuestoesModal
+        subMateriaGlobalGUID={recomendacao.SubMateriaGlobalGUID}
+        onFechar={() => setModalPraticarAberto(false)}
+      />
+    )}
+    </>
   );
 }

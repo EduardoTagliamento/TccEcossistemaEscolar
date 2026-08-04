@@ -155,6 +155,31 @@
   margin: 0;
 }
 
+.assuntoLista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0;
+}
+
+.assuntoItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.assuntoNovo {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.assuntoNovo input {
+  flex: 1;
+}
+
 /* Modal */
 .modalOverlay {
   position: fixed;

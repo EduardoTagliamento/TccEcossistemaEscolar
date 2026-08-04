@@ -19,6 +19,7 @@ export default class ProvaAgendada {
   #ProvaData!: Date;
   #ProvaDescricao: string | null = null;
   #ProvaStatus: "Agendada" | "Realizada" | "Cancelada" = "Agendada";
+  #MaterialDidaticoCapituloGUID: string | null = null;
   #CreatedAt: Date | null = null;
   #UpdatedAt: Date | null = null;
 
@@ -103,6 +104,17 @@ export default class ProvaAgendada {
       throw new Error('ProvaStatus deve ser "Agendada", "Realizada" ou "Cancelada".');
     }
     this.#ProvaStatus = value;
+  }
+
+  // ========== MaterialDidaticoCapituloGUID ==========
+  // Referência opcional de capítulo do livro didático (spec item 9) —
+  // compartilhada entre turmas, igual o resto da prova.
+  get MaterialDidaticoCapituloGUID(): string | null {
+    return this.#MaterialDidaticoCapituloGUID;
+  }
+
+  set MaterialDidaticoCapituloGUID(value: string | null) {
+    this.#MaterialDidaticoCapituloGUID = value && value.trim() ? value.trim() : null;
   }
 
   // ========== CreatedAt ==========

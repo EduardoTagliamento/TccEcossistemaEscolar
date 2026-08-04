@@ -39,6 +39,10 @@ import { conviteGrupoProjetoRoutes } from "../routes/convitegrupoprojeto.routes"
 import { conversaRouterFactory } from "../routes/conversa.routes";
 import { notificacaoRoutes } from "../routes/notificacao.routes";
 import { auditoriaRoutes } from "../routes/auditoria.routes";
+import { assuntoRouterFactory } from "../routes/assunto.routes";
+import { materialDidaticoRouterFactory } from "../routes/materialdidatico.routes";
+import { questaoBancoRouterFactory } from "../routes/questaobanco.routes";
+import { materiaGlobalRouterFactory } from "../routes/materiaglobal.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { NotificacaoScheduler } from "./services/notificacao.scheduler";
 import { AuditoriaScheduler } from "./services/auditoria.scheduler";
@@ -468,6 +472,26 @@ export default class Server {
 
     this.#app.use("/api/auditoria", auditoriaRoutes());
     console.log("✅ Rotas de Auditoria registradas em /api/auditoria");
+
+    // 🏷️ Rotas de Assunto (taxonomia da Recomendação de Estudos por IA)
+    const assuntoRouter = assuntoRouterFactory();
+    this.#app.use("/api/assunto", assuntoRouter);
+    console.log("✅ Rotas de Assunto registradas em /api/assunto");
+
+    // 📖 Rotas de Material Didático (livro didático — Recomendação de Estudos por IA)
+    const materialDidaticoRouter = materialDidaticoRouterFactory();
+    this.#app.use("/api/materialdidatico", materialDidaticoRouter);
+    console.log("✅ Rotas de Material Didático registradas em /api/materialdidatico");
+
+    // 🎯 Rotas de Banco de Questões (universal — Recomendação de Estudos por IA)
+    const questaoBancoRouter = questaoBancoRouterFactory();
+    this.#app.use("/api/questaobanco", questaoBancoRouter);
+    console.log("✅ Rotas de Banco de Questões registradas em /api/questaobanco");
+
+    // 🌐 Rotas de Matéria Global (admin de plataforma — taxonomia cross-escola)
+    const materiaGlobalRouter = materiaGlobalRouterFactory();
+    this.#app.use("/api/materiaglobal", materiaGlobalRouter);
+    console.log("✅ Rotas de Matéria Global registradas em /api/materiaglobal");
 
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {

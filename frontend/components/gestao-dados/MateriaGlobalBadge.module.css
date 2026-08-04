@@ -1,0 +1,108 @@
+.textoSecundario {
+  color: var(--slate-400, #8A968E);
+  font-size: 0.8rem;
+}
+
+.badgeConfirmado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(23, 192, 119, 0.12);
+  color: #0F9D5C;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.badgePendente {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #B45309;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.botaoResolver {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px dashed var(--line-200, #E2EAE5);
+  background: transparent;
+  color: var(--slate-600, #46564D);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botaoResolver:hover {
+  border-color: #17C077;
+  color: #17C077;
+}
+
+.dropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  min-width: 220px;
+  background: var(--white, #fff);
+  border: 1px solid var(--line-200, #E2EAE5);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 29, 23, 0.12);
+  padding: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.opcaoCandidato,
+.opcaoNova {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--ink-900, #0F1D17);
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.opcaoCandidato:hover,
+.opcaoNova:hover {
+  background: var(--surface-muted, #F0F4F1);
+}
+
+.opcaoCandidato:disabled,
+.opcaoNova:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.score {
+  color: var(--slate-500, #647268);
+  font-size: 0.72rem;
+}
+
+.opcaoNova {
+  border-top: 1px solid var(--line-200, #E2EAE5);
+  margin-top: 0.2rem;
+  padding-top: 0.5rem;
+  color: var(--slate-600, #46564D);
+  font-style: italic;
+}

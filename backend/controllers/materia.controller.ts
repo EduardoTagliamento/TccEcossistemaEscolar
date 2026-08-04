@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import MateriaService from "../services/materia.service";
 import { MateriaFilters } from "../repositories/materia.repository";
+import { getMateriaGlobalService } from "../services/materiaglobal.service";
 
 export class MateriaController {
   #materiaService: MateriaService;
@@ -208,6 +209,41 @@ export class MateriaController {
     } catch (error) {
       next(error);
       return;
+    }
+  };
+
+  // GET /api/materia/:guid/mapeamento-global
+  mostrarMapeamentoGlobal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 MateriaController.mostrarMapeamentoGlobal()");
+    try {
+      const status = await getMateriaGlobalService().obterStatusMapeamento(req.params.guid);
+
+      res.status(200).json({
+        success: true,
+        message: "Status de mapeamento obtido com sucesso",
+        data: { mapeamento: status },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // PUT /api/materia/:guid/mapeamento-global — body: { MateriaGlobalGUID: string | null }
+  confirmarMapeamentoGlobal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 MateriaController.confirmarMapeamentoGlobal()");
+    try {
+      const materiaGlobalGUID = await getMateriaGlobalService().confirmarMapeamentoManual(
+        req.params.guid,
+        req.body.MateriaGlobalGUID ?? null
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Mapeamento confirmado com sucesso",
+        data: { MateriaGlobalGUID: materiaGlobalGUID },
+      });
+    } catch (error) {
+      next(error);
     }
   };
 }

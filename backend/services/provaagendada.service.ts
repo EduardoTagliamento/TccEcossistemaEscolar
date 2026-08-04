@@ -12,10 +12,14 @@ import { ProvaAgendadaVisualizacaoDAO } from "../repositories/provaagendadavisua
 import ProvaAgendadaVisualizacao from "../entities/provaagendadavisualizacao.model";
 import { MatriculaDAO } from "../repositories/matricula.repository";
 import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
+import { ProvaAgendadaAssuntoDAO } from "../repositories/provaagendadaassunto.repository";
+import { AssuntoDAO } from "../repositories/assunto.repository";
+import { MaterialDidaticoCapituloDAO } from "../repositories/materialdidaticocapitulo.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
 import { getAuditoriaService } from "./auditoria.service";
+import { getProvaAgendadaRecomendacaoService } from "./provaagendadarecomendacao.service";
 
 const DATA_VALIDACAO_TOLERANCIA_MS = 60 * 1000;
 
@@ -39,6 +43,10 @@ export interface ProvaAgendadaDTO {
   TurmasAtribuidasDetalhe: TurmaResumoDTO[];
   /** Data específica por turma (agendamento automático); só contém entradas para turmas com override. */
   DatasPorTurma: Record<string, string>;
+  /** Assunto(s) travado(s) manualmente pelo professor (spec item 3) — vazio se a IA que classifica. */
+  AssuntoGUIDs: string[];
+  /** Capítulo de MaterialDidatico referenciado (spec item 9) — null se nenhum. */
+  MaterialDidaticoCapituloGUID: string | null;
   CreatedAt: string | null;
   UpdatedAt: string | null;
 }
@@ -53,12 +61,18 @@ export interface ProvaAgendadaCreateDTO {
   DatasPorTurma?: Record<string, Date>;
   /** Categoria (por turma) escolhida pra cada linha de distribuição — chave é TurmaGUID. */
   CategoriasPorTurma?: Record<string, string>;
+  /** Travamento manual do assunto (spec item 3) — opcional; sem isso, a IA classifica sozinha. */
+  AssuntoGUIDs?: string[];
+  /** Capítulo de MaterialDidatico referenciado (spec item 9) — opcional. */
+  MaterialDidaticoCapituloGUID?: string | null;
 }
 
 export interface ProvaAgendadaUpdateDTO {
   ProvaData?: Date;
   ProvaDescricao?: string;
   ProvaStatus?: "Agendada" | "Realizada" | "Cancelada";
+  AssuntoGUIDs?: string[];
+  MaterialDidaticoCapituloGUID?: string | null;
 }
 
 /**
@@ -86,6 +100,9 @@ export default class ProvaAgendadaService {
   #visualizacaoDAO: ProvaAgendadaVisualizacaoDAO;
   #matriculaDAO: MatriculaDAO;
   #alocacaoDAO: MaterialProfessorTurmaDAO;
+  #provaAssuntoDAO: ProvaAgendadaAssuntoDAO;
+  #assuntoDAO: AssuntoDAO;
+  #materialDidaticoCapituloDAO: MaterialDidaticoCapituloDAO;
 
   constructor(
     provaDAODependency: ProvaAgendadaDAO,
@@ -96,7 +113,10 @@ export default class ProvaAgendadaService {
     categoriaDAODependency: CategoriaConteudoDAO,
     visualizacaoDAODependency: ProvaAgendadaVisualizacaoDAO,
     matriculaDAODependency: MatriculaDAO,
-    alocacaoDAODependency: MaterialProfessorTurmaDAO
+    alocacaoDAODependency: MaterialProfessorTurmaDAO,
+    provaAssuntoDAODependency: ProvaAgendadaAssuntoDAO,
+    assuntoDAODependency: AssuntoDAO,
+    materialDidaticoCapituloDAODependency: MaterialDidaticoCapituloDAO
   ) {
     console.log("⬆️  ProvaAgendadaService.constructor()");
     this.#provaDAO = provaDAODependency;
@@ -108,7 +128,32 @@ export default class ProvaAgendadaService {
     this.#visualizacaoDAO = visualizacaoDAODependency;
     this.#matriculaDAO = matriculaDAODependency;
     this.#alocacaoDAO = alocacaoDAODependency;
+    this.#provaAssuntoDAO = provaAssuntoDAODependency;
+    this.#assuntoDAO = assuntoDAODependency;
+    this.#materialDidaticoCapituloDAO = materialDidaticoCapituloDAODependency;
   }
+
+  /** Valida que o capítulo existe e pertence à MESMA matéria da prova (guardrail §7: nunca texto livre de página). */
+  #validarCapitulo = async (materiaGUID: string, materialDidaticoCapituloGUID: string): Promise<void> => {
+    const capitulo = await this.#materialDidaticoCapituloDAO.findById(materialDidaticoCapituloGUID);
+    if (!capitulo || capitulo.MateriaGUID !== materiaGUID) {
+      throw new ErrorResponse(400, "Capítulo inválido", {
+        message: "O capítulo de material didático informado não existe ou não pertence a esta matéria.",
+      });
+    }
+  };
+
+  /** Valida que cada AssuntoGUID existe e pertence à MESMA matéria da prova. */
+  #validarAssuntos = async (materiaGUID: string, assuntoGUIDs: string[]): Promise<void> => {
+    for (const assuntoGUID of assuntoGUIDs) {
+      const assunto = await this.#assuntoDAO.findById(assuntoGUID);
+      if (!assunto || assunto.MateriaGUID !== materiaGUID) {
+        throw new ErrorResponse(400, "Assunto inválido", {
+          message: `O assunto ${assuntoGUID} não existe ou não pertence a esta matéria.`,
+        });
+      }
+    }
+  };
 
   /**
    * Confirma que usuarioCPF é professor ativamente alocado na matéria da
@@ -209,6 +254,16 @@ export default class ProvaAgendadaService {
       }
     }
 
+    // Validar assunto(s) travado(s) manualmente (spec item 3), se fornecidos
+    if (data.AssuntoGUIDs && data.AssuntoGUIDs.length > 0) {
+      await this.#validarAssuntos(data.MateriaGUID, data.AssuntoGUIDs);
+    }
+
+    // Validar capítulo de material didático referenciado (spec item 9), se fornecido
+    if (data.MaterialDidaticoCapituloGUID) {
+      await this.#validarCapitulo(data.MateriaGUID, data.MaterialDidaticoCapituloGUID);
+    }
+
     const agoraComTolerancia = new Date(Date.now() - DATA_VALIDACAO_TOLERANCIA_MS);
 
     // Validar datas por turma (agendamento automático), se fornecidas
@@ -242,6 +297,7 @@ export default class ProvaAgendadaService {
     prova.ProvaData = dataProva;
     prova.ProvaDescricao = data.ProvaDescricao ? data.ProvaDescricao.trim() : null;
     prova.ProvaStatus = "Agendada";
+    prova.MaterialDidaticoCapituloGUID = data.MaterialDidaticoCapituloGUID ?? null;
 
     const provaCriada = await this.#provaDAO.create(prova);
 
@@ -260,6 +316,10 @@ export default class ProvaAgendadaService {
     }
 
     await this.#provaTurmaDAO.createBatch(atribuicoes);
+
+    if (data.AssuntoGUIDs && data.AssuntoGUIDs.length > 0) {
+      await this.#provaAssuntoDAO.substituir(provaCriada.ProvaAgendadaGUID, data.AssuntoGUIDs);
+    }
 
     // 3. Vincular anexos (se houver)
     if (data.anexosDescricao && data.anexosDescricao.length > 0) {
@@ -286,6 +346,15 @@ export default class ProvaAgendadaService {
         CategoriaAuditoriaId: 2,
       });
     }
+
+    // Recomendação de estudo por IA (spec item 20): gerada uma vez, na
+    // criação, compartilhada por todas as turmas — fire-and-forget, nunca
+    // atrasa a resposta de criação da prova (guardrail §7 do plano).
+    void getProvaAgendadaRecomendacaoService()
+      .gerarRecomendacao(provaCriada.ProvaAgendadaGUID)
+      .catch((error) => {
+        console.error("🔴 ProvaAgendadaService: geração de recomendação de estudo falhou:", error);
+      });
 
     return this.toDTO(provaCriada, atribuicoes);
   };
@@ -375,8 +444,9 @@ export default class ProvaAgendadaService {
 
     await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
 
-    const updates: Partial<Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus">> =
-      {};
+    const updates: Partial<
+      Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus" | "MaterialDidaticoCapituloGUID">
+    > = {};
 
     if (data.ProvaData !== undefined) {
       const dataProva = new Date(data.ProvaData);
@@ -390,6 +460,32 @@ export default class ProvaAgendadaService {
     }
     if (data.ProvaDescricao !== undefined) updates.ProvaDescricao = data.ProvaDescricao?.trim() ?? null;
     if (data.ProvaStatus !== undefined) updates.ProvaStatus = data.ProvaStatus;
+    if (data.MaterialDidaticoCapituloGUID !== undefined) {
+      if (data.MaterialDidaticoCapituloGUID) {
+        await this.#validarCapitulo(prova.MateriaGUID, data.MaterialDidaticoCapituloGUID);
+      }
+      updates.MaterialDidaticoCapituloGUID = data.MaterialDidaticoCapituloGUID;
+    }
+
+    const descricaoMudou =
+      updates.ProvaDescricao !== undefined && updates.ProvaDescricao !== prova.ProvaDescricao;
+    const capituloMudou =
+      updates.MaterialDidaticoCapituloGUID !== undefined &&
+      updates.MaterialDidaticoCapituloGUID !== prova.MaterialDidaticoCapituloGUID;
+
+    let assuntoMudou = false;
+    if (data.AssuntoGUIDs !== undefined) {
+      if (data.AssuntoGUIDs.length > 0) {
+        await this.#validarAssuntos(prova.MateriaGUID, data.AssuntoGUIDs);
+      }
+      const assuntosAtuais = new Set(await this.#provaAssuntoDAO.findByProva(ProvaAgendadaGUID));
+      const assuntosNovos = new Set(data.AssuntoGUIDs);
+      assuntoMudou =
+        assuntosAtuais.size !== assuntosNovos.size ||
+        [...assuntosNovos].some((guid) => !assuntosAtuais.has(guid));
+
+      await this.#provaAssuntoDAO.substituir(ProvaAgendadaGUID, data.AssuntoGUIDs);
+    }
 
     const provaAtualizada = await this.#provaDAO.update(ProvaAgendadaGUID, updates);
 
@@ -415,6 +511,19 @@ export default class ProvaAgendadaService {
           CategoriaAuditoriaId: 2,
         });
       }
+    }
+
+    // Regeneração automática (spec item 21): só quando algo que alimenta o
+    // contexto da IA realmente mudou — ProvaDescricao, assunto travado
+    // manualmente ou capítulo de material didático referenciado (o sinal
+    // de categoria muda via ProvaAgendadaTurma, fora deste método).
+    // Continua uma recomendação por prova, nunca por turma.
+    if (descricaoMudou || assuntoMudou || capituloMudou) {
+      void getProvaAgendadaRecomendacaoService()
+        .gerarRecomendacao(provaAtualizada.ProvaAgendadaGUID)
+        .catch((error) => {
+          console.error("🔴 ProvaAgendadaService: regeneração de recomendação de estudo falhou:", error);
+        });
     }
 
     return this.toDTO(provaAtualizada, atribuicoes);
@@ -541,6 +650,8 @@ export default class ProvaAgendadaService {
       .filter((t): t is NonNullable<typeof t> => t !== null)
       .map((t) => ({ TurmaGUID: t.TurmaGUID, TurmaNome: t.TurmaNome, TurmaSerie: t.TurmaSerie }));
 
+    const assuntoGUIDs = await this.#provaAssuntoDAO.findByProva(prova.ProvaAgendadaGUID);
+
     return {
       ProvaAgendadaGUID: prova.ProvaAgendadaGUID,
       MateriaGUID: prova.MateriaGUID,
@@ -550,6 +661,8 @@ export default class ProvaAgendadaService {
       TurmasAtribuidas: atribuicoes.map((a) => a.TurmaGUID),
       TurmasAtribuidasDetalhe: turmasAtribuidasDetalhe,
       DatasPorTurma: datasPorTurma,
+      AssuntoGUIDs: assuntoGUIDs,
+      MaterialDidaticoCapituloGUID: prova.MaterialDidaticoCapituloGUID,
       CreatedAt: prova.CreatedAt ? prova.CreatedAt.toISOString() : null,
       UpdatedAt: prova.UpdatedAt ? prova.UpdatedAt.toISOString() : null,
     };
