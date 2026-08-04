@@ -25,7 +25,13 @@ import { getClassificacaoAssuntoAgent } from "../ai/agents/classificacaoAssuntoA
 import { getQuestaoBancoService } from "./questaobanco.service";
 
 const MAX_CONTEUDOS_FALLBACK_TEMPORAL = 5;
-const MODELO_USADO_DESCRICAO = "gemini-2.5-flash (leve) / gemini-2.5-pro (cheio)";
+// Espelha o fallback de backend/ai/providers/geminiProvider.ts — evita
+// ficar com um rótulo de modelo desatualizado se o env var for trocado.
+const modeloUsadoDescricao = (): string => {
+  const leve = process.env.GEMINI_MODEL_LEVE || "gemini-flash-latest";
+  const cheio = process.env.GEMINI_MODEL_CHEIO || "gemini-pro-latest";
+  return `${leve} (leve) / ${cheio} (cheio)`;
+};
 
 export interface RecomendacaoDTO {
   ProvaAgendadaGUID: string;
@@ -189,7 +195,7 @@ export default class ProvaAgendadaRecomendacaoService {
       recomendacao.FontesUsadas = fontesUsadas;
       recomendacao.PaginaLivroJson = paginaLivro;
       recomendacao.SubMateriaGlobalGUID = subMateriaGlobalGUID;
-      recomendacao.ModeloUsado = MODELO_USADO_DESCRICAO;
+      recomendacao.ModeloUsado = modeloUsadoDescricao();
       recomendacao.StatusGeracao = houveFalhaTotal ? "Falhou" : "Concluida";
       recomendacao.ErroGeracao = houveFalhaTotal
         ? this.#resumirFalhas(resultadoVideo, resultadoResumo)
