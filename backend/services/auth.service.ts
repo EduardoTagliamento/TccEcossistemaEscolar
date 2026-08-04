@@ -28,6 +28,7 @@ interface LoginResponse {
     UsuarioEscalaFonte: 'small' | 'medium' | 'large';
     UsuarioReduzirMovimento: boolean;
     UsuarioAltoContraste: boolean;
+    UsuarioIsPlataformaAdmin: boolean;
   };
 }
 
@@ -163,6 +164,7 @@ export default class AuthService {
           UsuarioEscalaFonte: usuario.UsuarioEscalaFonte,
           UsuarioReduzirMovimento: usuario.UsuarioReduzirMovimento,
           UsuarioAltoContraste: usuario.UsuarioAltoContraste,
+          UsuarioIsPlataformaAdmin: usuario.UsuarioIsPlataformaAdmin,
         },
       };
     } catch (error: any) {
@@ -213,6 +215,7 @@ export default class AuthService {
         UsuarioEscalaFonte: usuario.UsuarioEscalaFonte,
         UsuarioReduzirMovimento: usuario.UsuarioReduzirMovimento,
         UsuarioAltoContraste: usuario.UsuarioAltoContraste,
+        UsuarioIsPlataformaAdmin: usuario.UsuarioIsPlataformaAdmin,
       };
     } catch (error: any) {
       if (error instanceof ErrorResponse) {

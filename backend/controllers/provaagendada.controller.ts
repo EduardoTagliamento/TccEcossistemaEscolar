@@ -4,6 +4,7 @@ import ProvaAgendadaService, {
   ProvaAgendadaUpdateDTO,
 } from "../services/provaagendada.service";
 import { ProvaAgendadaFilters } from "../repositories/provaagendada.repository";
+import { getProvaAgendadaRecomendacaoService } from "../services/provaagendadarecomendacao.service";
 
 /**
  * Controller para endpoints de ProvaAgendada (REFATORADO - N:N NORMALIZADO)
@@ -50,6 +51,8 @@ export default class ProvaAgendadaControl {
         anexosDescricao: prova.anexosDescricao,
         DatasPorTurma: datasPorTurma,
         CategoriasPorTurma: prova.CategoriasPorTurma,
+        AssuntoGUIDs: prova.AssuntoGUIDs,
+        MaterialDidaticoCapituloGUID: prova.MaterialDidaticoCapituloGUID,
       };
 
       const provaCriada = await this.#provaService.criarProva(createData, usuarioCPF);
@@ -135,6 +138,27 @@ export default class ProvaAgendadaControl {
   };
 
   /**
+   * GET /api/prova/:ProvaAgendadaGUID/recomendacao
+   * Recomendação de estudo por IA (vídeo + resumo, Fase 1) — leitura pura
+   * do cache; a geração acontece de forma assíncrona em criarProva/atualizarProva.
+   */
+  mostrarRecomendacao = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 ProvaAgendadaControl.mostrarRecomendacao()");
+    try {
+      const { ProvaAgendadaGUID } = request.params;
+      const recomendacao = await getProvaAgendadaRecomendacaoService().buscarRecomendacao(ProvaAgendadaGUID);
+
+      response.status(200).json({
+        success: true,
+        message: "Recomendação encontrada",
+        data: { recomendacao },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * PUT /api/prova/:ProvaAgendadaGUID
    * Atualizar prova
    */
@@ -149,6 +173,8 @@ export default class ProvaAgendadaControl {
         ProvaData: prova.ProvaData ? new Date(prova.ProvaData) : undefined, // Formato: "2026-05-20T15:00:00"
         ProvaDescricao: prova.ProvaDescricao,
         ProvaStatus: prova.ProvaStatus,
+        AssuntoGUIDs: prova.AssuntoGUIDs,
+        MaterialDidaticoCapituloGUID: prova.MaterialDidaticoCapituloGUID,
       };
 
       const provaAtualizada = await this.#provaService.atualizarProva(

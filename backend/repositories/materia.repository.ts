@@ -5,6 +5,7 @@ interface MateriaRow {
   MateriaGUID: string;
   EscolaGUID: string;
   CursoGUID: string | null;
+  MateriaGlobalGUID: string | null;
   MateriaNome: string;
   MateriaIsTecnica: boolean;
   MateriaAulasPorSemanaPadrao: number | null;
@@ -32,13 +33,14 @@ export class MateriaDAO {
 
     const SQL = `
       INSERT INTO materia
-      (MateriaGUID, EscolaGUID, CursoGUID, MateriaNome, MateriaIsTecnica, MateriaAulasPorSemanaPadrao, MateriaStatus)
-      VALUES (?, ?, ?, ?, ?, ?, ?);
+      (MateriaGUID, EscolaGUID, CursoGUID, MateriaGlobalGUID, MateriaNome, MateriaIsTecnica, MateriaAulasPorSemanaPadrao, MateriaStatus)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       materia.MateriaGUID,
       materia.EscolaGUID,
       materia.CursoGUID,
+      materia.MateriaGlobalGUID,
       materia.MateriaNome,
       materia.MateriaIsTecnica,
       materia.MateriaAulasPorSemanaPadrao,
@@ -145,6 +147,24 @@ export class MateriaDAO {
     return null;
   };
 
+  /** Só a ponte pra taxonomia global — separado do `update` genérico pra não exigir o resto do payload de edição. */
+  atualizarMateriaGlobal = async (materiaGUID: string, materiaGlobalGUID: string): Promise<void> => {
+    console.log("🟢 MateriaDAO.atualizarMateriaGlobal()");
+
+    const SQL = `UPDATE materia SET MateriaGlobalGUID = ? WHERE MateriaGUID = ?`;
+    const pool = await this.#database.getPool();
+    await pool.execute(SQL, [materiaGlobalGUID, materiaGUID]);
+  };
+
+  /** Migra todas as Materia apontando pro MateriaGlobal antigo pro novo — usado ao mesclar um `Pendente` num já `Confirmado` (spec item 17). */
+  reatribuirMateriaGlobal = async (deMateriaGlobalGUID: string, paraMateriaGlobalGUID: string): Promise<void> => {
+    console.log("🟢 MateriaDAO.reatribuirMateriaGlobal()");
+
+    const SQL = `UPDATE materia SET MateriaGlobalGUID = ? WHERE MateriaGlobalGUID = ?`;
+    const pool = await this.#database.getPool();
+    await pool.execute(SQL, [paraMateriaGlobalGUID, deMateriaGlobalGUID]);
+  };
+
   delete = async (MateriaGUID: string): Promise<boolean> => {
     console.log("🟢 MateriaDAO.delete() - Soft delete");
 
@@ -181,6 +201,7 @@ export class MateriaDAO {
       materia.MateriaGUID = row.MateriaGUID;
       materia.EscolaGUID = row.EscolaGUID;
       materia.CursoGUID = row.CursoGUID;
+      materia.MateriaGlobalGUID = row.MateriaGlobalGUID;
       materia.MateriaNome = row.MateriaNome;
       materia.MateriaIsTecnica = Boolean(row.MateriaIsTecnica);
       materia.MateriaAulasPorSemanaPadrao = row.MateriaAulasPorSemanaPadrao;

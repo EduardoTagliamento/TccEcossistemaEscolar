@@ -12,6 +12,9 @@ import { CategoriaConteudoDAO } from "../backend/repositories/categoriaconteudo.
 import { ProvaAgendadaVisualizacaoDAO } from "../backend/repositories/provaagendadavisualizacao.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofessorxturma.repository";
+import { ProvaAgendadaAssuntoDAO } from "../backend/repositories/provaagendadaassunto.repository";
+import { AssuntoDAO } from "../backend/repositories/assunto.repository";
+import { MaterialDidaticoCapituloDAO } from "../backend/repositories/materialdidaticocapitulo.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { provaRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
@@ -48,6 +51,13 @@ export default class ProvaAgendadaRoteador {
     this.#router.post(
       "/turma/:ProvaAgendadaTurmaGUID/visualizar",
       this.#controle.registrarVisualizacao
+    );
+
+    // GET /api/prova/:ProvaAgendadaGUID/recomendacao (DEVE vir antes de "/:ProvaAgendadaGUID")
+    this.#router.get(
+      "/:ProvaAgendadaGUID/recomendacao",
+      this.#middleware.validateIdParam,
+      this.#controle.mostrarRecomendacao
     );
 
     this.#router.get(
@@ -91,6 +101,9 @@ const categoriaDAO = new CategoriaConteudoDAO(db);
 const visualizacaoDAO = new ProvaAgendadaVisualizacaoDAO(db);
 const matriculaDAO = new MatriculaDAO(db);
 const alocacaoDAO = new MaterialProfessorTurmaDAO(db);
+const provaAssuntoDAO = new ProvaAgendadaAssuntoDAO(db);
+const assuntoDAO = new AssuntoDAO(db);
+const materialDidaticoCapituloDAO = new MaterialDidaticoCapituloDAO(db);
 const provaService = new ProvaAgendadaService(
   provaDAO,
   provaTurmaDAO,
@@ -100,7 +113,10 @@ const provaService = new ProvaAgendadaService(
   categoriaDAO,
   visualizacaoDAO,
   matriculaDAO,
-  alocacaoDAO
+  alocacaoDAO,
+  provaAssuntoDAO,
+  assuntoDAO,
+  materialDidaticoCapituloDAO
 );
 const provaControle = new ProvaAgendadaControl(provaService);
 const provaMiddleware = new ProvaAgendadaMiddleware();

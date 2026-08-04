@@ -8,6 +8,7 @@ interface ProvaAgendadaRow extends RowDataPacket {
   ProvaData: Date;
   ProvaDescricao: string | null;
   ProvaStatus: "Agendada" | "Realizada" | "Cancelada";
+  MaterialDidaticoCapituloGUID: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }
@@ -42,8 +43,8 @@ export class ProvaAgendadaDAO {
 
     const SQL = `
       INSERT INTO provaagendada
-      (ProvaAgendadaGUID, MateriaGUID, ProvaData, ProvaDescricao, ProvaStatus)
-      VALUES (?, ?, ?, ?, ?);
+      (ProvaAgendadaGUID, MateriaGUID, ProvaData, ProvaDescricao, ProvaStatus, MaterialDidaticoCapituloGUID)
+      VALUES (?, ?, ?, ?, ?, ?);
     `;
     const params = [
       prova.ProvaAgendadaGUID,
@@ -51,6 +52,7 @@ export class ProvaAgendadaDAO {
       prova.ProvaData,
       prova.ProvaDescricao,
       prova.ProvaStatus,
+      prova.MaterialDidaticoCapituloGUID,
     ];
 
     const pool = await this.#database.getPool();
@@ -111,7 +113,9 @@ export class ProvaAgendadaDAO {
 
   update = async (
     ProvaAgendadaGUID: string,
-    updates: Partial<Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus">>
+    updates: Partial<
+      Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus" | "MaterialDidaticoCapituloGUID">
+    >
   ): Promise<ProvaAgendada | null> => {
     console.log("🟢 ProvaAgendadaDAO.update()");
 
@@ -131,6 +135,11 @@ export class ProvaAgendadaDAO {
     if (updates.ProvaStatus !== undefined) {
       fields.push("ProvaStatus = ?");
       values.push(updates.ProvaStatus);
+    }
+
+    if (updates.MaterialDidaticoCapituloGUID !== undefined) {
+      fields.push("MaterialDidaticoCapituloGUID = ?");
+      values.push(updates.MaterialDidaticoCapituloGUID);
     }
 
     if (fields.length === 0) {
@@ -194,6 +203,7 @@ export class ProvaAgendadaDAO {
     prova.ProvaData = row.ProvaData;
     prova.ProvaDescricao = row.ProvaDescricao;
     prova.ProvaStatus = row.ProvaStatus;
+    prova.MaterialDidaticoCapituloGUID = row.MaterialDidaticoCapituloGUID;
     prova.CreatedAt = row.CreatedAt;
     prova.UpdatedAt = row.UpdatedAt;
     return prova;

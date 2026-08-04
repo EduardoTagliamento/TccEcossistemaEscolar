@@ -1,0 +1,131 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 29, 23, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--white, #fff);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.15rem;
+}
+
+.fechar {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--slate-500, #647268);
+}
+
+.filtros {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.filtros select {
+  flex: 1;
+  min-width: 160px;
+}
+
+.hint {
+  color: var(--slate-400, #8A968E);
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.questao {
+  padding: 1rem;
+  border-radius: 10px;
+  background: var(--surface-muted, #F0F4F1);
+}
+
+.badgeDificuldade {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(23, 192, 119, 0.12);
+  color: #0F9D5C;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.enunciado {
+  color: var(--ink-900, #0F1D17);
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.alternativas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.alternativa {
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  background: var(--white, #fff);
+  border: 1px solid var(--line-200, #E2EAE5);
+  font-size: 0.9rem;
+}
+
+.alternativaCorreta {
+  border-color: #17C077;
+  background: rgba(23, 192, 119, 0.1);
+  font-weight: 600;
+}
+
+.botaoRevelar {
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  border: 1.5px solid #17C077;
+  background: transparent;
+  color: #17C077;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.linkResolucao {
+  color: #17C077;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.linkResolucao:hover {
+  text-decoration: underline;
+}

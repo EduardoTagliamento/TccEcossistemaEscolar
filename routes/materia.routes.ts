@@ -69,6 +69,20 @@ export default class MateriaRoteador {
       this.#materiaController.destroy
     );
 
+    // GET /api/materia/:guid/mapeamento-global
+    this.#router.get(
+      "/:guid/mapeamento-global",
+      MateriaMiddleware.validarGUID,
+      this.#materiaController.mostrarMapeamentoGlobal
+    );
+
+    // PUT /api/materia/:guid/mapeamento-global
+    this.#router.put(
+      "/:guid/mapeamento-global",
+      MateriaMiddleware.validarGUID,
+      this.#materiaController.confirmarMapeamentoGlobal
+    );
+
     // PUT /api/materia/:guid/customizacao
     this.#router.put(
       "/:guid/customizacao",

@@ -31,6 +31,7 @@ export interface Materia {
   MateriaGUID: string;
   EscolaGUID: string;
   CursoGUID: string | null;
+  MateriaGlobalGUID: string | null;
   MateriaNome: string;
   MateriaIsTecnica: boolean;
   MateriaAulasPorSemanaPadrao: number | null;
@@ -208,4 +209,54 @@ export async function excluirMateria(materiaGUID: string): Promise<void> {
   if (!response.ok) {
     throw new Error(result.message || 'Erro ao excluir matéria');
   }
+}
+
+// ==================== MAPEAMENTO GLOBAL (taxonomia cross-escola) ====================
+
+export interface CandidatoMateriaGlobal {
+  MateriaGlobalGUID: string;
+  Nome: string;
+  Score: number;
+}
+
+export interface MapeamentoGlobalStatus {
+  MateriaGlobalGUID: string | null;
+  StatusMapeamento: 'Confirmado' | 'Pendente' | 'Ambiguo';
+  NomeMateriaGlobal?: string;
+  Candidatos?: CandidatoMateriaGlobal[];
+}
+
+/**
+ * Resolvido automaticamente no create/update da matéria (similaridade de
+ * string + desempate leve por IA) — este GET só existe pra descobrir se
+ * ficou ambíguo (precisa de escolha manual) ou já foi resolvido sozinho.
+ */
+export async function buscarMapeamentoGlobal(materiaGUID: string): Promise<MapeamentoGlobalStatus> {
+  const response = await fetch(`${API_URL}/materia/${materiaGUID}/mapeamento-global`, {
+    headers: getHeaders(),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao buscar mapeamento de matéria global');
+  }
+  return result.data.mapeamento;
+}
+
+/** `materiaGlobalGUID=null` cria uma MateriaGlobal nova com o nome desta matéria. */
+export async function confirmarMapeamentoGlobal(
+  materiaGUID: string,
+  materiaGlobalGUID: string | null
+): Promise<string> {
+  const response = await fetch(`${API_URL}/materia/${materiaGUID}/mapeamento-global`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ MateriaGlobalGUID: materiaGlobalGUID }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao confirmar mapeamento de matéria global');
+  }
+  return result.data.MateriaGlobalGUID;
 }

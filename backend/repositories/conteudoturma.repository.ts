@@ -48,6 +48,26 @@ export default class ConteudoTurmaDAO {
     return rows.map((row) => this.mapRowToEntity(row));
   }
 
+  /**
+   * União (sem duplicar ConteudoGUID) de todo Conteudo distribuído em
+   * qualquer uma das categorias informadas — usado pela recomendação de
+   * estudo (spec item 4) pra coletar contexto de todas as turmas de uma
+   * mesma ProvaAgendada, já que CategoriaGUID vive em ConteudoTurma (por
+   * turma), não em Conteudo.
+   */
+  async findByCategorias(categoriaGUIDs: string[]): Promise<ConteudoTurma[]> {
+    if (categoriaGUIDs.length === 0) {
+      return [];
+    }
+
+    const placeholders = categoriaGUIDs.map(() => "?").join(", ");
+    const sql = `SELECT * FROM conteudoturma WHERE CategoriaGUID IN (${placeholders}) ORDER BY CreatedAt ASC`;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, categoriaGUIDs);
+
+    return rows.map((row) => this.mapRowToEntity(row));
+  }
+
   async deleteByConteudo(conteudoGUID: string): Promise<number> {
     const sql = `DELETE FROM conteudoturma WHERE ConteudoGUID = ?`;
     const pool = await this.#database.getPool();
