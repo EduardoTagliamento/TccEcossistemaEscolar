@@ -6,6 +6,7 @@ import UsuarioService from "../backend/services/usuario.service";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import EscolaxUsuarioxFuncaoControl from "../backend/controllers/escolaxusuarioxfuncao.controller";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import { authRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
 export default class UsuarioRoteador {
   #router: Router;
@@ -31,6 +32,7 @@ export default class UsuarioRoteador {
     // POST /api/usuario - Criar usuário
     this.#router.post(
       "/",
+      authRateLimitMiddleware,
       this.#usuarioMiddleware.validateCreateBody,
       this.#usuarioControle.store
     );

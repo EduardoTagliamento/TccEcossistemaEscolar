@@ -78,7 +78,8 @@ export default class AnexoControl {
     console.log("🔵 AnexoControl.show()");
     try {
       const { AnexoGUID } = request.params;
-      const anexo = await this.#anexoService.buscarAnexo(AnexoGUID);
+      const usuarioCPF = request.user?.UsuarioCPF;
+      const anexo = await this.#anexoService.buscarAnexo(AnexoGUID, usuarioCPF);
 
       response.status(200).json({
         success: true,
@@ -100,7 +101,8 @@ export default class AnexoControl {
     console.log("🔵 AnexoControl.download()");
     try {
       const { AnexoGUID } = request.params;
-      const { caminho } = await this.#anexoService.downloadAnexo(AnexoGUID);
+      const usuarioCPF = request.user?.UsuarioCPF;
+      const { caminho } = await this.#anexoService.downloadAnexo(AnexoGUID, usuarioCPF);
 
       response.redirect(caminho);
     } catch (error) {

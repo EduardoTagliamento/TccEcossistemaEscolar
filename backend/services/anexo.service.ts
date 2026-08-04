@@ -4,6 +4,7 @@ import ErrorResponse from "../utils/ErrorResponse";
 import Anexo from "../entities/anexo.model";
 import { AnexoDAO, AnexoFilters } from "../repositories/anexo.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
+import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import R2StorageService from "./r2storage.service";
 
 export interface AnexoDTO {
@@ -19,11 +20,17 @@ export interface AnexoDTO {
 export default class AnexoService {
   #anexoDAO: AnexoDAO;
   #escolaDAO: EscolaDAO;
+  #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
 
-  constructor(anexoDAODependency: AnexoDAO, escolaDAODependency: EscolaDAO) {
+  constructor(
+    anexoDAODependency: AnexoDAO,
+    escolaDAODependency: EscolaDAO,
+    escolaxUsuarioxFuncaoDAODependency: EscolaxUsuarioxFuncaoDAO
+  ) {
     console.log("⬆️  AnexoService.constructor()");
     this.#anexoDAO = anexoDAODependency;
     this.#escolaDAO = escolaDAODependency;
+    this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAODependency;
   }
 
   uploadAnexo = async (
@@ -69,7 +76,7 @@ export default class AnexoService {
     return this.toDTO(anexo);
   };
 
-  buscarAnexo = async (AnexoGUID: string): Promise<AnexoDTO> => {
+  buscarAnexo = async (AnexoGUID: string, usuarioCPF?: string): Promise<AnexoDTO> => {
     console.log("🟣 AnexoService.buscarAnexo()");
 
     const anexo = await this.#anexoDAO.findById(AnexoGUID);
@@ -80,13 +87,15 @@ export default class AnexoService {
       });
     }
 
-    // TODO: Validar permissão de leitura
-    // await this.validarPermissaoLeitura(usuarioCPF, anexo);
+    await this.validarPermissaoLeitura(usuarioCPF, anexo);
 
     return this.toDTO(anexo);
   };
 
-  downloadAnexo = async (AnexoGUID: string): Promise<{ caminho: string; nomeOriginal: string }> => {
+  downloadAnexo = async (
+    AnexoGUID: string,
+    usuarioCPF?: string
+  ): Promise<{ caminho: string; nomeOriginal: string }> => {
     console.log("🟣 AnexoService.downloadAnexo()");
 
     const anexo = await this.#anexoDAO.findById(AnexoGUID);
@@ -97,8 +106,7 @@ export default class AnexoService {
       });
     }
 
-    // TODO: Validar permissão de leitura
-    // await this.validarPermissaoLeitura(usuarioCPF, anexo);
+    await this.validarPermissaoLeitura(usuarioCPF, anexo);
 
     // AnexoCaminho já é a URL pública completa no R2 (o objeto foi
     // enviado com ContentDisposition "attachment", então o navegador
@@ -184,18 +192,41 @@ export default class AnexoService {
   }
 
   /**
-   * Valida se usuário pode ler o anexo
-   * TODO: Implementar validação real consultando escolaxusuarioxfuncao
+   * Valida se usuário pode ler o anexo: precisa ter algum vínculo ativo
+   * com a escola dona do anexo (qualquer função) — sem isso, qualquer
+   * usuário autenticado de qualquer escola conseguia ler/baixar anexo de
+   * outra escola só sabendo o GUID.
    */
-  private async validarPermissaoLeitura(usuarioCPF: string, anexo: Anexo): Promise<void> {
-    // Implementar validação de permissão
-    // Consultar se usuário pertence à escola do anexo
-    // throw new ErrorResponse(403, "Sem permissão para acessar este anexo");
+  private async validarPermissaoLeitura(usuarioCPF: string | undefined, anexo: Anexo): Promise<void> {
+    if (!usuarioCPF) {
+      throw new ErrorResponse(401, "Usuário não autenticado", {
+        message: "É necessário estar autenticado para acessar este anexo.",
+      });
+    }
+
+    const cpfNormalizado = this.normalizeCPF(usuarioCPF);
+
+    if (anexo.UsuarioCPF === cpfNormalizado) {
+      return;
+    }
+
+    const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
+      UsuarioCPF: cpfNormalizado,
+      EscolaGUID: anexo.EscolaGUID,
+    });
+
+    if (vinculos.length > 0) {
+      return;
+    }
+
+    throw new ErrorResponse(403, "Sem permissão para acessar este anexo", {
+      message: "Você não tem vínculo com a escola dona deste anexo.",
+    });
   }
 
   /**
    * Valida se usuário pode escrever/deletar o anexo
-   * Apenas dono do arquivo OU admin da escola podem deletar
+   * Apenas dono do arquivo OU Coordenação/Direção da escola podem deletar
    */
   private async validarPermissaoEscrita(usuarioCPF: string, anexo: Anexo): Promise<void> {
     const cpfNormalizado = this.normalizeCPF(usuarioCPF);
@@ -205,9 +236,13 @@ export default class AnexoService {
       return;
     }
 
-    // TODO: Verificar se usuário é admin da escola (FuncaoId 6)
-    // const vinculo = await escolaxusuarioxfuncaoDAO.findByTripla(cpfNormalizado, anexo.EscolaGUID, 6);
-    // if (vinculo) return;
+    const ehCoordOuDirecao = await this.#escolaxUsuarioxFuncaoDAO.isCoordOuDirecaoEmEscola(
+      cpfNormalizado,
+      anexo.EscolaGUID
+    );
+    if (ehCoordOuDirecao) {
+      return;
+    }
 
     throw new ErrorResponse(403, "Sem permissão para excluir este anexo", {
       message: "Apenas o dono do arquivo ou administrador da escola podem excluir este anexo.",
