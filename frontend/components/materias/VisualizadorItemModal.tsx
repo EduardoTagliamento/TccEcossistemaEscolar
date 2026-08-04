@@ -36,7 +36,7 @@ import {
   useRegistrarProgressoTexto,
   useRegistrarProgressoPagina,
 } from '@/lib/conteudo/useConteudoMutations';
-import { useProva, useRecomendacaoProva } from '@/lib/provaagendada/useProvaQueries';
+import { useProva, useRecomendacaoProva, MAX_TENTATIVAS_POLLING_RECOMENDACAO } from '@/lib/provaagendada/useProvaQueries';
 import PraticarQuestoesModal from './PraticarQuestoesModal';
 import { useExcluirProva, useRemoverProvaDeTurma, useRegistrarVisualizacaoProva } from '@/lib/provaagendada/useProvaMutations';
 import styles from './VisualizadorItemModal.module.css';
@@ -141,6 +141,14 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
   const recomendacaoQuery = useRecomendacaoProva(isProva ? item.ItemGUID : undefined);
   const recomendacao = recomendacaoQuery.data ?? null;
   const [modalPraticarAberto, setModalPraticarAberto] = useState(false);
+  // Conta as rodadas de polling pra saber quando desistir de mostrar
+  // "gerando..." (o hook já para de perguntar ao backend nesse ponto —
+  // ver MAX_TENTATIVAS_POLLING_RECOMENDACAO — isso só ajusta a mensagem).
+  const tentativasRecomendacaoRef = useRef(0);
+  useEffect(() => {
+    if (recomendacaoQuery.dataUpdatedAt) tentativasRecomendacaoRef.current += 1;
+  }, [recomendacaoQuery.dataUpdatedAt]);
+  const recomendacaoDesistiu = !recomendacao && tentativasRecomendacaoRef.current >= MAX_TENTATIVAS_POLLING_RECOMENDACAO;
   const carregando = isTarefa
     ? tarefaQuery.isLoading || questoesLoading
     : isConteudo
@@ -787,7 +795,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
               </div>
             )}
 
-            {(!recomendacao || recomendacao.StatusGeracao === 'Pendente') && (
+            {(!recomendacao || recomendacao.StatusGeracao === 'Pendente') && !recomendacaoDesistiu && (
               <p className={styles.hintFuturo}>Gerando recomendação de estudo...</p>
             )}
           </div>

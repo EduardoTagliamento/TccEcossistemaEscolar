@@ -8,9 +8,17 @@ import { IAIndisponivelError } from "../aiErrors";
  */
 export type GeminiTier = "leve" | "cheio";
 
+/**
+ * O catálogo de modelos do Gemini muda de forma mais rápida que o ciclo de
+ * deploy deste projeto (ex.: "gemini-2.5-flash" já saiu de circulação pra
+ * chaves novas em 2026-08). Por isso o id vem de env var, com um alias
+ * "-latest" (sem número de versão fixo, mantido pela própria Google) como
+ * fallback — se um dia quebrar de novo, dá pra corrigir só trocando a
+ * variável de ambiente, sem precisar de outro deploy de código.
+ */
 const MODELO_POR_TIER: Record<GeminiTier, string> = {
-  leve: "gemini-2.5-flash",
-  cheio: "gemini-2.5-pro",
+  leve: process.env.GEMINI_MODEL_LEVE || "gemini-flash-latest",
+  cheio: process.env.GEMINI_MODEL_CHEIO || "gemini-pro-latest",
 };
 
 const TIMEOUT_PADRAO_MS = 15000;
