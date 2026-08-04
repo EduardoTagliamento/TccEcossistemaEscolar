@@ -8,6 +8,8 @@ import next from "next";
 import MysqlDatabase from "./database/MysqlDatabase";
 import ErrorResponse from "./utils/ErrorResponse";
 import { SocketServer } from "./websocket/SocketServer";
+import { logger } from "./utils/logger";
+import { requestLoggerMiddleware } from "./middlewares/request-logger.middleware";
 import { escolaRouterFactory } from "../routes/escola.routes";
 import { escolaConfiguracaoRouterFactory } from "../routes/escolaconfiguracao.routes";
 import { usuarioRouterFactory } from "../routes/usuario.routes";
@@ -22,6 +24,7 @@ import { conteudoRouterFactory } from "../routes/conteudo.routes";
 import { matriculaRouterFactory } from "../routes/matricula.routes";
 import { professorRouterFactory } from "../routes/professor.routes";
 import verificacaoEmailRoutes from "../routes/verificacao-email.routes";
+import redefinicaoSenhaRoutes from "../routes/redefinicao-senha.routes";
 import authRoutes from "../routes/auth.routes";
 import uploadRoutes from "../routes/upload.routes";
 import { anexoRoutes } from "../routes/anexo.routes";
@@ -48,6 +51,19 @@ import { NotificacaoScheduler } from "./services/notificacao.scheduler";
 import { AuditoriaScheduler } from "./services/auditoria.scheduler";
 import { TarefaAcademicaNotaScheduler } from "./services/tarefaacademicanota.scheduler";
 import { pool } from "./database/mysql";
+
+// Captura no logger estruturado o que antes derrubava o processo com um
+// stack trace cru no stdout — não existia nenhum handler pra isso até aqui.
+// Registrado no escopo do módulo (não da classe) pra nunca duplicar,
+// mesmo que `Server` seja instanciado mais de uma vez.
+process.on("uncaughtException", (error) => {
+  logger.error("uncaught_exception", { message: error.message, stack: error.stack });
+});
+
+process.on("unhandledRejection", (reason) => {
+  const erro = reason instanceof Error ? reason : new Error(String(reason));
+  logger.error("unhandled_rejection", { message: erro.message, stack: erro.stack });
+});
 
 /**
  * Classe principal do servidor Express.
@@ -129,8 +145,8 @@ export default class Server {
       SocketServer.init(this.#httpServer);
 
       console.log("✅ Servidor inicializado com sucesso");
-    } catch (error) {
-      console.error("❌ Erro na inicialização do servidor:", error);
+    } catch (error: any) {
+      logger.error("server_boot_failed", { message: error?.message, stack: error?.stack });
       throw error;
     }
   };
@@ -149,14 +165,25 @@ export default class Server {
     // URL-encoded parser - suporta form-data
     this.#app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-    // CORS - permite requisições de qualquer origem
+    // CORS - restrito às origens configuradas (CORS_ORIGIN, lista separada por
+    // vírgula) com fallback pra FRONTEND_URL — nunca "*": a API aceita Bearer
+    // token de qualquer origem que conseguir chamá-la, então uma allowlist
+    // aberta deixaria qualquer site de terceiros usar um token roubado/vazado.
+    const origensPermitidas = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || "")
+      .split(",")
+      .map((origem) => origem.trim())
+      .filter(Boolean);
+
     this.#app.use(
       cors({
-        origin: "*",
+        origin: origensPermitidas.length > 0 ? origensPermitidas : false,
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
         allowedHeaders: ["Content-Type", "Authorization"],
       })
     );
+
+    // Log estruturado de requisição (método/rota/status/duração/requestId)
+    this.#app.use(requestLoggerMiddleware);
 
     // Arquivos de upload (logos, imagens enviadas por usuários)
     this.#app.use("/uploads", express.static(uploadsDir));
@@ -402,6 +429,9 @@ export default class Server {
 
     // �📧 Rotas de Verificação de Email
     this.#app.use("/api/verificacao-email", verificacaoEmailRoutes);
+
+    this.#app.use("/api/redefinicao-senha", redefinicaoSenhaRoutes);
+    console.log("✅ Rotas de Redefinição de Senha registradas em /api/redefinicao-senha");
     console.log("✅ Rotas de Verificação de Email registradas em /api/verificacao-email");
     
     // 🔐 Rotas de Autenticação
@@ -592,18 +622,20 @@ export default class Server {
   private setupErrorMiddleware = (): void => {
     console.log("⬆️  Server.setupErrorMiddleware()");
 
-    this.#app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
+    this.#app.use((error: any, req: Request, res: Response, _next: NextFunction) => {
       const timestamp = new Date().toISOString();
+      const requestId = req.requestId;
 
       // 🔹 ErrorResponse customizado (erros de negócio)
       if (error instanceof ErrorResponse) {
-        console.log(`🟡 [${timestamp}] ErrorResponse capturado`);
-        console.log(`   Status: ${error.statusCode}`);
-        console.log(`   Mensagem: ${error.message}`);
-        
-        if (error.details) {
-          console.log(`   Detalhes:`, error.details);
-        }
+        logger.warn("error_response", {
+          requestId,
+          statusCode: error.statusCode,
+          message: error.message,
+          details: error.details,
+          path: req.originalUrl,
+          method: req.method,
+        });
 
         return res.status(error.statusCode).json({
           success: false,
@@ -615,8 +647,12 @@ export default class Server {
 
       // 🔹 Erro de parsing JSON
       if (error instanceof SyntaxError && "body" in error) {
-        console.log(`🟡 [${timestamp}] Erro de parsing JSON`);
-        console.log(`   Mensagem: ${error.message}`);
+        logger.warn("json_parse_error", {
+          requestId,
+          message: error.message,
+          path: req.originalUrl,
+          method: req.method,
+        });
 
         return res.status(400).json({
           success: false,
@@ -630,10 +666,14 @@ export default class Server {
       }
 
       // 🔹 Erro genérico (não tratado)
-      console.error(`🔴 [${timestamp}] Erro interno não tratado`);
-      console.error(`   Tipo: ${error.constructor.name}`);
-      console.error(`   Mensagem: ${error.message}`);
-      console.error(`   Stack:`, error.stack);
+      logger.error("unhandled_error", {
+        requestId,
+        type: error.constructor.name,
+        message: error.message,
+        stack: error.stack,
+        path: req.originalUrl,
+        method: req.method,
+      });
 
       // Não expor stack trace em produção
       const isDevelopment = process.env.NODE_ENV !== "production";

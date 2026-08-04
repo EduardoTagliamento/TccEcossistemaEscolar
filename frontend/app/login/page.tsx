@@ -211,14 +211,9 @@ function LoginPageContent() {
           disabled={isLoading}
         />
 
-        <button
-          type="button"
-          className={styles.forgotLink}
-          onClick={() => alert('Funcionalidade em desenvolvimento')}
-          disabled={isLoading}
-        >
+        <Link href="/esqueci-senha" className={styles.forgotLink}>
           Esqueci minha senha
-        </button>
+        </Link>
 
         <AuthButton type="submit" variant="primary" size="lg" block disabled={isLoading}>
           {isLoading ? 'Entrando...' : 'Entrar'}

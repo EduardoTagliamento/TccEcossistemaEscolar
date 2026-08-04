@@ -332,6 +332,7 @@ Isso não invalida os post-its (ajustes de layout, UX, mensagens de erro etc. co
 
 - Texto literal do post-it: **"a mimir, volte mais tarde nesse módulo"** — confirmado na leitura direta do PDF, sem mais contexto. Não há nome de módulo nem especificação. Nenhuma pista adicional encontrada no código que sugira qual conteúdo estava planejado aqui.
 - **Ação:** só a equipe consegue esclarecer o que essa página reservava.
+- **Resolvido pelo usuário em 2026-08-04:** era o banco de questões de vestibular, hoje implementado como `QuestaoBanco`/`QuestaoBancoAlternativa` dentro da Recomendação de Estudos por IA — ver `docs/SPEC_RECOMENDACAO_ESTUDOS_IA.md` §2.5/§3.5.
 
 ---
 
@@ -452,7 +453,7 @@ Trabalho realizado nesta sessão (2026-07-19): módulo Projetos completo, Chat c
 
 ### Outros
 - [ ] `frontend/refs/Dashboard_ref.png` parece pertencer a um projeto não relacionado ("Ferretto") — confirmar se é o arquivo errado antes de usar como referência de novo
-- [ ] Módulo em standby (pág. 11 do board) — sem informação suficiente no PDF original; só a equipe consegue esclarecer o que essa página reservava
+- [x] Módulo em standby (pág. 11 do board) — resolvido: era o banco de questões de vestibular (`QuestaoBanco`), já implementado dentro da Recomendação de Estudos por IA
 - [x] Filtro de pesquisa na listagem de Gestão de Dados (post-it da seção 6) — já existe via `BaseTabelaDados` (prop `filtrarPor`) nas 7 telas de listagem
 - [x] Cards da home de Gestão de Dados já são dinâmicos (post-it da seção 6) — contadores reais via API, não estático
 - [x] Atalho visual "Minhas Matérias" na home do dashboard (post-its da seção 3) — seção nova com `MateriaTurmaCard` (capa/cor reais), antes só existia como ícone na navbar

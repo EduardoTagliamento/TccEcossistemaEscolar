@@ -215,6 +215,10 @@ export default class MensagemService {
 
   async marcarComoLida(conversaGUID: string, usuarioCPF: string): Promise<void> {
     console.log('🟣 MensagemService.marcarComoLida()');
+
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    if (!isParticipante) throw new ErrorResponse(403, 'Você não faz parte desta conversa');
+
     await this.#mensagemDAO.markAllAsRead(conversaGUID, usuarioCPF);
   }
 

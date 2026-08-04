@@ -1,104 +1,69 @@
-# Ecossistema Escolar
+# Ecossistema Escolar (Bauá)
 
-e **TCC — Trabalho de Conclusão de Curso**  
-**Autor:** Eduardo Tagliamento  
+**TCC — Trabalho de Conclusão de Curso**
+**Autor:** Eduardo Tagliamento
 **Licença:** MIT
 
 ---
 
 ## 📖 Sobre o Projeto
 
-O **Ecossistema Escolar** é uma plataforma educacional avançada, inspirada no Google Classroom, desenvolvida como TCC. O objetivo é oferecer uma experiência mais rica e integrada para a gestão de turmas, tarefas, comunicação e aprendizado personalizado por meio de inteligência artificial, atendendo alunos, professores e administradores.
+O **Ecossistema Escolar** (nome de produto: **Bauá**) é uma plataforma educacional completa, inspirada no Google Classroom, potencializada com Inteligência Artificial. Gestão de turmas, matérias, tarefas, provas, comunicação em tempo real, calendário/notificações, projetos, auditoria e recomendação de estudos por IA — atendendo alunos, professores, secretaria/coordenação e direção de escola.
+
+Este README reflete o estado real do código, não um roadmap aspiracional. Para o detalhamento vivo do que ainda falta, ver [`docs/RELATORIO_BAUA_CODIGO_2.md`](docs/RELATORIO_BAUA_CODIGO_2.md).
 
 ---
 
-## 🗺️ Escopo do Projeto
+## 🏗️ Arquitetura e Stack
 
-### Visão Geral
+Monorepo único (`package.json` na raiz cobre o backend; `frontend/package.json` cobre o front). Em produção, o Express da raiz **é o próprio servidor** — ele registra as rotas `/api/*` e, para qualquer outra rota, delega pro handler do Next.js (custom server, ver `backend/Server.ts`), então backend e frontend sobem juntos, não como dois serviços separados.
 
-O sistema é uma REST API construída com **Node.js + TypeScript + Express + MySQL**, seguindo arquitetura **MVC em camadas** com estrita separação de responsabilidades:
+### Backend
+- **Runtime:** Node.js + TypeScript 5.x, executado via `tsx` em dev
+- **Framework HTTP:** Express 4.x, servidor customizado (`backend/Server.ts`) que também hospeda o Next.js
+- **Banco de dados:** MySQL 8 via `mysql2` (Railway em produção — ver `docs/RAILWAY_MYSQL_CONNECTION.md`)
+- **Validação:** Zod 4 (`backend/schemas/` + `backend/utils/zodValidate.ts`) — migração de validação manual pra Zod concluída na maior parte dos módulos, ver `docs/PLANO_MIGRACAO_TAREFAS_ZOD_REACT_QUERY.md`
+- **Autenticação:** JWT (`jsonwebtoken`, `backend/middlewares/auth.middleware.ts`, `routes/auth.routes.ts`)
+- **Tempo real:** WebSocket via `socket.io` (`backend/websocket/SocketServer.ts`) — chat, toasts de notificação
+- **Upload/armazenamento:** `multer` + `@aws-sdk/client-s3` (compatível R2) + `sharp` (processamento de imagem)
+- **E-mail transacional:** `resend` (principal) + Brevo (alternativa)
+- **Agendamento:** `node-cron` (`backend/services/*.scheduler.ts` — auditoria, notificação, limpeza, nota automática de tarefa)
+- **IA:** `@google/genai` (Gemini) — `backend/ai/` (providers + agents), ver `docs/SPEC_RECOMENDACAO_ESTUDOS_IA.md`
+- **Padrão arquitetural:** MVC em camadas — `Controller → Service → Repository → Entity`, com `Middleware` (Zod) na entrada e `Guard` pra autorização
 
-```
-Controllers → Services → Repositories → Database
-     ↓           ↓            ↓
-Middlewares   AI Agents    Entities
-```
+### Frontend
+- **Framework:** Next.js 14 (App Router), React 18, TypeScript
+- **Data fetching/cache:** TanStack Query (`@tanstack/react-query`) — hooks por domínio em `frontend/lib/<dominio>/`
+- **Formulários:** `react-hook-form` + `@hookform/resolvers` (Zod) nas telas mais complexas
+- **Estilo:** CSS Modules + design system em `frontend/styles/globals.css` (CSS variables — tema claro/escuro por escola)
+- **Real-time:** `socket.io-client` (`frontend/lib/socket/`, `frontend/lib/chat/`)
 
-### Funcionalidades Planejadas
-
-| Funcionalidade | Status |
-|---|---|
-| Gestão de Escolas (CRUD) | ✅ Implementado |
-| Gestão de Usuários (alunos, professores, admins) | 🔜 Planejado |
-| Autenticação JWT | 🔜 Planejado |
-| Turmas virtuais | 🔜 Planejado |
-| Tarefas (atribuição, entrega, correção) | 🔜 Planejado |
-| Chat / Comunicação em tempo real | 🔜 Planejado |
-| Notificações por e-mail | ✅ Implementado (Resend / Brevo) |
-| Integração com IA (planejamento de estudos, recomendações) | 🔜 Planejado (OpenAI / Azure AI) |
-| Interface Web (React) | 🔜 Planejado |
-| Interface Mobile (React Native) | 🔜 Planejado |
-| Interface Desktop (Tauri) | 🔜 Planejado |
-| Pipelines CI/CD (Azure DevOps) | 🔜 Planejado |
-
----
-
-## 🏗️ Arquitetura e Tecnologias
-
-### Backend (implementado)
-- **Runtime:** Node.js ≥ 18
-- **Linguagem:** TypeScript 5.x
-- **Framework HTTP:** Express 4.x
-- **Banco de dados:** MySQL 8 via `mysql2`
-- **Envio de e-mail:** Resend SDK / SendBrevo
-- **Geração de IDs:** UUID v4
-- **Requisições HTTP externas:** Axios
-- **Padrão arquitetural:** MVC em camadas (Controller → Service → DAO → Entity)
-- **Injeção de dependências:** via construtor
-
-### Frontend (estrutura inicial)
-- **Linguagem:** TypeScript
-- **Web:** React *(a implementar)*
-- **Mobile:** React Native *(a implementar)*
-- **Desktop:** Tauri *(a implementar)*
-- **Design:** Figma / Lovable
-
-### DevOps
-- **Pipelines:** Azure DevOps *(a configurar)*
-- **Ambientes:** dev, homologação, produção
+### Mobile / Desktop
+Não implementado. Não faz parte do escopo atual do TCC.
 
 ---
 
 ## 📦 O que está implementado
 
-### API REST — Escola
+Inventário direto de `backend/routes/*.routes.ts` (todas registradas em `backend/Server.ts`) e `frontend/app/`:
 
-Base URL: `http://localhost:3000/api/escola`
-
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| `POST` | `/api/escola` | Cria uma escola |
-| `GET` | `/api/escola` | Lista escolas (com filtro por nome) |
-| `GET` | `/api/escola/:EscolaGUID` | Busca escola por ID |
-| `PUT` | `/api/escola/:EscolaGUID` | Atualiza escola (parcial) |
-| `DELETE` | `/api/escola/:EscolaGUID` | Remove escola |
-
-**Modelo de dados — Escola:**
-
-| Campo | Tipo | Descrição |
+| Módulo | Backend (`/api/...`) | Frontend |
 |---|---|---|
-| `EscolaGUID` | `CHAR(36)` | UUID v4 (chave primária, gerado automaticamente) |
-| `EscolaNome` | `VARCHAR(100)` | Nome da escola (único, 3–100 caracteres) |
-| `EscolaCorPriEs` | `CHAR(6)` | Cor **Pri**mária **Es**cura — tema escuro (hex 6 chars, ex: `1E3A8A`) |
-| `EscolaCorPriCl` | `CHAR(6)` | Cor **Pri**mária **Cl**ara — tema claro (hex 6 chars, ex: `FFFFFF`) |
-| `EscolaCorSecEs` | `CHAR(6)` | Cor **Sec**undária **Es**cura — tema escuro (hex 6 chars) |
-| `EscolaCorSecCl` | `CHAR(6)` | Cor **Sec**undária **Cl**ara — tema claro (hex 6 chars) |
-| `EscolaIcone` | `BLOB` | Logotipo da escola; armazenado como binário (BLOB), aceito e retornado pela API como string **Base64** |
+| Escola (CRUD, cor/logo, configuração) | ✅ `escola`, `escola-configuracao` | ✅ `criar-escola`, `dashboard/[escolaGUID]/configuracoes` |
+| Usuário + papéis por escola | ✅ `usuario`, `escolaxusuarioxfuncao` | ✅ `login`, `cadastro`, `selecionar-escola`, `verificar-email`, `perfil` |
+| Autenticação JWT + verificação de e-mail | ✅ `auth`, `verificacao-email` | ✅ |
+| Matéria / Curso / Turma / Matrícula | ✅ `materia`, `curso`, `turma`, `matricula`, `professor` | ✅ `gestao-dados/{materias,cursos,turmas,alunos,professores,coordenacao,secretaria}` |
+| Grade horária / horário de turma | ✅ `grade-horaria`, `turma` (horário) | ✅ `configuracoes` (cronograma) |
+| **Matérias (sala de aula)** — categorias, conteúdo, tarefa, prova, progresso | ✅ `categoria-conteudo`, `conteudo`, `tarefa`, `prova` | ✅ `materias/[materiaGUID]/turmas`, `crud-tarefa`, `crud-provaagendada`, `crud-conteudo`, `tarefas` |
+| Grupos de tarefa/projeto + convites | ✅ `grupotarefa`, `convitegrupotarefa`, `projeto`, `grupoprojeto`, `convitegrupoprojeto` | ✅ `crud-projeto`, `projetos` |
+| Anexos / upload genérico | ✅ `anexo`, `upload` | ✅ (integrado nas telas de tarefa/conteúdo/prova) |
+| Calendário / Eventos / Anotações / Pendências | ✅ `calendario`, `evento`, `anotacao`, `pendencia` | ✅ `calendario`, `cadastro-evento`, `cadastro-pendencia`, `pendencias` |
+| Chat (conversa individual/grupo, WebSocket) | ✅ `conversa` | ✅ `chat` |
+| Notificações (feed + toast em tempo real) | ✅ `notificacao` | ✅ `notificacoes` |
+| Auditoria (log de ações, paginação configurável) | ✅ `auditoria` | ✅ `auditoria` |
+| **Recomendação de Estudos por IA** — assunto, taxonomia global, material didático, banco de questões | ✅ `assunto`, `materiaglobal`, `materialdidatico`, `questaobanco` (backend completo, ver `docs/SPEC_RECOMENDACAO_ESTUDOS_IA.md`) | 🔜 parcial — professor já trava assunto manualmente ao criar prova (`ProvaAgendadaForm.tsx`) e `admin-plataforma` já cadastra banco de questões; **falta a tela do aluno pra ver a recomendação já gerada** (vídeo/resumo/página/questões) |
 
-### Serviços Externos
-
-- **ResendEmailService** — e-mails transacionais: boas-vindas, recuperação de senha, notificação de atividade
-- **SendBrevoEmailService** — alternativa de envio de e-mails via Brevo
+**Landing page** (`frontend/app/page.tsx`) e páginas institucionais (`login`, `cadastro`, `saiba-mais`) também implementadas.
 
 ---
 
@@ -107,18 +72,19 @@ Base URL: `http://localhost:3000/api/escola`
 Veja o guia completo em [EXECUTAR.md](EXECUTAR.md) ou o início rápido em [QUICKSTART.md](QUICKSTART.md).
 
 ```bash
-# 1. Instalar dependências
+# 1. Instalar dependências (raiz + frontend)
 npm install
+cd frontend && npm install && cd ..
 
-# 2. Criar banco de dados (MySQL)
-mysql -u root -p -e "CREATE DATABASE tccecossistemaescolar;"
-mysql -u root -p tccecossistemaescolar < backend/database/sql.txt
+# 2. Banco de dados: ver backend/database/migrations/ (schema é construído
+#    incrementalmente por migrations, não por um único dump — ver docs/RAILWAY_MYSQL_CONNECTION.md
+#    pra conexão com o MySQL de referência do projeto)
 
 # 3. Configurar variáveis de ambiente
 cp .env.example .env
-# edite o .env com suas credenciais
+# edite o .env: credenciais MySQL, JWT_SECRET, RESEND_API_KEY, GOOGLE_API_KEY (Gemini + YouTube), R2/S3, etc.
 
-# 4. Iniciar servidor (modo desenvolvimento)
+# 4. Iniciar servidor (dev — backend + frontend juntos)
 npm run dev
 ```
 
@@ -131,52 +97,41 @@ Acesse: `http://localhost:3000`
 ```
 TccEcossistemaEscolar/
 ├── app.ts                        # Entry point do servidor
-├── routes/                       # Definição de rotas Express
-│   └── escola.routes.ts
+├── routes/                       # Definição de rotas Express (uma por domínio)
 ├── backend/
-│   ├── Server.ts                 # Configuração do servidor Express
+│   ├── Server.ts                 # Servidor Express + host do Next.js (custom server)
 │   ├── controllers/              # Camada HTTP (req/res)
 │   ├── services/                 # Regras de negócio
 │   ├── repositories/             # Acesso ao banco (DAOs)
 │   ├── entities/                 # Modelos de domínio com validação
-│   ├── middlewares/              # Validação de requisições
-│   ├── database/                 # Conexão MySQL e scripts SQL
-│   ├── ai/                       # Agentes de IA (a implementar)
-│   ├── auth/                     # Autenticação JWT (a implementar)
-│   ├── external/                 # Serviços de terceiros (e-mail, etc.)
-│   ├── guards/                   # Autorização de rotas
-│   └── utils/                    # Utilitários gerais
+│   ├── schemas/                  # Schemas Zod (validação declarativa)
+│   ├── middlewares/               # zodValidate + regras de request específicas
+│   ├── guards/                   # Autorização (papel de escola, admin de plataforma)
+│   ├── database/
+│   │   ├── migrations/           # Histórico incremental do schema (SQL/TS)
+│   │   └── sql.txt               # Snapshot de referência do schema
+│   ├── ai/                       # Providers + agents de IA (Gemini) — recomendação de estudos
+│   ├── websocket/                # SocketServer (chat, notificação em tempo real)
+│   ├── external/                 # Clients de API externa (e-mail, storage, YouTube)
+│   └── utils/                    # Utilitários gerais (zodValidate, timezone, etc.)
 ├── frontend/
-│   ├── public/                   # Assets estáticos
-│   └── src/
-│       ├── pages/                # Telas da aplicação
-│       ├── components/           # Componentes reutilizáveis
-│       ├── hooks/                # Custom hooks
-│       ├── utils/                # Funções auxiliares
-│       └── assets/               # Imagens e recursos
-└── docs/
-    ├── routes/                   # Documentação das rotas da API
-    └── features/                 # Documentação de funcionalidades
+│   ├── app/                      # Next.js App Router — páginas por rota
+│   │   └── dashboard/[escolaGUID]/  # Área autenticada, escopada por escola
+│   ├── lib/<dominio>/            # Hooks TanStack Query + API client, por domínio
+│   ├── components/               # Componentes reutilizáveis
+│   └── styles/globals.css        # Design system (CSS variables, tema claro/escuro)
+└── docs/                         # Specs de implementação, bakeoffs, relatórios de auditoria
 ```
-
----
-
-## 👥 Equipe e Papéis
-
-O desenvolvimento é dividido em três funções:
-
-| Papel | Responsabilidades |
-|---|---|
-| **Backend (REST API)** | REST API, banco de dados, autenticação JWT, regras de negócio, segurança |
-| **Frontend (UI/UX)** | Interface web/mobile/desktop, fluxos de navegação, design responsivo, consumo de API |
-| **Arquiteto / IA / DevOps** | Arquitetura, integração com IA (OpenAI/Azure), pipelines CI/CD, gestão de ambientes |
 
 ---
 
 ## 📚 Documentação
 
-- [`docs/routes/escola-api.md`](docs/routes/escola-api.md) — Documentação completa da API de Escola
-- [`docs/API_KEYS_GUIDE.md`](docs/API_KEYS_GUIDE.md) — Guia de gerenciamento de chaves de API
-- [`.github/copilot-instructions/architecture.md`](.github/copilot-instructions/architecture.md) — Padrões e arquitetura do sistema
-- [`.github/copilot-instructions/patterns.md`](.github/copilot-instructions/patterns.md) — Padrões de código
-- [`EXECUTAR.md`](EXECUTAR.md) — Guia detalhado de execução e resolução de problemas
+- [`docs/RELATORIO_BAUA_CODIGO_2.md`](docs/RELATORIO_BAUA_CODIGO_2.md) — **lista viva do que falta implementar**, mantida atualizada
+- [`docs/PLANO_MIGRACAO_TAREFAS_ZOD_REACT_QUERY.md`](docs/PLANO_MIGRACAO_TAREFAS_ZOD_REACT_QUERY.md) — migração de validação (Zod) e data-fetching (TanStack Query)
+- [`docs/SPEC_RECOMENDACAO_ESTUDOS_IA.md`](docs/SPEC_RECOMENDACAO_ESTUDOS_IA.md) + [`docs/PLANO_IMPLEMENTACAO_RECOMENDACAO_ESTUDOS_IA.md`](docs/PLANO_IMPLEMENTACAO_RECOMENDACAO_ESTUDOS_IA.md) — spec e plano faseado da IA de recomendação de estudos
+- [`docs/PLANO_IMPLEMENTACAO_MATERIAS.md`](docs/PLANO_IMPLEMENTACAO_MATERIAS.md) — módulo central de sala de aula
+- [`docs/API_KEYS_GUIDE.md`](docs/API_KEYS_GUIDE.md) — guia de gerenciamento de chaves de API
+- [`docs/RAILWAY_MYSQL_CONNECTION.md`](docs/RAILWAY_MYSQL_CONNECTION.md) — conexão com o banco de referência
+- [`EXECUTAR.md`](EXECUTAR.md) — guia detalhado de execução e resolução de problemas
+- Demais planos de implementação por módulo (chat, notificações, grade horária, projetos, tarefa compartilhada etc.) estão em `docs/PLANO_IMPLEMENTACAO_*.md`

@@ -5,6 +5,7 @@ import AnexoMiddleware from "../backend/middlewares/anexo.middleware";
 import AnexoService from "../backend/services/anexo.service";
 import { AnexoDAO } from "../backend/repositories/anexo.repository";
 import { EscolaDAO } from "../backend/repositories/escola.repository";
+import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { anexoUploadMiddleware } from "../backend/middlewares/anexo-upload.middleware";
 
@@ -72,7 +73,8 @@ export default class AnexoRoteador {
 const db = MysqlDatabase.getInstance();
 const anexoDAO = new AnexoDAO(db);
 const escolaDAO = new EscolaDAO(db);
-const anexoService = new AnexoService(anexoDAO, escolaDAO);
+const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(db);
+const anexoService = new AnexoService(anexoDAO, escolaDAO, escolaxUsuarioxFuncaoDAO);
 const anexoControle = new AnexoControl(anexoService);
 const anexoMiddleware = new AnexoMiddleware();
 

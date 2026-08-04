@@ -4,8 +4,8 @@
   "description": "Plataforma educacional inspirada no Google Classroom com recursos de IA",
   "main": "dist/app.js",
   "scripts": {
-    "dev": "tsx watch app.ts",
-    "start": "cross-env NODE_ENV=production node dist/app.js",
+    "dev": "tsx watch -r dotenv/config app.ts",
+    "start": "cross-env NODE_ENV=production node -r dotenv/config dist/app.js",
     "build": "cross-env NODE_ENV=production node node_modules/typescript/bin/tsc && cross-env NODE_ENV=production node node_modules/next/dist/bin/next build frontend",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "prebuild": "npm run clean",
@@ -53,6 +53,7 @@
     "socket.io-client": "^4.8.3",
     "typescript": "^5.7.3",
     "uuid": "^11.0.3",
+    "winston": "^3.19.0",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
