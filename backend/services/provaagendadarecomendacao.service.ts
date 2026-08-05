@@ -27,9 +27,11 @@ import { getQuestaoBancoService } from "./questaobanco.service";
 const MAX_CONTEUDOS_FALLBACK_TEMPORAL = 5;
 // Espelha o fallback de backend/ai/providers/geminiProvider.ts — evita
 // ficar com um rótulo de modelo desatualizado se o env var for trocado.
+// ⚠️ Fallback do "cheio" temporariamente igual ao "leve" (gemini-flash-latest)
+// por falta de cota Pro na chave atual — ver comentário/data em geminiProvider.ts.
 const modeloUsadoDescricao = (): string => {
   const leve = process.env.GEMINI_MODEL_LEVE || "gemini-flash-latest";
-  const cheio = process.env.GEMINI_MODEL_CHEIO || "gemini-pro-latest";
+  const cheio = process.env.GEMINI_MODEL_CHEIO || "gemini-flash-latest";
   return `${leve} (leve) / ${cheio} (cheio)`;
 };
 

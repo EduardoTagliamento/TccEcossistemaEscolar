@@ -116,6 +116,11 @@ export default function ProvaAgendadaForm({
   // isso, editar a prova por outro motivo (ex.: só a data) apagaria
   // silenciosamente uma referência de capítulo já existente.
   const [capituloTocado, setCapituloTocado] = useState(false);
+  // GUID do capítulo já salvo na prova sendo editada, aguardando descobrir a
+  // qual livro ele pertence (a prova só guarda o GUID do capítulo, não do
+  // livro — ver useEffect de resolução abaixo). Null quando não há edição em
+  // andamento ou a prova editada não tem capítulo referenciado.
+  const [capituloAlvoResolvendo, setCapituloAlvoResolvendo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingGUID, setEditingGUID] = useState<string | null>(null);
@@ -358,6 +363,42 @@ export default function ProvaAgendadaForm({
       .then(setCapitulosDoLivro)
       .catch((err) => setErro(err?.message || 'Falha ao carregar capítulos'));
   }, [livroEscolhidoGUID, form.MateriaGUID]);
+
+  // Ao entrar em modo edição numa prova que já tem MaterialDidaticoCapituloGUID,
+  // descobre a qual livro esse capítulo pertence (varrendo os livros da
+  // matéria, já que a prova só guarda o GUID do capítulo) pra pré-selecionar
+  // os dois campos em vez de mostrar "Nenhum livro referenciado". Não marca
+  // capituloTocado — isso é dado existente sendo exibido, não uma mudança do
+  // professor nesta sessão.
+  useEffect(() => {
+    if (!capituloAlvoResolvendo || livrosDisponiveis.length === 0 || !form.MateriaGUID) return;
+
+    let cancelado = false;
+    const alvo = capituloAlvoResolvendo;
+
+    (async () => {
+      for (const livro of livrosDisponiveis) {
+        try {
+          const capitulos = await MaterialDidaticoAPI.listarCapitulosPorMateria(livro.MaterialDidaticoGUID, form.MateriaGUID);
+          if (cancelado) return;
+          if (capitulos.some((c) => c.MaterialDidaticoCapituloGUID === alvo)) {
+            setLivroEscolhidoGUID(livro.MaterialDidaticoGUID);
+            setCapituloEscolhidoGUID(alvo);
+            setCapituloAlvoResolvendo(null);
+            return;
+          }
+        } catch {
+          // Ignora falha pontual num livro e continua tentando os outros —
+          // não é crítico, só o preenchimento automático do formulário.
+        }
+      }
+      if (!cancelado) setCapituloAlvoResolvendo(null);
+    })();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [capituloAlvoResolvendo, livrosDisponiveis, form.MateriaGUID]);
 
   // Lista de Assunto pra travamento manual (spec item 3) — opcional; sem
   // nenhum assunto cadastrado pra matéria, o bloco simplesmente não aparece
@@ -709,6 +750,15 @@ export default function ProvaAgendadaForm({
       ProvaStatus: prova.ProvaStatus,
     });
     setAssuntoGUIDsSelecionados(prova.AssuntoGUIDs || []);
+    // Reset explícito (mesmo princípio de limparFormulario) — sem isso, os
+    // selects de livro/capítulo ficam com o valor da prova editada
+    // anteriormente (ou de uma criação em andamento), e capituloTocado=true
+    // faria o PUT sobrescrever o capítulo desta prova com o de outra.
+    setLivroEscolhidoGUID('');
+    setCapitulosDoLivro([]);
+    setCapituloEscolhidoGUID('');
+    setCapituloTocado(false);
+    setCapituloAlvoResolvendo(prova.MaterialDidaticoCapituloGUID || null);
     // Scroll para o topo para visualizar o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

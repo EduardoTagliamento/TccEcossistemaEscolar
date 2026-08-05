@@ -1,7 +1,58 @@
 .container {
+  /* Tokens do Bauá Design System escopados localmente, mesmo padrão de
+     frontend/app/dashboard/[escolaGUID]/materias/page.module.css. */
+  --green-500: #17C077;
+  --green-600: #0F9D5C;
+  --ink-900: #0F1D17;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --danger-500: #D64545;
+  --line-200: #E2EAE5;
+  --surface-muted: #F0F4F1;
+  --white: #FFFFFF;
+
   max-width: 960px;
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --ink-900: #F3F7F4;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --danger-500: #FF6B70;
+  --line-200: #2A3A31;
+  --surface-muted: #16211C;
+  --white: #16211C;
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --danger-500: #E8720C;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --danger-500: #FF9142;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
 }
 
 .titulo {
@@ -118,8 +169,8 @@
   padding: 0.6rem 1.2rem;
   border-radius: 8px;
   border: none;
-  background: #17C077;
-  color: #fff;
+  background: var(--green-500, #17C077);
+  color: var(--white, #fff);
   font-weight: 600;
   cursor: pointer;
 }
@@ -147,15 +198,15 @@
 }
 
 .itemQuestao button:hover {
-  color: #d1453b;
+  color: var(--danger-500, #D64545);
 }
 
 .badgeDificuldade {
   display: inline-block;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  background: rgba(23, 192, 119, 0.12);
-  color: #0F9D5C;
+  background: color-mix(in srgb, var(--green-500, #17C077) 12%, transparent);
+  color: var(--green-600, #0F9D5C);
   font-size: 0.72rem;
   font-weight: 700;
   margin-bottom: 0.35rem;

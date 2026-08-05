@@ -1,3 +1,82 @@
+/* Tokens do Bauá Design System escopados localmente em cada raiz possível
+   (o componente retorna uma de 4 raízes diferentes conforme o estado —
+   sem um wrapper único pra hospedar as variáveis, ver MateriaGlobalBadge.tsx),
+   mesmo padrão de frontend/components/materias/GerenciarCategoriasModal.module.css.
+   Cores "âmbar" (pendente) são exclusivas deste arquivo — não há token
+   --amber-* no restante do projeto ainda, por isso ficam com nome só local. */
+.textoSecundario,
+.badgeConfirmado,
+.badgePendente,
+.wrapper {
+  --green-500: #17C077;
+  --green-600: #0F9D5C;
+  --amber-500: #B45309;
+  --amber-tint: rgba(245, 158, 11, 0.12);
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --surface-muted: #F0F4F1;
+  --white: #FFFFFF;
+  --ink-900: #0F1D17;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .textoSecundario,
+:global(html[data-theme="dark"]) .badgeConfirmado,
+:global(html[data-theme="dark"]) .badgePendente,
+:global(html[data-theme="dark"]) .wrapper {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --amber-500: #FFB454;
+  --amber-tint: rgba(245, 158, 11, 0.2);
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --line-200: #2A3A31;
+  --surface-muted: #16211C;
+  --white: #16211C;
+  --ink-900: #F3F7F4;
+}
+
+:global(html[data-daltonico="true"]) .textoSecundario,
+:global(html[data-daltonico="true"]) .badgeConfirmado,
+:global(html[data-daltonico="true"]) .badgePendente,
+:global(html[data-daltonico="true"]) .wrapper {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .textoSecundario,
+:global(html[data-theme="dark"][data-daltonico="true"]) .badgeConfirmado,
+:global(html[data-theme="dark"][data-daltonico="true"]) .badgePendente,
+:global(html[data-theme="dark"][data-daltonico="true"]) .wrapper {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+}
+
+:global(html[data-alto-contraste="true"]) .textoSecundario,
+:global(html[data-alto-contraste="true"]) .badgeConfirmado,
+:global(html[data-alto-contraste="true"]) .badgePendente,
+:global(html[data-alto-contraste="true"]) .wrapper {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .textoSecundario,
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .badgeConfirmado,
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .badgePendente,
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .wrapper {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+}
+
 .textoSecundario {
   color: var(--slate-400, #8A968E);
   font-size: 0.8rem;
@@ -9,8 +88,8 @@
   gap: 0.3rem;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  background: rgba(23, 192, 119, 0.12);
-  color: #0F9D5C;
+  background: color-mix(in srgb, var(--green-500, #17C077) 12%, transparent);
+  color: var(--green-600, #0F9D5C);
   font-size: 0.78rem;
   font-weight: 600;
 }
@@ -21,8 +100,8 @@
   gap: 0.3rem;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  background: rgba(245, 158, 11, 0.12);
-  color: #B45309;
+  background: var(--amber-tint, rgba(245, 158, 11, 0.12));
+  color: var(--amber-500, #B45309);
   font-size: 0.78rem;
   font-weight: 600;
 }
@@ -47,8 +126,8 @@
 }
 
 .botaoResolver:hover {
-  border-color: #17C077;
-  color: #17C077;
+  border-color: var(--green-500, #17C077);
+  color: var(--green-500, #17C077);
 }
 
 .dropdown {

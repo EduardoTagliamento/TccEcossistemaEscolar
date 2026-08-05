@@ -15,10 +15,25 @@ export type GeminiTier = "leve" | "cheio";
  * "-latest" (sem número de versão fixo, mantido pela própria Google) como
  * fallback — se um dia quebrar de novo, dá pra corrigir só trocando a
  * variável de ambiente, sem precisar de outro deploy de código.
+ *
+ * ⚠️ SOLUÇÃO TEMPORÁRIA (registrada em 2026-08-04, ver
+ * docs/PLANO_IMPLEMENTACAO_RECOMENDACAO_ESTUDOS_IA.md §9): o fallback do
+ * tier "cheio" está apontando pro MESMO alias do "leve" (`gemini-flash-latest`)
+ * em vez de `gemini-pro-latest`, porque a chave de produção testada nesta
+ * data tem cota ZERO pra modelos Pro no tier gratuito do Gemini API
+ * (confirmado via chamada real: 429 RESOURCE_EXHAUSTED, "limit: 0, model:
+ * gemini-3.1-pro"). Isso reduz a fidelidade do resumo grounded e do
+ * sumário de livro (item 19 do spec pedia "cheio" pra essas duas tarefas
+ * exatamente por fidelidade) — é uma troca deliberada de qualidade por
+ * "funcionar agora", não a decisão final.
+ * REVERTER assim que houver billing habilitado no projeto Google Cloud da
+ * chave: trocar o fallback abaixo de volta pra `gemini-pro-latest`, ou
+ * (sem precisar mexer no código) só setar a env var `GEMINI_MODEL_CHEIO=gemini-pro-latest`
+ * no Railway.
  */
 const MODELO_POR_TIER: Record<GeminiTier, string> = {
   leve: process.env.GEMINI_MODEL_LEVE || "gemini-flash-latest",
-  cheio: process.env.GEMINI_MODEL_CHEIO || "gemini-pro-latest",
+  cheio: process.env.GEMINI_MODEL_CHEIO || "gemini-flash-latest",
 };
 
 const TIMEOUT_PADRAO_MS = 15000;
