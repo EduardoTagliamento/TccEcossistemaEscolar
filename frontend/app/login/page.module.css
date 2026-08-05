@@ -46,6 +46,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .forgotLink:hover:not(:disabled) {

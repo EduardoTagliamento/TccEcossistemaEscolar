@@ -83,13 +83,20 @@ export function registerConversaHandlers(
   // typing: propaga indicador de digitação para os outros na room
   socket.on(
     'typing',
-    ({ ConversaGUID, isTyping }: { ConversaGUID: string; isTyping: boolean }) => {
-      socket.to(ConversaGUID).emit('usuario_digitando', {
-        ConversaGUID,
-        UsuarioCPF: usuario.UsuarioCPF,
-        UsuarioNome: usuario.UsuarioNome,
-        isTyping,
-      });
+    async ({ ConversaGUID, isTyping }: { ConversaGUID: string; isTyping: boolean }) => {
+      try {
+        const isParticipante = await conversaDAO.isParticipante(ConversaGUID, usuario.UsuarioCPF);
+        if (!isParticipante) return;
+
+        socket.to(ConversaGUID).emit('usuario_digitando', {
+          ConversaGUID,
+          UsuarioCPF: usuario.UsuarioCPF,
+          UsuarioNome: usuario.UsuarioNome,
+          isTyping,
+        });
+      } catch {
+        // silently fail — não crítico
+      }
     }
   );
 

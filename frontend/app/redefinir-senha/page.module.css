@@ -1,0 +1,97 @@
+/* ============================================================
+   /redefinir-senha — mesma composição de /verificar-email e
+   /esqueci-senha (não existe na tela de referência nem em
+   ui_kits/baua-onboarding): primitivos do Bauá Design System,
+   conteúdo centralizado dentro do painel de formulário.
+   ============================================================ */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.iconBadge {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--green-50);
+  color: var(--green-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 22px 0 18px;
+}
+
+.title {
+  font-family: var(--font-display), 'Poppins', system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--ink-900);
+  margin: 0 0 6px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--slate-500);
+  margin: 0 0 26px;
+  max-width: 320px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  background: var(--danger-50);
+  border: 1px solid var(--danger-500);
+  border-radius: var(--radius-md);
+  color: var(--danger-500);
+  font-size: 0.875rem;
+}
+
+.successBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  background: var(--success-50);
+  border: 1px solid var(--success-500);
+  border-radius: var(--radius-md);
+  color: var(--success-500);
+  font-size: 0.875rem;
+}
+
+.footer {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line-100);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--slate-500);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--green-700);
+}

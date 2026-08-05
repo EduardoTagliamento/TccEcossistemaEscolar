@@ -18,8 +18,18 @@ interface DecodedToken extends TokenPayload {
   exp: number;
 }
 
+function resolveSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      'JWT_SECRET não está definido no ambiente. Configure a variável de ambiente antes de iniciar o servidor — nunca use um valor hardcoded aqui.'
+    );
+  }
+  return secret;
+}
+
 export class JwtService {
-  private static readonly SECRET: string = process.env.JWT_SECRET || 'default_secret_key_CHANGE_IN_PRODUCTION';
+  private static readonly SECRET: string = resolveSecret();
   private static readonly EXPIRES_IN: string = (process.env.JWT_EXPIRES_IN as string) || '24h';
 
   /**
