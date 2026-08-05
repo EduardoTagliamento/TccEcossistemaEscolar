@@ -389,8 +389,20 @@ export default class ProvaAgendadaRecomendacaoService {
     }
 
     if (conteudoGUIDs.length === 0) {
+      // Fallback de proximidade temporal (spec item 4) — precisa ficar restrito
+      // às turmas desta prova, senão vaza Conteudo de outras turmas da mesma
+      // Matéria (quebra a garantia de "grounded no que foi postado pra essa turma").
+      const turmasGUID = [...new Set(atribuicoes.map((a) => a.TurmaGUID).filter((t): t is string => !!t))];
+      const conteudoTurmasPorTurma = await Promise.all(
+        turmasGUID.map((turmaGUID) => this.#conteudoTurmaDAO.findByTurma(turmaGUID))
+      );
+      const conteudoGUIDsDaTurma = new Set(
+        conteudoTurmasPorTurma.flat().map((ct) => ct.ConteudoGUID)
+      );
+
       const todosConteudos = await this.#conteudoDAO.findAll({ MateriaGUID: materiaGUID });
       conteudoGUIDs = todosConteudos
+        .filter((c) => conteudoGUIDsDaTurma.has(c.ConteudoGUID))
         .slice()
         .sort(
           (a, b) =>

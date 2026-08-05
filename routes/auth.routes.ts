@@ -10,6 +10,7 @@ import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import AuthService from '../backend/services/auth.service';
 import AuthController from '../backend/controllers/auth.controller';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
+import { authRateLimitMiddleware } from '../backend/middlewares/rate-limit.middleware';
 
 // Instanciar dependências
 const database = new MysqlDatabase();
@@ -27,7 +28,7 @@ const authRoutes = Router();
  * @body { identifier: string, senha: string }
  * @returns { token: string, user: {...} }
  */
-authRoutes.post('/login', authController.login);
+authRoutes.post('/login', authRateLimitMiddleware, authController.login);
 
 /**
  * @route GET /api/auth/me

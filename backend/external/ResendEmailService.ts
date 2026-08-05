@@ -139,7 +139,7 @@ export class ResendEmailService {
     userName: string, 
     resetToken: string
   ): Promise<ResendEmailResponse> {
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/redefinir-senha?token=${resetToken}`;
     
     return this.sendEmail({
       to: userEmail,

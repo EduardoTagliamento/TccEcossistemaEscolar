@@ -1,9 +1,9 @@
-# 📧 Planejamento - Sistema de Verificação de Email via Resend
+# 📧 Planejamento - Sistema de Verificação de Email via Brevo
 
 **Data:** 08/03/2026  
-**Objetivo:** Implementar sistema completo de verificação de email usando Resend  
-**Status:** 🔴 Pendente Implementação  
-**Dependências:** ResendEmailService (✅ já implementado)
+**Objetivo:** Implementar sistema completo de verificação de email usando Brevo  
+**Status:** 🟡 Alternativa não ativa — Resend é o provedor em uso em produção (ver `PLANEJAMENTO_VERIFICACAO_EMAIL_RESEND.md`, que já está implementado); este documento fica como plano B caso o provedor precise trocar  
+**Dependências:** SendBrevoEmailService (✅ já implementado, não é o caminho ativo de verificação hoje)
 
 ---
 
