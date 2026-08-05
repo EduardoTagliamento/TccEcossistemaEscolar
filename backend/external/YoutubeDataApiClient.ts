@@ -21,9 +21,19 @@ export class YoutubeDataApiClient {
   buscarVideos = async (query: string, maxResults = 5): Promise<VideoResultado[]> => {
     console.log(`🎥 YoutubeDataApiClient.buscarVideos() query="${query}"`);
 
-    const apiKey = process.env.GOOGLE_API_KEY;
+    // Chave separada da do Gemini (YOUTUBE_API_KEY): na prática, uma chave
+    // Google com "API restrictions" liberando só a Generative Language API
+    // (caso comum ao criar a chave pelo AI Studio) devolve 401
+    // UNAUTHENTICATED "API keys are not supported by this API" na YouTube
+    // Data API mesmo com a API habilitada no projeto — confirmado em teste
+    // real em 2026-08-04. GOOGLE_API_KEY fica como fallback pra quem usar
+    // uma única chave sem essa restrição.
+    const apiKey = process.env.YOUTUBE_API_KEY || process.env.GOOGLE_API_KEY;
     if (!apiKey) {
-      throw new IAIndisponivelError("YouTube Data API", new Error("GOOGLE_API_KEY não configurada"));
+      throw new IAIndisponivelError(
+        "YouTube Data API",
+        new Error("YOUTUBE_API_KEY (ou GOOGLE_API_KEY) não configurada")
+      );
     }
 
     try {

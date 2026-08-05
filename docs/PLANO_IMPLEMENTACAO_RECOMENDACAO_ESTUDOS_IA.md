@@ -213,3 +213,14 @@ Cada item da lista acima é, na prática, um PR isolado e testável — nenhum d
 
 - Representante de turma complementando manualmente resumo/vídeo por turma — ideia futura registrada no bakeoff, não desenhada aqui.
 - Qualquer decisão não coberta pelo spec final continua em aberto e deve ser resolvida antes da fase correspondente começar (mesma regra do spec §9).
+
+---
+
+## 9. Decisões temporárias pós-deploy (revisar quando a causa for resolvida)
+
+Diferente do §7 (pontos que nunca foram travados), esta seção registra decisões que **já foram implementadas como contorno**, mas que não são a decisão final — só existem por causa de uma limitação externa detectada depois do deploy. Cada uma tem uma condição clara de quando reverter.
+
+| # | Data | O quê | Por quê | Como reverter |
+|---|---|---|---|---|
+| 1 | 2026-08-04 | Tier "cheio" do Gemini (resumo grounded, sumário de livro) usa `gemini-flash-latest` em vez de `gemini-pro-latest` — mesmo modelo do tier "leve" | A chave de produção testada nesta data tem cota **zero** pra modelos Pro no tier gratuito do Gemini API — confirmado com chamada real (`429 RESOURCE_EXHAUSTED`, `limit: 0, model: gemini-3.1-pro`). Sem essa troca, todo resumo e todo sumário de livro falhariam sempre, não só ocasionalmente. Isso **reduz a fidelidade** dessas duas tarefas (item 19 do spec pedia "cheio" justamente por fidelidade), é uma troca deliberada de qualidade por disponibilidade | Habilitar billing no projeto Google Cloud da chave, depois setar `GEMINI_MODEL_CHEIO=gemini-pro-latest` no ambiente (Railway) — não precisa de deploy de código, só variável de ambiente. Ver comentário datado em `backend/ai/providers/geminiProvider.ts` |
+| 2 | 2026-08-04 (resolvido no mesmo dia) | ~~`GOOGLE_API_KEY` retornava `401 UNAUTHENTICATED` na YouTube Data API v3~~ — causa confirmada: a chave gerada pelo Google AI Studio vem com "API restrictions" limitando só à Generative Language API; habilitar a YouTube Data API v3 no projeto **não** era suficiente. Solução: variável separada `YOUTUBE_API_KEY` (chave nova, sem essa restrição), com `YoutubeDataApiClient` caindo pra `GOOGLE_API_KEY` se `YOUTUBE_API_KEY` não estiver setada | Confirmado com chamada real: mesma query, mesma chave `GOOGLE_API_KEY` → 401; `YOUTUBE_API_KEY` nova → 200 com resultados | Não há nada a reverter — duas chaves separadas é a solução definitiva, não um contorno temporário. Fica registrado aqui só pelo histórico do diagnóstico. Ver `backend/external/YoutubeDataApiClient.ts` e `.env.example` |

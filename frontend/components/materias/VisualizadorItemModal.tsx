@@ -202,6 +202,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     setAlunoDetalheGUID(null);
     setMostrarEstatisticas(false);
     setMostrarQuestoesProfessor(false);
+    tentativasRecomendacaoRef.current = 0;
   }, [item.ItemGUID]);
 
   // Registrar progresso de leitura (conteúdo texto) e visualização (prova)

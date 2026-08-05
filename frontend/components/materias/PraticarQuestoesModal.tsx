@@ -22,20 +22,27 @@ export default function PraticarQuestoesModal({ subMateriaGlobalGUID, onFechar }
   const [vestibularGUID, setVestibularGUID] = useState('');
   const [carregando, setCarregando] = useState(true);
   const [revelada, setRevelada] = useState<Record<string, boolean>>({});
+  const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
-    QuestaoBancoAPI.listarVestibulares().then(setVestibulares).catch(() => {});
+    QuestaoBancoAPI.listarVestibulares()
+      .then(setVestibulares)
+      .catch((err: any) => setErro(err?.message || 'Falha ao carregar lista de vestibulares'));
   }, []);
 
   useEffect(() => {
     setCarregando(true);
+    setErro(null);
     QuestaoBancoAPI.listarQuestoes({
       SubMateriaGlobalGUID: subMateriaGlobalGUID,
       Dificuldade: dificuldade || undefined,
       VestibularGUID: vestibularGUID || undefined,
     })
       .then(setQuestoes)
-      .catch(() => setQuestoes([]))
+      .catch((err: any) => {
+        setQuestoes([]);
+        setErro(err?.message || 'Falha ao carregar questões');
+      })
       .finally(() => setCarregando(false));
   }, [subMateriaGlobalGUID, dificuldade, vestibularGUID]);
 
@@ -65,6 +72,8 @@ export default function PraticarQuestoesModal({ subMateriaGlobalGUID, onFechar }
             ))}
           </select>
         </div>
+
+        {erro && <p className={styles.erro}>{erro}</p>}
 
         {carregando ? (
           <p className={styles.hint}>Carregando questões...</p>

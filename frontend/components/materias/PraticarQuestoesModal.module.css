@@ -1,4 +1,16 @@
 .overlay {
+  /* Tokens do Bauá Design System escopados localmente, mesmo padrão de
+     frontend/components/materias/GerenciarCategoriasModal.module.css. */
+  --green-500: #17C077;
+  --green-600: #0F9D5C;
+  --ink-900: #0F1D17;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --danger-500: #D64545;
+  --line-200: #E2EAE5;
+  --surface-muted: #F0F4F1;
+  --white: #FFFFFF;
+
   position: fixed;
   inset: 0;
   background: rgba(15, 29, 23, 0.45);
@@ -7,6 +19,45 @@
   justify-content: center;
   z-index: 60;
   padding: 1rem;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   ============================================================ */
+:global(html[data-theme="dark"]) .overlay {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --ink-900: #F3F7F4;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --danger-500: #FF6B70;
+  --line-200: #2A3A31;
+  --surface-muted: #16211C;
+  --white: #16211C;
+}
+
+:global(html[data-daltonico="true"]) .overlay {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --danger-500: #E8720C;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .overlay {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --danger-500: #FF9142;
+}
+
+:global(html[data-alto-contraste="true"]) .overlay {
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .overlay {
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
 }
 
 .modal {
@@ -52,6 +103,12 @@
   min-width: 160px;
 }
 
+.erro {
+  font-size: 0.85rem;
+  color: var(--danger-500, #D64545);
+  margin: -0.5rem 0 1rem;
+}
+
 .hint {
   color: var(--slate-400, #8A968E);
   text-align: center;
@@ -74,8 +131,8 @@
   display: inline-block;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  background: rgba(23, 192, 119, 0.12);
-  color: #0F9D5C;
+  background: color-mix(in srgb, var(--green-500, #17C077) 12%, transparent);
+  color: var(--green-600, #0F9D5C);
   font-size: 0.72rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
@@ -103,24 +160,24 @@
 }
 
 .alternativaCorreta {
-  border-color: #17C077;
-  background: rgba(23, 192, 119, 0.1);
+  border-color: var(--green-500, #17C077);
+  background: color-mix(in srgb, var(--green-500, #17C077) 10%, transparent);
   font-weight: 600;
 }
 
 .botaoRevelar {
   padding: 0.4rem 0.9rem;
   border-radius: 8px;
-  border: 1.5px solid #17C077;
+  border: 1.5px solid var(--green-500, #17C077);
   background: transparent;
-  color: #17C077;
+  color: var(--green-500, #17C077);
   font-weight: 600;
   font-size: 0.85rem;
   cursor: pointer;
 }
 
 .linkResolucao {
-  color: #17C077;
+  color: var(--green-500, #17C077);
   font-weight: 600;
   font-size: 0.85rem;
   text-decoration: none;

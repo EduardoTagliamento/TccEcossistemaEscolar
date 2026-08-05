@@ -24,6 +24,7 @@ export class EnvValidator {
     optional: [
       'OPENAI_API_KEY',
       'GOOGLE_API_KEY',
+      'YOUTUBE_API_KEY',
       'RESEND_API_KEY',
       'R2_ACCOUNT_ID',
       'R2_ACCESS_KEY_ID',
