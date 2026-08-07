@@ -799,6 +799,25 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
             {(!recomendacao || recomendacao.StatusGeracao === 'Pendente') && !recomendacaoDesistiu && (
               <p className={styles.hintFuturo}>Gerando recomendação de estudo...</p>
             )}
+
+            {(recomendacao?.StatusGeracao === 'Falhou' ||
+              (recomendacao?.StatusGeracao === 'Concluida' &&
+                !recomendacao.Resumo &&
+                recomendacao.Videos.length === 0 &&
+                !recomendacao.PaginaLivro &&
+                !recomendacao.SubMateriaGlobalGUID)) && (
+              <p className={styles.hintFuturo}>
+                Não foi possível gerar recomendação de estudo para esta prova. Isso pode acontecer quando não há
+                conteúdo postado sobre o assunto ou por uma falha temporária da IA — tente novamente mais tarde.
+              </p>
+            )}
+
+            {!recomendacao && recomendacaoDesistiu && (
+              <p className={styles.hintFuturo}>
+                Não foi possível confirmar a geração da recomendação de estudo agora. Tente reabrir esta prova em
+                alguns instantes.
+              </p>
+            )}
           </div>
         )}
 
