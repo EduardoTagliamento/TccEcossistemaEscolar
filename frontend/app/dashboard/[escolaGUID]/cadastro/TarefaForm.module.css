@@ -508,6 +508,19 @@
   border-left: 4px solid var(--color-error);
 }
 
+.avisoAlternativa {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--color-warning);
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.6rem;
+  background-color: color-mix(in srgb, var(--color-warning) 12%, var(--bg-primary));
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-warning);
+}
+
 .grupoConfiguracao {
   background-color: var(--bg-secondary);
   border: 2px solid var(--color-success);

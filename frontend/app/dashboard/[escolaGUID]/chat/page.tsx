@@ -379,7 +379,9 @@ export default function ChatPage() {
     try {
       const detalhe = await ConversaAPI.buscarConversa(guid);
       setConversaAtiva(detalhe);
-      setMensagens([...detalhe.Mensagens].reverse());
+      // Backend já devolve em ordem cronológica (mais antigas primeiro) — ver
+      // MensagemDAO.findByConversa. Não reverter aqui de novo.
+      setMensagens([...detalhe.Mensagens]);
       setHasMore(detalhe.HasMore);
       setConversas((prev) => prev.map((c) => (c.ConversaGUID === guid ? { ...c, NaoLidas: 0 } : c)));
       socket?.emit('join_conversa', { ConversaGUID: guid });
@@ -399,7 +401,8 @@ export default function ChatPage() {
     try {
       const primeira = mensagens[0];
       const resultado = await ConversaAPI.listarMensagens(conversaAtivaGUID, { before: primeira.MensagemGUID, limit: 30 });
-      const maisAntigas = [...resultado.Mensagens].reverse();
+      // Mesmo motivo do carregarConversaAtiva: já vem cronológico do backend.
+      const maisAntigas = [...resultado.Mensagens];
       ignorarProximoAutoScrollRef.current = true;
       setMensagens((prev) => [...maisAntigas, ...prev]);
       setHasMore(resultado.HasMore);

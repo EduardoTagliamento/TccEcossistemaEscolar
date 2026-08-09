@@ -27,6 +27,7 @@ export interface UsuarioBusca {
   UsuarioNome: string;
   UsuarioEmail: string | null;
   UsuarioTelefone: string | null;
+  UsuarioDataNascimento: string | null;
   UsuarioStatus: 'Ativo' | 'Inativo' | 'Bloqueado';
 }
 

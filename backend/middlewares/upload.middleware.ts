@@ -12,6 +12,7 @@
 import multer, { FileFilterCallback } from 'multer';
 import { Request } from 'express';
 import ErrorResponse from '../utils/ErrorResponse';
+import { extensaoPermitida, mensagemExtensaoInvalida } from '../utils/fileValidation';
 
 // Tipos MIME permitidos
 const ALLOWED_MIME_TYPES = [
@@ -20,14 +21,22 @@ const ALLOWED_MIME_TYPES = [
   'image/jpg',
 ];
 
+// Extensões permitidas — checadas ALÉM do MIME type, que vem do Content-Type
+// declarado pelo cliente e é fácil de falsificar.
+const ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg'];
+
 // Tamanho máximo: 1MB
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB em bytes
 
 /**
- * Filtro para validar tipo de arquivo
+ * Filtro para validar tipo de arquivo (MIME type + extensão do nome do arquivo)
  */
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-  if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+  if (!extensaoPermitida(file.originalname, ALLOWED_EXTENSIONS)) {
+    cb(new ErrorResponse(400, mensagemExtensaoInvalida(file.originalname, ALLOWED_EXTENSIONS), {
+      allowedExtensions: ALLOWED_EXTENSIONS,
+    }) as any);
+  } else if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new ErrorResponse(400, 'Tipo de arquivo inválido', {
@@ -129,8 +138,19 @@ const ALLOWED_MIME_TYPES_MENSAGEM = [
 
 const MAX_FILE_SIZE_MENSAGEM = 10 * 1024 * 1024; // 10MB em bytes
 
+// Extensões permitidas — checadas ALÉM do MIME type, que vem do Content-Type
+// declarado pelo cliente e é fácil de falsificar.
+const ALLOWED_EXTENSIONS_MENSAGEM = [
+  'png', 'jpg', 'jpeg', 'gif', 'webp',
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'txt',
+];
+
 const fileFilterMensagem = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-  if (ALLOWED_MIME_TYPES_MENSAGEM.includes(file.mimetype)) {
+  if (!extensaoPermitida(file.originalname, ALLOWED_EXTENSIONS_MENSAGEM)) {
+    cb(new ErrorResponse(400, mensagemExtensaoInvalida(file.originalname, ALLOWED_EXTENSIONS_MENSAGEM), {
+      allowedExtensions: ALLOWED_EXTENSIONS_MENSAGEM,
+    }) as any);
+  } else if (ALLOWED_MIME_TYPES_MENSAGEM.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new ErrorResponse(400, 'Tipo de arquivo inválido', {

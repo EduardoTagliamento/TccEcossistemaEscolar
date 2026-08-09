@@ -188,6 +188,16 @@ export class TarefaAcademicaRespostaDAO {
     return rows.length > 0;
   };
 
+  /** Todas as respostas (de todos os alunos) a uma questão — usado pra reclampar/re-settle quando QuestaoPontosMaximos muda. */
+  findByQuestao = async (QuestaoGUID: string): Promise<TarefaAcademicaResposta[]> => {
+    console.log("🟢 TarefaAcademicaRespostaDAO.findByQuestao()");
+
+    const SQL = "SELECT * FROM tarefaacademica_resposta WHERE QuestaoGUID = ?;";
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<TarefaAcademicaRespostaRow[]>(SQL, [QuestaoGUID]);
+    return rows.map((row) => this.mapRowToResposta(row));
+  };
+
   /**
    * CPF do professor que corrigiu alguma discursiva dessa matrícula, ou null
    * se todas as questões corrigidas até agora foram automáticas (só

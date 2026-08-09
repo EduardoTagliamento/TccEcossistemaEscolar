@@ -1,0 +1,25 @@
+/**
+ * Módulo temporário (beta com grupo pequeno) — entidade simples de
+ * propósito, sem a classe Entity/validar() de outros módulos porque não há
+ * nada a manter depois do teste encerrar.
+ */
+export interface Sugestao {
+  SugestaoGUID: string;
+  UsuarioCPF: string;
+  EscolaGUID: string | null;
+  SugestaoTexto: string;
+  SugestaoPaginaUrl: string | null;
+  SugestaoCreatedAt: Date;
+}
+
+export interface SugestaoComAutor extends Sugestao {
+  UsuarioNome: string | null;
+  UsuarioEmail: string | null;
+}
+
+export interface SugestaoCreateDTO {
+  UsuarioCPF: string;
+  EscolaGUID?: string | null;
+  SugestaoTexto: string;
+  SugestaoPaginaUrl?: string | null;
+}

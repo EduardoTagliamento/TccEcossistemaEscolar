@@ -258,7 +258,7 @@ export default function CursosPage() {
 
       {/* Modal: Cadastro Individual */}
       {modalAberto && (
-        <div className={styles.overlay} onClick={() => setModalAberto(false)}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <BaseFormularioCadastro
               titulo={cursoEditando ? "Editar Curso" : "Novo Curso"}
@@ -281,7 +281,7 @@ export default function CursosPage() {
 
       {/* Modal: Upload de Planilha */}
       {modalUploadAberto && (
-        <div className={styles.overlay} onClick={() => setModalUploadAberto(false)}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalConteudo}>
               <h2 className={styles.modalTitulo}>Importar Cursos via Planilha</h2>

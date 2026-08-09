@@ -350,6 +350,37 @@ Documentação completa da API de anotações pessoais do usuário (uso privado,
 - ✅ Somente o dono acessa/edita/exclui
 - ✅ Toggle inverte o status atual (não aceita valor explícito)
 
+### ✅ Aviso (Comunicado)
+**Arquivo:** [aviso-api.md](aviso-api.md)
+
+Documentação completa da API de comunicados institucionais (Direção/Coordenação/Secretaria → escola inteira ou turmas específicas), com banner de destaque na home até a 1ª visualização, incluindo:
+- **POST** `/api/aviso` - Publicar aviso
+- **GET** `/api/aviso/nao-visualizado` - Aviso mais recente não visto (banner da home)
+- **GET** `/api/aviso` - Listar avisos enviados (gestão/histórico)
+- **GET** `/api/aviso/:guid` - Buscar aviso por ID (marca visualização)
+- **DELETE** `/api/aviso/:guid` - Excluir aviso
+
+**Regras de Negócio Implementadas:**
+- ✅ Sem data própria — só timestamp de criação, sem prazo/expiração
+- ✅ Público-alvo: escola inteira ou turmas específicas (`avisoxturma`)
+- ✅ Criação/exclusão restrita a Direção/Coordenação/Secretaria (exclusão também libera pro autor)
+- ✅ Notificação automática (`aviso_publicado`) por fan-out, escola ou turma
+- ✅ Rastreio de "visto" por usuário (`avisoxusuario`) — banner some sozinho após a 1ª leitura
+- ✅ Anexo opcional, reaproveitando `POST /api/anexo`
+- ✅ Sem edição em v1 — só criar e excluir
+
+### 💡 Sugestão (Feedback) — módulo temporário
+**Arquivo:** [sugestao-api.md](sugestao-api.md)
+
+⚠️ Criado só pro teste com um grupo pequeno de usuários (beta) — não é parte permanente da plataforma. Botão flutuante "?" em todo o dashboard, incluindo:
+- **POST** `/api/sugestao` - Enviar sugestão (qualquer usuário autenticado)
+- **GET** `/api/sugestao` - Listar sugestões (só admin de plataforma)
+- **DELETE** `/api/sugestao/:guid` - Excluir sugestão (só admin de plataforma)
+
+**Regras de Negócio Implementadas:**
+- ✅ Qualquer usuário autenticado pode enviar; leitura restrita a `UsuarioIsPlataformaAdmin`
+- ✅ Sem FK pra escola (só contexto informativo) — feito pra ser fácil de remover (`DROP TABLE`) quando o beta terminar
+
 ### ✅ Grupo de Tarefa (Task Group)
 **Arquivo:** [grupotarefa-api.md](grupotarefa-api.md)
 

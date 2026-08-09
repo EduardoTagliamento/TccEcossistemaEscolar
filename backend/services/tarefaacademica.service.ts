@@ -1635,6 +1635,9 @@ export default class TarefaAcademicaService {
       this.#validarAlternativas(data.Alternativas);
     }
 
+    const pontosMaximosMudou =
+      data.QuestaoPontosMaximos !== undefined && data.QuestaoPontosMaximos !== questao.QuestaoPontosMaximos;
+
     const updates: Partial<Pick<TarefaAcademicaQuestao, "QuestaoEnunciado" | "QuestaoTipo" | "QuestaoPontosMaximos" | "QuestaoExplicacao">> = {};
     if (data.QuestaoEnunciado !== undefined) updates.QuestaoEnunciado = data.QuestaoEnunciado;
     if (data.QuestaoTipo !== undefined) updates.QuestaoTipo = data.QuestaoTipo;
@@ -1658,7 +1661,49 @@ export default class TarefaAcademicaService {
       await this.#alternativaDAO.createBatch(alternativas);
     }
 
+    // Editar o valor máximo de uma questão que já tem resposta não é
+    // bloqueado (diferente de tipo/alternativas) — em vez disso, reclampa
+    // correções discursivas que passaram a exceder o novo máximo e refaz o
+    // fechamento de nota de quem já tinha essa lista corrigida, pra ninguém
+    // ficar com a nota calculada sobre um critério antigo.
+    if (temResposta && pontosMaximosMudou) {
+      await this.#recalcularAposMudarPontosMaximos(QuestaoGUID, tipoFinal, data.QuestaoPontosMaximos!);
+    }
+
     return this.#buscarQuestaoDTO(QuestaoGUID);
+  };
+
+  /**
+   * Ver comentário de chamada em atualizarQuestao. Só reclampa pontuação
+   * pra questão discursiva (numa objetiva, os pontos vêm de
+   * AlternativaPontos, valor independente de QuestaoPontosMaximos — nada
+   * pra reclampar aí). Em ambos os tipos, sempre refaz o settle de cada
+   * matrícula que já respondeu, porque PontosMaximosTotal da lista mudou
+   * de qualquer forma.
+   */
+  #recalcularAposMudarPontosMaximos = async (
+    QuestaoGUID: string,
+    tipoQuestao: "objetiva" | "discursiva",
+    novoMaximo: number
+  ): Promise<void> => {
+    const respostas = await this.#respostaDAO.findByQuestao(QuestaoGUID);
+
+    if (tipoQuestao === "discursiva") {
+      for (const resposta of respostas) {
+        if (
+          resposta.RespostaPontosObtidos !== null &&
+          resposta.RespostaPontosObtidos > novoMaximo &&
+          resposta.RespostaAvaliadoPorCPF
+        ) {
+          await this.#respostaDAO.gradeDiscursiva(resposta.RespostaGUID, novoMaximo, resposta.RespostaAvaliadoPorCPF);
+        }
+      }
+    }
+
+    const tarefaMatriculaGUIDs = [...new Set(respostas.map((r) => r.TarefaMatriculaGUID))];
+    for (const guid of tarefaMatriculaGUIDs) {
+      await this.#tentarSettleTarefaLista(guid);
+    }
   };
 
   /** Professor exclui uma questão — bloqueado se já existir resposta registrada. */
@@ -1815,19 +1860,31 @@ export default class TarefaAcademicaService {
    * dependem do professor). TarefaAvaliadoPorCPF reflete correção humana se
    * alguma discursiva foi corrigida por um professor, senão fica null
    * (mantém o sinal canônico usado pelo scheduler/board).
+   *
+   * Notifica só na TRANSIÇÃO (false→true / null→definida), lendo o estado
+   * anterior antes de recalcular — sem isso, toda chamada subsequente (ex.:
+   * professor reabre/re-corrige uma discursiva já fechada, ou o ponto máximo
+   * de uma questão é editado depois — ver #recalcularAposMudarPontosMaximos)
+   * dispararia notificação de novo pro mesmo evento.
    */
   #tentarSettleTarefaLista = async (TarefaMatriculaGUID: string): Promise<void> => {
+    const atribuicaoAntes = await this.#tarefaMatriculaDAO.findById(TarefaMatriculaGUID);
+    if (!atribuicaoAntes) return;
+
     const agregado = (await this.#respostaDAO.buscarAgregadoPorAluno([TarefaMatriculaGUID])).get(TarefaMatriculaGUID);
     if (!agregado || agregado.TotalQuestoes === 0) return;
 
     const updates: Partial<Pick<TarefaAcademicaMatricula, "TarefaFeito" | "TarefaNota" | "TarefaAvaliadoEm" | "TarefaAvaliadoPorCPF">> = {};
 
+    const vaiTerminarAgora = !atribuicaoAntes.TarefaFeito && agregado.QuestoesRespondidas >= agregado.TotalQuestoes;
     if (agregado.QuestoesRespondidas >= agregado.TotalQuestoes) {
       updates.TarefaFeito = true;
     }
 
+    const notaVaiFecharAgora = atribuicaoAntes.TarefaNota === null && agregado.QuestoesCorrigidas >= agregado.TotalQuestoes;
+    let notaFinal: number | null = null;
     if (agregado.QuestoesCorrigidas >= agregado.TotalQuestoes) {
-      const notaFinal = agregado.PontosMaximosTotal > 0
+      notaFinal = agregado.PontosMaximosTotal > 0
         ? Math.round((agregado.PontosObtidos / agregado.PontosMaximosTotal) * 1000) / 100
         : 0;
       updates.TarefaNota = notaFinal;
@@ -1835,8 +1892,39 @@ export default class TarefaAcademicaService {
       updates.TarefaAvaliadoPorCPF = await this.#respostaDAO.buscarAvaliadorHumano(TarefaMatriculaGUID);
     }
 
-    if (Object.keys(updates).length > 0) {
-      await this.#tarefaMatriculaDAO.update(TarefaMatriculaGUID, updates);
+    if (Object.keys(updates).length === 0) return;
+
+    await this.#tarefaMatriculaDAO.update(TarefaMatriculaGUID, updates);
+
+    if (!vaiTerminarAgora && !notaVaiFecharAgora) return;
+
+    const tarefa = await this.#tarefaDAO.findById(atribuicaoAntes.TarefaGUID);
+    const matricula = await this.#matriculaDAO.findById(atribuicaoAntes.MatriculaGUID);
+    if (!tarefa || !matricula) return;
+
+    // Aluno terminou de responder tudo — avisa o professor (mesmo evento
+    // "resposta recebida" já usado por marcarComoFeito/enviarAnexoEntrega).
+    if (vaiTerminarAgora) {
+      this.#notificarTarefaRespostaRecebida(tarefa, matricula.UsuarioCPF).catch((error) => {
+        console.error("🔴 TarefaAcademicaService.#tentarSettleTarefaLista() falhou ao notificar professor:", error);
+      });
+    }
+
+    // Nota fechou (última discursiva corrigida, ou lista 100% objetiva
+    // fechando na hora) — avisa o aluno, mesmo padrão de avaliarTarefa.
+    if (notaVaiFecharAgora && notaFinal !== null) {
+      const escolaGUID = await this.#resolverEscolaGUIDPorTurma(matricula.TurmaGUID);
+      if (escolaGUID) {
+        await getNotificacaoService().disparar({
+          tipoSlug: "tarefa_avaliada",
+          destinatarios: [matricula.UsuarioCPF],
+          escolaGUID,
+          titulo: `Sua tarefa "${tarefa.TarefaTitulo}" foi avaliada: nota ${notaFinal.toFixed(2)}`,
+          entidadeTipo: "tarefa",
+          entidadeGUID: tarefa.TarefaGUID,
+          link: `/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`,
+        });
+      }
     }
   };
 
@@ -2102,6 +2190,29 @@ export default class TarefaAcademicaService {
     const atualizada = await this.#respostaDAO.gradeDiscursiva(RespostaGUID, pontos, professorCPF);
     if (!atualizada) {
       throw new ErrorResponse(500, "Erro ao corrigir resposta");
+    }
+
+    // Auditoria — mesmo padrão de avaliarTarefa: registra a correção feita
+    // pelo professor (aqui por questão, já que uma lista é corrigida
+    // questão a questão, não de uma vez só).
+    const tarefaDaQuestao = await this.#tarefaDAO.findById(questao.TarefaGUID);
+    const atribuicao = await this.#tarefaMatriculaDAO.findById(resposta.TarefaMatriculaGUID);
+    if (tarefaDaQuestao && atribuicao) {
+      const matriculaDoAluno = await this.#matriculaDAO.findById(atribuicao.MatriculaGUID);
+      if (matriculaDoAluno) {
+        const escolaGUID = await this.#resolverEscolaGUIDPorTurma(matriculaDoAluno.TurmaGUID);
+        if (escolaGUID) {
+          void getAuditoriaService().registrar({
+            EscolaGUID: escolaGUID,
+            UsuarioCPFAtor: professorCPF,
+            AcaoTipo: "Update",
+            EntidadeTipo: "tarefaacademicaresposta",
+            EntidadeGUID: RespostaGUID,
+            EntidadeDescricao: `${pontos} pt(s) atribuído(s) em questão discursiva de "${tarefaDaQuestao.TarefaTitulo}"`,
+            CategoriaAuditoriaId: 2,
+          });
+        }
+      }
     }
 
     await this.#tentarSettleTarefaLista(resposta.TarefaMatriculaGUID);

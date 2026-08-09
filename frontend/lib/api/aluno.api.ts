@@ -84,37 +84,47 @@ function getAuthToken(): string {
 // ===== API FUNCTIONS =====
 
 /**
- * Criar aluno (usuário + matrícula) em uma única operação
+ * Criar aluno (usuário + matrícula) em uma única operação.
+ *
+ * `usuarioJaExiste`: quando o CPF já pertence a um usuário cadastrado na
+ * plataforma (ver `UsuarioAPI.buscarUsuarioPorCPF`, usado no formulário pra
+ * autopreencher e travar os campos), pula a criação do usuário — só
+ * vincula a matrícula. Sem isso, o passo 1 sempre falharia com "CPF já
+ * cadastrado" e a matrícula nunca seria criada.
  */
-export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string): Promise<Aluno> {
+export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string, usuarioJaExiste = false): Promise<Aluno> {
   try {
-    // 1. Criar usuário
-    const responseUsuario = await fetch(`${API_URL}/usuario`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getAuthToken()}`
-      },
-      body: JSON.stringify({
-        usuario: {
-          UsuarioCPF: dados.UsuarioCPF,
-          UsuarioNome: dados.UsuarioNome,
-          UsuarioEmail: dados.UsuarioEmail,
-          UsuarioTelefone: dados.UsuarioTelefone,
-          UsuarioDataNascimento: dados.UsuarioDataNascimento,
-          UsuarioSenha: 'senha_temporaria_gerada_automaticamente', // Será substituída pelo service
-          UsuarioStatus: 'Ativo'
+    let dataUsuario: any = null;
+
+    if (!usuarioJaExiste) {
+      // 1. Criar usuário
+      const responseUsuario = await fetch(`${API_URL}/usuario`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
         },
-        escolaNome: 'Escola' // Será buscado automaticamente pelo backend
-      })
-    });
+        body: JSON.stringify({
+          usuario: {
+            UsuarioCPF: dados.UsuarioCPF,
+            UsuarioNome: dados.UsuarioNome,
+            UsuarioEmail: dados.UsuarioEmail,
+            UsuarioTelefone: dados.UsuarioTelefone,
+            UsuarioDataNascimento: dados.UsuarioDataNascimento,
+            UsuarioSenha: 'senha_temporaria_gerada_automaticamente', // Será substituída pelo service
+            UsuarioStatus: 'Ativo'
+          },
+          escolaNome: 'Escola' // Será buscado automaticamente pelo backend
+        })
+      });
 
-    if (!responseUsuario.ok) {
-      const error = await responseUsuario.json();
-      throw new Error(error.message || 'Erro ao criar usuário');
+      if (!responseUsuario.ok) {
+        const error = await responseUsuario.json();
+        throw new Error(error.message || 'Erro ao criar usuário');
+      }
+
+      dataUsuario = await responseUsuario.json();
     }
-
-    const dataUsuario = await responseUsuario.json();
 
     // 2. Criar matrícula
     const responseMatricula = await fetch(`${API_URL}/matricula`, {
@@ -140,7 +150,25 @@ export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string): Pro
     const dataMatricula = await responseMatricula.json();
 
     return {
-      usuario: dataUsuario.data.usuario,
+      // Quando usuarioJaExiste=true não recriamos o usuário, então não há
+      // resposta de POST /api/usuario pra usar aqui — o próprio caller
+      // sempre recarrega a lista do servidor logo em seguida, então um
+      // objeto local (montado a partir do que já tínhamos) é suficiente.
+      usuario: dataUsuario
+        ? dataUsuario.data.usuario
+        : {
+            UsuarioCPF: dados.UsuarioCPF,
+            UsuarioNome: dados.UsuarioNome,
+            UsuarioEmail: dados.UsuarioEmail ?? null,
+            UsuarioId: null,
+            UsuarioTelefone: dados.UsuarioTelefone ?? null,
+            UsuarioEmailVerificado: false,
+            UsuarioDataNascimento: dados.UsuarioDataNascimento ?? null,
+            UsuarioStatus: 'Ativo',
+            UsuarioUltimoAcesso: null,
+            UsuarioCreatedAt: null,
+            UsuarioUpdatedAt: null,
+          },
       matricula: dataMatricula.data
     };
   } catch (erro: any) {

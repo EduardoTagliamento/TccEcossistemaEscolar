@@ -192,7 +192,7 @@ export default function TurmasDaMateriaPage() {
       </div>
 
       {modalEditarAberto && (
-        <div className={styles.overlay} onClick={fecharModalEditar}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitulo}>Editar Matéria</h2>
 

@@ -837,7 +837,7 @@ export default function CalendarioAlunoPage() {
       )}
 
       {modalCriarAnotacaoAberto && diaSelecionado && (
-        <div className={styles.subModalOverlay} onClick={() => setModalCriarAnotacaoAberto(false)}>
+        <div className={styles.subModalOverlay}>
           <div className={styles.subModalContent} onClick={(e) => e.stopPropagation()}>
             <h3>
               Nova anotação em {diaSelecionado.data.toLocaleDateString('pt-BR')}

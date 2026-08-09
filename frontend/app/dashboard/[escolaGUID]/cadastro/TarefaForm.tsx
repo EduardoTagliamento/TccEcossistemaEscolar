@@ -1604,6 +1604,21 @@ export default function TarefaForm({
                           >
                             <Icon name="plus" size={14} /> Adicionar alternativa
                           </button>
+                          {(() => {
+                            const correta = questao.Alternativas.find((a) => a.Correta);
+                            if (!correta) return null;
+                            const incorretaComMaisPontos = questao.Alternativas.find(
+                              (a) => !a.Correta && a.Pontos > correta.Pontos
+                            );
+                            if (!incorretaComMaisPontos) return null;
+                            return (
+                              <p className={styles.avisoAlternativa}>
+                                <Icon name="alert-triangle" size={14} /> A alternativa marcada como correta vale{' '}
+                                {correta.Pontos} pt(s), menos que uma alternativa incorreta ({incorretaComMaisPontos.Pontos} pt(s)).
+                                Confira se é isso mesmo antes de salvar.
+                              </p>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -1725,7 +1740,7 @@ export default function TarefaForm({
 
       {/* Modal de Seleção de Alunos */}
       {modalAberto && (
-        <div className={styles.modalOverlay} onClick={() => setModalAberto(false)}>
+        <div className={styles.modalOverlay}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2>Selecionar Alunos</h2>

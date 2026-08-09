@@ -12,6 +12,7 @@
 import multer, { FileFilterCallback } from 'multer';
 import { Request } from 'express';
 import ErrorResponse from '../utils/ErrorResponse';
+import { extensaoPermitida, mensagemExtensaoInvalida } from '../utils/fileValidation';
 
 // Tipos MIME permitidos (mais abrangente que logos)
 const ALLOWED_MIME_TYPES = [
@@ -29,18 +30,27 @@ const ALLOWED_MIME_TYPES = [
   'application/zip',
 ];
 
+// Extensões permitidas — checadas ALÉM do MIME type, que vem do Content-Type
+// declarado pelo cliente e é fácil de falsificar (ex.: um .exe renomeado
+// com Content-Type: image/png passaria pelo filtro de MIME sozinho).
+const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'zip'];
+
 // Tamanho máximo: 50MB
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 /**
- * Filtro de tipos permitidos
+ * Filtro de tipos permitidos (MIME type + extensão do nome do arquivo)
  */
 const fileFilter = (
   _req: Request,
   file: Express.Multer.File,
   cb: FileFilterCallback
 ) => {
-  if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+  if (!extensaoPermitida(file.originalname, ALLOWED_EXTENSIONS)) {
+    cb(new ErrorResponse(400, mensagemExtensaoInvalida(file.originalname, ALLOWED_EXTENSIONS), {
+      allowedExtensions: ALLOWED_EXTENSIONS,
+    }) as any);
+  } else if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new ErrorResponse(400, 'Tipo de arquivo não permitido', {

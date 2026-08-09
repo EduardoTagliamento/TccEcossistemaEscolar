@@ -10,6 +10,8 @@ import { Icon } from '@/components/Icon';
 
 import * as ProfessorAPI from '@/lib/api/professor.api';
 import * as EscolaAPI from '@/lib/api/escola.api';
+import * as UsuarioAPI from '@/lib/api/usuario.api';
+import { formatarCPF, limparCPF } from '@/lib/validators/cpf';
 import { useProfessores, useAlocacoesProfessor } from '@/lib/professor/useProfessorQueries';
 import {
   useCriarProfessor,
@@ -36,6 +38,13 @@ export default function ProfessoresPage() {
   const [dadosImportados, setDadosImportados] = useState<DadosPlanilha<any> | null>(null);
   const [processandoBatch, setProcessandoBatch] = useState(false);
   const [resultadoBatch, setResultadoBatch] = useState<ProfessorAPI.BatchCreateResponse | null>(null);
+
+  // CPFs da planilha que já pertencem a usuários cadastrados na plataforma —
+  // mesma checagem do formulário manual, só que em lote pra dar visibilidade
+  // no preview antes de confirmar a importação (o backend já lida bem com
+  // isso sozinho, isso aqui é só transparência pra quem está importando).
+  const [cpfsExistentes, setCpfsExistentes] = useState<Set<string>>(new Set());
+  const [verificandoExistentes, setVerificandoExistentes] = useState(false);
   const [professorEditando, setProfessorEditando] = useState<ProfessorAPI.Professor | null>(null);
   const [novaAlocacaoTurma, setNovaAlocacaoTurma] = useState('');
   const [novaAlocacaoMateria, setNovaAlocacaoMateria] = useState('');
@@ -63,6 +72,15 @@ export default function ProfessoresPage() {
   });
   const [salvandoFormulario, setSalvandoFormulario] = useState(false);
   const [erroFormulario, setErroFormulario] = useState('');
+
+  // Usuário já cadastrado na plataforma, detectado pelo CPF digitado no
+  // formulário de criação (não se aplica a edição, que já trava o CPF) —
+  // quando encontrado, autopreenche e trava os campos que já pertencem a
+  // esse cadastro (só estamos vinculando essa pessoa como professor desta
+  // escola, não recriando/editando o cadastro dela).
+  const [usuarioExistente, setUsuarioExistente] = useState<UsuarioAPI.UsuarioBusca | null>(null);
+  const [verificandoCPF, setVerificandoCPF] = useState(false);
+  const [ultimoCPFConsultado, setUltimoCPFConsultado] = useState('');
 
   const professoresQuery = useProfessores(escolaGUID);
   const professores = professoresQuery.data?.professores ?? [];
@@ -109,36 +127,44 @@ export default function ProfessoresPage() {
     {
       id: 'UsuarioCPF',
       label: 'CPF',
-      tipo: 'text',
+      tipo: 'cpf',
       obrigatorio: true,
-      placeholder: '000.000.000-00'
+      placeholder: '000.000.000-00',
+      // CPF é o identificador do usuário — editar aqui não tem efeito (a
+      // atualização usa professorEditando.UsuarioCPF, não este campo),
+      // então trava pra não sugerir que dá pra trocar.
+      desabilitado: !!professorEditando
     },
     {
       id: 'UsuarioNome',
       label: 'Nome Completo',
       tipo: 'text',
       obrigatorio: true,
-      placeholder: 'Ex: João Silva Santos'
+      placeholder: 'Ex: João Silva Santos',
+      desabilitado: !!usuarioExistente
     },
     {
       id: 'UsuarioEmail',
       label: 'Email',
       tipo: 'email',
       obrigatorio: false,
-      placeholder: 'professor@email.com'
+      placeholder: 'professor@email.com',
+      desabilitado: !!usuarioExistente
     },
     {
       id: 'UsuarioTelefone',
       label: 'Telefone',
-      tipo: 'text',
+      tipo: 'tel',
       obrigatorio: false,
-      placeholder: '(00) 00000-0000'
+      placeholder: '(00) 00000-0000',
+      desabilitado: !!usuarioExistente
     },
     {
       id: 'UsuarioDataNascimento',
       label: 'Data de Nascimento',
       tipo: 'date',
-      obrigatorio: false
+      obrigatorio: false,
+      desabilitado: !!usuarioExistente
     },
     {
       id: 'Materias',
@@ -200,6 +226,63 @@ export default function ProfessoresPage() {
   ];
 
   // Handlers
+  const limparBuscaCPF = () => {
+    setUsuarioExistente(null);
+    setUltimoCPFConsultado('');
+  };
+
+  const resetarFormulario = () => {
+    setValoresFormulario({
+      UsuarioCPF: '',
+      UsuarioNome: '',
+      UsuarioEmail: '',
+      UsuarioTelefone: '',
+      UsuarioDataNascimento: '',
+      Materias: '',
+      Turmas: ''
+    });
+    limparBuscaCPF();
+  };
+
+  // Intercepta a digitação do CPF: ao completar 11 dígitos (e só na
+  // criação — na edição o CPF já vem travado), busca se já existe um
+  // usuário cadastrado com esse CPF. Se existir, autopreenche e trava
+  // nome/email/telefone/nascimento (ver camposFormulario acima). Criar
+  // professor com um CPF já existente já é tolerado pelo backend (reaproveita
+  // o usuário e só cria o vínculo), então isso é só uma otimização de UX —
+  // não depende de mudança na chamada de criação.
+  const handleChangeFormulario = (campo: string, valor: any) => {
+    setValoresFormulario((prev) => ({ ...prev, [campo]: valor }));
+
+    if (campo !== 'UsuarioCPF' || professorEditando) return;
+
+    const cpfLimpo = limparCPF(valor);
+    if (cpfLimpo.length !== 11) {
+      if (usuarioExistente) limparBuscaCPF();
+      return;
+    }
+    if (cpfLimpo === ultimoCPFConsultado) return;
+
+    setUltimoCPFConsultado(cpfLimpo);
+    setVerificandoCPF(true);
+    UsuarioAPI.buscarUsuarioPorCPF(valor)
+      .then((encontrado) => {
+        setUsuarioExistente(encontrado);
+        setValoresFormulario((prev) => ({
+          ...prev,
+          UsuarioNome: encontrado.UsuarioNome,
+          UsuarioEmail: encontrado.UsuarioEmail || '',
+          UsuarioTelefone: encontrado.UsuarioTelefone || '',
+          UsuarioDataNascimento: encontrado.UsuarioDataNascimento || '',
+        }));
+      })
+      .catch(() => {
+        // 404 esperado — CPF ainda não cadastrado, segue o cadastro normal.
+        setUsuarioExistente(null);
+      })
+      .finally(() => setVerificandoCPF(false));
+  };
+
   const handleSubmitFormulario = async () => {
     try {
       setSalvandoFormulario(true);
@@ -218,7 +301,7 @@ export default function ProfessoresPage() {
         });
         alert('Professor atualizado com sucesso!');
       } else {
-        // Criar novo professor
+        // Criar novo professor (ou só vincular, se o CPF já pertence a um usuário existente)
         await criarProfessorMutation.mutateAsync({
           dados: {
             UsuarioCPF: valoresFormulario.UsuarioCPF,
@@ -232,20 +315,16 @@ export default function ProfessoresPage() {
           escolaGUID,
           escolaNome: escola?.EscolaNome || 'Escola',
         });
-        alert('Professor criado com sucesso! Um email foi enviado com as credenciais de acesso.');
+        alert(
+          usuarioExistente
+            ? 'Professor vinculado à escola com sucesso!'
+            : 'Professor criado com sucesso! Um email foi enviado com as credenciais de acesso.'
+        );
       }
 
       setModalAberto(false);
       setProfessorEditando(null);
-      setValoresFormulario({
-        UsuarioCPF: '',
-        UsuarioNome: '',
-        UsuarioEmail: '',
-        UsuarioTelefone: '',
-        UsuarioDataNascimento: '',
-        Materias: '',
-        Turmas: ''
-      });
+      resetarFormulario();
 
     } catch (erro: any) {
       console.error('Erro ao salvar professor:', erro);
@@ -256,6 +335,7 @@ export default function ProfessoresPage() {
   };
 
   const handleEditar = (professor: ProfessorAPI.Professor) => {
+    limparBuscaCPF();
     setProfessorEditando(professor);
     setValoresFormulario({
       UsuarioCPF: professor.UsuarioCPF,
@@ -398,9 +478,37 @@ export default function ProfessoresPage() {
     }
   };
 
+  const extrairCPFDaLinha = (linha: any): string =>
+    limparCPF(String(linha['CPF'] || linha.UsuarioCPF || linha.cpf || ''));
+
+  const verificarCPFsExistentes = async (linhas: any[]) => {
+    setVerificandoExistentes(true);
+    try {
+      const resultados = await Promise.allSettled(
+        linhas.map(async (linha) => {
+          const cpf = extrairCPFDaLinha(linha);
+          if (cpf.length !== 11) return null;
+          await UsuarioAPI.buscarUsuarioPorCPF(formatarCPF(cpf));
+          return cpf;
+        })
+      );
+      const encontrados = new Set<string>();
+      for (const resultado of resultados) {
+        if (resultado.status === 'fulfilled' && resultado.value) {
+          encontrados.add(resultado.value);
+        }
+      }
+      setCpfsExistentes(encontrados);
+    } finally {
+      setVerificandoExistentes(false);
+    }
+  };
+
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
     console.log('Dados carregados:', dados);
     setDadosImportados(dados);
+    setCpfsExistentes(new Set());
+    void verificarCPFsExistentes(dados.dados);
   };
 
   const handleSalvarImportados = async () => {
@@ -429,6 +537,7 @@ export default function ProfessoresPage() {
 
       setResultadoBatch(resultado);
       setDadosImportados(null);
+      setCpfsExistentes(new Set());
 
     } catch (erro: any) {
       console.error('Erro ao importar professores:', erro);
@@ -455,7 +564,10 @@ export default function ProfessoresPage() {
 <Icon name="upload" size={16} /> Importar Planilha
           </button>
           <button
-            onClick={() => setModalAberto(true)}
+            onClick={() => {
+              resetarFormulario();
+              setModalAberto(true);
+            }}
             className={styles.botaoNovo}
           >
             + Novo Professor
@@ -511,13 +623,36 @@ export default function ProfessoresPage() {
 
       {/* Modal: Cadastro Individual */}
       {modalAberto && (
-        <div className={styles.overlay} onClick={() => setModalAberto(false)}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            {!professorEditando && verificandoCPF && (
+              <p style={{ margin: '1.25rem 1.25rem 0', color: 'var(--slate-400)', fontSize: '0.875rem' }}>
+                Verificando CPF...
+              </p>
+            )}
+            {!professorEditando && usuarioExistente && (
+              <p
+                style={{
+                  margin: '1.25rem 1.25rem 0',
+                  padding: '0.75rem 1rem',
+                  background: 'var(--green-50)',
+                  color: 'var(--green-700)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                }}
+              >
+                <Icon name="check" size={14} /> Esse CPF já pertence a um usuário cadastrado na plataforma — dados
+                preenchidos automaticamente. Ao salvar, ele só será vinculado como professor desta escola.
+              </p>
+            )}
             <BaseFormularioCadastro
               titulo={professorEditando ? "Editar Professor" : "Novo Professor"}
               campos={camposFormularioEfetivos}
               valores={valoresFormulario}
-              onChange={(campo, valor) => setValoresFormulario({ ...valoresFormulario, [campo]: valor })}
+              onChange={handleChangeFormulario}
               onSubmit={handleSubmitFormulario}
               onCancel={() => {
                 setModalAberto(false);
@@ -526,19 +661,11 @@ export default function ProfessoresPage() {
                 setNovaAlocacaoMateria('');
                 setErroAlocacao('');
                 setAvisoConflito(null);
-                setValoresFormulario({
-                  UsuarioCPF: '',
-                  UsuarioNome: '',
-                  UsuarioEmail: '',
-                  UsuarioTelefone: '',
-                  UsuarioDataNascimento: '',
-                  Materias: '',
-                  Turmas: ''
-                });
+                resetarFormulario();
               }}
               loading={salvandoFormulario}
               erro={erroFormulario}
-              botaoTexto={professorEditando ? "Salvar Alterações" : "Criar Professor"}
+              botaoTexto={professorEditando ? "Salvar Alterações" : usuarioExistente ? "Vincular Professor" : "Criar Professor"}
             />
             {professorEditando ? (
               <div className={styles.ajuda}>
@@ -745,7 +872,7 @@ export default function ProfessoresPage() {
 
       {/* Modal: Upload de Planilha */}
       {modalUploadAberto && (
-        <div className={styles.overlay} onClick={() => setModalUploadAberto(false)}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalConteudo}>
               <h2 className={styles.modalTitulo}>Importar Professores via Planilha</h2>
@@ -765,17 +892,53 @@ export default function ProfessoresPage() {
                   <h3 className={styles.previewTitulo}>
                     <Icon name="file-text" size={18} /> Preview - {dadosImportados.dados.length} professores encontrados
                   </h3>
+                  {verificandoExistentes ? (
+                    <p className={styles.textoSecundario}>Verificando CPFs já cadastrados na plataforma...</p>
+                  ) : cpfsExistentes.size > 0 ? (
+                    <p
+                      style={{
+                        padding: '0.6rem 0.85rem',
+                        marginBottom: '0.75rem',
+                        background: 'var(--green-50)',
+                        color: 'var(--green-700)',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <Icon name="check" size={14} /> {cpfsExistentes.size} de {dadosImportados.dados.length} já{' '}
+                      {cpfsExistentes.size === 1 ? 'está cadastrado' : 'estão cadastrados'} na plataforma — serão só
+                      vinculados a esta escola, sem alterar os dados existentes.
+                    </p>
+                  ) : null}
                   <div className={styles.previewLista}>
-                    {dadosImportados.dados.slice(0, 5).map((linha: any, idx: number) => (
-                      <div key={idx} className={styles.previewItem}>
-                        <Icon name="check" size={14} /> {linha['Nome'] || linha.UsuarioNome || linha.nome} (CPF: {linha['CPF'] || linha.UsuarioCPF || linha.cpf})
-                        {(linha['Matérias'] || linha.Materias) && (
-                          <span className={styles.previewCurso}>
-                            {' '}→ Matérias: {linha['Matérias'] || linha.Materias}
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                    {dadosImportados.dados.slice(0, 5).map((linha: any, idx: number) => {
+                      const jaExiste = cpfsExistentes.has(extrairCPFDaLinha(linha));
+                      return (
+                        <div key={idx} className={styles.previewItem}>
+                          <Icon name="check" size={14} /> {linha['Nome'] || linha.UsuarioNome || linha.nome} (CPF: {linha['CPF'] || linha.UsuarioCPF || linha.cpf})
+                          {(linha['Matérias'] || linha.Materias) && (
+                            <span className={styles.previewCurso}>
+                              {' '}→ Matérias: {linha['Matérias'] || linha.Materias}
+                            </span>
+                          )}
+                          {jaExiste && (
+                            <span
+                              style={{
+                                marginLeft: '0.5rem',
+                                padding: '0.1rem 0.5rem',
+                                background: 'var(--green-50)',
+                                color: 'var(--green-700)',
+                                borderRadius: 'var(--radius-pill)',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                              }}
+                            >
+                              já cadastrado
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                     {dadosImportados.dados.length > 5 && (
                       <div className={styles.previewMais}>
                         + {dadosImportados.dados.length - 5} professores...
@@ -840,7 +1003,11 @@ export default function ProfessoresPage() {
               )}
 
               <button
-                onClick={() => setModalUploadAberto(false)}
+                onClick={() => {
+                  setModalUploadAberto(false);
+                  setDadosImportados(null);
+                  setCpfsExistentes(new Set());
+                }}
                 className={styles.botaoCancelar}
               >
                 Cancelar

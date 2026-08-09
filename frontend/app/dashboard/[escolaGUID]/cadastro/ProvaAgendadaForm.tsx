@@ -1148,7 +1148,7 @@ export default function ProvaAgendadaForm({
 
       {/* Modal de Seleção de Turmas */}
       {modalAberto && (
-        <div className={styles.modalOverlay} onClick={() => setModalAberto(false)}>
+        <div className={styles.modalOverlay}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2>Selecionar Turmas</h2>

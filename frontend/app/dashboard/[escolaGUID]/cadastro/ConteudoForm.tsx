@@ -837,7 +837,7 @@ export default function ConteudoForm({
 
       {/* Modal de Seleção de Turmas */}
       {modalTurmasAberto && (
-        <div className={styles.modalOverlay} onClick={() => setModalTurmasAberto(false)}>
+        <div className={styles.modalOverlay}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <h2>Selecionar Turmas</h2>

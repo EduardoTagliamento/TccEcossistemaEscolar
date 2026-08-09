@@ -34,6 +34,8 @@ import { calendarioRoutes } from "../routes/calendario.routes";
 import { pendenciaRoutes } from "../routes/pendencia.routes";
 import { eventoRoutes } from "../routes/evento.routes";
 import { anotacaoRouterFactory } from "../routes/anotacao.routes";
+import { avisoRouterFactory } from "../routes/aviso.routes";
+import { sugestaoRouterFactory } from "../routes/sugestao.routes";
 import { grupoTarefaRoutes } from "../routes/grupotarefa.routes";
 import { conviteGrupoTarefaRoutes } from "../routes/convitegrupotarefa.routes";
 import { projetoRoutes } from "../routes/projeto.routes";
@@ -470,6 +472,14 @@ export default class Server {
     const anotacaoRouter = anotacaoRouterFactory();
     this.#app.use("/api/anotacao", anotacaoRouter);
     console.log("✅ Rotas de Anotação registradas em /api/anotacao");
+
+    // 📢 Rotas de Aviso
+    this.#app.use("/api/aviso", avisoRouterFactory());
+    console.log("✅ Rotas de Aviso registradas em /api/aviso");
+
+    // 💡 Rotas de Sugestão (módulo temporário, beta com grupo pequeno)
+    this.#app.use("/api/sugestao", sugestaoRouterFactory());
+    console.log("✅ Rotas de Sugestão registradas em /api/sugestao");
 
     // 👥 Rotas de Grupo Tarefa
     this.#app.use("/api/grupotarefa", grupoTarefaRoutes());
