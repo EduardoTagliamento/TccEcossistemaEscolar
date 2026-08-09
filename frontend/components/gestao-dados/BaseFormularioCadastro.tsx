@@ -1,4 +1,6 @@
 import React from 'react';
+import { formatarCPF, validarCPF } from '@/lib/validators/cpf';
+import { formatarTelefone, validarTelefone } from '@/lib/validators/telefone';
 import styles from './BaseFormularioCadastro.module.css';
 
 export interface CampoFormulario {
@@ -8,8 +10,13 @@ export interface CampoFormulario {
   obrigatorio?: boolean;
   placeholder?: string;
   opcoes?: { valor: string; label: string }[]; // Para campos tipo 'select'
-  mascara?: string; // Para campos tipo 'cpf', 'tel', etc
+  desabilitado?: boolean; // Ex.: CPF ao editar um registro existente (identificador, não deve mudar)
 }
+
+const MASCARAS: Partial<Record<CampoFormulario['tipo'], { formatar: (v: string) => string; validar: (v: string) => boolean; maxLength: number }>> = {
+  cpf: { formatar: formatarCPF, validar: validarCPF, maxLength: 14 },
+  tel: { formatar: formatarTelefone, validar: validarTelefone, maxLength: 15 },
+};
 
 interface BaseFormularioCadastroProps {
   titulo: string;
@@ -47,7 +54,18 @@ export default function BaseFormularioCadastro({
       alert(`Campos obrigatórios não preenchidos: ${camposVazios.join(', ')}`);
       return;
     }
-    
+
+    // Validar formato dos campos com máscara (CPF, telefone) — só quando preenchidos,
+    // já que a checagem de obrigatoriedade acima cobre o caso de campo vazio.
+    const camposFormatoInvalido = campos
+      .filter((c) => valores[c.id] && MASCARAS[c.tipo] && !MASCARAS[c.tipo]!.validar(valores[c.id]))
+      .map((c) => c.label);
+
+    if (camposFormatoInvalido.length > 0) {
+      alert(`Campos com formato inválido: ${camposFormatoInvalido.join(', ')}`);
+      return;
+    }
+
     onSubmit();
   };
 
@@ -62,6 +80,7 @@ export default function BaseFormularioCadastro({
             value={valor}
             onChange={(e) => onChange(campo.id, e.target.value)}
             required={campo.obrigatorio}
+            disabled={campo.desabilitado}
             className={styles.input}
           >
             <option value="">Selecione...</option>
@@ -84,18 +103,22 @@ export default function BaseFormularioCadastro({
           />
         );
 
-      default:
+      default: {
+        const mascara = MASCARAS[campo.tipo];
         return (
           <input
             type={campo.tipo === 'cpf' ? 'text' : campo.tipo}
             id={campo.id}
             value={valor}
-            onChange={(e) => onChange(campo.id, e.target.value)}
+            onChange={(e) => onChange(campo.id, mascara ? mascara.formatar(e.target.value) : e.target.value)}
             placeholder={campo.placeholder}
             required={campo.obrigatorio}
+            disabled={campo.desabilitado}
+            maxLength={mascara?.maxLength}
             className={styles.input}
           />
         );
+      }
     }
   };
 

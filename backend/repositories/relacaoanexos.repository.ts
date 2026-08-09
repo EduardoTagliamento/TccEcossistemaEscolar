@@ -127,6 +127,30 @@ export class RelacaoAnexosDAO {
   }
 
   /**
+   * Vincular anexo a aviso (unidirecional, sem AnexoTipo — mesmo formato de vincularAnexoEvento).
+   * `relacaoanexosaviso` não faz parte da tabela pivot unificada `RelacaoAnexos`
+   * (que só tem colunas pra Tarefa/Pendência/Evento), então não há um shape
+   * comum pra devolver aqui — quem chama não precisa do vínculo criado de volta.
+   */
+  async vincularAnexoAviso(anexoGUID: string, avisoGUID: string): Promise<void> {
+    console.log("🟢 RelacaoAnexosDAO.vincularAnexoAviso()");
+
+    const { v4: uuidv4 } = await import("uuid");
+    const relacaoGUID = uuidv4();
+
+    const query = `
+      INSERT INTO relacaoanexosaviso (
+        RelacaoAnexoAvisoGUID,
+        AnexoGUID,
+        AvisoGUID
+      ) VALUES (?, ?, ?)
+    `;
+
+    const pool = await this.#database.getPool();
+    await pool.execute<ResultSetHeader>(query, [relacaoGUID, anexoGUID, avisoGUID]);
+  }
+
+  /**
    * Buscar anexos de uma tarefa acadêmica
    */
   async findAnexosByTarefa(tarefaGUID: string): Promise<Anexo[]> {
@@ -208,9 +232,36 @@ export class RelacaoAnexosDAO {
   }
 
   /**
+   * Buscar anexos de um aviso
+   */
+  async findAnexosByAviso(avisoGUID: string): Promise<Anexo[]> {
+    console.log("🟢 RelacaoAnexosDAO.findAnexosByAviso()");
+
+    const query = `
+      SELECT
+        a.AnexoGUID,
+        a.UsuarioCPF,
+        a.EscolaGUID,
+        a.AnexoCaminho,
+        a.AnexoNomeOriginal,
+        a.AnexoTamanho,
+        a.CreatedAt
+      FROM anexo a
+      JOIN relacaoanexosaviso ra ON ra.AnexoGUID = a.AnexoGUID
+      WHERE ra.AvisoGUID = ?
+      ORDER BY a.CreatedAt ASC
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [avisoGUID]);
+
+    return (rows as any[]).map((row: any) => this.#mapRowToAnexo(row));
+  }
+
+  /**
    * Remover vínculo entre anexo e recurso.
    * O GUID de vínculo é único globalmente (uuidv4), mas pode estar em
-   * qualquer uma das 3 tabelas de recurso — tenta nas três.
+   * qualquer uma das 4 tabelas de recurso — tenta nas quatro.
    */
   async delete(relacaoGUID: string): Promise<boolean> {
     console.log("🟢 RelacaoAnexosDAO.delete()");
@@ -237,8 +288,16 @@ export class RelacaoAnexosDAO {
       "DELETE FROM relacaoanexosevento WHERE RelacaoAnexoEventoGUID = ?",
       [relacaoGUID]
     );
+    if (resultEvento.affectedRows > 0) {
+      return true;
+    }
 
-    return resultEvento.affectedRows > 0;
+    const [resultAviso] = await pool.execute<ResultSetHeader>(
+      "DELETE FROM relacaoanexosaviso WHERE RelacaoAnexoAvisoGUID = ?",
+      [relacaoGUID]
+    );
+
+    return resultAviso.affectedRows > 0;
   }
 
   /**

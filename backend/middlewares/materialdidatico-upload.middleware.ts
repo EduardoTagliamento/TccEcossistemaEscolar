@@ -9,13 +9,23 @@
 import multer, { FileFilterCallback } from "multer";
 import { Request } from "express";
 import ErrorResponse from "../utils/ErrorResponse";
+import { extensaoPermitida, mensagemExtensaoInvalida } from "../utils/fileValidation";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+// Extensões permitidas — checadas ALÉM do MIME type, que vem do Content-Type
+// declarado pelo cliente e é fácil de falsificar.
+const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB por página
 const MAX_PAGINAS_POR_UPLOAD = 50;
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-  if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+  if (!extensaoPermitida(file.originalname, ALLOWED_EXTENSIONS)) {
+    cb(
+      new ErrorResponse(400, mensagemExtensaoInvalida(file.originalname, ALLOWED_EXTENSIONS), {
+        allowedExtensions: ALLOWED_EXTENSIONS,
+      }) as any
+    );
+  } else if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(

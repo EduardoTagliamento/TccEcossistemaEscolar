@@ -10,6 +10,9 @@
   --green-500: #17C077;
   --green-600: #12A063;
   --green-700: #0E7D4E;
+  --gold-500: #FFC02E;
+  --gold-50: #FFF7E0;
+  --gold-700: #8A6A00;
   --ink-900: #0F1D17;
   --slate-600: #46564D;
   --slate-500: #647268;
@@ -52,6 +55,9 @@
   --green-500: #22D488;
   --green-600: #17C077;
   --green-700: #12A063;
+  --gold-500: #FFCB52;
+  --gold-50: #3A2C0A;
+  --gold-700: #FFD98A;
   --ink-900: #F3F7F4;
   --slate-600: #C7D2CB;
   --slate-500: #93A398;
@@ -265,6 +271,72 @@
   font-size: 15px;
 }
 
+/* ---- Aviso em destaque (banner grande, some após a 1ª visualização) ---- */
+.avisoDestaque {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: var(--radius-xl);
+  background: var(--gold-50);
+  border: 1.5px solid var(--gold-500);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.avisoDestaque:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.avisoDestaqueIcone {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gold-500);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.avisoDestaqueTexto {
+  flex: 1;
+  min-width: 0;
+}
+
+.avisoDestaqueEyebrow {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-700);
+}
+
+.avisoDestaqueTexto h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-top: 4px !important;
+  color: var(--ink-900);
+}
+
+.avisoDestaqueTexto p {
+  margin-top: 4px;
+  color: var(--slate-600);
+  font-size: 0.9375rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avisoDestaqueSeta {
+  flex-shrink: 0;
+  color: var(--gold-700);
+}
+
 /* ---- Atalho visual "Minhas Matérias" (capa/cor de cada matéria/turma) ---- */
 .materiasAtalhoSection {
   background: var(--white);
@@ -383,5 +455,15 @@ a.widgetItem:hover {
 
   .bannerTitle {
     font-size: 22px;
+  }
+
+  .avisoDestaque {
+    flex-direction: column;
+    text-align: center;
+    padding: 18px;
+  }
+
+  .avisoDestaqueTexto p {
+    white-space: normal;
   }
 }

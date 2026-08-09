@@ -32,7 +32,7 @@ const TITULOS: Record<ItemCategoria['Tipo'], string> = {
 
 export default function EditarItemModal({ item, onFechar, onAtualizado }: EditarItemModalProps) {
   return (
-    <div className={styles.overlay} onClick={onFechar}>
+    <div className={styles.overlay}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <h2 className={styles.titulo}>{TITULOS[item.Tipo]}</h2>

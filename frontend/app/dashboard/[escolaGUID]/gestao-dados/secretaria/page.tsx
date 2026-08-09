@@ -87,7 +87,9 @@ export default function SecretariaPage() {
       setBuscando(true);
       setErroBusca('');
       setUsuarioEncontrado(null);
-      const usuarioEntrado = await UsuarioAPI.buscarUsuarioPorCPF(cpfLimpo);
+      // GET /api/usuario/:UsuarioCPF exige o CPF já formatado (XXX.XXX.XXX-XX) —
+      // cpfLimpo é só dígitos, usado pra validar o dígito verificador acima.
+      const usuarioEntrado = await UsuarioAPI.buscarUsuarioPorCPF(formatarCPF(cpfLimpo));
       setUsuarioEncontrado(usuarioEntrado);
     } catch (erro: any) {
       console.error('Erro ao buscar usuário por CPF:', erro);
@@ -266,7 +268,7 @@ export default function SecretariaPage() {
       />
 
       {modalAberto && (
-        <div className={styles.overlay} onClick={fecharModal}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalConteudo}>
               <h2 className={styles.modalTitulo}>Adicionar à Secretaria</h2>
@@ -319,7 +321,7 @@ export default function SecretariaPage() {
 
       {/* Modal: Importar via Planilha */}
       {modalUploadAberto && (
-        <div className={styles.overlay} onClick={fecharModalUpload}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalConteudo}>
               <h2 className={styles.modalTitulo}>Importar Secretaria via Planilha</h2>

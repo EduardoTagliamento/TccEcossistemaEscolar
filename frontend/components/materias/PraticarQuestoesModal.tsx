@@ -47,7 +47,7 @@ export default function PraticarQuestoesModal({ subMateriaGlobalGUID, onFechar }
   }, [subMateriaGlobalGUID, dificuldade, vestibularGUID]);
 
   return (
-    <div className={styles.overlay} onClick={onFechar}>
+    <div className={styles.overlay}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <h2><Icon name="edit" size={18} /> Praticar</h2>

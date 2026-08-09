@@ -4,6 +4,7 @@ import { ChatUIProvider } from '@/lib/chat/ChatUIContext';
 import DashboardNavbar from './_components/DashboardNavbar';
 import MinimizedChatBubble from './_components/MinimizedChatBubble';
 import NotificacaoToastListener from './_components/NotificacaoToastListener';
+import SugestaoFlutuante from './_components/SugestaoFlutuante';
 
 /**
  * Layout compartilhado por todas as rotas de `/dashboard/[escolaGUID]/**`.
@@ -23,6 +24,9 @@ import NotificacaoToastListener from './_components/NotificacaoToastListener';
  * - `NotificacaoToastListener`: mostra um toast em tempo real (WebSocket
  *   `notificacao:nova`) em qualquer tela do dashboard, não só quando o sino
  *   está aberto — ver _components/NotificacaoToastListener.tsx.
+ * - `SugestaoFlutuante`: botão "?" flutuante — módulo TEMPORÁRIO pro teste
+ *   com um grupo pequeno de usuários, ver
+ *   backend/database/migrations/2026-08-09-sugestao.sql.
  * - Carrega a tipografia da marca Bauá (Poppins/Figtree/Baloo 2) como CSS
  *   Variables no wrapper, disponíveis pra qualquer página filha que
  *   referencie `var(--font-display)`/`var(--font-body)`/`var(--font-wordmark)`.
@@ -57,6 +61,7 @@ export default function DashboardEscolaLayout({ children }: { children: React.Re
           {children}
           <MinimizedChatBubble />
           <NotificacaoToastListener />
+          <SugestaoFlutuante />
         </div>
       </ChatUIProvider>
     </SocketProvider>

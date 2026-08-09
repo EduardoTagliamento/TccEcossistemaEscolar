@@ -166,7 +166,9 @@ export default function CoordenacaoPage() {
       setBuscando(true);
       setErroBusca('');
       setUsuarioEncontrado(null);
-      const usuarioEntrado = await UsuarioAPI.buscarUsuarioPorCPF(cpfLimpo);
+      // GET /api/usuario/:UsuarioCPF exige o CPF já formatado (XXX.XXX.XXX-XX) —
+      // cpfLimpo é só dígitos, usado pra validar o dígito verificador acima.
+      const usuarioEntrado = await UsuarioAPI.buscarUsuarioPorCPF(formatarCPF(cpfLimpo));
       setUsuarioEncontrado(usuarioEntrado);
     } catch (erro: any) {
       console.error('Erro ao buscar usuário por CPF:', erro);
@@ -426,7 +428,7 @@ export default function CoordenacaoPage() {
 
       {/* Modal: Adicionar à Coordenação */}
       {modalAberto && (
-        <div className={styles.overlay} onClick={fecharModal}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalConteudo}>
               <h2 className={styles.modalTitulo}>Adicionar à Coordenação</h2>
@@ -479,7 +481,7 @@ export default function CoordenacaoPage() {
 
       {/* Modal: Tornar Direção (type-to-confirm com o nome da escola) */}
       {modalDirecaoAberto && candidatoDirecao && (
-        <div className={styles.overlay} onClick={fecharModalDirecao}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalConteudo}>
               <h2 className={styles.modalTitulo}>Tornar Direção</h2>
@@ -525,7 +527,7 @@ export default function CoordenacaoPage() {
 
       {/* Modal: Importar via Planilha */}
       {modalUploadAberto && (
-        <div className={styles.overlay} onClick={fecharModalUpload}>
+        <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalConteudo}>
               <h2 className={styles.modalTitulo}>Importar Coordenação via Planilha</h2>

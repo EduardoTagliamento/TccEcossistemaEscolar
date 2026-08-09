@@ -368,6 +368,22 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     }
   };
 
+  const handleSelecionarArquivoEntrega = (arquivo: File | null) => {
+    if (!arquivo) {
+      setArquivoEntrega(null);
+      return;
+    }
+    if (arquivo.size > AnexoAPI.ANEXO_TAMANHO_MAXIMO_BYTES) {
+      alert('Arquivo maior que o limite permitido (50MB).');
+      return;
+    }
+    if (!AnexoAPI.ANEXO_MIME_TYPES_PERMITIDOS.includes(arquivo.type)) {
+      alert('Tipo de arquivo não permitido.');
+      return;
+    }
+    setArquivoEntrega(arquivo);
+  };
+
   const enviarEntregaDigital = async () => {
     const minhaAtribuicao = tarefaDetalhe?.MatriculasAtribuidas?.[0];
     if (!arquivoEntrega || !minhaAtribuicao) return;
@@ -984,60 +1000,76 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
               );
             })()}
 
-            {!ehProfessor && item.Tipo !== 'tarefa_lista' && (
-              <div className={styles.acoesAluno}>
-                {item.Tipo === 'tarefa_presencial' ? (
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaFeito)}
-                      onChange={(e) => marcarTarefaFeita(e.target.checked)}
-                    />
-                    Marcar como concluída
-                  </label>
-                ) : (
-                  <div className={styles.entregaDigital}>
-                    {tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaFeito && (
-                      <p className={styles.statusEntregue}>
-                        <Icon name="check-circle" size={16} /> Entregue
-                        {tarefaDetalhe.MatriculasAtribuidas[0].TarefaRealizacaoData &&
-                          ` em ${new Date(tarefaDetalhe.MatriculasAtribuidas[0].TarefaRealizacaoData).toLocaleString('pt-BR')}`}
-                      </p>
-                    )}
-                    {(tarefaDetalhe.MatriculasAtribuidas?.[0]?.AnexosEntrega || []).map((anexo: any) => (
-                      <button
-                        key={anexo.AnexoGUID}
-                        type="button"
-                        className={styles.anexoEntregado}
-                        onClick={() => AnexoAPI.baixarAnexo(anexo.AnexoGUID, anexo.AnexoNomeOriginal || undefined)}
-                      >
-                        <Icon name="paperclip" size={14} /> {anexo.AnexoNomeOriginal || 'Arquivo enviado'}
-                      </button>
-                    ))}
-                    <label className={styles.inputArquivo}>
-                      <Icon name="paperclip" size={16} />
-                      {arquivoEntrega ? arquivoEntrega.name : 'Escolher arquivo'}
+            {!ehProfessor && item.Tipo !== 'tarefa_lista' && (() => {
+              const minhaAtribuicaoAluno = tarefaDetalhe.MatriculasAtribuidas?.[0];
+              const prazoEfetivoAluno = new Date(minhaAtribuicaoAluno?.TarefaPrazoData || tarefaDetalhe.TarefaPrazoData);
+              const tarefaAtrasadaParaAluno = !minhaAtribuicaoAluno?.TarefaFeito && prazoEfetivoAluno < new Date();
+
+              return (
+                <div className={styles.acoesAluno}>
+                  {tarefaAtrasadaParaAluno && (
+                    <p className={styles.hintFuturo}>
+                      <Icon name="alert-triangle" size={14} /> O prazo desta tarefa venceu em{' '}
+                      {prazoEfetivoAluno.toLocaleString('pt-BR')}.{' '}
+                      {item.Tipo === 'tarefa_presencial'
+                        ? 'Marque como concluída assim que possível — a entrega ficará registrada como atrasada.'
+                        : 'Você ainda pode enviar, mas a entrega ficará registrada como atrasada.'}
+                    </p>
+                  )}
+                  {item.Tipo === 'tarefa_presencial' ? (
+                    <label className={styles.checkboxLabel}>
                       <input
-                        type="file"
-                        onChange={(e) => setArquivoEntrega(e.target.files?.[0] || null)}
-                        hidden
+                        type="checkbox"
+                        checked={Boolean(tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaFeito)}
+                        onChange={(e) => marcarTarefaFeita(e.target.checked)}
                       />
+                      Marcar como concluída
                     </label>
-                    <button
-                      className={styles.botaoEnviarEntrega}
-                      disabled={!arquivoEntrega || enviandoEntrega}
-                      onClick={enviarEntregaDigital}
-                    >
-                      {enviandoEntrega
-                        ? 'Enviando...'
-                        : tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaFeito
-                          ? 'Enviar outro arquivo'
-                          : 'Enviar e concluir'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <div className={styles.entregaDigital}>
+                      {tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaFeito && (
+                        <p className={styles.statusEntregue}>
+                          <Icon name="check-circle" size={16} /> Entregue
+                          {tarefaDetalhe.MatriculasAtribuidas[0].TarefaRealizacaoData &&
+                            ` em ${new Date(tarefaDetalhe.MatriculasAtribuidas[0].TarefaRealizacaoData).toLocaleString('pt-BR')}`}
+                        </p>
+                      )}
+                      {(tarefaDetalhe.MatriculasAtribuidas?.[0]?.AnexosEntrega || []).map((anexo: any) => (
+                        <button
+                          key={anexo.AnexoGUID}
+                          type="button"
+                          className={styles.anexoEntregado}
+                          onClick={() => AnexoAPI.baixarAnexo(anexo.AnexoGUID, anexo.AnexoNomeOriginal || undefined)}
+                        >
+                          <Icon name="paperclip" size={14} /> {anexo.AnexoNomeOriginal || 'Arquivo enviado'}
+                        </button>
+                      ))}
+                      <label className={styles.inputArquivo}>
+                        <Icon name="paperclip" size={16} />
+                        {arquivoEntrega ? arquivoEntrega.name : 'Escolher arquivo'}
+                        <input
+                          type="file"
+                          accept={AnexoAPI.ANEXO_MIME_TYPES_PERMITIDOS.join(',')}
+                          onChange={(e) => handleSelecionarArquivoEntrega(e.target.files?.[0] || null)}
+                          hidden
+                        />
+                      </label>
+                      <button
+                        className={styles.botaoEnviarEntrega}
+                        disabled={!arquivoEntrega || enviandoEntrega}
+                        onClick={enviarEntregaDigital}
+                      >
+                        {enviandoEntrega
+                          ? 'Enviando...'
+                          : tarefaDetalhe.MatriculasAtribuidas?.[0]?.TarefaFeito
+                            ? 'Enviar outro arquivo'
+                            : 'Enviar e concluir'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {ehProfessor && (() => {
               const alunos: any[] = tarefaDetalhe.MatriculasAtribuidas || [];

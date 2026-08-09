@@ -14,6 +14,7 @@
 import multer, { FileFilterCallback } from 'multer';
 import { Request } from 'express';
 import ErrorResponse from '../utils/ErrorResponse';
+import { extensaoPermitida, mensagemExtensaoInvalida } from '../utils/fileValidation';
 
 const ALLOWED_CRONOMETRADO_MIME_TYPES = [
   'video/mp4',
@@ -38,14 +39,24 @@ const ALLOWED_PAGINADO_MIME_TYPES = [
   'image/gif',
 ];
 
+// Extensões permitidas — checadas ALÉM do MIME type, que vem do Content-Type
+// declarado pelo cliente e é fácil de falsificar.
+const ALLOWED_CRONOMETRADO_EXTENSIONS = ['mp4', 'webm', 'mov', 'mp3', 'm4a', 'wav'];
+const ALLOWED_PAGINADO_EXTENSIONS = ['pdf', 'pptx', 'ppt', 'docx', 'doc', 'jpg', 'jpeg', 'png', 'webp', 'gif'];
+
 // Vídeo pode ser grande; limite generoso mas finito (upload direto, sem envio em partes)
 const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150MB
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-  const tiposPermitidos =
-    file.fieldname === 'arquivo' ? ALLOWED_CRONOMETRADO_MIME_TYPES : ALLOWED_PAGINADO_MIME_TYPES;
+  const ehCronometrado = file.fieldname === 'arquivo';
+  const tiposPermitidos = ehCronometrado ? ALLOWED_CRONOMETRADO_MIME_TYPES : ALLOWED_PAGINADO_MIME_TYPES;
+  const extensoesPermitidas = ehCronometrado ? ALLOWED_CRONOMETRADO_EXTENSIONS : ALLOWED_PAGINADO_EXTENSIONS;
 
-  if (tiposPermitidos.includes(file.mimetype)) {
+  if (!extensaoPermitida(file.originalname, extensoesPermitidas)) {
+    cb(new ErrorResponse(400, mensagemExtensaoInvalida(file.originalname, extensoesPermitidas), {
+      allowedExtensions: extensoesPermitidas,
+    }) as any);
+  } else if (tiposPermitidos.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new ErrorResponse(400, 'Tipo de arquivo inválido', {

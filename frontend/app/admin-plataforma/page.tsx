@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { Icon } from '@/components/Icon';
 import * as MateriaGlobalAPI from '@/lib/api/materiaglobal.api';
 import * as QuestaoBancoAPI from '@/lib/api/questaobanco.api';
+import * as SugestaoAPI from '@/lib/api/sugestao.api';
 import styles from './page.module.css';
 
 const DIFICULDADES: QuestaoBancoAPI.QuestaoBancoDificuldade[] = ['Facil', 'Media', 'Dificil'];
@@ -36,6 +37,31 @@ export default function AdminPlataformaPage() {
   }, [authLoading, usuario, router]);
 
   const ehAdmin = !!usuario?.UsuarioIsPlataformaAdmin;
+
+  // ---- Sugestões (módulo temporário, beta com grupo pequeno) ----
+  const [sugestoes, setSugestoes] = useState<SugestaoAPI.Sugestao[]>([]);
+  const [carregandoSugestoes, setCarregandoSugestoes] = useState(true);
+
+  const carregarSugestoes = async () => {
+    try {
+      setCarregandoSugestoes(true);
+      setSugestoes(await SugestaoAPI.listarSugestoes());
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao carregar sugestões');
+    } finally {
+      setCarregandoSugestoes(false);
+    }
+  };
+
+  const handleExcluirSugestao = async (guid: string) => {
+    if (!confirm('Excluir esta sugestão?')) return;
+    try {
+      await SugestaoAPI.excluirSugestao(guid);
+      setSugestoes((prev) => prev.filter((s) => s.SugestaoGUID !== guid));
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao excluir sugestão');
+    }
+  };
 
   // ---- Fila de MateriaGlobal Pendente ----
   const [pendentes, setPendentes] = useState<MateriaGlobalAPI.MateriaGlobal[]>([]);
@@ -107,6 +133,7 @@ export default function AdminPlataformaPage() {
 
   useEffect(() => {
     if (!ehAdmin) return;
+    void carregarSugestoes();
     void carregarFila();
     void carregarBanco();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,6 +254,35 @@ export default function AdminPlataformaPage() {
     <div className={styles.container}>
       <h1 className={styles.titulo}><Icon name="database" size={22} /> Administração de Plataforma</h1>
       <p className={styles.subtitulo}>Banco de questões universal e taxonomia global — Recomendação de Estudos por IA</p>
+
+      <section className={styles.secao}>
+        <h2 className={styles.secaoTitulo}>
+          <Icon name="mail" size={18} /> Sugestões dos usuários ({sugestoes.length})
+        </h2>
+        <p className={styles.hint}>Módulo temporário — botão "?" flutuante no dashboard, pro teste com o grupo pequeno.</p>
+        {carregandoSugestoes ? (
+          <p>Carregando...</p>
+        ) : sugestoes.length === 0 ? (
+          <p className={styles.hint}>Nenhuma sugestão recebida ainda.</p>
+        ) : (
+          <ul className={styles.listaQuestoes}>
+            {sugestoes.map((s) => (
+              <li key={s.SugestaoGUID} className={styles.itemQuestao}>
+                <div>
+                  <p className={styles.hint}>
+                    {s.UsuarioNome || s.UsuarioEmail || s.UsuarioCPF} · {new Date(s.SugestaoCreatedAt).toLocaleString('pt-BR')}
+                    {s.SugestaoPaginaUrl && ` · ${s.SugestaoPaginaUrl}`}
+                  </p>
+                  <p>{s.SugestaoTexto}</p>
+                </div>
+                <button type="button" onClick={() => handleExcluirSugestao(s.SugestaoGUID)}>
+                  <Icon name="trash" size={16} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className={styles.secao}>
         <h2 className={styles.secaoTitulo}>

@@ -28,7 +28,7 @@ export async function listarGruposDaTarefa(tarefaGUID: string): Promise<GrupoTar
     throw new Error(result.error || result.message || 'Erro ao listar grupos');
   }
 
-  return result.data;
+  return result.data?.grupos || [];
 }
 
 // READ - Buscar grupo com membros
@@ -43,7 +43,7 @@ export async function buscarGrupoComMembros(grupoGUID: string): Promise<GrupoTar
     throw new Error(result.error || result.message || 'Erro ao buscar grupo');
   }
 
-  return result.data;
+  return result.data.grupo;
 }
 
 // UPDATE - Atualizar nome do grupo (só líder)

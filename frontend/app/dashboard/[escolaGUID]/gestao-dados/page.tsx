@@ -40,6 +40,7 @@ const MODULOS_BASE: Modulo[] = [
   { id: 'professores', nome: 'Professores', descricao: 'Gerencie corpo docente', icone: 'award' },
   { id: 'secretaria', nome: 'Secretaria', descricao: 'Gerencie a equipe de secretaria', icone: 'file-text' },
   { id: 'coordenacao', nome: 'Coordenação', descricao: 'Gerencie a coordenação', icone: 'star' },
+  { id: 'avisos', nome: 'Avisos', descricao: 'Publique comunicados para a escola', icone: 'bell' },
 ];
 
 export default function GestaoDadosPage() {
@@ -49,6 +50,7 @@ export default function GestaoDadosPage() {
   const [modulos, setModulos] = useState<Modulo[]>(MODULOS_BASE);
   const [loading, setLoading] = useState(true);
   const [ehDirecaoAtiva, setEhDirecaoAtiva] = useState(false);
+  const [podePublicarAvisos, setPodePublicarAvisos] = useState(false);
 
   useEffect(() => {
     if (escolaGUID && usuario) {
@@ -80,6 +82,9 @@ export default function GestaoDadosPage() {
         .map((funcao) => funcao.FuncaoId);
 
       setEhDirecaoAtiva(funcoesAtivas.includes(FUNCAO_ID_DIRECAO));
+      setPodePublicarAvisos(
+        funcoesAtivas.some((f) => [FUNCAO_ID_COORDENACAO, FUNCAO_ID_SECRETARIA, FUNCAO_ID_DIRECAO].includes(f))
+      );
     } catch (error) {
       console.error('Erro ao verificar função de Direção:', error);
     }
@@ -148,6 +153,7 @@ export default function GestaoDadosPage() {
         <div className={styles.grid}>
           {modulos
             .filter((modulo) => modulo.id !== 'coordenacao' || ehDirecaoAtiva)
+            .filter((modulo) => modulo.id !== 'avisos' || podePublicarAvisos)
             .map((modulo) => (
             <Link
               key={modulo.id}

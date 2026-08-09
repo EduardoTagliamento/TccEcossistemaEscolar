@@ -14,8 +14,9 @@ export const CriarAnotacaoBodySchema = z.object({
     .refine((v) => v.trim().length > 0, "AnotacaoTitulo não pode ser vazio")
     .refine((v) => v.length <= 256, "AnotacaoTitulo não pode exceder 256 caracteres"),
   AnotacaoDescricao: z
-    .string({ message: "AnotacaoDescricao deve ser uma string" })
+    .string({ message: "AnotacaoDescricao deve ser string ou null" })
     .max(2048, "AnotacaoDescricao não pode exceder 2048 caracteres")
+    .nullable()
     .optional(),
 });
 

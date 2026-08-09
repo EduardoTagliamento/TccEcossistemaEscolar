@@ -133,6 +133,25 @@ export class TarefaAcademicaMatriculaDAO {
   };
 
   /**
+   * Buscar atribuição pelo próprio GUID — usado pra ler o estado ANTES de
+   * recalcular (TarefaFeito/TarefaNota), pra detectar transição e não
+   * notificar de novo em toda chamada subsequente de settle.
+   */
+  findById = async (TarefaMatriculaGUID: string): Promise<TarefaAcademicaMatricula | null> => {
+    console.log("🟢 TarefaAcademicaMatriculaDAO.findById()");
+
+    const SQL = "SELECT * FROM tarefaacademica_matricula WHERE TarefaMatriculaGUID = ? LIMIT 1;";
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<TarefaAcademicaMatriculaRow[]>(SQL, [TarefaMatriculaGUID]);
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    return this.mapRowToEntity(rows[0]);
+  };
+
+  /**
    * Buscar atribuição específica (tarefa + aluno)
    */
   findByTarefaAndMatricula = async (

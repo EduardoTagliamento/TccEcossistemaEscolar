@@ -7,8 +7,10 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { usePendencias } from '@/lib/pendencia/usePendenciaQueries';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
+import * as AvisoAPI from '@/lib/api/aviso.api';
 import MateriaTurmaCard from '@/components/materias/MateriaTurmaCard';
 import Loader from '@/components/Loader';
+import { Icon } from '@/components/Icon';
 import styles from './page.module.css';
 
 interface Escola {
@@ -71,6 +73,11 @@ export default function DashboardPage() {
   const [carregandoAvisos, setCarregandoAvisos] = useState(true);
   const [erroAvisos, setErroAvisos] = useState('');
 
+  // "Grandão na home": aviso mais recente ainda não visto pelo usuário —
+  // some sozinho depois que ele abre a página de leitura (que marca a
+  // visualização no backend), sem precisar de estado de "dispensar" aqui.
+  const [avisoDestaque, setAvisoDestaque] = useState<AvisoAPI.Aviso | null>(null);
+
   const [materiasAtalho, setMateriasAtalho] = useState<MateriaAtalho[]>([]);
   const [carregandoMaterias, setCarregandoMaterias] = useState(true);
 
@@ -84,6 +91,7 @@ export default function DashboardPage() {
       buscarEscola();
       buscarFuncoesDaEscola();
       void carregarAvisos();
+      void carregarAvisoDestaque();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario, authLoading, escolaGUID]);
@@ -251,6 +259,15 @@ export default function DashboardPage() {
     }
   };
 
+  const carregarAvisoDestaque = async () => {
+    try {
+      const aviso = await AvisoAPI.buscarAvisoNaoVisualizado(escolaGUID);
+      setAvisoDestaque(aviso);
+    } catch (erro) {
+      console.error('Erro ao carregar aviso em destaque:', erro);
+    }
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className={styles.loadingContainer}>
@@ -303,6 +320,20 @@ export default function DashboardPage() {
               </p>
             </div>
           </section>
+
+          {avisoDestaque && (
+            <Link href={`/dashboard/${escolaGUID}/avisos/${avisoDestaque.AvisoGUID}`} className={styles.avisoDestaque}>
+              <div className={styles.avisoDestaqueIcone}>
+                <Icon name="bell" size={22} />
+              </div>
+              <div className={styles.avisoDestaqueTexto}>
+                <span className={styles.avisoDestaqueEyebrow}>Novo comunicado</span>
+                <h2>{avisoDestaque.AvisoTitulo}</h2>
+                <p>{avisoDestaque.AvisoConteudo}</p>
+              </div>
+              <Icon name="send" size={18} className={styles.avisoDestaqueSeta} />
+            </Link>
+          )}
 
           {(carregandoMaterias || materiasAtalho.length > 0) && (
             <section className={styles.materiasAtalhoSection}>
