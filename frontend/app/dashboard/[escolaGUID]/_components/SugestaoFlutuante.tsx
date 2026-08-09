@@ -12,6 +12,8 @@ import { useState } from 'react';
 import { usePathname, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import * as SugestaoAPI from '@/lib/api/sugestao.api';
+import * as AnexoAPI from '@/lib/api/anexo.api';
+import { Icon } from '@/components/Icon';
 import styles from './SugestaoFlutuante.module.css';
 
 export default function SugestaoFlutuante() {
@@ -23,6 +25,7 @@ export default function SugestaoFlutuante() {
 
   const [aberto, setAberto] = useState(false);
   const [texto, setTexto] = useState('');
+  const [arquivo, setArquivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState('');
@@ -32,8 +35,30 @@ export default function SugestaoFlutuante() {
   const fecharPainel = () => {
     setAberto(false);
     setTexto('');
+    setArquivo(null);
     setEnviado(false);
     setErro('');
+  };
+
+  // Mesma validação de tamanho/tipo já usada em todo o resto do sistema
+  // (ver cadastro-evento/page.tsx, pendencias/[pendenciaGUID]/page.tsx) —
+  // o backend confirma de novo (anexo-upload.middleware.ts), isso aqui é só
+  // feedback imediato.
+  const handleSelecionarArquivo = (novoArquivo: File | null) => {
+    if (!novoArquivo) {
+      setArquivo(null);
+      return;
+    }
+    if (novoArquivo.size > AnexoAPI.ANEXO_TAMANHO_MAXIMO_BYTES) {
+      setErro('Arquivo maior que o limite permitido (50MB).');
+      return;
+    }
+    if (!AnexoAPI.ANEXO_MIME_TYPES_PERMITIDOS.includes(novoArquivo.type)) {
+      setErro('Tipo de arquivo não permitido.');
+      return;
+    }
+    setErro('');
+    setArquivo(novoArquivo);
   };
 
   const handleEnviar = async () => {
@@ -41,9 +66,15 @@ export default function SugestaoFlutuante() {
     setEnviando(true);
     setErro('');
     try {
-      await SugestaoAPI.criarSugestao(texto, escolaGUID || undefined, pathname || undefined);
+      let anexoGUIDs: string[] | undefined;
+      if (arquivo) {
+        const anexo = await AnexoAPI.uploadAnexo(arquivo, escolaGUID || '');
+        anexoGUIDs = [anexo.AnexoGUID];
+      }
+      await SugestaoAPI.criarSugestao(texto, escolaGUID || undefined, pathname || undefined, anexoGUIDs);
       setEnviado(true);
       setTexto('');
+      setArquivo(null);
       setTimeout(fecharPainel, 1800);
     } catch (err: any) {
       setErro(err?.message || 'Erro ao enviar sugestão');
@@ -92,6 +123,16 @@ export default function SugestaoFlutuante() {
               rows={5}
               autoFocus
             />
+            <label className={styles.inputArquivo}>
+              <Icon name="paperclip" size={14} />
+              {arquivo ? arquivo.name : 'Anexar arquivo (opcional)'}
+              <input
+                type="file"
+                accept={AnexoAPI.ANEXO_MIME_TYPES_PERMITIDOS.join(',')}
+                onChange={(e) => handleSelecionarArquivo(e.target.files?.[0] || null)}
+                hidden
+              />
+            </label>
             {erro && <p className={styles.erro}>{erro}</p>}
             <button
               type="button"

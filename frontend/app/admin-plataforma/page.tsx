@@ -7,6 +7,7 @@ import { Icon } from '@/components/Icon';
 import * as MateriaGlobalAPI from '@/lib/api/materiaglobal.api';
 import * as QuestaoBancoAPI from '@/lib/api/questaobanco.api';
 import * as SugestaoAPI from '@/lib/api/sugestao.api';
+import * as AnexoAPI from '@/lib/api/anexo.api';
 import styles from './page.module.css';
 
 const DIFICULDADES: QuestaoBancoAPI.QuestaoBancoDificuldade[] = ['Facil', 'Media', 'Dificil'];
@@ -274,6 +275,20 @@ export default function AdminPlataformaPage() {
                     {s.SugestaoPaginaUrl && ` · ${s.SugestaoPaginaUrl}`}
                   </p>
                   <p>{s.SugestaoTexto}</p>
+                  {s.Anexos.length > 0 && (
+                    <div className={styles.anexosSugestao}>
+                      {s.Anexos.map((anexo) => (
+                        <button
+                          key={anexo.AnexoGUID}
+                          type="button"
+                          className={styles.anexoSugestaoBotao}
+                          onClick={() => AnexoAPI.baixarAnexo(anexo.AnexoGUID, anexo.AnexoNomeOriginal || undefined)}
+                        >
+                          <Icon name="paperclip" size={13} /> {anexo.AnexoNomeOriginal || 'Arquivo anexado'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button type="button" onClick={() => handleExcluirSugestao(s.SugestaoGUID)}>
                   <Icon name="trash" size={16} />

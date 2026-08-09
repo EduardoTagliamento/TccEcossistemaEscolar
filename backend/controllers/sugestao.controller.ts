@@ -13,13 +13,14 @@ export class SugestaoController {
         return;
       }
 
-      const { SugestaoTexto, EscolaGUID, SugestaoPaginaUrl } = req.body;
+      const { SugestaoTexto, EscolaGUID, SugestaoPaginaUrl, AnexoGUIDs } = req.body;
 
       const sugestao = await this.sugestaoService.criarSugestao({
         UsuarioCPF: usuarioCPF,
         EscolaGUID,
         SugestaoTexto,
         SugestaoPaginaUrl,
+        AnexoGUIDs,
       });
 
       res.status(201).json({ success: true, message: 'Sugestão enviada — obrigado!', data: sugestao });

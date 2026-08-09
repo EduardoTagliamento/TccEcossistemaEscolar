@@ -201,6 +201,30 @@
   color: var(--danger-500, #D64545);
 }
 
+.anexosSugestao {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.itemQuestao .anexoSugestaoBotao {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  background: var(--white, #fff);
+  border: 1px solid var(--line-200, #E2EAE5);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--slate-600, #46564D);
+}
+
+.itemQuestao .anexoSugestaoBotao:hover {
+  border-color: var(--blue-500, #2F5BEA);
+  color: var(--blue-700, #1C3AA0);
+}
+
 .badgeDificuldade {
   display: inline-block;
   padding: 0.15rem 0.5rem;

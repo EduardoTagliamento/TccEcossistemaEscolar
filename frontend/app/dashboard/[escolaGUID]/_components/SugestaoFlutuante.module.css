@@ -147,6 +147,22 @@
   border-color: var(--color-primary, var(--green-500));
 }
 
+.inputArquivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1.5px dashed var(--line-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--slate-500);
+  font-size: 12.5px;
+}
+
+.inputArquivo:hover {
+  border-color: var(--slate-400);
+}
+
 .erro {
   color: var(--danger-500);
   font-size: 12px;

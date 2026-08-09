@@ -3,6 +3,8 @@ import MysqlDatabase from '../backend/database/MysqlDatabase';
 import { SugestaoController } from '../backend/controllers/sugestao.controller';
 import { SugestaoService } from '../backend/services/sugestao.service';
 import { SugestaoDAO } from '../backend/repositories/sugestao.repository';
+import { RelacaoAnexosDAO } from '../backend/repositories/relacaoanexos.repository';
+import { AnexoDAO } from '../backend/repositories/anexo.repository';
 import { SugestaoMiddleware } from '../backend/middlewares/sugestao.middleware';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
 import { plataformaAdminGuard } from '../backend/guards/plataformaAdmin.guard';
@@ -38,7 +40,9 @@ export default class SugestaoRoteador {
 export const sugestaoRouterFactory = () => {
   const database = new MysqlDatabase();
   const sugestaoDAO = new SugestaoDAO(database);
-  const service = new SugestaoService(sugestaoDAO);
+  const relacaoAnexosDAO = new RelacaoAnexosDAO(database);
+  const anexoDAO = new AnexoDAO(database);
+  const service = new SugestaoService(sugestaoDAO, relacaoAnexosDAO, anexoDAO);
   const controller = new SugestaoController(service);
   const roteador = new SugestaoRoteador(controller);
 

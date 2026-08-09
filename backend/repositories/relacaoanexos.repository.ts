@@ -151,6 +151,27 @@ export class RelacaoAnexosDAO {
   }
 
   /**
+   * Vincular anexo a sugestão (módulo temporário, beta) — mesmo formato de vincularAnexoAviso.
+   */
+  async vincularAnexoSugestao(anexoGUID: string, sugestaoGUID: string): Promise<void> {
+    console.log("🟢 RelacaoAnexosDAO.vincularAnexoSugestao()");
+
+    const { v4: uuidv4 } = await import("uuid");
+    const relacaoGUID = uuidv4();
+
+    const query = `
+      INSERT INTO relacaoanexossugestao (
+        RelacaoAnexoSugestaoGUID,
+        AnexoGUID,
+        SugestaoGUID
+      ) VALUES (?, ?, ?)
+    `;
+
+    const pool = await this.#database.getPool();
+    await pool.execute<ResultSetHeader>(query, [relacaoGUID, anexoGUID, sugestaoGUID]);
+  }
+
+  /**
    * Buscar anexos de uma tarefa acadêmica
    */
   async findAnexosByTarefa(tarefaGUID: string): Promise<Anexo[]> {
@@ -259,9 +280,36 @@ export class RelacaoAnexosDAO {
   }
 
   /**
+   * Buscar anexos de uma sugestão (módulo temporário, beta)
+   */
+  async findAnexosBySugestao(sugestaoGUID: string): Promise<Anexo[]> {
+    console.log("🟢 RelacaoAnexosDAO.findAnexosBySugestao()");
+
+    const query = `
+      SELECT
+        a.AnexoGUID,
+        a.UsuarioCPF,
+        a.EscolaGUID,
+        a.AnexoCaminho,
+        a.AnexoNomeOriginal,
+        a.AnexoTamanho,
+        a.CreatedAt
+      FROM anexo a
+      JOIN relacaoanexossugestao ra ON ra.AnexoGUID = a.AnexoGUID
+      WHERE ra.SugestaoGUID = ?
+      ORDER BY a.CreatedAt ASC
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [sugestaoGUID]);
+
+    return (rows as any[]).map((row: any) => this.#mapRowToAnexo(row));
+  }
+
+  /**
    * Remover vínculo entre anexo e recurso.
    * O GUID de vínculo é único globalmente (uuidv4), mas pode estar em
-   * qualquer uma das 4 tabelas de recurso — tenta nas quatro.
+   * qualquer uma das 5 tabelas de recurso — tenta nas cinco.
    */
   async delete(relacaoGUID: string): Promise<boolean> {
     console.log("🟢 RelacaoAnexosDAO.delete()");
@@ -296,8 +344,16 @@ export class RelacaoAnexosDAO {
       "DELETE FROM relacaoanexosaviso WHERE RelacaoAnexoAvisoGUID = ?",
       [relacaoGUID]
     );
+    if (resultAviso.affectedRows > 0) {
+      return true;
+    }
 
-    return resultAviso.affectedRows > 0;
+    const [resultSugestao] = await pool.execute<ResultSetHeader>(
+      "DELETE FROM relacaoanexossugestao WHERE RelacaoAnexoSugestaoGUID = ?",
+      [relacaoGUID]
+    );
+
+    return resultSugestao.affectedRows > 0;
   }
 
   /**
