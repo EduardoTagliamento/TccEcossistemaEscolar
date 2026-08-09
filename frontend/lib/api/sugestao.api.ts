@@ -1,7 +1,12 @@
 /**
  * API Client para Sugestão — módulo temporário (beta com grupo pequeno).
- * Ver backend/database/migrations/2026-08-09-sugestao.sql.
+ * Ver backend/database/migrations/2026-08-09-sugestao.sql e
+ * 2026-08-10-sugestao-anexo.sql. Anexo é enviado antes, via `uploadAnexo`
+ * (anexo.api.ts) — aqui só se manda o AnexoGUID já existente, mesmo padrão
+ * de aviso.api.ts.
  */
+import { Anexo } from './anexo.api';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 function getToken(): string {
@@ -25,10 +30,16 @@ export interface Sugestao {
   SugestaoCreatedAt: string;
   UsuarioNome: string | null;
   UsuarioEmail: string | null;
+  Anexos: Anexo[];
 }
 
 // CREATE — qualquer usuário autenticado
-export async function criarSugestao(texto: string, escolaGUID?: string, paginaUrl?: string): Promise<void> {
+export async function criarSugestao(
+  texto: string,
+  escolaGUID?: string,
+  paginaUrl?: string,
+  anexoGUIDs?: string[]
+): Promise<void> {
   const response = await fetch(`${API_URL}/sugestao`, {
     method: 'POST',
     headers: getHeaders(),
@@ -36,6 +47,7 @@ export async function criarSugestao(texto: string, escolaGUID?: string, paginaUr
       SugestaoTexto: texto,
       EscolaGUID: escolaGUID,
       SugestaoPaginaUrl: paginaUrl,
+      AnexoGUIDs: anexoGUIDs,
     }),
   });
 

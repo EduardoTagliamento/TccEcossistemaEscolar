@@ -10,6 +10,7 @@ export const CriarSugestaoBodySchema = z.object({
     .refine((v) => v.length <= 2000, "SugestaoTexto não pode exceder 2000 caracteres"),
   EscolaGUID: z.string().regex(GUID_REGEX, "EscolaGUID inválido").optional(),
   SugestaoPaginaUrl: z.string().max(255).optional(),
+  AnexoGUIDs: z.array(z.string().regex(GUID_REGEX, "AnexoGUID inválido")).optional(),
 });
 
 export const SugestaoGUIDParamSchema = z.object({

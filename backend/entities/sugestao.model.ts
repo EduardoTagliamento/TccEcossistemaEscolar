@@ -1,3 +1,5 @@
+import Anexo from './anexo.model';
+
 /**
  * Módulo temporário (beta com grupo pequeno) — entidade simples de
  * propósito, sem a classe Entity/validar() de outros módulos porque não há
@@ -15,6 +17,7 @@ export interface Sugestao {
 export interface SugestaoComAutor extends Sugestao {
   UsuarioNome: string | null;
   UsuarioEmail: string | null;
+  Anexos: Anexo[];
 }
 
 export interface SugestaoCreateDTO {
@@ -22,4 +25,5 @@ export interface SugestaoCreateDTO {
   EscolaGUID?: string | null;
   SugestaoTexto: string;
   SugestaoPaginaUrl?: string | null;
+  AnexoGUIDs?: string[];
 }

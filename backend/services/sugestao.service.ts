@@ -1,12 +1,18 @@
 import { v4 as uuidv4 } from 'uuid';
 import { SugestaoDAO } from '../repositories/sugestao.repository';
+import { RelacaoAnexosDAO } from '../repositories/relacaoanexos.repository';
+import { AnexoDAO } from '../repositories/anexo.repository';
 import { Sugestao, SugestaoComAutor, SugestaoCreateDTO } from '../entities/sugestao.model';
 import ErrorResponse from '../utils/ErrorResponse';
 
 const SUGESTAO_TEXTO_MAX = 2000;
 
 export class SugestaoService {
-  constructor(private sugestaoDAO: SugestaoDAO) {}
+  constructor(
+    private sugestaoDAO: SugestaoDAO,
+    private relacaoAnexosDAO: RelacaoAnexosDAO,
+    private anexoDAO: AnexoDAO
+  ) {}
 
   async criarSugestao(data: SugestaoCreateDTO): Promise<Sugestao> {
     const texto = data.SugestaoTexto.trim();
@@ -26,11 +32,37 @@ export class SugestaoService {
       SugestaoCreatedAt: new Date(),
     };
 
-    return this.sugestaoDAO.create(sugestao);
+    const created = await this.sugestaoDAO.create(sugestao);
+
+    // Anexo já foi enviado antes via POST /api/anexo (mesmo limite de
+    // mimetype/tamanho de qualquer outro anexo do sistema) — aqui só
+    // vincula o(s) AnexoGUID(s) já existente(s), mesma regra de posse de
+    // TarefaAcademicaService.enviarAnexoEntrega / AvisoService.criarAviso:
+    // só dá pra anexar arquivo que você mesmo enviou.
+    if (data.AnexoGUIDs && data.AnexoGUIDs.length > 0) {
+      for (const anexoGUID of data.AnexoGUIDs) {
+        const anexo = await this.anexoDAO.findById(anexoGUID);
+        if (!anexo) {
+          throw new ErrorResponse(404, `Anexo ${anexoGUID} não encontrado`);
+        }
+        if (anexo.UsuarioCPF !== data.UsuarioCPF) {
+          throw new ErrorResponse(403, 'Você só pode anexar arquivos que você mesmo enviou');
+        }
+        await this.relacaoAnexosDAO.vincularAnexoSugestao(anexoGUID, created.SugestaoGUID);
+      }
+    }
+
+    return created;
   }
 
   async listarSugestoes(): Promise<SugestaoComAutor[]> {
-    return this.sugestaoDAO.findAllComAutor();
+    const sugestoes = await this.sugestaoDAO.findAllComAutor();
+    return Promise.all(
+      sugestoes.map(async (sugestao) => ({
+        ...sugestao,
+        Anexos: await this.relacaoAnexosDAO.findAnexosBySugestao(sugestao.SugestaoGUID),
+      }))
+    );
   }
 
   async excluirSugestao(guid: string): Promise<void> {
