@@ -6,7 +6,7 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
  * Filtros para consulta de matrículas
  */
 export interface MatriculaFilters {
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   TurmaGUID?: string;
   MatriculaStatus?: 'Ativa' | 'Transferida' | 'Concluida' | 'Cancelada';
 }
@@ -16,7 +16,7 @@ export interface MatriculaFilters {
  */
 interface MatriculaRow extends RowDataPacket {
   MatriculaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   TurmaGUID: string;
   MatriculaDataEntrada: Date;
   MatriculaDataSaida: Date | null;
@@ -47,7 +47,7 @@ export class MatriculaDAO {
     const query = `
       INSERT INTO matricula (
         MatriculaGUID,
-        UsuarioCPF,
+        UsuarioGUID,
         TurmaGUID,
         MatriculaDataEntrada,
         MatriculaDataSaida,
@@ -59,7 +59,7 @@ export class MatriculaDAO {
 
     const params = [
       matricula.MatriculaGUID,
-      matricula.UsuarioCPF,
+      matricula.UsuarioGUID,
       matricula.TurmaGUID,
       matricula.MatriculaDataEntrada,
       matricula.MatriculaDataSaida,
@@ -80,9 +80,9 @@ export class MatriculaDAO {
     let query = `SELECT * FROM matricula WHERE 1=1`;
     const params: any[] = [];
 
-    if (filters?.UsuarioCPF) {
-      query += ` AND UsuarioCPF = ?`;
-      params.push(filters.UsuarioCPF);
+    if (filters?.UsuarioGUID) {
+      query += ` AND UsuarioGUID = ?`;
+      params.push(filters.UsuarioGUID);
     }
 
     if (filters?.TurmaGUID) {
@@ -121,17 +121,17 @@ export class MatriculaDAO {
    * Busca matrícula ATIVA do aluno
    * CRÍTICO: Um aluno só pode ter UMA matrícula ativa
    */
-  async findMatriculaAtivaByUsuario(cpf: string): Promise<Matricula | null> {
+  async findMatriculaAtivaByUsuario(usuarioGUID: string): Promise<Matricula | null> {
     const query = `
-      SELECT * FROM matricula 
-      WHERE UsuarioCPF = ? 
+      SELECT * FROM matricula
+      WHERE UsuarioGUID = ?
         AND MatriculaStatus = 'Ativa'
       ORDER BY MatriculaDataEntrada DESC
       LIMIT 1
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(query, [cpf]);
+    const [rows] = await pool.execute(query, [usuarioGUID]);
 
     if (!rows || (rows as MatriculaRow[]).length === 0) {
       return null;
@@ -143,15 +143,15 @@ export class MatriculaDAO {
   /**
    * Busca histórico completo de matrículas do aluno
    */
-  async findHistoricoByUsuario(cpf: string): Promise<Matricula[]> {
+  async findHistoricoByUsuario(usuarioGUID: string): Promise<Matricula[]> {
     const query = `
-      SELECT * FROM matricula 
-      WHERE UsuarioCPF = ?
+      SELECT * FROM matricula
+      WHERE UsuarioGUID = ?
       ORDER BY MatriculaDataEntrada DESC
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(query, [cpf]);
+    const [rows] = await pool.execute(query, [usuarioGUID]);
 
     return this.mapRows(rows as MatriculaRow[]);
   }
@@ -179,19 +179,19 @@ export class MatriculaDAO {
    * Usado na validação de transferência
    */
   async findMatriculaAtivaByUsuarioETurma(
-    cpf: string,
+    usuarioGUID: string,
     turmaGUID: string
   ): Promise<Matricula | null> {
     const query = `
-      SELECT * FROM matricula 
-      WHERE UsuarioCPF = ? 
-        AND TurmaGUID = ? 
+      SELECT * FROM matricula
+      WHERE UsuarioGUID = ?
+        AND TurmaGUID = ?
         AND MatriculaStatus = 'Ativa'
       LIMIT 1
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(query, [cpf, turmaGUID]);
+    const [rows] = await pool.execute(query, [usuarioGUID, turmaGUID]);
 
     if (!rows || (rows as MatriculaRow[]).length === 0) {
       return null;
@@ -205,7 +205,7 @@ export class MatriculaDAO {
    */
   async update(
     matriculaGUID: string,
-    updates: Partial<Omit<Matricula, 'MatriculaGUID' | 'UsuarioCPF' | 'TurmaGUID' | 'MatriculaCreatedAt'>>
+    updates: Partial<Omit<Matricula, 'MatriculaGUID' | 'UsuarioGUID' | 'TurmaGUID' | 'MatriculaCreatedAt'>>
   ): Promise<Matricula | null> {
     const fields: string[] = [];
     const params: any[] = [];
@@ -288,7 +288,7 @@ export class MatriculaDAO {
     return rows.map((row) => {
       const matricula = new Matricula();
       matricula.MatriculaGUID = row.MatriculaGUID;
-      matricula.UsuarioCPF = row.UsuarioCPF;
+      matricula.UsuarioGUID = row.UsuarioGUID;
       matricula.TurmaGUID = row.TurmaGUID;
       matricula.MatriculaDataEntrada = row.MatriculaDataEntrada;
       matricula.MatriculaDataSaida = row.MatriculaDataSaida;

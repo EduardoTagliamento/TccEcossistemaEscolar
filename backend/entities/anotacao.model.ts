@@ -1,6 +1,6 @@
 export interface Anotacao {
   AnotacaoGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   AnotacaoData: Date;
   AnotacaoTitulo: string;
@@ -11,7 +11,7 @@ export interface Anotacao {
 }
 
 export interface AnotacaoCreateDTO {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   AnotacaoData: string;                  // ISO string (frontend envia em GMT-3)
   AnotacaoTitulo: string;
@@ -27,7 +27,7 @@ export interface AnotacaoUpdateDTO {
 
 export class AnotacaoEntity {
   #anotacaoGUID: string;
-  #usuarioCPF: string;
+  #usuarioGUID: string;
   #escolaGUID: string;
   #anotacaoData: Date;
   #anotacaoTitulo: string;
@@ -38,7 +38,7 @@ export class AnotacaoEntity {
 
   constructor(data: Anotacao) {
     this.#anotacaoGUID = data.AnotacaoGUID;
-    this.#usuarioCPF = data.UsuarioCPF;
+    this.#usuarioGUID = data.UsuarioGUID;
     this.#escolaGUID = data.EscolaGUID;
     this.#anotacaoData = data.AnotacaoData;
     this.#anotacaoTitulo = data.AnotacaoTitulo;
@@ -53,8 +53,8 @@ export class AnotacaoEntity {
     return this.#anotacaoGUID;
   }
 
-  get usuarioCPF(): string {
-    return this.#usuarioCPF;
+  get usuarioGUID(): string {
+    return this.#usuarioGUID;
   }
 
   get escolaGUID(): string {
@@ -115,10 +115,9 @@ export class AnotacaoEntity {
       throw new Error('AnotacaoGUID inválido (deve ser UUID v4)');
     }
 
-    // CPF
-    const cpfLimpo = this.#usuarioCPF.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPF deve ter 11 dígitos');
+    // Identidade
+    if (!this.#usuarioGUID) {
+      throw new Error('UsuarioGUID é obrigatório');
     }
 
     // EscolaGUID
@@ -149,7 +148,7 @@ export class AnotacaoEntity {
   toJSON(): Anotacao {
     return {
       AnotacaoGUID: this.#anotacaoGUID,
-      UsuarioCPF: this.#usuarioCPF,
+      UsuarioGUID: this.#usuarioGUID,
       EscolaGUID: this.#escolaGUID,
       AnotacaoData: this.#anotacaoData,
       AnotacaoTitulo: this.#anotacaoTitulo,

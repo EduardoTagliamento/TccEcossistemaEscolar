@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import MaterialDidatico from "../entities/materialdidatico.model";
 import MaterialDidaticoPagina from "../entities/materialdidaticopagina.model";
 import MaterialDidaticoCapitulo from "../entities/materialdidaticocapitulo.model";
@@ -65,7 +65,7 @@ export default class MaterialDidaticoService {
     await this.#validarPermissaoEscrita(escolaGUID, usuarioCPF);
 
     const material = new MaterialDidatico();
-    material.MaterialDidaticoGUID = uuidv4();
+    material.MaterialDidaticoGUID = gerarGUID();
     material.EscolaGUID = escolaGUID;
     material.Titulo = titulo;
     material.CriadoPorCPF = usuarioCPF;
@@ -125,7 +125,7 @@ export default class MaterialDidaticoService {
       const url = await R2StorageService.upload(chave, arquivo.buffer, arquivo.mimetype);
 
       const pagina = new MaterialDidaticoPagina();
-      pagina.MaterialDidaticoPaginaGUID = uuidv4();
+      pagina.MaterialDidaticoPaginaGUID = gerarGUID();
       pagina.MaterialDidaticoGUID = materialDidaticoGUID;
       pagina.NumeroPagina = proximoNumero;
       pagina.ArquivoUrl = url;
@@ -254,7 +254,7 @@ export default class MaterialDidaticoService {
     }
 
     const capitulo = new MaterialDidaticoCapitulo();
-    capitulo.MaterialDidaticoCapituloGUID = uuidv4();
+    capitulo.MaterialDidaticoCapituloGUID = gerarGUID();
     capitulo.MaterialDidaticoGUID = data.MaterialDidaticoGUID;
     capitulo.MateriaGUID = data.MateriaGUID;
     capitulo.Titulo = data.Titulo;

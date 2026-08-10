@@ -13,8 +13,8 @@ export default class EscolaControl {
     console.log("🔵 EscolaControl.store()");
     try {
       const jsonEscola = request.body.escola;
-      const usuarioCPF = request.user?.UsuarioCPF;
-      const escolaCriada = await this.#escolaService.createEscola(jsonEscola, usuarioCPF);
+      const usuarioGUIDAtor = request.user?.UsuarioGUID;
+      const escolaCriada = await this.#escolaService.createEscola(jsonEscola, usuarioGUIDAtor);
 
       response.status(201).json({
         success: true,
@@ -62,8 +62,8 @@ export default class EscolaControl {
     console.log("🔵 EscolaControl.update()");
     try {
       const { EscolaGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
-      const escolaAtualizada = await this.#escolaService.updateEscola(EscolaGUID, request.body.escola, usuarioCPF);
+      const usuarioGUIDAtor = request.user?.UsuarioGUID;
+      const escolaAtualizada = await this.#escolaService.updateEscola(EscolaGUID, request.body.escola, usuarioGUIDAtor);
 
       response.status(200).json({
         success: true,
@@ -79,8 +79,8 @@ export default class EscolaControl {
     console.log("🔵 EscolaControl.destroy()");
     try {
       const { EscolaGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
-      const excluiu = await this.#escolaService.deleteEscola(EscolaGUID, usuarioCPF);
+      const usuarioGUIDAtor = request.user?.UsuarioGUID;
+      const excluiu = await this.#escolaService.deleteEscola(EscolaGUID, usuarioGUIDAtor);
 
       if (!excluiu) {
         return response.status(404).json({
@@ -103,9 +103,9 @@ export default class EscolaControl {
     console.log("🔵 EscolaControl.transferirDirecao()");
     try {
       const { EscolaGUID } = request.params;
-      const { NovoDirecaoCPF } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
-      const resultado = await this.#escolaService.transferirDirecao(EscolaGUID, NovoDirecaoCPF, usuarioCPF);
+      const { NovoDirecaoGUID } = request.body;
+      const usuarioGUIDAtor = request.user?.UsuarioGUID;
+      const resultado = await this.#escolaService.transferirDirecao(EscolaGUID, NovoDirecaoGUID, usuarioGUIDAtor);
 
       return response.status(200).json({
         success: true,

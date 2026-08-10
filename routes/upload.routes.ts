@@ -102,8 +102,8 @@ uploadRoutes.post(
  * Self-service: só o próprio usuário autenticado pode alterar a própria foto.
  */
 function verificarProprioUsuario(req: Request, res: Response, next: NextFunction): void {
-  const UsuarioCPF = req.params.UsuarioCPF;
-  if (req.user?.UsuarioCPF !== UsuarioCPF) {
+  const UsuarioGUID = req.params.UsuarioGUID;
+  if (req.user?.UsuarioGUID !== UsuarioGUID) {
     next(new ErrorResponse(403, 'Você só pode alterar a própria foto de perfil'));
     return;
   }
@@ -111,14 +111,14 @@ function verificarProprioUsuario(req: Request, res: Response, next: NextFunction
 }
 
 /**
- * @route POST /api/upload/foto-usuario/:UsuarioCPF
+ * @route POST /api/upload/foto-usuario/:UsuarioGUID
  * @description Upload de foto de perfil do usuário (max 1MB, imagens PNG/JPG/JPEG — mesmo limite do logo)
  * @access Private (requer autenticação + ser o próprio usuário)
  * @formData foto: File (campo multipart/form-data)
  * @returns { fileName, fileUrl, fileSize, mimeType }
  */
 uploadRoutes.post(
-  '/foto-usuario/:UsuarioCPF',
+  '/foto-usuario/:UsuarioGUID',
   AuthMiddleware.authenticate,
   verificarProprioUsuario,
   uploadMiddleware.single('foto'),
@@ -128,13 +128,13 @@ uploadRoutes.post(
 );
 
 /**
- * @route DELETE /api/upload/foto-usuario/:UsuarioCPF
+ * @route DELETE /api/upload/foto-usuario/:UsuarioGUID
  * @description Remove foto de perfil do usuário
  * @access Private (requer autenticação + ser o próprio usuário)
  * @returns { removed: boolean }
  */
 uploadRoutes.delete(
-  '/foto-usuario/:UsuarioCPF',
+  '/foto-usuario/:UsuarioGUID',
   AuthMiddleware.authenticate,
   verificarProprioUsuario,
   uploadController.deleteFotoUsuario

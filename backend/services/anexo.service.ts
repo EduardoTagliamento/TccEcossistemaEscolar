@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import path from "path";
 import ErrorResponse from "../utils/ErrorResponse";
 import Anexo from "../entities/anexo.model";
@@ -55,7 +55,7 @@ export default class AnexoService {
     }
 
     // Enviar arquivo para o R2
-    const anexoGUID = uuidv4();
+    const anexoGUID = gerarGUID();
     const ext = path.extname(file.originalname);
     const chave = `anexos/${EscolaGUID}/${anexoGUID}${ext}`;
     const contentDisposition = `attachment; filename="${encodeURIComponent(file.originalname)}"`;

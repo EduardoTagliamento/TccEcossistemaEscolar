@@ -44,7 +44,7 @@
  * PRODUÇÃO (Railway) se as variáveis DB_* não estiverem setadas.
  */
 
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../../utils/helpers/guid.helper";
 import MysqlDatabase from "../MysqlDatabase";
 
 interface CategoriaAntiga {
@@ -117,7 +117,7 @@ async function run() {
         continue;
       }
 
-      const novoGUID = uuidv4();
+      const novoGUID = gerarGUID();
       console.log(
         `  ${modoAplicar ? "➕" : "🔎"} cópia de "${categoria.CategoriaNome}" pra turma ${TurmaGUID}${modoAplicar ? "" : " (dry-run)"}`
       );

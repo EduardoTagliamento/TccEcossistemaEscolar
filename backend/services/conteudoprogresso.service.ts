@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import ErrorResponse from "../utils/ErrorResponse";
 import ConteudoProgresso from "../entities/conteudoprogresso.model";
 import { ConteudoProgressoDAO } from "../repositories/conteudoprogresso.repository";
@@ -66,7 +66,7 @@ export default class ConteudoProgressoService {
     if (percentual >= LIMIAR_VIDEO_CONCLUIDO) percentual = 100;
 
     const progresso = new ConteudoProgresso();
-    progresso.ConteudoProgressoGUID = uuidv4();
+    progresso.ConteudoProgressoGUID = gerarGUID();
     progresso.ConteudoGUID = conteudoGUID;
     progresso.MatriculaGUID = matriculaGUID;
     progresso.PercentualConcluido = percentual;
@@ -91,14 +91,14 @@ export default class ConteudoProgressoService {
 
     const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioCPF);
 
-    await this.#progressoDAO.registrarPaginaVista(conteudoPaginadoArquivoGUID, matriculaGUID, uuidv4());
+    await this.#progressoDAO.registrarPaginaVista(conteudoPaginadoArquivoGUID, matriculaGUID, gerarGUID());
 
     const todasPaginas = await this.#paginadoDAO.findByConteudo(pagina.ConteudoGUID);
     const vistas = await this.#progressoDAO.contarPaginasVistas(pagina.ConteudoGUID, matriculaGUID);
     const percentual = todasPaginas.length > 0 ? Math.round((vistas / todasPaginas.length) * 100) : 0;
 
     const progresso = new ConteudoProgresso();
-    progresso.ConteudoProgressoGUID = uuidv4();
+    progresso.ConteudoProgressoGUID = gerarGUID();
     progresso.ConteudoGUID = pagina.ConteudoGUID;
     progresso.MatriculaGUID = matriculaGUID;
     progresso.PercentualConcluido = percentual;
@@ -120,7 +120,7 @@ export default class ConteudoProgressoService {
     const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioCPF);
 
     const progresso = new ConteudoProgresso();
-    progresso.ConteudoProgressoGUID = uuidv4();
+    progresso.ConteudoProgressoGUID = gerarGUID();
     progresso.ConteudoGUID = conteudoGUID;
     progresso.MatriculaGUID = matriculaGUID;
     progresso.PercentualConcluido = 100;

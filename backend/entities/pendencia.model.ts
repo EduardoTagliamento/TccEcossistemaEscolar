@@ -17,7 +17,7 @@
 export default class Pendencia {
   // Campos privados (encapsulamento)
   #PendenciaGUID!: string;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #EscolaGUID!: string;
   #PendenciaTitulo!: string;
   #PendenciaConteudo!: string | null;
@@ -34,8 +34,8 @@ export default class Pendencia {
     return this.#PendenciaGUID;
   }
 
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
   get EscolaGUID(): string {
@@ -87,15 +87,11 @@ export default class Pendencia {
     this.#PendenciaGUID = trimmed;
   }
 
-  set UsuarioCPF(value: string) {
-    if (typeof value !== 'string') {
-      throw new Error('UsuarioCPF deve ser uma string');
+  set UsuarioGUID(value: string) {
+    if (typeof value !== 'string' || value.trim() === '') {
+      throw new Error('UsuarioGUID deve ser uma string não vazia');
     }
-    const cpfLimpo = value.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPF deve ter 11 dígitos');
-    }
-    this.#UsuarioCPF = value;
+    this.#UsuarioGUID = value;
   }
 
   set EscolaGUID(value: string) {
@@ -196,10 +192,9 @@ export default class Pendencia {
       throw new Error('EscolaGUID inválido');
     }
 
-    // Validar CPF
-    const cpfLimpo = this.#UsuarioCPF.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPF deve ter 11 dígitos');
+    // Validar identidade
+    if (!this.#UsuarioGUID) {
+      throw new Error('UsuarioGUID é obrigatório');
     }
 
     // Validar título
@@ -246,7 +241,7 @@ export default class Pendencia {
    */
   toJSON(): {
     PendenciaGUID: string;
-    UsuarioCPF: string;
+    UsuarioGUID: string;
     EscolaGUID: string;
     PendenciaTitulo: string;
     PendenciaConteudo: string | null;
@@ -259,7 +254,7 @@ export default class Pendencia {
   } {
     return {
       PendenciaGUID: this.#PendenciaGUID,
-      UsuarioCPF: this.#UsuarioCPF,
+      UsuarioGUID: this.#UsuarioGUID,
       EscolaGUID: this.#EscolaGUID,
       PendenciaTitulo: this.#PendenciaTitulo,
       PendenciaConteudo: this.#PendenciaConteudo,
@@ -278,7 +273,7 @@ export default class Pendencia {
   static fromPlainObject(data: any): Pendencia {
     const pendencia = new Pendencia();
     pendencia.PendenciaGUID = data.PendenciaGUID;
-    pendencia.UsuarioCPF = data.UsuarioCPF;
+    pendencia.UsuarioGUID = data.UsuarioGUID;
     pendencia.EscolaGUID = data.EscolaGUID;
     pendencia.PendenciaTitulo = data.PendenciaTitulo;
     pendencia.PendenciaConteudo = data.PendenciaConteudo;

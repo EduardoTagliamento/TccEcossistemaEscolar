@@ -153,7 +153,7 @@ export default class UploadService {
    * logo de escola (1MB, PNG/JPG/JPEG via `uploadMiddleware`).
    */
   async uploadFotoUsuario(
-    UsuarioCPF: string,
+    UsuarioGUID: string,
     file: Express.Multer.File
   ): Promise<{
     fileName: string;
@@ -161,16 +161,16 @@ export default class UploadService {
     fileSize: number;
     mimeType: string;
   }> {
-    console.log(`📤 [UploadService] Processando foto do usuário ${UsuarioCPF}`);
+    console.log(`📤 [UploadService] Processando foto do usuário ${UsuarioGUID}`);
 
     if (!this.#usuarioDAO) {
       throw new ErrorResponse(500, 'Upload de foto de usuário não configurado');
     }
 
-    const usuario = await this.#usuarioDAO.findById(UsuarioCPF);
+    const usuario = await this.#usuarioDAO.findByGUID(UsuarioGUID);
     if (!usuario) {
       throw new ErrorResponse(404, 'Usuário não encontrado', {
-        message: `Usuário com CPF ${UsuarioCPF} não existe`,
+        message: `Usuário não existe`,
       });
     }
 
@@ -179,7 +179,7 @@ export default class UploadService {
       const randomString = Math.random().toString(36).substring(2, 8);
       const originalName = file.originalname.replace(/\s+/g, '-').toLowerCase();
       const fileName = `${timestamp}-${randomString}-${originalName}`;
-      const chave = `fotos-usuario/${UsuarioCPF}/${fileName}`;
+      const chave = `fotos-usuario/${UsuarioGUID}/${fileName}`;
 
       const fileUrl = await R2StorageService.upload(chave, file.buffer, file.mimetype);
 
@@ -220,17 +220,17 @@ export default class UploadService {
   /**
    * Remove foto de perfil de usuário
    */
-  async removeFotoUsuario(UsuarioCPF: string): Promise<boolean> {
-    console.log(`🗑️  [UploadService] Removendo foto do usuário ${UsuarioCPF}`);
+  async removeFotoUsuario(UsuarioGUID: string): Promise<boolean> {
+    console.log(`🗑️  [UploadService] Removendo foto do usuário ${UsuarioGUID}`);
 
     if (!this.#usuarioDAO) {
       throw new ErrorResponse(500, 'Upload de foto de usuário não configurado');
     }
 
-    const usuario = await this.#usuarioDAO.findById(UsuarioCPF);
+    const usuario = await this.#usuarioDAO.findByGUID(UsuarioGUID);
     if (!usuario) {
       throw new ErrorResponse(404, 'Usuário não encontrado', {
-        message: `Usuário com CPF ${UsuarioCPF} não existe`,
+        message: `Usuário não existe`,
       });
     }
 

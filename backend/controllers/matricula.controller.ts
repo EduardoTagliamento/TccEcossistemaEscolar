@@ -35,7 +35,7 @@ export default class MatriculaController {
    */
   store = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUIDAtor = req.user?.UsuarioGUID || '';
 
       // Detectar se é cadastro individual ou em massa
       if (req.body.matriculas && Array.isArray(req.body.matriculas)) {
@@ -53,7 +53,7 @@ export default class MatriculaController {
         const resultado = await this.#matriculaService.criarMatriculasEmMassa(
           req.body.matriculas,
           escolaGUID,
-          usuarioCPF
+          usuarioGUIDAtor
         );
 
         res.status(200).json({
@@ -77,7 +77,7 @@ export default class MatriculaController {
 
         const matriculaCriada = await this.#matriculaService.criarMatricula(
           createData,
-          usuarioCPF
+          usuarioGUIDAtor
         );
 
         res.status(201).json({
@@ -112,7 +112,7 @@ export default class MatriculaController {
   transferir = async (req: Request, res: Response): Promise<void> => {
     try {
       const { transferencia } = req.body;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUIDAtor = req.user?.UsuarioGUID || '';
 
       const transferenciaData: TransferenciaDTO = {
         UsuarioCPF: transferencia.UsuarioCPF,
@@ -123,7 +123,7 @@ export default class MatriculaController {
 
       const resultado = await this.#matriculaService.transferirAluno(
         transferenciaData,
-        usuarioCPF
+        usuarioGUIDAtor
       );
 
       res.status(200).json({
@@ -152,16 +152,16 @@ export default class MatriculaController {
    * GET /api/matricula
    * Listar matrículas com filtros opcionais
    * 
-   * Query: ?UsuarioCPF=X&TurmaGUID=Y&MatriculaStatus=Z
+   * Query: ?UsuarioGUID=X&TurmaGUID=Y&MatriculaStatus=Z
    */
   index = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { UsuarioCPF, TurmaGUID, MatriculaStatus } = req.query;
+      const { UsuarioGUID, TurmaGUID, MatriculaStatus } = req.query;
 
       const filters: any = {};
 
-      if (UsuarioCPF && typeof UsuarioCPF === "string") {
-        filters.UsuarioCPF = UsuarioCPF;
+      if (UsuarioGUID && typeof UsuarioGUID === "string") {
+        filters.UsuarioGUID = UsuarioGUID;
       }
 
       if (TurmaGUID && typeof TurmaGUID === "string") {
@@ -237,7 +237,7 @@ export default class MatriculaController {
     try {
       const { guid } = req.params;
       const { matricula } = req.body;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUIDAtor = req.user?.UsuarioGUID || '';
 
       const updateData: MatriculaUpdateDTO = {};
 
@@ -258,7 +258,7 @@ export default class MatriculaController {
       const matriculaAtualizada = await this.#matriculaService.atualizarMatricula(
         guid,
         updateData,
-        usuarioCPF
+        usuarioGUIDAtor
       );
 
       res.status(200).json({
@@ -290,9 +290,9 @@ export default class MatriculaController {
   destroy = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUIDAtor = req.user?.UsuarioGUID || '';
 
-      await this.#matriculaService.excluirMatricula(guid, usuarioCPF);
+      await this.#matriculaService.excluirMatricula(guid, usuarioGUIDAtor);
 
       res.status(200).json({
         success: true,

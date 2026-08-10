@@ -6,7 +6,7 @@
  * Campos:
  * - EventoGUID: Identificador único (UUID v4)
  * - EscolaGUID: Escola organizadora
- * - UsuarioCPF: CPF de quem criou o evento (coluna NOT NULL/FK já existente
+ * - UsuarioGUID: CPF de quem criou o evento (coluna NOT NULL/FK já existente
  *   na tabela `evento` em produção, sem correspondente na entidade até
  *   2026-07-22 — ver backend/database/migrations/2026-07-22-fix-evento-schema.sql)
  * - EventoTitulo: Nome do evento (3-128 caracteres)
@@ -20,7 +20,7 @@
 export default class Evento {
   #EventoGUID: string;
   #EscolaGUID: string;
-  #UsuarioCPF: string;
+  #UsuarioGUID: string;
   #EventoTitulo: string;
   #EventoDescricao: string | null;
   #EventoData: Date;
@@ -31,7 +31,7 @@ export default class Evento {
   constructor(
     EventoGUID: string,
     EscolaGUID: string,
-    UsuarioCPF: string,
+    UsuarioGUID: string,
     EventoTitulo: string,
     EventoDescricao: string | null,
     EventoData: Date,
@@ -41,7 +41,7 @@ export default class Evento {
   ) {
     this.#EventoGUID = EventoGUID;
     this.#EscolaGUID = EscolaGUID;
-    this.#UsuarioCPF = UsuarioCPF;
+    this.#UsuarioGUID = UsuarioGUID;
     this.#EventoTitulo = EventoTitulo;
     this.#EventoDescricao = EventoDescricao;
     this.#EventoData = EventoData;
@@ -60,8 +60,8 @@ export default class Evento {
     return this.#EscolaGUID;
   }
 
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
   get EventoTitulo(): string {
@@ -142,8 +142,8 @@ export default class Evento {
       throw new Error("EscolaGUID inválido (deve ser UUID v4)");
     }
 
-    if (!this.#UsuarioCPF) {
-      throw new Error("UsuarioCPF (criador do evento) é obrigatório");
+    if (!this.#UsuarioGUID) {
+      throw new Error("UsuarioGUID (criador do evento) é obrigatório");
     }
 
     // Título
@@ -206,7 +206,7 @@ export default class Evento {
     return {
       EventoGUID: this.#EventoGUID,
       EscolaGUID: this.#EscolaGUID,
-      UsuarioCPF: this.#UsuarioCPF,
+      UsuarioGUID: this.#UsuarioGUID,
       EventoTitulo: this.#EventoTitulo,
       EventoDescricao: this.#EventoDescricao,
       EventoData: this.#EventoData,
@@ -223,7 +223,7 @@ export default class Evento {
     return new Evento(
       obj.EventoGUID,
       obj.EscolaGUID,
-      obj.UsuarioCPF,
+      obj.UsuarioGUID,
       obj.EventoTitulo,
       obj.EventoDescricao ?? null,
       new Date(obj.EventoData),

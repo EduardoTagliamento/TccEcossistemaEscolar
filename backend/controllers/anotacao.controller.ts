@@ -8,9 +8,9 @@ export class AnotacaoController {
   // POST /api/anotacao - Criar nova anotação
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Usuário não autenticado'
@@ -21,7 +21,7 @@ export class AnotacaoController {
       const { EscolaGUID, AnotacaoData, AnotacaoTitulo, AnotacaoDescricao } = req.body;
 
       const createDTO: AnotacaoCreateDTO = {
-        UsuarioCPF: usuarioCPF,
+        UsuarioGUID: usuarioGUID,
         EscolaGUID,
         AnotacaoData,
         AnotacaoTitulo,
@@ -43,9 +43,9 @@ export class AnotacaoController {
   // GET /api/anotacao - Listar anotações (com filtros)
   index = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Usuário não autenticado'
@@ -60,7 +60,7 @@ export class AnotacaoController {
       // Se forneceu range de datas, usar query específica
       if (DataInicio && DataFim) {
         anotacoes = await this.anotacaoService.listarAnotacoesPorPeriodo(
-          usuarioCPF,
+          usuarioGUID,
           EscolaGUID as string,
           DataInicio as string,
           DataFim as string
@@ -68,7 +68,7 @@ export class AnotacaoController {
       } else {
         // Caso contrário, usar filtros gerais
         const filters: any = {
-          UsuarioCPF: usuarioCPF,
+          UsuarioGUID: usuarioGUID,
           EscolaGUID: EscolaGUID as string
         };
 
@@ -92,9 +92,9 @@ export class AnotacaoController {
   // GET /api/anotacao/:guid - Buscar anotação específica
   show = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Usuário não autenticado'
@@ -104,7 +104,7 @@ export class AnotacaoController {
 
       const { guid } = req.params;
 
-      const anotacao = await this.anotacaoService.buscarAnotacao(guid, usuarioCPF);
+      const anotacao = await this.anotacaoService.buscarAnotacao(guid, usuarioGUID);
 
       res.json({
         success: true,
@@ -118,9 +118,9 @@ export class AnotacaoController {
   // PUT /api/anotacao/:guid - Atualizar anotação
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Usuário não autenticado'
@@ -138,7 +138,7 @@ export class AnotacaoController {
         AnotacaoIsFeito
       };
 
-      const anotacao = await this.anotacaoService.atualizarAnotacao(guid, usuarioCPF, updateDTO);
+      const anotacao = await this.anotacaoService.atualizarAnotacao(guid, usuarioGUID, updateDTO);
 
       res.json({
         success: true,
@@ -153,9 +153,9 @@ export class AnotacaoController {
   // PATCH /api/anotacao/:guid/toggle - Marcar/desmarcar como feito
   toggleFeito = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Usuário não autenticado'
@@ -165,7 +165,7 @@ export class AnotacaoController {
 
       const { guid } = req.params;
 
-      const anotacao = await this.anotacaoService.marcarComoFeito(guid, usuarioCPF);
+      const anotacao = await this.anotacaoService.marcarComoFeito(guid, usuarioGUID);
 
       res.json({
         success: true,
@@ -180,9 +180,9 @@ export class AnotacaoController {
   // DELETE /api/anotacao/:guid - Excluir anotação
   destroy = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Usuário não autenticado'
@@ -192,7 +192,7 @@ export class AnotacaoController {
 
       const { guid } = req.params;
 
-      await this.anotacaoService.excluirAnotacao(guid, usuarioCPF);
+      await this.anotacaoService.excluirAnotacao(guid, usuarioGUID);
 
       res.json({
         success: true,
@@ -206,9 +206,9 @@ export class AnotacaoController {
   // GET /api/anotacao/estatisticas - Estatísticas do usuário
   stats = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Usuário não autenticado'
@@ -227,7 +227,7 @@ export class AnotacaoController {
       }
 
       const stats = await this.anotacaoService.obterEstatisticas(
-        usuarioCPF,
+        usuarioGUID,
         EscolaGUID as string
       );
 

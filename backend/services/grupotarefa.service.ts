@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { GrupoTarefaDAO } from '../repositories/grupotarefa.repository';
 import { UsuarioXGrupoTarefaDAO } from '../repositories/usuarioxgrupotarefa.repository';
 import { TarefaAcademicaDAO } from '../repositories/tarefaacademica.repository';

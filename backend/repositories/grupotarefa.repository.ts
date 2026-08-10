@@ -1,6 +1,6 @@
 import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import {
   GrupoTarefa,
   GrupoTarefaCreateDTO,
@@ -37,7 +37,7 @@ export class GrupoTarefaDAO {
   async create(data: GrupoTarefaCreateDTO): Promise<GrupoTarefa> {
     console.log('🟢 GrupoTarefaDAO.create()');
     
-    const grupoGUID = uuidv4();
+    const grupoGUID = gerarGUID();
     const nomeDefault = data.GrupoNome || null;
     
     const query = `

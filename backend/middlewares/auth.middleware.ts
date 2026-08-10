@@ -14,7 +14,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: {
-        UsuarioCPF: string;
+        UsuarioGUID: string;
         UsuarioEmail: string;
         UsuarioNome: string;
       };
@@ -59,7 +59,7 @@ export class AuthMiddleware {
 
       // 4. Adicionar dados do usuário ao request
       req.user = {
-        UsuarioCPF: decoded.UsuarioCPF,
+        UsuarioGUID: decoded.UsuarioGUID,
         UsuarioEmail: decoded.UsuarioEmail,
         UsuarioNome: decoded.UsuarioNome,
       };
@@ -99,7 +99,7 @@ export class AuthMiddleware {
         const decoded = JwtService.verifyToken(token);
 
         req.user = {
-          UsuarioCPF: decoded.UsuarioCPF,
+          UsuarioGUID: decoded.UsuarioGUID,
           UsuarioEmail: decoded.UsuarioEmail,
           UsuarioNome: decoded.UsuarioNome,
         };

@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { RowDataPacket } from 'mysql2';
 import Mensagem from '../entities/mensagem.model';
 import {
@@ -84,7 +84,7 @@ export default class MensagemService {
     // — reaproveita a mesma coluna MensagemConteudo (TEXT, até 4000 chars),
     // sem precisar de migration nova.
     const mensagem = new Mensagem();
-    mensagem.MensagemGUID = uuidv4();
+    mensagem.MensagemGUID = gerarGUID();
     mensagem.ConversaGUID = conversaGUID;
     mensagem.MensagemRemetenteCPF = remetenteCPF;
     mensagem.MensagemConteudo = conteudo;

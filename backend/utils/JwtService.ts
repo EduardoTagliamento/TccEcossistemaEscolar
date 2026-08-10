@@ -8,7 +8,7 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
 interface TokenPayload {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioEmail: string;
   UsuarioNome: string;
 }
@@ -97,12 +97,12 @@ export class JwtService {
   }
 
   /**
-   * Extrai o CPF do usuário de um token
+   * Extrai o GUID do usuário de um token
    */
-  static extractUserCPF(token: string): string | null {
+  static extractUserGUID(token: string): string | null {
     try {
       const decoded = this.verifyToken(token);
-      return decoded.UsuarioCPF;
+      return decoded.UsuarioGUID;
     } catch (error) {
       return null;
     }

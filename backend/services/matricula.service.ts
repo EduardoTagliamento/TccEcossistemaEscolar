@@ -5,7 +5,7 @@ import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import MysqlDatabase from "../database/MysqlDatabase";
 import ErrorResponse from "../utils/ErrorResponse";
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import ConversaGrupoService from "./conversa-grupo.service";
 import { getNotificacaoService } from "./notificacao.service";
 import { getAuditoriaService } from "./auditoria.service";
@@ -15,7 +15,7 @@ import { getAuditoriaService } from "./auditoria.service";
  */
 export interface MatriculaDTO {
   MatriculaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   TurmaGUID: string;
   MatriculaDataEntrada: Date;
   MatriculaDataSaida: Date | null;
@@ -26,7 +26,7 @@ export interface MatriculaDTO {
 
 export interface MatriculaCreateDTO {
   MatriculaGUID?: string; // Opcional: RA customizado OU gera UUID
-  UsuarioCPF: string;
+  UsuarioCPF: string; // CPF do aluno — resolvido internamente pra UsuarioGUID (identidade real da matrícula)
   TurmaGUID?: string; // GUID da turma
   TurmaNome?: string; // NOME da turma (para resolução automática)
   MatriculaDataEntrada?: Date;
@@ -105,7 +105,7 @@ export default class MatriculaService {
    * 4. Aluno não possui matrícula ativa
    * 5. MatriculaGUID: usa fornecido OU gera UUID
    */
-  async criarMatricula(data: MatriculaCreateDTO, usuarioCPF: string): Promise<MatriculaDTO> {
+  async criarMatricula(data: MatriculaCreateDTO, usuarioGUIDAtor: string): Promise<MatriculaDTO> {
     // 1. Validar que turma existe
     if (!data.TurmaGUID) {
       throw new ErrorResponse(400, 'TurmaGUID é obrigatório', {
@@ -125,7 +125,7 @@ export default class MatriculaService {
         message: 'A turma não possui EscolaGUID associado',
       });
     }
-    await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUIDAtor, turma.EscolaGUID);
 
     // 3. Validar que usuário (aluno) existe
     const usuario = await this.#usuarioDAO.findByCPF(data.UsuarioCPF);
@@ -137,7 +137,7 @@ export default class MatriculaService {
 
     // 4. Validar se aluno já possui matrícula ativa
     const matriculaAtiva = await this.#matriculaDAO.findMatriculaAtivaByUsuario(
-      data.UsuarioCPF
+      usuario.UsuarioGUID
     );
     if (matriculaAtiva) {
       throw new ErrorResponse(409, 'Aluno já possui matrícula ativa', {
@@ -151,12 +151,12 @@ export default class MatriculaService {
     }
 
     // 5. MatriculaGUID: usar fornecido OU gerar UUID
-    const matriculaGUID = data.MatriculaGUID?.trim() || uuidv4();
+    const matriculaGUID = data.MatriculaGUID?.trim() || gerarGUID();
 
     // 6. Criar entidade
     const matricula = new Matricula();
     matricula.MatriculaGUID = matriculaGUID;
-    matricula.UsuarioCPF = data.UsuarioCPF;
+    matricula.UsuarioGUID = usuario.UsuarioGUID;
     matricula.TurmaGUID = data.TurmaGUID;
     matricula.MatriculaDataEntrada = data.MatriculaDataEntrada || new Date();
     matricula.MatriculaDataSaida = null;
@@ -170,17 +170,20 @@ export default class MatriculaService {
     const matriculaCriada = await this.#matriculaDAO.create(matricula);
 
     // 8. Adicionar ao grupo de conversa da turma
-    if (this.#conversaGrupoService) {
+    // Nota: conversa_grupo_membro e notificacao ainda não migradas pra
+    // UsuarioGUID (ver docs/PROGRESSO_MIGRACAO_USUARIO_GUID.md) — usam o CPF
+    // real do usuário (já resolvido acima), não o UsuarioGUID.
+    if (this.#conversaGrupoService && usuario.UsuarioCPF) {
       await this.#conversaGrupoService.adicionarMembroTurma(
         matriculaCriada.TurmaGUID,
-        matriculaCriada.UsuarioCPF
+        usuario.UsuarioCPF
       );
     }
 
     // 9. Notificar o aluno (tipo `matricula_nova_turma`) — não bloqueia a resposta
     getNotificacaoService().disparar({
       tipoSlug: "matricula_nova_turma",
-      destinatarios: [matriculaCriada.UsuarioCPF],
+      destinatarios: [usuario.UsuarioGUID],
       escolaGUID: turma.EscolaGUID,
       titulo: `Você foi matriculado na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
       entidadeTipo: "turma",
@@ -191,11 +194,11 @@ export default class MatriculaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: turma.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
       AcaoTipo: "Create",
       EntidadeTipo: "matricula",
       EntidadeGUID: matriculaCriada.MatriculaGUID,
-      EntidadeDescricao: `Matrícula de ${matriculaCriada.UsuarioCPF} na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
+      EntidadeDescricao: `Matrícula de ${matriculaCriada.UsuarioGUID} na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
       CategoriaAuditoriaId: 3, // DadosPessoais
     });
 
@@ -216,7 +219,7 @@ export default class MatriculaService {
    * 
    * Se houver erro em qualquer etapa: ROLLBACK
    */
-  async transferirAluno(data: TransferenciaDTO, usuarioCPF: string): Promise<{
+  async transferirAluno(data: TransferenciaDTO, usuarioGUIDAtor: string): Promise<{
     matriculaAnterior: MatriculaDTO;
     matriculaNova: MatriculaDTO;
   }> {
@@ -244,19 +247,27 @@ export default class MatriculaService {
       }
 
       // 3. Validar permissão (na escola de origem)
-      await this.validarPermissaoEscrita(usuarioCPF, turmaOrigem.EscolaGUID);
+      await this.validarPermissaoEscrita(usuarioGUIDAtor, turmaOrigem.EscolaGUID);
+
+      // 3b. Resolver aluno por CPF (input) -> UsuarioGUID (identidade real)
+      const aluno = await this.#usuarioDAO.findByCPF(data.UsuarioCPF);
+      if (!aluno) {
+        throw new ErrorResponse(404, 'Usuário não encontrado', {
+          message: `Não existe usuário com CPF ${data.UsuarioCPF}`,
+        });
+      }
 
       // 4. Buscar matrícula ativa na turma origem
       const queryBuscar = `
-        SELECT * FROM matricula 
-        WHERE UsuarioCPF = ? 
-          AND TurmaGUID = ? 
+        SELECT * FROM matricula
+        WHERE UsuarioGUID = ?
+          AND TurmaGUID = ?
           AND MatriculaStatus = 'Ativa'
         LIMIT 1
       `;
 
       const [rows] = await connection.execute(queryBuscar, [
-        data.UsuarioCPF,
+        aluno.UsuarioGUID,
         data.TurmaOrigemGUID,
       ]);
 
@@ -285,8 +296,8 @@ export default class MatriculaService {
 
       // 6. Criar nova matrícula no destino
       const novaMatricula = new Matricula();
-      novaMatricula.MatriculaGUID = uuidv4(); // Sempre gera novo UUID na transferência
-      novaMatricula.UsuarioCPF = data.UsuarioCPF;
+      novaMatricula.MatriculaGUID = gerarGUID(); // Sempre gera novo UUID na transferência
+      novaMatricula.UsuarioGUID = aluno.UsuarioGUID;
       novaMatricula.TurmaGUID = data.TurmaDestinoGUID;
       novaMatricula.MatriculaDataEntrada = data.DataTransferencia;
       novaMatricula.MatriculaDataSaida = null;
@@ -295,15 +306,15 @@ export default class MatriculaService {
       novaMatricula.MatriculaUpdatedAt = new Date();
 
       const queryInserir = `
-        INSERT INTO matricula 
-        (MatriculaGUID, UsuarioCPF, TurmaGUID, MatriculaDataEntrada, 
+        INSERT INTO matricula
+        (MatriculaGUID, UsuarioGUID, TurmaGUID, MatriculaDataEntrada,
          MatriculaDataSaida, MatriculaStatus, MatriculaCreatedAt, MatriculaUpdatedAt)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       await connection.execute(queryInserir, [
         novaMatricula.MatriculaGUID,
-        novaMatricula.UsuarioCPF,
+        novaMatricula.UsuarioGUID,
         novaMatricula.TurmaGUID,
         novaMatricula.MatriculaDataEntrada,
         novaMatricula.MatriculaDataSaida,
@@ -317,7 +328,7 @@ export default class MatriculaService {
 
       void getAuditoriaService().registrar({
         EscolaGUID: turmaOrigem.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUIDAtor,
         AcaoTipo: "Update",
         EntidadeTipo: "matricula",
         EntidadeGUID: matriculaOrigem.MatriculaGUID,
@@ -326,7 +337,7 @@ export default class MatriculaService {
       });
       void getAuditoriaService().registrar({
         EscolaGUID: turmaDestino.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUIDAtor,
         AcaoTipo: "Create",
         EntidadeTipo: "matricula",
         EntidadeGUID: novaMatricula.MatriculaGUID,
@@ -338,7 +349,7 @@ export default class MatriculaService {
       return {
         matriculaAnterior: {
           MatriculaGUID: matriculaOrigem.MatriculaGUID,
-          UsuarioCPF: matriculaOrigem.UsuarioCPF,
+          UsuarioGUID: matriculaOrigem.UsuarioGUID,
           TurmaGUID: matriculaOrigem.TurmaGUID,
           MatriculaDataEntrada: matriculaOrigem.MatriculaDataEntrada,
           MatriculaDataSaida: data.DataTransferencia,
@@ -393,7 +404,7 @@ export default class MatriculaService {
   async atualizarMatricula(
     matriculaGUID: string,
     data: MatriculaUpdateDTO,
-    usuarioCPF: string
+    usuarioGUIDAtor: string
   ): Promise<MatriculaDTO> {
     // 1. Buscar matrícula
     const matriculaExistente = await this.#matriculaDAO.findById(matriculaGUID);
@@ -412,7 +423,7 @@ export default class MatriculaService {
     }
 
     // 3. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUIDAtor, turma.EscolaGUID);
 
     // 4. Atualizar
     const matriculaAtualizada = await this.#matriculaDAO.update(matriculaGUID, data);
@@ -423,22 +434,26 @@ export default class MatriculaService {
       });
     }
 
-    // 5. Remover do grupo de conversa se saiu da turma
+    // 5. Remover do grupo de conversa se saiu da turma (conversa_grupo_membro
+    // ainda não migrada — usa o CPF real do aluno, não o UsuarioGUID).
     const statusSaida: MatriculaDTO['MatriculaStatus'][] = ['Transferida', 'Cancelada', 'Concluida'];
     if (
       this.#conversaGrupoService &&
       data.MatriculaStatus &&
       statusSaida.includes(data.MatriculaStatus)
     ) {
-      await this.#conversaGrupoService.removerMembroTurma(
-        matriculaAtualizada.TurmaGUID,
-        matriculaAtualizada.UsuarioCPF
-      );
+      const aluno = await this.#usuarioDAO.findByGUID(matriculaAtualizada.UsuarioGUID);
+      if (aluno?.UsuarioCPF) {
+        await this.#conversaGrupoService.removerMembroTurma(
+          matriculaAtualizada.TurmaGUID,
+          aluno.UsuarioCPF
+        );
+      }
     }
 
     void getAuditoriaService().registrar({
       EscolaGUID: turma.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
       AcaoTipo: "Update",
       EntidadeTipo: "matricula",
       EntidadeGUID: matriculaAtualizada.MatriculaGUID,
@@ -451,7 +466,7 @@ export default class MatriculaService {
   /**
    * Excluir matrícula (cancela)
    */
-  async excluirMatricula(matriculaGUID: string, usuarioCPF: string): Promise<void> {
+  async excluirMatricula(matriculaGUID: string, usuarioGUIDAtor: string): Promise<void> {
     // 1. Buscar matrícula
     const matricula = await this.#matriculaDAO.findById(matriculaGUID);
     if (!matricula) {
@@ -469,7 +484,7 @@ export default class MatriculaService {
     }
 
     // 3. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUIDAtor, turma.EscolaGUID);
 
     // 4. Cancelar
     const deletado = await this.#matriculaDAO.delete(matriculaGUID);
@@ -480,17 +495,21 @@ export default class MatriculaService {
       });
     }
 
-    // 5. Remover do grupo de conversa da turma
+    // 5. Remover do grupo de conversa da turma (conversa_grupo_membro ainda
+    // não migrada — usa o CPF real do aluno, não o UsuarioGUID).
     if (this.#conversaGrupoService) {
-      await this.#conversaGrupoService.removerMembroTurma(
-        matricula.TurmaGUID,
-        matricula.UsuarioCPF
-      );
+      const aluno = await this.#usuarioDAO.findByGUID(matricula.UsuarioGUID);
+      if (aluno?.UsuarioCPF) {
+        await this.#conversaGrupoService.removerMembroTurma(
+          matricula.TurmaGUID,
+          aluno.UsuarioCPF
+        );
+      }
     }
 
     void getAuditoriaService().registrar({
       EscolaGUID: turma.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
       AcaoTipo: "Delete",
       EntidadeTipo: "matricula",
       EntidadeGUID: matricula.MatriculaGUID,
@@ -503,12 +522,12 @@ export default class MatriculaService {
    * (FuncaoId 1 = Coordenação ou FuncaoId 6 = Direção)
    */
   private async validarPermissaoEscrita(
-    usuarioCPF: string,
+    usuarioGUID: string,
     escolaGUID: string
   ): Promise<void> {
     // Validar Coordenação (FuncaoId = 1)
     const coordenacao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      usuarioCPF,
+      usuarioGUID,
       escolaGUID,
       1
     );
@@ -519,7 +538,7 @@ export default class MatriculaService {
 
     // Validar Direção (FuncaoId = 6)
     const direcao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      usuarioCPF,
+      usuarioGUID,
       escolaGUID,
       6
     );
@@ -540,7 +559,7 @@ export default class MatriculaService {
   private toDTO(matricula: Matricula): MatriculaDTO {
     return {
       MatriculaGUID: matricula.MatriculaGUID,
-      UsuarioCPF: matricula.UsuarioCPF,
+      UsuarioGUID: matricula.UsuarioGUID,
       TurmaGUID: matricula.TurmaGUID,
       MatriculaDataEntrada: matricula.MatriculaDataEntrada,
       MatriculaDataSaida: matricula.MatriculaDataSaida,
@@ -568,16 +587,16 @@ export default class MatriculaService {
    * 
    * @param matriculas - Array de matrículas para criar
    * @param escolaGUID - GUID da escola
-   * @param usuarioCPF - CPF do usuário que está criando
+   * @param usuarioGUIDAtor - UsuarioGUID de quem está criando (autor, p/ auditoria)
    * @returns BatchMatriculaCreateResponse com resultados detalhados
    */
   async criarMatriculasEmMassa(
     matriculas: MatriculaCreateDTO[],
     escolaGUID: string,
-    usuarioCPF: string
+    usuarioGUIDAtor: string
   ): Promise<BatchMatriculaCreateResponse> {
     // 1. Validar permissão uma única vez
-    await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUIDAtor, escolaGUID);
 
     // 2. Buscar todas as turmas da escola (para resolução de nomes)
     const turmasDaEscola = await this.#turmaDAO.findAll({ EscolaGUID: escolaGUID });
@@ -594,9 +613,9 @@ export default class MatriculaService {
       MatriculaStatus: 'Ativa'
     });
 
-    // Criar Set de alunos com matrícula ativa
+    // Criar Set de alunos com matrícula ativa (por UsuarioGUID)
     const alunosComMatriculaAtiva = new Set(
-      matriculasAtivas.map(m => m.UsuarioCPF)
+      matriculasAtivas.map(m => m.UsuarioGUID)
     );
 
     // 4. Processar cada matrícula
@@ -675,11 +694,24 @@ export default class MatriculaService {
           continue;
         }
 
+        // Resolver aluno por CPF (planilha) -> UsuarioGUID (identidade real)
+        const aluno = await this.#usuarioDAO.findByCPF(dados.UsuarioCPF);
+        if (!aluno) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: `Nenhum usuário cadastrado com o CPF ${dados.UsuarioCPF}`,
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+
         // Verificar se aluno já tem matrícula ativa
-        if (alunosComMatriculaAtiva.has(dados.UsuarioCPF)) {
+        if (alunosComMatriculaAtiva.has(aluno.UsuarioGUID)) {
           // Buscar matrícula ativa do aluno
-          const matriculaAtiva = matriculasAtivas.find(m => m.UsuarioCPF === dados.UsuarioCPF);
-          
+          const matriculaAtiva = matriculasAtivas.find(m => m.UsuarioGUID === aluno.UsuarioGUID);
+
           resultados.push({
             item: dados,
             sucesso: true,
@@ -693,8 +725,8 @@ export default class MatriculaService {
 
         // Criar nova matrícula
         const novaMatricula = new Matricula();
-        novaMatricula.MatriculaGUID = dados.MatriculaGUID || uuidv4();
-        novaMatricula.UsuarioCPF = dados.UsuarioCPF;
+        novaMatricula.MatriculaGUID = dados.MatriculaGUID || gerarGUID();
+        novaMatricula.UsuarioGUID = aluno.UsuarioGUID;
         novaMatricula.TurmaGUID = turmaGUID;
         novaMatricula.MatriculaDataEntrada = dados.MatriculaDataEntrada || new Date();
         novaMatricula.MatriculaDataSaida = null;
@@ -706,16 +738,16 @@ export default class MatriculaService {
 
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
-          UsuarioCPFAtor: usuarioCPF,
+          UsuarioGUIDAtor: usuarioGUIDAtor,
           AcaoTipo: "Create",
           EntidadeTipo: "matricula",
           EntidadeGUID: novaMatricula.MatriculaGUID,
-          EntidadeDescricao: `Matrícula em massa: ${novaMatricula.UsuarioCPF} na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
+          EntidadeDescricao: `Matrícula em massa: ${novaMatricula.UsuarioGUID} na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
           CategoriaAuditoriaId: 3, // DadosPessoais
         });
 
         // Adicionar ao Set para evitar duplicatas no mesmo lote
-        alunosComMatriculaAtiva.add(dados.UsuarioCPF);
+        alunosComMatriculaAtiva.add(aluno.UsuarioGUID);
 
         resultados.push({
           item: dados,

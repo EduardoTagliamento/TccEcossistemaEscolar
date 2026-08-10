@@ -3,7 +3,7 @@ import {
   UsuarioCreateBodySchema,
   UsuarioUpdateBodySchema,
   UsuarioSenhaBodySchema,
-  UsuarioCPFParamSchema,
+  UsuarioGUIDParamSchema,
   ehCorpoEmMassa,
 } from "../schemas/usuario.schema";
 import { zodValidate } from "../utils/zodValidate";
@@ -37,5 +37,5 @@ export default class UsuarioMiddleware {
 
   validateSenhaBody = zodValidate(UsuarioSenhaBodySchema, "body");
 
-  validateCpfParam = zodValidate(UsuarioCPFParamSchema, "params");
+  validateGuidParam = zodValidate(UsuarioGUIDParamSchema, "params");
 }

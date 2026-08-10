@@ -3,7 +3,7 @@ import { Anotacao, AnotacaoEntity } from '../entities/anotacao.model';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export interface AnotacaoFilters {
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   EscolaGUID?: string;
   AnotacaoIsFeito?: boolean;
   DataInicio?: Date;
@@ -23,14 +23,14 @@ export class AnotacaoDAO {
     const pool = await this.#database.getPool();
     const query = `
       INSERT INTO anotacao (
-        AnotacaoGUID, UsuarioCPF, EscolaGUID, AnotacaoData,
+        AnotacaoGUID, UsuarioGUID, EscolaGUID, AnotacaoData,
         AnotacaoTitulo, AnotacaoDescricao, AnotacaoIsFeito
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
     await pool.execute<ResultSetHeader>(query, [
       anotacao.AnotacaoGUID,
-      anotacao.UsuarioCPF,
+      anotacao.UsuarioGUID,
       anotacao.EscolaGUID,
       anotacao.AnotacaoData,
       anotacao.AnotacaoTitulo,
@@ -64,9 +64,9 @@ export class AnotacaoDAO {
     let query = 'SELECT * FROM anotacao WHERE 1=1';
     const params: any[] = [];
 
-    if (filters.UsuarioCPF) {
-      query += ' AND UsuarioCPF = ?';
-      params.push(filters.UsuarioCPF);
+    if (filters.UsuarioGUID) {
+      query += ' AND UsuarioGUID = ?';
+      params.push(filters.UsuarioGUID);
     }
 
     if (filters.EscolaGUID) {
@@ -96,19 +96,19 @@ export class AnotacaoDAO {
   }
 
   // READ BY USER AND SCHOOL
-  async findByUsuarioAndEscola(usuarioCPF: string, escolaGUID: string): Promise<Anotacao[]> {
-    return this.findAll({ UsuarioCPF: usuarioCPF, EscolaGUID: escolaGUID });
+  async findByUsuarioAndEscola(usuarioGUID: string, escolaGUID: string): Promise<Anotacao[]> {
+    return this.findAll({ UsuarioGUID: usuarioGUID, EscolaGUID: escolaGUID });
   }
 
   // READ BY DATE RANGE (para calendário)
   async findByDateRange(
-    usuarioCPF: string,
+    usuarioGUID: string,
     escolaGUID: string,
     dataInicio: Date,
     dataFim: Date
   ): Promise<Anotacao[]> {
     return this.findAll({
-      UsuarioCPF: usuarioCPF,
+      UsuarioGUID: usuarioGUID,
       EscolaGUID: escolaGUID,
       DataInicio: dataInicio,
       DataFim: dataFim
@@ -172,9 +172,9 @@ export class AnotacaoDAO {
     let query = 'SELECT COUNT(*) as total FROM anotacao WHERE 1=1';
     const params: any[] = [];
 
-    if (filters.UsuarioCPF) {
-      query += ' AND UsuarioCPF = ?';
-      params.push(filters.UsuarioCPF);
+    if (filters.UsuarioGUID) {
+      query += ' AND UsuarioGUID = ?';
+      params.push(filters.UsuarioGUID);
     }
 
     if (filters.EscolaGUID) {

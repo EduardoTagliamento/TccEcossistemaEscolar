@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import ErrorResponse from "../utils/ErrorResponse";
 import MateriaCustomizacao from "../entities/materiacustomizacao.model";
 import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repository";
@@ -64,7 +64,7 @@ export default class MateriaCustomizacaoService {
     const existente = await this.#customizacaoDAO.findByMateriaEProfessor(materiaGUID, usuarioCPF);
 
     const customizacao = new MateriaCustomizacao();
-    customizacao.MateriaCustomizacaoGUID = existente?.MateriaCustomizacaoGUID ?? uuidv4();
+    customizacao.MateriaCustomizacaoGUID = existente?.MateriaCustomizacaoGUID ?? gerarGUID();
     customizacao.MateriaGUID = materiaGUID;
     customizacao.UsuarioCPF = usuarioCPF;
     customizacao.MensagemBoasVindas =

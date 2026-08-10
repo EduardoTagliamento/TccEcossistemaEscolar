@@ -14,12 +14,10 @@
  * - N:1 com Usuario (aluno)
  * - N:1 com Turma
  */
-import { normalizeCPF } from "../utils/helpers/cpf.helper";
-
 export default class Matricula {
   // Campos privados (encapsulamento)
   #MatriculaGUID!: string;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #TurmaGUID!: string;
   #MatriculaDataEntrada!: Date;
   #MatriculaDataSaida!: Date | null;
@@ -33,8 +31,8 @@ export default class Matricula {
     return this.#MatriculaGUID;
   }
 
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
   get TurmaGUID(): string {
@@ -74,8 +72,11 @@ export default class Matricula {
     this.#MatriculaGUID = trimmed;
   }
 
-  set UsuarioCPF(value: string) {
-    this.#UsuarioCPF = normalizeCPF(value);
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia.");
+    }
+    this.#UsuarioGUID = value;
   }
 
   set TurmaGUID(value: string) {
@@ -136,7 +137,7 @@ export default class Matricula {
    */
   validar(): void {
     if (!this.#MatriculaGUID) throw new Error('MatriculaGUID é obrigatório');
-    if (!this.#UsuarioCPF) throw new Error('UsuarioCPF é obrigatório');
+    if (!this.#UsuarioGUID) throw new Error('UsuarioGUID é obrigatório');
     if (!this.#TurmaGUID) throw new Error('TurmaGUID é obrigatório');
     if (!this.#MatriculaDataEntrada) throw new Error('MatriculaDataEntrada é obrigatório');
     // MatriculaDataSaida é opcional (nullable)
@@ -151,7 +152,7 @@ export default class Matricula {
   toJSON() {
     return {
       MatriculaGUID: this.#MatriculaGUID,
-      UsuarioCPF: this.#UsuarioCPF,
+      UsuarioGUID: this.#UsuarioGUID,
       TurmaGUID: this.#TurmaGUID,
       MatriculaDataEntrada: this.#MatriculaDataEntrada,
       MatriculaDataSaida: this.#MatriculaDataSaida,
@@ -167,7 +168,7 @@ export default class Matricula {
   static fromDatabase(data: any): Matricula {
     const matricula = new Matricula();
     matricula.MatriculaGUID = data.MatriculaGUID;
-    matricula.UsuarioCPF = data.UsuarioCPF;
+    matricula.UsuarioGUID = data.UsuarioGUID;
     matricula.TurmaGUID = data.TurmaGUID;
     matricula.MatriculaDataEntrada = data.MatriculaDataEntrada;
     matricula.MatriculaDataSaida = data.MatriculaDataSaida;

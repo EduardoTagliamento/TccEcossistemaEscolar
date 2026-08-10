@@ -30,8 +30,8 @@ export default class NotificacaoController {
     try {
       console.log("🔵 NotificacaoController.index()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
@@ -42,7 +42,7 @@ export default class NotificacaoController {
         offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined,
       };
 
-      const notificacoes = await this.#notificacaoService.listar(usuarioCPF, filters);
+      const notificacoes = await this.#notificacaoService.listar(usuarioGUID, filters);
 
       res.status(200).json({
         success: true,
@@ -58,12 +58,12 @@ export default class NotificacaoController {
     try {
       console.log("🔵 NotificacaoController.contador()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
-      const total = await this.#notificacaoService.contarNaoLidas(usuarioCPF);
+      const total = await this.#notificacaoService.contarNaoLidas(usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -79,13 +79,13 @@ export default class NotificacaoController {
     try {
       console.log("🔵 NotificacaoController.marcarComoLida()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
       const { NotificacaoGUID } = req.params;
-      const notificacao = await this.#notificacaoService.marcarComoLida(NotificacaoGUID, usuarioCPF);
+      const notificacao = await this.#notificacaoService.marcarComoLida(NotificacaoGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -101,12 +101,12 @@ export default class NotificacaoController {
     try {
       console.log("🔵 NotificacaoController.marcarTodasComoLidas()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
-      const total = await this.#notificacaoService.marcarTodasComoLidas(usuarioCPF);
+      const total = await this.#notificacaoService.marcarTodasComoLidas(usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -122,8 +122,8 @@ export default class NotificacaoController {
     try {
       console.log("🔵 NotificacaoController.tipos()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
@@ -143,12 +143,12 @@ export default class NotificacaoController {
     try {
       console.log("🔵 NotificacaoController.preferencias()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
-      const preferencias = await this.#notificacaoService.listarPreferencias(usuarioCPF);
+      const preferencias = await this.#notificacaoService.listarPreferencias(usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -164,8 +164,8 @@ export default class NotificacaoController {
     try {
       console.log("🔵 NotificacaoController.atualizarPreferencia()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
@@ -180,7 +180,7 @@ export default class NotificacaoController {
       }
 
       const preferencia = await this.#notificacaoService.atualizarPreferencia(
-        usuarioCPF,
+        usuarioGUID,
         notificacaoTipoId,
         PreferenciaEmailAtivo,
         PreferenciaWhatsappAtivo

@@ -1,6 +1,6 @@
 import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import {
   ConviteGrupoTarefa,
   ConviteGrupoTarefaCreateDTO,
@@ -38,7 +38,7 @@ export class ConviteGrupoTarefaDAO {
   async create(data: ConviteGrupoTarefaCreateDTO): Promise<ConviteGrupoTarefa> {
     console.log('🟢 ConviteGrupoTarefaDAO.create()');
     
-    const conviteGUID = uuidv4();
+    const conviteGUID = gerarGUID();
     
     const query = `
       INSERT INTO convitegrupotarefa (

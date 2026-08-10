@@ -3,7 +3,7 @@ import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 
 interface EscolaxUsuarioxFuncaoRow {
   EscolaxUsuarioxFuncaoId: number;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   FuncaoId: number;
   FuncaoNome: string | null;
@@ -15,7 +15,7 @@ interface EscolaxUsuarioxFuncaoRow {
 }
 
 interface FindAllFilters {
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   EscolaGUID?: string;
   FuncaoId?: number;
 }
@@ -33,11 +33,11 @@ export class EscolaxUsuarioxFuncaoDAO {
 
     const SQL = `
       INSERT INTO escolaxusuarioxfuncao
-      (UsuarioCPF, EscolaGUID, FuncaoId, DataInicio, DataFim, Status)
+      (UsuarioGUID, EscolaGUID, FuncaoId, DataInicio, DataFim, Status)
       VALUES (?, ?, ?, ?, ?, ?);
     `;
     const params = [
-      relacao.UsuarioCPF,
+      relacao.UsuarioGUID,
       relacao.EscolaGUID,
       relacao.FuncaoId,
       relacao.DataInicio,
@@ -56,11 +56,11 @@ export class EscolaxUsuarioxFuncaoDAO {
 
     const SQL = `
       UPDATE escolaxusuarioxfuncao
-      SET UsuarioCPF = ?, EscolaGUID = ?, FuncaoId = ?, DataInicio = ?, DataFim = ?, Status = ?
+      SET UsuarioGUID = ?, EscolaGUID = ?, FuncaoId = ?, DataInicio = ?, DataFim = ?, Status = ?
       WHERE EscolaxUsuarioxFuncaoId = ?;
     `;
     const params = [
-      relacao.UsuarioCPF,
+      relacao.UsuarioGUID,
       relacao.EscolaGUID,
       relacao.FuncaoId,
       relacao.DataInicio,
@@ -135,9 +135,9 @@ export class EscolaxUsuarioxFuncaoDAO {
     const conditions: string[] = [];
     const params: Array<string | number> = [];
 
-    if (filters?.UsuarioCPF) {
-      conditions.push("euf.UsuarioCPF = ?");
-      params.push(filters.UsuarioCPF);
+    if (filters?.UsuarioGUID) {
+      conditions.push("euf.UsuarioGUID = ?");
+      params.push(filters.UsuarioGUID);
     }
 
     if (filters?.EscolaGUID) {
@@ -165,7 +165,7 @@ export class EscolaxUsuarioxFuncaoDAO {
   };
 
   findByTripla = async (
-    UsuarioCPF: string,
+    UsuarioGUID: string,
     EscolaGUID: string,
     FuncaoId: number
   ): Promise<EscolaxUsuarioxFuncao | null> => {
@@ -175,13 +175,13 @@ export class EscolaxUsuarioxFuncaoDAO {
       SELECT euf.*, f.FuncaoNome
       FROM escolaxusuarioxfuncao euf
       INNER JOIN funcao f ON f.FuncaoId = euf.FuncaoId
-      WHERE euf.UsuarioCPF = ?
+      WHERE euf.UsuarioGUID = ?
         AND euf.EscolaGUID = ?
         AND euf.FuncaoId = ?;
     `;
 
     const pool = await this.#database.getPool();
-    const [linhas] = await pool.execute(SQL, [UsuarioCPF, EscolaGUID, FuncaoId]);
+    const [linhas] = await pool.execute(SQL, [UsuarioGUID, EscolaGUID, FuncaoId]);
 
     const rows = linhas as EscolaxUsuarioxFuncaoRow[];
     if (rows.length === 0) {
@@ -191,10 +191,10 @@ export class EscolaxUsuarioxFuncaoDAO {
     return this.mapRowToEntity(rows[0]);
   };
 
-  usuarioExists = async (UsuarioCPF: string): Promise<boolean> => {
-    const SQL = "SELECT 1 FROM usuario WHERE UsuarioCPF = ? LIMIT 1;";
+  usuarioExists = async (UsuarioGUID: string): Promise<boolean> => {
+    const SQL = "SELECT 1 FROM usuario WHERE UsuarioGUID = ? LIMIT 1;";
     const pool = await this.#database.getPool();
-    const [linhas] = await pool.execute(SQL, [UsuarioCPF]);
+    const [linhas] = await pool.execute(SQL, [UsuarioGUID]);
     return (linhas as Array<Record<string, unknown>>).length > 0;
   };
 
@@ -216,7 +216,7 @@ export class EscolaxUsuarioxFuncaoDAO {
    * Busca todas as escolas vinculadas a um usuário com suas funções
    * Retorna array com dados completos da escola e funções associadas
    */
-  findEscolasByUsuarioCPF = async (UsuarioCPF: string): Promise<Array<{
+  findEscolasByUsuarioGUID = async (UsuarioGUID: string): Promise<Array<{
     escola: {
       EscolaGUID: string;
       EscolaNome: string;
@@ -236,7 +236,7 @@ export class EscolaxUsuarioxFuncaoDAO {
       Status: "Ativo" | "Inativo" | "Finalizado";
     }>;
   }>> => {
-    console.log("Repository: EscolaxUsuarioxFuncaoDAO.findEscolasByUsuarioCPF()");
+    console.log("Repository: EscolaxUsuarioxFuncaoDAO.findEscolasByUsuarioGUID()");
 
     const SQL = `
       SELECT 
@@ -257,12 +257,12 @@ export class EscolaxUsuarioxFuncaoDAO {
       FROM escolaxusuarioxfuncao euf
       INNER JOIN escola e ON e.EscolaGUID = euf.EscolaGUID
       INNER JOIN funcao f ON f.FuncaoId = euf.FuncaoId
-      WHERE euf.UsuarioCPF = ?
+      WHERE euf.UsuarioGUID = ?
       ORDER BY e.EscolaNome ASC, f.FuncaoNome ASC;
     `;
 
     const pool = await this.#database.getPool();
-    const [linhas] = await pool.execute(SQL, [UsuarioCPF]);
+    const [linhas] = await pool.execute(SQL, [UsuarioGUID]);
 
     const rows = linhas as Array<{
       EscolaGUID: string;
@@ -335,13 +335,13 @@ export class EscolaxUsuarioxFuncaoDAO {
     return Array.from(escolasMap.values());
   };
 
-  isCoordOuDirecaoEmEscola = async (usuarioCPF: string, escolaGUID: string): Promise<boolean> => {
+  isCoordOuDirecaoEmEscola = async (usuarioGUID: string, escolaGUID: string): Promise<boolean> => {
     console.log('🟢 EscolaxUsuarioxFuncaoDAO.isCoordOuDirecaoEmEscola()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
       `SELECT 1 FROM escolaxusuarioxfuncao
-       WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId IN (1, 6) AND Status = 'Ativo' LIMIT 1`,
-      [usuarioCPF, escolaGUID]
+       WHERE UsuarioGUID = ? AND EscolaGUID = ? AND FuncaoId IN (1, 6) AND Status = 'Ativo' LIMIT 1`,
+      [usuarioGUID, escolaGUID]
     );
     return (rows as Array<Record<string, unknown>>).length > 0;
   };
@@ -354,17 +354,17 @@ export class EscolaxUsuarioxFuncaoDAO {
    * automaticamente. Usado para restringir a personalização de cores da
    * escola (ver EscolaService.updateEscola).
    */
-  findRepresentanteLegal = async (escolaGUID: string): Promise<{ UsuarioCPF: string } | null> => {
+  findRepresentanteLegal = async (escolaGUID: string): Promise<{ UsuarioGUID: string } | null> => {
     console.log('🟢 EscolaxUsuarioxFuncaoDAO.findRepresentanteLegal()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
-      `SELECT UsuarioCPF FROM escolaxusuarioxfuncao
+      `SELECT UsuarioGUID FROM escolaxusuarioxfuncao
        WHERE EscolaGUID = ? AND FuncaoId = 6 AND Status = 'Ativo'
        ORDER BY DataInicio ASC LIMIT 1`,
       [escolaGUID]
     );
-    const linhas = rows as Array<{ UsuarioCPF: string }>;
-    return linhas.length > 0 ? { UsuarioCPF: linhas[0].UsuarioCPF } : null;
+    const linhas = rows as Array<{ UsuarioGUID: string }>;
+    return linhas.length > 0 ? { UsuarioGUID: linhas[0].UsuarioGUID } : null;
   };
 
   /**
@@ -372,13 +372,13 @@ export class EscolaxUsuarioxFuncaoDAO {
    * ativo na escola. Usado pelo módulo de Projetos — só Professor/Direção
    * podem criar um Projeto (ver docs/PLANO_IMPLEMENTACAO_PROJETOS.md, Seção 1).
    */
-  isProfessorOuDirecaoEmEscola = async (usuarioCPF: string, escolaGUID: string): Promise<boolean> => {
+  isProfessorOuDirecaoEmEscola = async (usuarioGUID: string, escolaGUID: string): Promise<boolean> => {
     console.log('🟢 EscolaxUsuarioxFuncaoDAO.isProfessorOuDirecaoEmEscola()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
       `SELECT 1 FROM escolaxusuarioxfuncao
-       WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId IN (3, 6) AND Status = 'Ativo' LIMIT 1`,
-      [usuarioCPF, escolaGUID]
+       WHERE UsuarioGUID = ? AND EscolaGUID = ? AND FuncaoId IN (3, 6) AND Status = 'Ativo' LIMIT 1`,
+      [usuarioGUID, escolaGUID]
     );
     return (rows as Array<Record<string, unknown>>).length > 0;
   };
@@ -389,19 +389,19 @@ export class EscolaxUsuarioxFuncaoDAO {
    * Auditoria — só esses três papéis podem consultar o log (ver
    * docs/PLANO_IMPLEMENTACAO_REGISTRO_AUDITORIA.md, Seção 1, decisão #2).
    */
-  isCoordSecretariaOuDirecaoEmEscola = async (usuarioCPF: string, escolaGUID: string): Promise<boolean> => {
+  isCoordSecretariaOuDirecaoEmEscola = async (usuarioGUID: string, escolaGUID: string): Promise<boolean> => {
     console.log('🟢 EscolaxUsuarioxFuncaoDAO.isCoordSecretariaOuDirecaoEmEscola()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
       `SELECT 1 FROM escolaxusuarioxfuncao
-       WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId IN (1, 2, 6) AND Status = 'Ativo' LIMIT 1`,
-      [usuarioCPF, escolaGUID]
+       WHERE UsuarioGUID = ? AND EscolaGUID = ? AND FuncaoId IN (1, 2, 6) AND Status = 'Ativo' LIMIT 1`,
+      [usuarioGUID, escolaGUID]
     );
     return (rows as Array<Record<string, unknown>>).length > 0;
   };
 
   /**
-   * Busca UsuarioCPF de todos os usuários ativos de uma escola que tenham
+   * Busca UsuarioGUID de todos os usuários ativos de uma escola que tenham
    * pelo menos uma das funções informadas. Usado pelo fan-out de notificações
    * (ex.: novo evento na escola → todos os Alunos e Professores).
    */
@@ -417,7 +417,7 @@ export class EscolaxUsuarioxFuncaoDAO {
 
     const placeholders = FuncaoIds.map(() => "?").join(", ");
     const SQL = `
-      SELECT DISTINCT euf.UsuarioCPF
+      SELECT DISTINCT euf.UsuarioGUID
       FROM escolaxusuarioxfuncao euf
       WHERE euf.EscolaGUID = ?
         AND euf.Status = 'Ativo'
@@ -427,13 +427,13 @@ export class EscolaxUsuarioxFuncaoDAO {
     const pool = await this.#database.getPool();
     const [linhas] = await pool.execute(SQL, [EscolaGUID, ...FuncaoIds]);
 
-    return (linhas as Array<{ UsuarioCPF: string }>).map((row) => row.UsuarioCPF);
+    return (linhas as Array<{ UsuarioGUID: string }>).map((row) => row.UsuarioGUID);
   };
 
   private mapRowToEntity = (row: EscolaxUsuarioxFuncaoRow): EscolaxUsuarioxFuncao => {
     const relacao = new EscolaxUsuarioxFuncao();
     relacao.EscolaxUsuarioxFuncaoId = row.EscolaxUsuarioxFuncaoId;
-    relacao.UsuarioCPF = row.UsuarioCPF;
+    relacao.UsuarioGUID = row.UsuarioGUID;
     relacao.EscolaGUID = row.EscolaGUID;
     relacao.FuncaoId = row.FuncaoId;
     relacao.FuncaoNome = row.FuncaoNome;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const CPF_FORMATADO_REGEX = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
+const GUID_REGEX = /^[A-Za-z0-9_-]{12}$/;
 const TELEFONE_FORMATADO_REGEX = /^\(\d{2}\) \d{5}-\d{4}$/;
 const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const STATUS_ENUM = ["Ativo", "Inativo", "Bloqueado"] as const;
@@ -91,15 +91,16 @@ const campoStatus = () =>
 const campoEmailVerificado = () =>
   z.boolean({ message: "O campo 'UsuarioEmailVerificado' deve ser boolean." }).optional();
 
-// Campos com regra diferente entre criação (obrigatórios) e atualização (opcionais).
-const campoCPF = (obrigatorio: boolean) => {
-  const base = z
-    .string({ message: obrigatorio ? "O campo 'UsuarioCPF' é obrigatório!" : "O campo 'UsuarioCPF' deve ser string." })
-    .min(1, "O campo 'UsuarioCPF' é obrigatório!")
+// CPF é sempre opcional (criação e atualização) — nem todo usuário tem CPF
+// cadastrado (ex.: piloto). Quando informado, precisa estar bem formado.
+const campoCPF = () =>
+  z
+    .string({ message: "O campo 'UsuarioCPF' deve ser string." })
     .transform(normalizarCPF)
-    .refine((v) => v.length === 14, "O campo 'UsuarioCPF' deve ter 14 caracteres (XXX.XXX.XXX-XX).");
-  return obrigatorio ? base : base.optional();
-};
+    .refine((v) => v.length === 14, "O campo 'UsuarioCPF' deve ter 14 caracteres (XXX.XXX.XXX-XX).")
+    .optional();
+
+// Campos com regra diferente entre criação (obrigatórios) e atualização (opcionais).
 
 const campoNome = (obrigatorio: boolean) => {
   const base = z
@@ -131,7 +132,7 @@ export const UsuarioCreateBodySchema = z.preprocess(
   desembrulharUsuario,
   z
     .object({
-      UsuarioCPF: campoCPF(true),
+      UsuarioCPF: campoCPF(),
       UsuarioNome: campoNome(true),
       UsuarioSenha: campoSenha(true),
       UsuarioEmail: campoEmail(),
@@ -148,7 +149,7 @@ export const UsuarioUpdateBodySchema = z.preprocess(
   desembrulharUsuario,
   z
     .object({
-      UsuarioCPF: campoCPF(false),
+      UsuarioCPF: campoCPF(),
       UsuarioNome: campoNome(false),
       UsuarioSenha: campoSenha(false),
       UsuarioEmail: campoEmail(),
@@ -168,8 +169,8 @@ export const UsuarioSenhaBodySchema = z.object({
     .min(6, "O campo 'NovaSenha' é obrigatório e deve ter pelo menos 6 caracteres."),
 });
 
-export const UsuarioCPFParamSchema = z.object({
-  UsuarioCPF: z
-    .string({ message: "O parâmetro 'UsuarioCPF' é obrigatório!" })
-    .regex(CPF_FORMATADO_REGEX, "O CPF deve estar no formato XXX.XXX.XXX-XX"),
+export const UsuarioGUIDParamSchema = z.object({
+  UsuarioGUID: z
+    .string({ message: "O parâmetro 'UsuarioGUID' é obrigatório!" })
+    .regex(GUID_REGEX, "UsuarioGUID inválido."),
 });

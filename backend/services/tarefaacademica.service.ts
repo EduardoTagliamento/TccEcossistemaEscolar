@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { RowDataPacket } from "mysql2";
 import TarefaAcademica from "../entities/tarefaacademica.model";
 import TarefaAcademicaMatricula from "../entities/tarefaacademica-matricula.model";
@@ -374,7 +374,7 @@ export default class TarefaAcademicaService {
 
     // PASSO 1: Criar tarefa única (dados compartilhados)
     const tarefa = new TarefaAcademica();
-    tarefa.TarefaGUID = uuidv4();
+    tarefa.TarefaGUID = gerarGUID();
     tarefa.matXprofXturxescGUID = data.matXprofXturxescGUID;
     tarefa.TarefaTitulo = data.TarefaTitulo.trim();
     tarefa.TarefaConteudo = data.TarefaConteudo ? data.TarefaConteudo.trim() : null;
@@ -396,7 +396,7 @@ export default class TarefaAcademicaService {
     // PASSO 2: Criar atribuições para cada aluno (com prazo específico quando houver override)
     const atribuicoes: TarefaAcademicaMatricula[] = data.MatriculasGUID.map((matriculaGUID) => {
       const atrib = new TarefaAcademicaMatricula();
-      atrib.TarefaMatriculaGUID = uuidv4();
+      atrib.TarefaMatriculaGUID = gerarGUID();
       atrib.TarefaGUID = tarefaCriada.TarefaGUID;
       atrib.MatriculaGUID = matriculaGUID;
       atrib.TarefaPrazoDataMatricula = data.DatasPorMatricula?.[matriculaGUID]
@@ -1401,7 +1401,7 @@ export default class TarefaAcademicaService {
     const proximaOrdem = questoesExistentes.length > 0 ? Math.max(...questoesExistentes.map((q) => q.QuestaoOrdem)) + 1 : 0;
 
     const questao = new TarefaAcademicaQuestao();
-    questao.QuestaoGUID = uuidv4();
+    questao.QuestaoGUID = gerarGUID();
     questao.TarefaGUID = TarefaGUID;
     questao.QuestaoEnunciado = data.QuestaoEnunciado;
     questao.QuestaoTipo = data.QuestaoTipo;
@@ -1414,7 +1414,7 @@ export default class TarefaAcademicaService {
     if (data.QuestaoTipo === "objetiva" && data.Alternativas) {
       const alternativas = data.Alternativas.map((a, index) => {
         const alternativa = new TarefaAcademicaAlternativa();
-        alternativa.AlternativaGUID = uuidv4();
+        alternativa.AlternativaGUID = gerarGUID();
         alternativa.QuestaoGUID = questao.QuestaoGUID;
         alternativa.AlternativaTexto = a.AlternativaTexto;
         alternativa.AlternativaCorreta = a.AlternativaCorreta;
@@ -1464,7 +1464,7 @@ export default class TarefaAcademicaService {
 
     const questoesEntidade = questoesData.map((data) => {
       const questao = new TarefaAcademicaQuestao();
-      questao.QuestaoGUID = uuidv4();
+      questao.QuestaoGUID = gerarGUID();
       questao.TarefaGUID = TarefaGUID;
       questao.QuestaoEnunciado = data.QuestaoEnunciado;
       questao.QuestaoTipo = data.QuestaoTipo;
@@ -1482,7 +1482,7 @@ export default class TarefaAcademicaService {
       if (data.QuestaoTipo === "objetiva" && data.Alternativas) {
         data.Alternativas.forEach((a, index) => {
           const alternativa = new TarefaAcademicaAlternativa();
-          alternativa.AlternativaGUID = uuidv4();
+          alternativa.AlternativaGUID = gerarGUID();
           alternativa.QuestaoGUID = questao.QuestaoGUID;
           alternativa.AlternativaTexto = a.AlternativaTexto;
           alternativa.AlternativaCorreta = a.AlternativaCorreta;
@@ -1541,7 +1541,7 @@ export default class TarefaAcademicaService {
         }
 
         const questao = new TarefaAcademicaQuestao();
-        questao.QuestaoGUID = uuidv4();
+        questao.QuestaoGUID = gerarGUID();
         questao.TarefaGUID = TarefaGUID;
         questao.QuestaoEnunciado = linha.QuestaoEnunciado;
         questao.QuestaoTipo = linha.QuestaoTipo;
@@ -1554,7 +1554,7 @@ export default class TarefaAcademicaService {
         if (linha.QuestaoTipo === "objetiva" && linha.Alternativas) {
           const alternativas = linha.Alternativas.map((a, index) => {
             const alternativa = new TarefaAcademicaAlternativa();
-            alternativa.AlternativaGUID = uuidv4();
+            alternativa.AlternativaGUID = gerarGUID();
             alternativa.QuestaoGUID = questao.QuestaoGUID;
             alternativa.AlternativaTexto = a.AlternativaTexto;
             alternativa.AlternativaCorreta = a.AlternativaCorreta;
@@ -1650,7 +1650,7 @@ export default class TarefaAcademicaService {
       await this.#alternativaDAO.deleteByQuestao(QuestaoGUID);
       const alternativas = data.Alternativas.map((a, index) => {
         const alternativa = new TarefaAcademicaAlternativa();
-        alternativa.AlternativaGUID = uuidv4();
+        alternativa.AlternativaGUID = gerarGUID();
         alternativa.QuestaoGUID = QuestaoGUID;
         alternativa.AlternativaTexto = a.AlternativaTexto;
         alternativa.AlternativaCorreta = a.AlternativaCorreta;

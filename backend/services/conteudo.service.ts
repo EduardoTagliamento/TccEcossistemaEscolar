@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import path from "path";
 import sanitizeHtml from "sanitize-html";
 import ErrorResponse from "../utils/ErrorResponse";
@@ -212,7 +212,7 @@ export default class ConteudoService {
     }
 
     const conteudo = new Conteudo();
-    conteudo.ConteudoGUID = uuidv4();
+    conteudo.ConteudoGUID = gerarGUID();
     conteudo.MateriaGUID = data.MateriaGUID;
     conteudo.UsuarioCPF = usuarioCPF;
     // Categoria agora é por turma (ConteudoTurma.CategoriaGUID) — este campo
@@ -228,7 +228,7 @@ export default class ConteudoService {
     // Atribuições de turma
     const atribuicoes = data.TurmasGUID.map((turmaGUID) => {
       const atribuicao = new ConteudoTurma();
-      atribuicao.ConteudoTurmaGUID = uuidv4();
+      atribuicao.ConteudoTurmaGUID = gerarGUID();
       atribuicao.ConteudoGUID = conteudo.ConteudoGUID;
       atribuicao.TurmaGUID = turmaGUID;
       atribuicao.ConteudoDataPublicacaoTurma = data.DatasPorTurma?.[turmaGUID]
@@ -366,7 +366,7 @@ export default class ConteudoService {
       const url = await R2StorageService.upload(chave, arquivoRecebido.buffer, arquivoRecebido.mimetype);
 
       const arquivo = new ConteudoPaginadoArquivo();
-      arquivo.ConteudoPaginadoArquivoGUID = uuidv4();
+      arquivo.ConteudoPaginadoArquivoGUID = gerarGUID();
       arquivo.ConteudoGUID = conteudoGUID;
       arquivo.Ordem = i + 1;
       arquivo.ArquivoUrl = url;

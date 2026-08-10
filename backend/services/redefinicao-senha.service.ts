@@ -46,18 +46,18 @@ export default class RedefinicaoSenhaService {
     }
 
     // Anti-spam: mesmo limite/janela usado em VerificacaoEmailService.
-    const tentativasRecentes = await this.#redefinicaoDAO.countRecentAttempts(usuario.UsuarioCPF, 1);
+    const tentativasRecentes = await this.#redefinicaoDAO.countRecentAttempts(usuario.UsuarioGUID, 1);
     if (tentativasRecentes >= this.MAX_ATTEMPTS_PER_HOUR) {
       // Ainda a mensagem genérica — um 429 aqui revelaria que a conta existe.
       return { message: this.MENSAGEM_GENERICA };
     }
 
-    await this.#redefinicaoDAO.invalidateOldTokens(usuario.UsuarioCPF);
+    await this.#redefinicaoDAO.invalidateOldTokens(usuario.UsuarioGUID);
 
     const token = this.gerarTokenAleatorio();
 
     const redefinicao = new RedefinicaoSenha();
-    redefinicao.UsuarioCPF = usuario.UsuarioCPF;
+    redefinicao.UsuarioGUID = usuario.UsuarioGUID;
     redefinicao.RedefinicaoToken = token;
     redefinicao.RedefinicaoExpiresAt = this.calcularExpiracao();
 
@@ -94,10 +94,10 @@ export default class RedefinicaoSenhaService {
       });
     }
 
-    const usuario = await this.#usuarioDAO.findById(redefinicao.UsuarioCPF);
+    const usuario = await this.#usuarioDAO.findByGUID(redefinicao.UsuarioGUID);
     if (!usuario) {
       throw new ErrorResponse(404, "Usuário não encontrado", {
-        message: `Não existe usuário com CPF ${redefinicao.UsuarioCPF}`,
+        message: `Não existe usuário com esse identificador`,
       });
     }
 
@@ -115,7 +115,7 @@ export default class RedefinicaoSenhaService {
     // Um reset bem-sucedido invalida qualquer outro link pendente pro
     // mesmo usuário — evita que um link antigo (ex.: vazado num e-mail
     // encaminhado por engano) continue valendo depois da senha já ter mudado.
-    await this.#redefinicaoDAO.invalidateOldTokens(redefinicao.UsuarioCPF);
+    await this.#redefinicaoDAO.invalidateOldTokens(redefinicao.UsuarioGUID);
 
     return { message: "Senha redefinida com sucesso!" };
   }

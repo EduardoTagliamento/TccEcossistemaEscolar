@@ -11,7 +11,7 @@
  * - Delete é soft delete (marca como Cancelado)
  */
 
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import Evento from "../entities/evento.model";
 import { EventoDAO, EventoFilters } from "../repositories/evento.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
@@ -29,7 +29,7 @@ const FUNCOES_EVENTO_CRIADO = [1, 2, 3, 5, 6];
 export interface EventoDTO {
   EventoGUID: string;
   EscolaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EventoTitulo: string;
   EventoDescricao: string | null;
   EventoData: Date;
@@ -75,11 +75,11 @@ export default class EventoService {
    * CREATE - Criar novo evento
    * Apenas Coordenação (1), Secretaria (2) ou Direção (6)
    */
-  async store(data: EventoCreateDTO, usuarioCPF: string): Promise<EventoDTO> {
+  async store(data: EventoCreateDTO, usuarioGUID: string): Promise<EventoDTO> {
     console.log("🟣 EventoService.store()");
 
     // 1. Validar permissão de criação (Coordenação, Secretaria ou Direção)
-    await this.#validarPermissaoEscrita(usuarioCPF, data.EscolaGUID);
+    await this.#validarPermissaoEscrita(usuarioGUID, data.EscolaGUID);
 
     // 2. Validar escola existe
     const escola = await this.#escolaDAO.findById(data.EscolaGUID);
@@ -95,9 +95,9 @@ export default class EventoService {
 
     // 4. Criar entidade Evento
     const evento = Evento.fromPlainObject({
-      EventoGUID: uuidv4(),
+      EventoGUID: gerarGUID(),
       EscolaGUID: data.EscolaGUID,
-      UsuarioCPF: usuarioCPF,
+      UsuarioGUID: usuarioGUID,
       EventoTitulo: data.EventoTitulo.trim(),
       EventoDescricao: data.EventoDescricao?.trim() || null,
       EventoData: eventoData,
@@ -119,7 +119,7 @@ export default class EventoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: created.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Create",
       EntidadeTipo: "evento",
       EntidadeGUID: created.EventoGUID,
@@ -153,14 +153,14 @@ export default class EventoService {
    * INDEX - Listar eventos com filtros
    * Todos os usuários da escola podem visualizar
    */
-  async index(filters: EventoFilters, usuarioCPF: string): Promise<EventoDTO[]> {
+  async index(filters: EventoFilters, usuarioGUID: string): Promise<EventoDTO[]> {
     console.log("🟣 EventoService.index()");
 
     // Se filtro de escola foi fornecido, validar acesso
     if (filters.EscolaGUID) {
       const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
         EscolaGUID: filters.EscolaGUID,
-        UsuarioCPF: usuarioCPF
+        UsuarioGUID: usuarioGUID
       });
 
       if (!vinculos.some((v) => v.Status === "Ativo")) {
@@ -175,7 +175,7 @@ export default class EventoService {
   /**
    * SHOW - Buscar evento por ID
    */
-  async show(guid: string, usuarioCPF: string): Promise<EventoDTO> {
+  async show(guid: string, usuarioGUID: string): Promise<EventoDTO> {
     console.log("🟣 EventoService.show()");
 
     const evento = await this.#eventoDAO.findById(guid);
@@ -187,7 +187,7 @@ export default class EventoService {
     // Validar usuário está na escola do evento
     const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: evento.EscolaGUID,
-      UsuarioCPF: usuarioCPF
+      UsuarioGUID: usuarioGUID
     });
 
     if (!vinculos.some((v) => v.Status === "Ativo")) {
@@ -201,7 +201,7 @@ export default class EventoService {
    * UPDATE - Atualizar evento
    * Apenas Coordenação, Secretaria ou Direção
    */
-  async update(guid: string, data: EventoUpdateDTO, usuarioCPF: string): Promise<EventoDTO> {
+  async update(guid: string, data: EventoUpdateDTO, usuarioGUID: string): Promise<EventoDTO> {
     console.log("🟣 EventoService.update()");
 
     // 1. Buscar evento
@@ -211,7 +211,7 @@ export default class EventoService {
     }
 
     // 2. Validar permissão (apenas admin)
-    await this.#validarPermissaoEscrita(usuarioCPF, evento.EscolaGUID);
+    await this.#validarPermissaoEscrita(usuarioGUID, evento.EscolaGUID);
 
     // 3. Validar dados
     const updateData: Partial<Evento> = {};
@@ -244,7 +244,7 @@ export default class EventoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: updated.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Update",
       EntidadeTipo: "evento",
       EntidadeGUID: updated.EventoGUID,
@@ -259,7 +259,7 @@ export default class EventoService {
    * DESTROY - Excluir evento (soft delete)
    * Apenas Coordenação, Secretaria ou Direção
    */
-  async destroy(guid: string, usuarioCPF: string): Promise<void> {
+  async destroy(guid: string, usuarioGUID: string): Promise<void> {
     console.log("🟣 EventoService.destroy()");
 
     // 1. Buscar evento
@@ -269,14 +269,14 @@ export default class EventoService {
     }
 
     // 2. Validar permissão (apenas admin)
-    await this.#validarPermissaoEscrita(usuarioCPF, evento.EscolaGUID);
+    await this.#validarPermissaoEscrita(usuarioGUID, evento.EscolaGUID);
 
     // 3. Deletar (soft delete)
     await this.#eventoDAO.delete(guid);
 
     void getAuditoriaService().registrar({
       EscolaGUID: evento.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Delete",
       EntidadeTipo: "evento",
       EntidadeGUID: evento.EventoGUID,
@@ -290,10 +290,10 @@ export default class EventoService {
   /**
    * Validar permissão de escrita (Coordenação, Secretaria ou Direção)
    */
-  async #validarPermissaoEscrita(cpf: string, escolaGUID: string): Promise<void> {
+  async #validarPermissaoEscrita(usuarioGUID: string, escolaGUID: string): Promise<void> {
     const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: escolaGUID,
-      UsuarioCPF: cpf
+      UsuarioGUID: usuarioGUID
     });
 
     if (!vinculos.some((v) => v.Status === "Ativo")) {
@@ -317,7 +317,7 @@ export default class EventoService {
     return {
       EventoGUID: evento.EventoGUID,
       EscolaGUID: evento.EscolaGUID,
-      UsuarioCPF: evento.UsuarioCPF,
+      UsuarioGUID: evento.UsuarioGUID,
       EventoTitulo: evento.EventoTitulo,
       EventoDescricao: evento.EventoDescricao,
       EventoData: evento.EventoData,

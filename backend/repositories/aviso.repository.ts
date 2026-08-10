@@ -1,6 +1,7 @@
 import MysqlDatabase from '../database/MysqlDatabase';
 import { Aviso } from '../entities/aviso.model';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 
 export interface AvisoFilters {
   EscolaGUID?: string;
@@ -20,14 +21,14 @@ export class AvisoDAO {
     const pool = await this.#database.getPool();
     const query = `
       INSERT INTO aviso (
-        AvisoGUID, EscolaGUID, UsuarioCPFAutor, AvisoTitulo, AvisoConteudo, AvisoAbrangencia
+        AvisoGUID, EscolaGUID, UsuarioGUIDAutor, AvisoTitulo, AvisoConteudo, AvisoAbrangencia
       ) VALUES (?, ?, ?, ?, ?, ?)
     `;
 
     await pool.execute<ResultSetHeader>(query, [
       aviso.AvisoGUID,
       aviso.EscolaGUID,
-      aviso.UsuarioCPFAutor,
+      aviso.UsuarioGUIDAutor,
       aviso.AvisoTitulo,
       aviso.AvisoConteudo,
       aviso.AvisoAbrangencia,
@@ -78,9 +79,8 @@ export class AvisoDAO {
     console.log('🟢 AvisoDAO.vincularTurmas()');
     if (turmaGUIDs.length === 0) return;
 
-    const { v4: uuidv4 } = await import('uuid');
     const pool = await this.#database.getPool();
-    const valores = turmaGUIDs.map((turmaGUID) => [uuidv4(), avisoGUID, turmaGUID]);
+    const valores = turmaGUIDs.map((turmaGUID) => [gerarGUID(), avisoGUID, turmaGUID]);
     const placeholders = valores.map(() => '(?, ?, ?)').join(', ');
 
     await pool.execute<ResultSetHeader>(
@@ -100,22 +100,21 @@ export class AvisoDAO {
 
   // ---- Visualização ("visto" — 1ª vez que o destinatário abre o aviso) ----
 
-  async registrarVisualizacao(avisoGUID: string, usuarioCPF: string): Promise<void> {
+  async registrarVisualizacao(avisoGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟢 AvisoDAO.registrarVisualizacao()');
-    const { v4: uuidv4 } = await import('uuid');
     const pool = await this.#database.getPool();
     await pool.execute<ResultSetHeader>(
-      `INSERT IGNORE INTO avisoxusuario (AvisoXUsuarioGUID, AvisoGUID, UsuarioCPF) VALUES (?, ?, ?)`,
-      [uuidv4(), avisoGUID, usuarioCPF]
+      `INSERT IGNORE INTO avisoxusuario (AvisoXUsuarioGUID, AvisoGUID, UsuarioGUID) VALUES (?, ?, ?)`,
+      [gerarGUID(), avisoGUID, usuarioGUID]
     );
   }
 
-  async foiVisualizado(avisoGUID: string, usuarioCPF: string): Promise<boolean> {
+  async foiVisualizado(avisoGUID: string, usuarioGUID: string): Promise<boolean> {
     console.log('🟢 AvisoDAO.foiVisualizado()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT 1 FROM avisoxusuario WHERE AvisoGUID = ? AND UsuarioCPF = ? LIMIT 1',
-      [avisoGUID, usuarioCPF]
+      'SELECT 1 FROM avisoxusuario WHERE AvisoGUID = ? AND UsuarioGUID = ? LIMIT 1',
+      [avisoGUID, usuarioGUID]
     );
     return rows.length > 0;
   }
@@ -127,7 +126,7 @@ export class AvisoDAO {
    */
   async findNaoVisualizadoMaisRecente(
     escolaGUID: string,
-    usuarioCPF: string,
+    usuarioGUID: string,
     turmaGUIDs: string[]
   ): Promise<Aviso | null> {
     console.log('🟢 AvisoDAO.findNaoVisualizadoMaisRecente()');
@@ -150,12 +149,12 @@ export class AvisoDAO {
       SELECT a.* FROM aviso a
       WHERE (${condicoesAbrangencia.join(' OR ')})
         AND NOT EXISTS (
-          SELECT 1 FROM avisoxusuario au WHERE au.AvisoGUID = a.AvisoGUID AND au.UsuarioCPF = ?
+          SELECT 1 FROM avisoxusuario au WHERE au.AvisoGUID = a.AvisoGUID AND au.UsuarioGUID = ?
         )
       ORDER BY a.AvisoCreatedAt DESC
       LIMIT 1
     `;
-    params.push(usuarioCPF);
+    params.push(usuarioGUID);
 
     const [rows] = await pool.execute<RowDataPacket[]>(query, params);
     if (rows.length === 0) return null;

@@ -1,6 +1,6 @@
 import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import {
   Projeto,
   ProjetoCreateDTO,
@@ -44,7 +44,7 @@ export class ProjetoDAO {
   async create(data: ProjetoCreateDTO, usuarioCPFCriador: string): Promise<Projeto> {
     console.log('🟢 ProjetoDAO.create()');
 
-    const projetoGUID = uuidv4();
+    const projetoGUID = gerarGUID();
 
     const query = `
       INSERT INTO projeto (

@@ -1,6 +1,6 @@
 import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import {
   UsuarioXGrupoTarefa,
   UsuarioXGrupoTarefaCreateDTO
@@ -26,7 +26,7 @@ export class UsuarioXGrupoTarefaDAO {
   async create(data: UsuarioXGrupoTarefaCreateDTO): Promise<UsuarioXGrupoTarefa> {
     console.log('🟢 UsuarioXGrupoTarefaDAO.create()');
     
-    const vinculoGUID = uuidv4();
+    const vinculoGUID = gerarGUID();
     
     const query = `
       INSERT INTO usuarioxgrupotarefa (

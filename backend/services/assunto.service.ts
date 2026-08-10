@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import Assunto, { AssuntoOrigem } from "../entities/assunto.model";
 import { AssuntoDAO } from "../repositories/assunto.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
@@ -75,7 +75,7 @@ export default class AssuntoService {
     }
 
     const assunto = new Assunto();
-    assunto.AssuntoGUID = uuidv4();
+    assunto.AssuntoGUID = gerarGUID();
     assunto.MateriaGUID = data.MateriaGUID;
     assunto.AssuntoPaiGUID = data.AssuntoPaiGUID ?? null;
     assunto.Nome = nome;
@@ -105,7 +105,7 @@ export default class AssuntoService {
     if (existente) return this.toDTO(existente);
 
     const assunto = new Assunto();
-    assunto.AssuntoGUID = uuidv4();
+    assunto.AssuntoGUID = gerarGUID();
     assunto.MateriaGUID = materiaGUID;
     assunto.Nome = nomeNormalizado;
     assunto.SubMateriaGlobalGUID = subMateriaGlobalGUID;

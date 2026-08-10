@@ -1,7 +1,7 @@
 import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { Pool, PoolConnection } from 'mysql2/promise';
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import {
   GrupoProjeto,
   GrupoProjetoCreateDTO,
@@ -42,7 +42,7 @@ export class GrupoProjetoDAO {
   async create(data: GrupoProjetoCreateDTO): Promise<GrupoProjeto> {
     console.log('🟢 GrupoProjetoDAO.create()');
 
-    const grupoGUID = uuidv4();
+    const grupoGUID = gerarGUID();
 
     const query = `
       INSERT INTO grupoprojeto (

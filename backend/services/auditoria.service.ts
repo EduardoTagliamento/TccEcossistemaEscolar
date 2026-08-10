@@ -10,7 +10,7 @@
  * nunca pode derrubar a operação de negócio que originou o registro.
  */
 
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import MysqlDatabase from "../database/MysqlDatabase";
 import { RegistroAuditoriaDAO, RegistroAuditoriaFilters } from "../repositories/registroauditoria.repository";
 import { CategoriaAuditoriaDAO } from "../repositories/categoriaauditoria.repository";
@@ -20,7 +20,7 @@ import ErrorResponse from "../utils/ErrorResponse";
 
 export interface RegistroAuditoriaCreateDTO {
   EscolaGUID: string;
-  UsuarioCPFAtor: string;
+  UsuarioGUIDAtor: string;
   AcaoTipo: AcaoAuditoriaTipo;
   EntidadeTipo: string;
   EntidadeGUID: string;
@@ -29,7 +29,7 @@ export interface RegistroAuditoriaCreateDTO {
 }
 
 export interface ListarAuditoriaFilters {
-  UsuarioCPFAtor?: string;
+  UsuarioGUIDAtor?: string;
   AcaoTipo?: AcaoAuditoriaTipo;
   EntidadeTipo?: string;
   CategoriaAuditoriaId?: number;
@@ -59,9 +59,9 @@ export default class AuditoriaService {
 
     try {
       const registro = new RegistroAuditoria();
-      registro.RegistroAuditoriaGUID = uuidv4();
+      registro.RegistroAuditoriaGUID = gerarGUID();
       registro.EscolaGUID = input.EscolaGUID;
-      registro.UsuarioCPFAtor = input.UsuarioCPFAtor;
+      registro.UsuarioGUIDAtor = input.UsuarioGUIDAtor;
       registro.AcaoTipo = input.AcaoTipo;
       registro.EntidadeTipo = input.EntidadeTipo;
       registro.EntidadeGUID = input.EntidadeGUID;

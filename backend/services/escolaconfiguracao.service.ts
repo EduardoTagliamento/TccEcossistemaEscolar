@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import ErrorResponse from "../utils/ErrorResponse";
 import EscolaConfiguracao from "../entities/escolaconfiguracao.model";
 import EscolaConfiguracaoIntervalo from "../entities/escolaconfiguracaointervalo.model";
@@ -115,7 +115,7 @@ export default class EscolaConfiguracaoService {
     const existente = await this.#escolaConfiguracaoDAO.findByEscola(escolaGUID);
 
     const config = new EscolaConfiguracao();
-    config.EscolaConfiguracaoGUID = existente?.EscolaConfiguracaoGUID || uuidv4();
+    config.EscolaConfiguracaoGUID = existente?.EscolaConfiguracaoGUID || gerarGUID();
     config.EscolaGUID = escolaGUID;
     config.MinutosPorAula = data.MinutosPorAula;
     config.DiasSemana = data.DiasSemana;
@@ -218,7 +218,7 @@ export default class EscolaConfiguracaoService {
 
     for (const dadosIntervalo of intervalosData) {
       const intervalo = new EscolaConfiguracaoIntervalo();
-      intervalo.EscolaConfiguracaoIntervaloGUID = uuidv4();
+      intervalo.EscolaConfiguracaoIntervaloGUID = gerarGUID();
       intervalo.EscolaConfiguracaoGUID = config.EscolaConfiguracaoGUID;
       intervalo.IntervaloInicio = dadosIntervalo.IntervaloInicio;
       intervalo.IntervaloFim = dadosIntervalo.IntervaloFim;

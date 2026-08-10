@@ -3,7 +3,7 @@ import RedefinicaoSenha from "../entities/redefinicao-senha.model";
 
 interface RedefinicaoSenhaRow {
   RedefinicaoId: number;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   RedefinicaoToken: string;
   RedefinicaoExpiresAt: Date;
   RedefinicaoUsado: number; // MySQL retorna 0 ou 1
@@ -26,12 +26,12 @@ export class RedefinicaoSenhaDAO {
 
     const sql = `
       INSERT INTO redefinicao_senha (
-        UsuarioCPF, RedefinicaoToken, RedefinicaoExpiresAt
+        UsuarioGUID, RedefinicaoToken, RedefinicaoExpiresAt
       ) VALUES (?, ?, ?)
     `;
 
     const params = [
-      redefinicao.UsuarioCPF,
+      redefinicao.UsuarioGUID,
       redefinicao.RedefinicaoToken,
       redefinicao.RedefinicaoExpiresAt,
     ];
@@ -86,40 +86,40 @@ export class RedefinicaoSenhaDAO {
   }
 
   /**
-   * Invalida todos os tokens não usados de um CPF (ao gerar novo, ou após
-   * redefinir com sucesso — um link de reset antigo não deve continuar
+   * Invalida todos os tokens não usados de um usuário (ao gerar novo, ou
+   * após redefinir com sucesso — um link de reset antigo não deve continuar
    * valendo depois que a senha já foi trocada por outro)
    */
-  async invalidateOldTokens(cpf: string): Promise<boolean> {
+  async invalidateOldTokens(usuarioGUID: string): Promise<boolean> {
     console.log("🔵 RedefinicaoSenhaDAO.invalidateOldTokens()");
 
     const sql = `
       UPDATE redefinicao_senha
       SET RedefinicaoUsado = TRUE
-      WHERE UsuarioCPF = ?
+      WHERE UsuarioGUID = ?
         AND RedefinicaoUsado = FALSE
     `;
 
     const pool = await this.#database.getPool();
-    const [result] = await pool.execute(sql, [cpf]);
+    const [result] = await pool.execute(sql, [usuarioGUID]);
     return (result as { affectedRows: number }).affectedRows >= 0;
   }
 
   /**
    * Conta tentativas de solicitação nas últimas N horas (anti-spam)
    */
-  async countRecentAttempts(cpf: string, hours: number = 1): Promise<number> {
+  async countRecentAttempts(usuarioGUID: string, hours: number = 1): Promise<number> {
     console.log("🔵 RedefinicaoSenhaDAO.countRecentAttempts()");
 
     const sql = `
       SELECT COUNT(*) as total
       FROM redefinicao_senha
-      WHERE UsuarioCPF = ?
+      WHERE UsuarioGUID = ?
         AND RedefinicaoCreatedAt > DATE_SUB(NOW(), INTERVAL ? HOUR)
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(sql, [cpf, hours]);
+    const [rows] = await pool.execute(sql, [usuarioGUID, hours]);
 
     const linhas = rows as any[];
     return linhas[0]?.total || 0;
@@ -149,7 +149,7 @@ export class RedefinicaoSenhaDAO {
     const redefinicao = new RedefinicaoSenha();
 
     redefinicao.RedefinicaoId = row.RedefinicaoId;
-    redefinicao.UsuarioCPF = row.UsuarioCPF;
+    redefinicao.UsuarioGUID = row.UsuarioGUID;
     redefinicao.RedefinicaoToken = row.RedefinicaoToken;
     redefinicao.RedefinicaoExpiresAt = new Date(row.RedefinicaoExpiresAt);
     redefinicao.RedefinicaoUsado = Boolean(row.RedefinicaoUsado);

@@ -5,11 +5,9 @@
  * - Armazenar tokens de "esqueci minha senha" enviados por email
  * - Controlar expiração e uso único do token
  */
-import { normalizeCPF } from "../utils/helpers/cpf.helper";
-
 export default class RedefinicaoSenha {
   #RedefinicaoId: number | null = null;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #RedefinicaoToken!: string;
   #RedefinicaoExpiresAt!: Date;
   #RedefinicaoUsado: boolean = false;
@@ -37,13 +35,16 @@ export default class RedefinicaoSenha {
     this.#RedefinicaoId = value;
   }
 
-  // ========== CPF do Usuário ==========
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  // ========== GUID do Usuário ==========
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
-  set UsuarioCPF(value: string) {
-    this.#UsuarioCPF = normalizeCPF(value);
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia.");
+    }
+    this.#UsuarioGUID = value;
   }
 
   // ========== Token de Redefinição ==========

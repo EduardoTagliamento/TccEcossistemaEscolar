@@ -80,14 +80,14 @@ export default class UploadController {
   };
 
   /**
-   * POST /api/upload/foto-usuario/:UsuarioCPF
+   * POST /api/upload/foto-usuario/:UsuarioGUID
    * Upload de foto de perfil do usuário
    */
   uploadFotoUsuario = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      console.log('📥 [UploadController] POST /api/upload/foto-usuario/:UsuarioCPF');
+      console.log('📥 [UploadController] POST /api/upload/foto-usuario/:UsuarioGUID');
 
-      const UsuarioCPF = req.params.UsuarioCPF;
+      const UsuarioGUID = req.params.UsuarioGUID;
       const file = req.file;
 
       if (!file) {
@@ -96,7 +96,7 @@ export default class UploadController {
         });
       }
 
-      const result = await this.#uploadService.uploadFotoUsuario(UsuarioCPF, file);
+      const result = await this.#uploadService.uploadFotoUsuario(UsuarioGUID, file);
 
       res.status(200).json({
         success: true,
@@ -109,15 +109,15 @@ export default class UploadController {
   };
 
   /**
-   * DELETE /api/upload/foto-usuario/:UsuarioCPF
+   * DELETE /api/upload/foto-usuario/:UsuarioGUID
    * Remove foto de perfil do usuário
    */
   deleteFotoUsuario = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      console.log('📥 [UploadController] DELETE /api/upload/foto-usuario/:UsuarioCPF');
+      console.log('📥 [UploadController] DELETE /api/upload/foto-usuario/:UsuarioGUID');
 
-      const UsuarioCPF = req.params.UsuarioCPF;
-      const removed = await this.#uploadService.removeFotoUsuario(UsuarioCPF);
+      const UsuarioGUID = req.params.UsuarioGUID;
+      const removed = await this.#uploadService.removeFotoUsuario(UsuarioGUID);
 
       res.status(200).json({
         success: true,

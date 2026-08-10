@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { ConversaDAO } from '../repositories/conversa.repository';
 import { ConversaIndividualDAO } from '../repositories/conversa-individual.repository';
 import ErrorResponse from '../utils/ErrorResponse';
@@ -32,7 +32,7 @@ export default class ConversaIndividualService {
       return { ConversaGUID: existente.ConversaGUID, isNova: false };
     }
 
-    const conversaGUID = uuidv4();
+    const conversaGUID = gerarGUID();
     await this.#conversaDAO.create(conversaGUID, 'Individual');
     await this.#conversaIndividualDAO.create(conversaGUID, cpfMin, cpfMax);
 

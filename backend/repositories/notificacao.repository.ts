@@ -27,7 +27,7 @@ export class NotificacaoDAO {
 
     const query = `
       INSERT INTO notificacao (
-        NotificacaoGUID, NotificacaoTipoId, UsuarioCPF, EscolaGUID,
+        NotificacaoGUID, NotificacaoTipoId, UsuarioGUID, EscolaGUID,
         NotificacaoTitulo, NotificacaoConteudo, NotificacaoEntidadeTipo,
         NotificacaoEntidadeGUID, NotificacaoLink, NotificacaoLida, NotificacaoLidaData
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -36,7 +36,7 @@ export class NotificacaoDAO {
     const params = [
       notificacao.NotificacaoGUID,
       notificacao.NotificacaoTipoId,
-      notificacao.UsuarioCPF,
+      notificacao.UsuarioGUID,
       notificacao.EscolaGUID,
       notificacao.NotificacaoTitulo,
       notificacao.NotificacaoConteudo,
@@ -61,7 +61,7 @@ export class NotificacaoDAO {
     console.log("🟢 NotificacaoDAO.findById()");
 
     const query = `
-      SELECT NotificacaoGUID, NotificacaoTipoId, UsuarioCPF, EscolaGUID,
+      SELECT NotificacaoGUID, NotificacaoTipoId, UsuarioGUID, EscolaGUID,
         NotificacaoTitulo, NotificacaoConteudo, NotificacaoEntidadeTipo,
         NotificacaoEntidadeGUID, NotificacaoLink, NotificacaoLida, NotificacaoLidaData,
         NotificacaoCreatedAt
@@ -78,18 +78,18 @@ export class NotificacaoDAO {
     return this.#mapRowToNotificacao(rows[0]);
   }
 
-  async findAllByUsuario(usuarioCPF: string, filters: NotificacaoFilters = {}): Promise<Notificacao[]> {
+  async findAllByUsuario(usuarioGUID: string, filters: NotificacaoFilters = {}): Promise<Notificacao[]> {
     console.log("🟢 NotificacaoDAO.findAllByUsuario()");
 
     let query = `
-      SELECT NotificacaoGUID, NotificacaoTipoId, UsuarioCPF, EscolaGUID,
+      SELECT NotificacaoGUID, NotificacaoTipoId, UsuarioGUID, EscolaGUID,
         NotificacaoTitulo, NotificacaoConteudo, NotificacaoEntidadeTipo,
         NotificacaoEntidadeGUID, NotificacaoLink, NotificacaoLida, NotificacaoLidaData,
         NotificacaoCreatedAt
       FROM notificacao
-      WHERE UsuarioCPF = ?
+      WHERE UsuarioGUID = ?
     `;
-    const params: any[] = [usuarioCPF];
+    const params: any[] = [usuarioGUID];
 
     if (filters.lida !== undefined) {
       query += ` AND NotificacaoLida = ?`;
@@ -115,28 +115,28 @@ export class NotificacaoDAO {
     return rows.map((row) => this.#mapRowToNotificacao(row));
   }
 
-  async contarNaoLidas(usuarioCPF: string): Promise<number> {
+  async contarNaoLidas(usuarioGUID: string): Promise<number> {
     console.log("🟢 NotificacaoDAO.contarNaoLidas()");
 
-    const query = `SELECT COUNT(*) as total FROM notificacao WHERE UsuarioCPF = ? AND NotificacaoLida = 0`;
+    const query = `SELECT COUNT(*) as total FROM notificacao WHERE UsuarioGUID = ? AND NotificacaoLida = 0`;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioGUID]);
 
     return (rows as any)[0]?.total || 0;
   }
 
-  async marcarComoLida(guid: string, usuarioCPF: string): Promise<Notificacao> {
+  async marcarComoLida(guid: string, usuarioGUID: string): Promise<Notificacao> {
     console.log("🟢 NotificacaoDAO.marcarComoLida()");
 
     const query = `
       UPDATE notificacao
       SET NotificacaoLida = 1, NotificacaoLidaData = NOW()
-      WHERE NotificacaoGUID = ? AND UsuarioCPF = ?
+      WHERE NotificacaoGUID = ? AND UsuarioGUID = ?
     `;
 
     const pool = await this.#database.getPool();
-    const [result] = await pool.execute<ResultSetHeader>(query, [guid, usuarioCPF]);
+    const [result] = await pool.execute<ResultSetHeader>(query, [guid, usuarioGUID]);
 
     if (result.affectedRows === 0) {
       throw new Error("Notificação não encontrada");
@@ -158,7 +158,7 @@ export class NotificacaoDAO {
     console.log("🟢 NotificacaoDAO.findUsuariosNotificadosHoje()");
 
     const query = `
-      SELECT UsuarioCPF FROM notificacao
+      SELECT UsuarioGUID FROM notificacao
       WHERE NotificacaoTipoId = ?
         AND NotificacaoEntidadeGUID = ?
         AND DATE(NotificacaoCreatedAt) = CURDATE()
@@ -167,20 +167,20 @@ export class NotificacaoDAO {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(query, [notificacaoTipoId, entidadeGUID]);
 
-    return (rows as any[]).map((row) => row.UsuarioCPF);
+    return (rows as any[]).map((row) => row.UsuarioGUID);
   }
 
-  async marcarTodasComoLidas(usuarioCPF: string): Promise<number> {
+  async marcarTodasComoLidas(usuarioGUID: string): Promise<number> {
     console.log("🟢 NotificacaoDAO.marcarTodasComoLidas()");
 
     const query = `
       UPDATE notificacao
       SET NotificacaoLida = 1, NotificacaoLidaData = NOW()
-      WHERE UsuarioCPF = ? AND NotificacaoLida = 0
+      WHERE UsuarioGUID = ? AND NotificacaoLida = 0
     `;
 
     const pool = await this.#database.getPool();
-    const [result] = await pool.execute<ResultSetHeader>(query, [usuarioCPF]);
+    const [result] = await pool.execute<ResultSetHeader>(query, [usuarioGUID]);
 
     return result.affectedRows;
   }
@@ -210,7 +210,7 @@ export class NotificacaoDAO {
     return Notificacao.fromPlainObject({
       NotificacaoGUID: row.NotificacaoGUID,
       NotificacaoTipoId: row.NotificacaoTipoId,
-      UsuarioCPF: row.UsuarioCPF,
+      UsuarioGUID: row.UsuarioGUID,
       EscolaGUID: row.EscolaGUID,
       NotificacaoTitulo: row.NotificacaoTitulo,
       NotificacaoConteudo: row.NotificacaoConteudo,

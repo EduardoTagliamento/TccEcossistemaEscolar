@@ -35,8 +35,8 @@ export default class EventoController {
     try {
       console.log("🔵 EventoController.store()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -51,7 +51,7 @@ export default class EventoController {
         EventoData: req.body.EventoData
       };
 
-      const evento = await this.#eventoService.store(data, usuarioCPF);
+      const evento = await this.#eventoService.store(data, usuarioGUID);
 
       res.status(201).json({
         success: true,
@@ -73,8 +73,8 @@ export default class EventoController {
     try {
       console.log("🔵 EventoController.index()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -91,7 +91,7 @@ export default class EventoController {
         offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined
       };
 
-      const eventos = await this.#eventoService.index(filters, usuarioCPF);
+      const eventos = await this.#eventoService.index(filters, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -114,8 +114,8 @@ export default class EventoController {
     try {
       console.log("🔵 EventoController.show()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -125,7 +125,7 @@ export default class EventoController {
 
       const { EventoGUID } = req.params;
 
-      const evento = await this.#eventoService.show(EventoGUID, usuarioCPF);
+      const evento = await this.#eventoService.show(EventoGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -147,8 +147,8 @@ export default class EventoController {
     try {
       console.log("🔵 EventoController.update()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -165,7 +165,7 @@ export default class EventoController {
         EventoStatus: req.body.EventoStatus
       };
 
-      const evento = await this.#eventoService.update(EventoGUID, data, usuarioCPF);
+      const evento = await this.#eventoService.update(EventoGUID, data, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -187,8 +187,8 @@ export default class EventoController {
     try {
       console.log("🔵 EventoController.destroy()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -198,7 +198,7 @@ export default class EventoController {
 
       const { EventoGUID } = req.params;
 
-      await this.#eventoService.destroy(EventoGUID, usuarioCPF);
+      await this.#eventoService.destroy(EventoGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -222,13 +222,13 @@ export default class EventoController {
       }
 
       const { EventoGUID } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
-      const anexos = await this.#relacaoAnexosService.listarAnexosEvento(EventoGUID, usuarioCPF);
+      const anexos = await this.#relacaoAnexosService.listarAnexosEvento(EventoGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -256,9 +256,9 @@ export default class EventoController {
 
       const { EventoGUID } = req.params;
       const { AnexoGUID } = req.body;
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
@@ -270,7 +270,7 @@ export default class EventoController {
         AnexoGUID,
         "evento",
         EventoGUID,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(201).json({

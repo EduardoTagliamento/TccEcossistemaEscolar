@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { SugestaoDAO } from '../repositories/sugestao.repository';
 import { RelacaoAnexosDAO } from '../repositories/relacaoanexos.repository';
 import { AnexoDAO } from '../repositories/anexo.repository';
@@ -24,7 +24,7 @@ export class SugestaoService {
     }
 
     const sugestao: Sugestao = {
-      SugestaoGUID: uuidv4(),
+      SugestaoGUID: gerarGUID(),
       UsuarioCPF: data.UsuarioCPF,
       EscolaGUID: data.EscolaGUID ?? null,
       SugestaoTexto: texto,

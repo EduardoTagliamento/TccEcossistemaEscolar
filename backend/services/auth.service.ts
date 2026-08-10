@@ -17,7 +17,8 @@ interface LoginCredentials {
 interface LoginResponse {
   token: string;
   user: {
-    UsuarioCPF: string;
+    UsuarioGUID: string;
+    UsuarioCPF: string | null;
     UsuarioNome: string;
     UsuarioEmail: string;
     UsuarioEmailVerificado: boolean;
@@ -118,7 +119,7 @@ export default class AuthService {
       const senhaCorreta = await bcrypt.compare(senha, usuario.UsuarioSenha);
 
       if (!senhaCorreta) {
-        console.warn(`⚠️  [AuthService] Senha incorreta para usuário ${usuario.UsuarioCPF}`);
+        console.warn(`⚠️  [AuthService] Senha incorreta para usuário ${usuario.UsuarioGUID}`);
         throw new ErrorResponse(401, 'Credenciais inválidas', {
           message: 'CPF, email, telefone ou senha incorretos',
         });
@@ -139,13 +140,13 @@ export default class AuthService {
 
       // 5. Gerar token JWT
       const token = JwtService.generateToken({
-        UsuarioCPF: usuario.UsuarioCPF,
+        UsuarioGUID: usuario.UsuarioGUID,
         UsuarioEmail: usuario.UsuarioEmail || '',
         UsuarioNome: usuario.UsuarioNome,
       });
 
       // 6. Atualizar último acesso
-      await this.#usuarioDAO.updateUltimoAcesso(usuario.UsuarioCPF);
+      await this.#usuarioDAO.updateUltimoAcesso(usuario.UsuarioGUID);
 
       console.log(`✅ [AuthService] Login bem-sucedido: ${usuario.UsuarioNome}`);
 
@@ -153,6 +154,7 @@ export default class AuthService {
       return {
         token,
         user: {
+          UsuarioGUID: usuario.UsuarioGUID,
           UsuarioCPF: usuario.UsuarioCPF,
           UsuarioNome: usuario.UsuarioNome,
           UsuarioEmail: usuario.UsuarioEmail || '',
@@ -188,7 +190,7 @@ export default class AuthService {
       const decoded = JwtService.verifyToken(token);
 
       // 2. Buscar usuário atualizado no banco
-      const usuario = await this.#usuarioDAO.findByCPF(decoded.UsuarioCPF);
+      const usuario = await this.#usuarioDAO.findByGUID(decoded.UsuarioGUID);
 
       if (!usuario) {
         throw new ErrorResponse(401, 'Usuário não encontrado', {
@@ -204,6 +206,7 @@ export default class AuthService {
       }
 
       return {
+        UsuarioGUID: usuario.UsuarioGUID,
         UsuarioCPF: usuario.UsuarioCPF,
         UsuarioNome: usuario.UsuarioNome,
         UsuarioEmail: usuario.UsuarioEmail || '',

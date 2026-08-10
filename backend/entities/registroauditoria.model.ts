@@ -18,7 +18,7 @@ const ACOES_VALIDAS: AcaoAuditoriaTipo[] = ["Create", "Update", "Delete"];
 export default class RegistroAuditoria {
   #RegistroAuditoriaGUID!: string;
   #EscolaGUID!: string;
-  #UsuarioCPFAtor!: string;
+  #UsuarioGUIDAtor!: string;
   #AcaoTipo!: AcaoAuditoriaTipo;
   #EntidadeTipo!: string;
   #EntidadeGUID!: string;
@@ -36,8 +36,8 @@ export default class RegistroAuditoria {
     return this.#EscolaGUID;
   }
 
-  get UsuarioCPFAtor(): string {
-    return this.#UsuarioCPFAtor;
+  get UsuarioGUIDAtor(): string {
+    return this.#UsuarioGUIDAtor;
   }
 
   get AcaoTipo(): AcaoAuditoriaTipo {
@@ -88,15 +88,11 @@ export default class RegistroAuditoria {
     this.#EscolaGUID = trimmed;
   }
 
-  set UsuarioCPFAtor(value: string) {
-    if (typeof value !== "string") {
-      throw new Error("UsuarioCPFAtor deve ser uma string");
+  set UsuarioGUIDAtor(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUIDAtor deve ser uma string não vazia");
     }
-    const cpfLimpo = value.replace(/\D/g, "");
-    if (cpfLimpo.length !== 11) {
-      throw new Error("UsuarioCPFAtor deve ter 11 dígitos");
-    }
-    this.#UsuarioCPFAtor = value;
+    this.#UsuarioGUIDAtor = value;
   }
 
   set AcaoTipo(value: AcaoAuditoriaTipo) {
@@ -159,7 +155,7 @@ export default class RegistroAuditoria {
     return {
       RegistroAuditoriaGUID: this.#RegistroAuditoriaGUID,
       EscolaGUID: this.#EscolaGUID,
-      UsuarioCPFAtor: this.#UsuarioCPFAtor,
+      UsuarioGUIDAtor: this.#UsuarioGUIDAtor,
       AcaoTipo: this.#AcaoTipo,
       EntidadeTipo: this.#EntidadeTipo,
       EntidadeGUID: this.#EntidadeGUID,
@@ -173,7 +169,7 @@ export default class RegistroAuditoria {
     const registro = new RegistroAuditoria();
     registro.RegistroAuditoriaGUID = data.RegistroAuditoriaGUID;
     registro.EscolaGUID = data.EscolaGUID;
-    registro.UsuarioCPFAtor = data.UsuarioCPFAtor;
+    registro.UsuarioGUIDAtor = data.UsuarioGUIDAtor;
     registro.AcaoTipo = data.AcaoTipo;
     registro.EntidadeTipo = data.EntidadeTipo;
     registro.EntidadeGUID = data.EntidadeGUID;

@@ -4,7 +4,7 @@ import { EscolaDAO } from "../repositories/escola.repository";
 import { CursoDAO } from "../repositories/curso.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import ErrorResponse from "../utils/ErrorResponse";
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import ConversaGrupoService from "./conversa-grupo.service";
 import { getAuditoriaService } from "./auditoria.service";
 import R2StorageService from "./r2storage.service";
@@ -173,7 +173,7 @@ export default class TurmaService {
 
     // 7. Criar entidade
     const turma = new Turma();
-    turma.TurmaGUID = uuidv4();
+    turma.TurmaGUID = gerarGUID();
     turma.EscolaGUID = data.EscolaGUID;
     turma.TurmaSerie = data.TurmaSerie.trim();
     turma.TurmaNome = data.TurmaNome.trim();
@@ -323,7 +323,7 @@ export default class TurmaService {
 
         // Criar turma
         const turma = new Turma();
-        turma.TurmaGUID = uuidv4();
+        turma.TurmaGUID = gerarGUID();
         turma.EscolaGUID = escolaGUID;
         turma.TurmaSerie = serieNormalizada;
         turma.TurmaNome = nomeNormalizado;

@@ -8,6 +8,7 @@ import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { getAuditoriaService } from "./auditoria.service";
 import { normalizeCPF } from "../utils/helpers/cpf.helper";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 
@@ -39,7 +40,7 @@ export interface VinculoBatchCreateResponse {
 
 export interface EscolaxUsuarioxFuncaoDTO {
   EscolaxUsuarioxFuncaoId: number;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string | null;
   EscolaGUID: string;
   FuncaoId: number;
@@ -53,7 +54,7 @@ export interface EscolaxUsuarioxFuncaoDTO {
 }
 
 interface FindFiltersDTO {
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   EscolaGUID?: string;
   FuncaoId?: number;
 }
@@ -79,26 +80,26 @@ export default class EscolaxUsuarioxFuncaoService {
 
   createRelacao = async (
     payload: Record<string, unknown>,
-    usuarioCPFAtor?: string
+    usuarioGUIDAtor?: string
   ): Promise<EscolaxUsuarioxFuncaoDTO> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.createRelacao()");
 
-    const usuarioCPF = payload.UsuarioCPF as string;
+    const usuarioGUID = payload.UsuarioGUID as string;
     const escolaGUID = payload.EscolaGUID as string;
     const funcaoId = Number(payload.FuncaoId);
 
-    await this.validateReferences(usuarioCPF, escolaGUID, funcaoId);
+    await this.validateReferences(usuarioGUID, escolaGUID, funcaoId);
 
-    const duplicated = await this.#relacaoDAO.findByTripla(usuarioCPF, escolaGUID, funcaoId);
+    const duplicated = await this.#relacaoDAO.findByTripla(usuarioGUID, escolaGUID, funcaoId);
     if (duplicated) {
       throw new ErrorResponse(409, "Relacao ja existe", {
         message:
-          "Ja existe um vinculo para este UsuarioCPF, EscolaGUID e FuncaoId.",
+          "Ja existe um vinculo para este UsuarioGUID, EscolaGUID e FuncaoId.",
       });
     }
 
     const relacao = new EscolaxUsuarioxFuncao();
-    relacao.UsuarioCPF = usuarioCPF;
+    relacao.UsuarioGUID = usuarioGUID;
     relacao.EscolaGUID = escolaGUID;
     relacao.FuncaoId = funcaoId;
     relacao.DataInicio = payload.DataInicio ? new Date(payload.DataInicio as string) : null;
@@ -114,14 +115,14 @@ export default class EscolaxUsuarioxFuncaoService {
       });
     }
 
-    if (usuarioCPFAtor) {
+    if (usuarioGUIDAtor) {
       void getAuditoriaService().registrar({
         EscolaGUID: created.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPFAtor,
+        UsuarioGUIDAtor: usuarioGUIDAtor,
         AcaoTipo: "Create",
         EntidadeTipo: "escolaxusuarioxfuncao",
         EntidadeGUID: String(created.EscolaxUsuarioxFuncaoId),
-        EntidadeDescricao: `Vínculo de ${created.UsuarioCPF} como função ${created.FuncaoId} na escola`,
+        EntidadeDescricao: `Vínculo de ${created.UsuarioGUID} como função ${created.FuncaoId} na escola`,
         CategoriaAuditoriaId: 3,
       });
     }
@@ -140,7 +141,7 @@ export default class EscolaxUsuarioxFuncaoService {
     itens: VinculoEmMassaItem[],
     escolaGUID: string,
     funcaoId: number,
-    usuarioCPFAtor?: string
+    usuarioGUIDAtor?: string
   ): Promise<VinculoBatchCreateResponse> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.criarVinculosEmMassa()");
 
@@ -189,19 +190,7 @@ export default class EscolaxUsuarioxFuncaoService {
       }
 
       try {
-        const duplicated = await this.#relacaoDAO.findByTripla(cpf, escolaGUID, funcaoId);
-        if (duplicated) {
-          duplicados++;
-          resultados.push({
-            cpf,
-            sucesso: true,
-            mensagem: "Ja existe um vinculo para este usuario nesta funcao.",
-            tipo: "duplicado",
-          });
-          continue;
-        }
-
-        let usuario = await this.#usuarioDAO.findById(cpf);
+        let usuario = await this.#usuarioDAO.findByCPF(cpf);
         let senhaTemporaria: string | undefined;
         const contaCriada = !usuario;
 
@@ -222,6 +211,7 @@ export default class EscolaxUsuarioxFuncaoService {
           const senhaHash = await bcrypt.hash(senhaTemporaria, SALT_ROUNDS);
 
           const novoUsuario = new Usuario();
+          novoUsuario.UsuarioGUID = gerarGUID();
           novoUsuario.UsuarioCPF = cpf;
           novoUsuario.UsuarioNome = nome;
           novoUsuario.UsuarioEmail = item.Email || null;
@@ -241,7 +231,7 @@ export default class EscolaxUsuarioxFuncaoService {
                 para: usuario.UsuarioEmail,
                 nomeAluno: usuario.UsuarioNome,
                 nomeEscola: escola.EscolaNome || "Escola",
-                cpf: usuario.UsuarioCPF,
+                cpf: usuario.UsuarioCPF ?? "",
                 senhaTemporaria,
                 linkLogin: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : "http://localhost:3000/login",
               },
@@ -249,8 +239,20 @@ export default class EscolaxUsuarioxFuncaoService {
           }
         }
 
+        const duplicated = await this.#relacaoDAO.findByTripla(usuario.UsuarioGUID, escolaGUID, funcaoId);
+        if (duplicated) {
+          duplicados++;
+          resultados.push({
+            cpf,
+            sucesso: true,
+            mensagem: "Ja existe um vinculo para este usuario nesta funcao.",
+            tipo: "duplicado",
+          });
+          continue;
+        }
+
         const relacao = new EscolaxUsuarioxFuncao();
-        relacao.UsuarioCPF = cpf;
+        relacao.UsuarioGUID = usuario.UsuarioGUID;
         relacao.EscolaGUID = escolaGUID;
         relacao.FuncaoId = funcaoId;
         relacao.DataInicio = null;
@@ -263,14 +265,14 @@ export default class EscolaxUsuarioxFuncaoService {
           throw new Error("Falha ao recuperar registro apos criacao.");
         }
 
-        if (usuarioCPFAtor) {
+        if (usuarioGUIDAtor) {
           void getAuditoriaService().registrar({
             EscolaGUID: created.EscolaGUID,
-            UsuarioCPFAtor: usuarioCPFAtor,
+            UsuarioGUIDAtor: usuarioGUIDAtor,
             AcaoTipo: "Create",
             EntidadeTipo: "escolaxusuarioxfuncao",
             EntidadeGUID: String(created.EscolaxUsuarioxFuncaoId),
-            EntidadeDescricao: `Vínculo de ${created.UsuarioCPF} como função ${created.FuncaoId} na escola`,
+            EntidadeDescricao: `Vínculo de ${created.UsuarioGUID} como função ${created.FuncaoId} na escola`,
             CategoriaAuditoriaId: 3,
           });
         }
@@ -323,10 +325,10 @@ export default class EscolaxUsuarioxFuncaoService {
       ? await this.#acessoDAO.findByEscola(filters.EscolaGUID)
       : new Map<string, Date>();
 
-    const nomesMap = await this.#usuarioDAO.findNomesByCPFs([...new Set(relacoes.map((r) => r.UsuarioCPF))]);
+    const nomesMap = await this.#usuarioDAO.findNomesByGUIDs([...new Set(relacoes.map((r) => r.UsuarioGUID))]);
 
     return relacoes.map((item) =>
-      this.toDTO(item, acessoMap.get(item.UsuarioCPF) ?? null, nomesMap.get(item.UsuarioCPF) ?? null)
+      this.toDTO(item, acessoMap.get(item.UsuarioGUID) ?? null, nomesMap.get(item.UsuarioGUID) ?? null)
     );
   };
 
@@ -340,14 +342,14 @@ export default class EscolaxUsuarioxFuncaoService {
       });
     }
 
-    const nomesMap = await this.#usuarioDAO.findNomesByCPFs([relacao.UsuarioCPF]);
-    return this.toDTO(relacao, null, nomesMap.get(relacao.UsuarioCPF) ?? null);
+    const nomesMap = await this.#usuarioDAO.findNomesByGUIDs([relacao.UsuarioGUID]);
+    return this.toDTO(relacao, null, nomesMap.get(relacao.UsuarioGUID) ?? null);
   };
 
   updateRelacao = async (
     EscolaxUsuarioxFuncaoId: number,
     payload: Record<string, unknown>,
-    usuarioCPFAtor?: string
+    usuarioGUIDAtor?: string
   ): Promise<EscolaxUsuarioxFuncaoDTO> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.updateRelacao()");
 
@@ -358,10 +360,10 @@ export default class EscolaxUsuarioxFuncaoService {
       });
     }
 
-    const usuarioCPF =
-      payload.UsuarioCPF !== undefined
-        ? (payload.UsuarioCPF as string)
-        : existente.UsuarioCPF;
+    const usuarioGUID =
+      payload.UsuarioGUID !== undefined
+        ? (payload.UsuarioGUID as string)
+        : existente.UsuarioGUID;
 
     const escolaGUID =
       payload.EscolaGUID !== undefined
@@ -373,22 +375,22 @@ export default class EscolaxUsuarioxFuncaoService {
         ? Number(payload.FuncaoId)
         : existente.FuncaoId;
 
-    await this.validateReferences(usuarioCPF, escolaGUID, funcaoId);
+    await this.validateReferences(usuarioGUID, escolaGUID, funcaoId);
 
-    const duplicated = await this.#relacaoDAO.findByTripla(usuarioCPF, escolaGUID, funcaoId);
+    const duplicated = await this.#relacaoDAO.findByTripla(usuarioGUID, escolaGUID, funcaoId);
     if (
       duplicated &&
       duplicated.EscolaxUsuarioxFuncaoId !== EscolaxUsuarioxFuncaoId
     ) {
       throw new ErrorResponse(409, "Relacao ja existe", {
         message:
-          "Ja existe um vinculo para este UsuarioCPF, EscolaGUID e FuncaoId.",
+          "Ja existe um vinculo para este UsuarioGUID, EscolaGUID e FuncaoId.",
       });
     }
 
     const relacao = new EscolaxUsuarioxFuncao();
     relacao.EscolaxUsuarioxFuncaoId = EscolaxUsuarioxFuncaoId;
-    relacao.UsuarioCPF = usuarioCPF;
+    relacao.UsuarioGUID = usuarioGUID;
     relacao.EscolaGUID = escolaGUID;
     relacao.FuncaoId = funcaoId;
 
@@ -424,14 +426,14 @@ export default class EscolaxUsuarioxFuncaoService {
       });
     }
 
-    if (usuarioCPFAtor) {
+    if (usuarioGUIDAtor) {
       void getAuditoriaService().registrar({
         EscolaGUID: refreshed.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPFAtor,
+        UsuarioGUIDAtor: usuarioGUIDAtor,
         AcaoTipo: "Update",
         EntidadeTipo: "escolaxusuarioxfuncao",
         EntidadeGUID: String(refreshed.EscolaxUsuarioxFuncaoId),
-        EntidadeDescricao: `Vínculo de ${refreshed.UsuarioCPF} como função ${refreshed.FuncaoId} na escola`,
+        EntidadeDescricao: `Vínculo de ${refreshed.UsuarioGUID} como função ${refreshed.FuncaoId} na escola`,
         CategoriaAuditoriaId: 3,
       });
     }
@@ -439,7 +441,7 @@ export default class EscolaxUsuarioxFuncaoService {
     return this.toDTO(refreshed);
   };
 
-  deleteRelacao = async (EscolaxUsuarioxFuncaoId: number, usuarioCPFAtor?: string): Promise<boolean> => {
+  deleteRelacao = async (EscolaxUsuarioxFuncaoId: number, usuarioGUIDAtor?: string): Promise<boolean> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.deleteRelacao()");
 
     const existente = await this.#relacaoDAO.findById(EscolaxUsuarioxFuncaoId);
@@ -456,14 +458,14 @@ export default class EscolaxUsuarioxFuncaoService {
       });
     }
 
-    if (usuarioCPFAtor) {
+    if (usuarioGUIDAtor) {
       void getAuditoriaService().registrar({
         EscolaGUID: existente.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPFAtor,
+        UsuarioGUIDAtor: usuarioGUIDAtor,
         AcaoTipo: "Delete",
         EntidadeTipo: "escolaxusuarioxfuncao",
         EntidadeGUID: String(EscolaxUsuarioxFuncaoId),
-        EntidadeDescricao: `Vínculo de ${existente.UsuarioCPF} como função ${existente.FuncaoId} na escola`,
+        EntidadeDescricao: `Vínculo de ${existente.UsuarioGUID} como função ${existente.FuncaoId} na escola`,
         CategoriaAuditoriaId: 3,
       });
     }
@@ -472,19 +474,19 @@ export default class EscolaxUsuarioxFuncaoService {
   };
 
   private validateReferences = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     escolaGUID: string,
     funcaoId: number
   ): Promise<void> => {
     const [usuarioExists, escolaExists, funcaoExists] = await Promise.all([
-      this.#relacaoDAO.usuarioExists(usuarioCPF),
+      this.#relacaoDAO.usuarioExists(usuarioGUID),
       this.#relacaoDAO.escolaExists(escolaGUID),
       this.#relacaoDAO.funcaoExists(funcaoId),
     ]);
 
     if (!usuarioExists) {
       throw new ErrorResponse(404, "Usuario nao encontrado", {
-        message: `Nao existe usuario com CPF ${usuarioCPF}`,
+        message: `Nao existe usuario com esse identificador`,
       });
     }
 
@@ -505,7 +507,7 @@ export default class EscolaxUsuarioxFuncaoService {
    * Busca todas as escolas vinculadas a um usuário
    * Retorna estrutura completa com dados da escola e funções associadas
    */
-  findEscolasByUsuario = async (UsuarioCPF: string): Promise<Array<{
+  findEscolasByUsuario = async (UsuarioGUID: string): Promise<Array<{
     escola: {
       EscolaGUID: string;
       EscolaNome: string;
@@ -530,8 +532,8 @@ export default class EscolaxUsuarioxFuncaoService {
 
     // Buscar dados no repositório
     const [escolas, acessoMap] = await Promise.all([
-      this.#relacaoDAO.findEscolasByUsuarioCPF(UsuarioCPF),
-      this.#acessoDAO.findByUsuario(UsuarioCPF),
+      this.#relacaoDAO.findEscolasByUsuarioGUID(UsuarioGUID),
+      this.#acessoDAO.findByUsuario(UsuarioGUID),
     ]);
 
     // Converter datas para strings ISO
@@ -554,9 +556,9 @@ export default class EscolaxUsuarioxFuncaoService {
    * usuário autenticado numa escola. NÃO é registro de auditoria — ver
    * docs/PLANO_IMPLEMENTACAO_REGISTRO_AUDITORIA.md, Seção 3.4.
    */
-  registrarAcesso = async (usuarioCPF: string, escolaGUID: string): Promise<void> => {
+  registrarAcesso = async (usuarioGUID: string, escolaGUID: string): Promise<void> => {
     console.log("Service: EscolaxUsuarioxFuncaoService.registrarAcesso()");
-    await this.#acessoDAO.upsert(usuarioCPF, escolaGUID);
+    await this.#acessoDAO.upsert(usuarioGUID, escolaGUID);
   };
 
   private toDTO = (
@@ -575,7 +577,7 @@ export default class EscolaxUsuarioxFuncaoService {
 
     return {
       EscolaxUsuarioxFuncaoId: id,
-      UsuarioCPF: relacao.UsuarioCPF,
+      UsuarioGUID: relacao.UsuarioGUID,
       UsuarioNome: usuarioNome,
       EscolaGUID: relacao.EscolaGUID,
       FuncaoId: relacao.FuncaoId,

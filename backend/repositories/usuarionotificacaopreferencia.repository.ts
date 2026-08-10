@@ -16,33 +16,33 @@ export class UsuarioNotificacaoPreferenciaDAO {
     this.#database = database;
   }
 
-  async findByUsuario(usuarioCPF: string): Promise<UsuarioNotificacaoPreferencia[]> {
+  async findByUsuario(usuarioGUID: string): Promise<UsuarioNotificacaoPreferencia[]> {
     console.log("🟢 UsuarioNotificacaoPreferenciaDAO.findByUsuario()");
 
     const query = `
-      SELECT UsuarioCPF, NotificacaoTipoId, PreferenciaEmailAtivo, PreferenciaWhatsappAtivo, UpdatedAt
+      SELECT UsuarioGUID, NotificacaoTipoId, PreferenciaEmailAtivo, PreferenciaWhatsappAtivo, UpdatedAt
       FROM usuarionotificacaopreferencia
-      WHERE UsuarioCPF = ?
+      WHERE UsuarioGUID = ?
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioGUID]);
 
     return rows.map((row) => this.#mapRowToPreferencia(row));
   }
 
-  async findByUsuarioETipo(usuarioCPF: string, tipoId: number): Promise<UsuarioNotificacaoPreferencia | null> {
+  async findByUsuarioETipo(usuarioGUID: string, tipoId: number): Promise<UsuarioNotificacaoPreferencia | null> {
     console.log("🟢 UsuarioNotificacaoPreferenciaDAO.findByUsuarioETipo()");
 
     const query = `
-      SELECT UsuarioCPF, NotificacaoTipoId, PreferenciaEmailAtivo, PreferenciaWhatsappAtivo, UpdatedAt
+      SELECT UsuarioGUID, NotificacaoTipoId, PreferenciaEmailAtivo, PreferenciaWhatsappAtivo, UpdatedAt
       FROM usuarionotificacaopreferencia
-      WHERE UsuarioCPF = ? AND NotificacaoTipoId = ?
+      WHERE UsuarioGUID = ? AND NotificacaoTipoId = ?
       LIMIT 1
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioCPF, tipoId]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioGUID, tipoId]);
 
     if (rows.length === 0) {
       return null;
@@ -55,7 +55,7 @@ export class UsuarioNotificacaoPreferenciaDAO {
 
     const query = `
       INSERT INTO usuarionotificacaopreferencia
-        (UsuarioCPF, NotificacaoTipoId, PreferenciaEmailAtivo, PreferenciaWhatsappAtivo)
+        (UsuarioGUID, NotificacaoTipoId, PreferenciaEmailAtivo, PreferenciaWhatsappAtivo)
       VALUES (?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         PreferenciaEmailAtivo = VALUES(PreferenciaEmailAtivo),
@@ -63,7 +63,7 @@ export class UsuarioNotificacaoPreferenciaDAO {
     `;
 
     const params = [
-      preferencia.UsuarioCPF,
+      preferencia.UsuarioGUID,
       preferencia.NotificacaoTipoId,
       preferencia.PreferenciaEmailAtivo ? 1 : 0,
       preferencia.PreferenciaWhatsappAtivo ? 1 : 0,
@@ -72,7 +72,7 @@ export class UsuarioNotificacaoPreferenciaDAO {
     const pool = await this.#database.getPool();
     await pool.execute<ResultSetHeader>(query, params);
 
-    const atualizado = await this.findByUsuarioETipo(preferencia.UsuarioCPF, preferencia.NotificacaoTipoId);
+    const atualizado = await this.findByUsuarioETipo(preferencia.UsuarioGUID, preferencia.NotificacaoTipoId);
     if (!atualizado) {
       throw new Error("Falha ao salvar preferência de notificação");
     }
@@ -81,7 +81,7 @@ export class UsuarioNotificacaoPreferenciaDAO {
 
   #mapRowToPreferencia(row: RowDataPacket): UsuarioNotificacaoPreferencia {
     return UsuarioNotificacaoPreferencia.fromPlainObject({
-      UsuarioCPF: row.UsuarioCPF,
+      UsuarioGUID: row.UsuarioGUID,
       NotificacaoTipoId: row.NotificacaoTipoId,
       PreferenciaEmailAtivo: Boolean(row.PreferenciaEmailAtivo),
       PreferenciaWhatsappAtivo: Boolean(row.PreferenciaWhatsappAtivo),

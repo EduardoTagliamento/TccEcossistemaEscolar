@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import ErrorResponse from "../utils/ErrorResponse";
 import CategoriaConteudo from "../entities/categoriaconteudo.model";
 import { CategoriaConteudoDAO, CategoriaConteudoFilters } from "../repositories/categoriaconteudo.repository";
@@ -488,7 +488,7 @@ export default class CategoriaConteudoService {
     const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, data.MateriaGUID, data.TurmaGUID);
 
     const categoria = new CategoriaConteudo();
-    categoria.CategoriaGUID = uuidv4();
+    categoria.CategoriaGUID = gerarGUID();
     categoria.UsuarioCPF = usuarioCPF;
     categoria.MateriaGUID = data.MateriaGUID;
     categoria.TurmaGUID = data.TurmaGUID;
@@ -625,7 +625,7 @@ export default class CategoriaConteudoService {
 
       const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, materiaGUID, turma.TurmaGUID);
       const categoria = new CategoriaConteudo();
-      categoria.CategoriaGUID = uuidv4();
+      categoria.CategoriaGUID = gerarGUID();
       categoria.UsuarioCPF = usuarioCPF;
       categoria.MateriaGUID = materiaGUID;
       categoria.TurmaGUID = turma.TurmaGUID;
@@ -912,7 +912,7 @@ export default class CategoriaConteudoService {
     if (!categoria) {
       const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, materiaGUID, turmaGUID);
       const nova = new CategoriaConteudo();
-      nova.CategoriaGUID = uuidv4();
+      nova.CategoriaGUID = gerarGUID();
       nova.UsuarioCPF = usuarioCPF;
       nova.MateriaGUID = materiaGUID;
       nova.TurmaGUID = turmaGUID;

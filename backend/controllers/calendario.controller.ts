@@ -13,7 +13,7 @@ export default class CalendarioControl {
   index = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CalendarioControl.index()");
     try {
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
       const escolaGUID = request.query.EscolaGUID as string | undefined;
       const tipoAviso = request.query.TipoAviso as CalendarioTipoAviso | undefined;
 
@@ -26,7 +26,7 @@ export default class CalendarioControl {
       };
 
       const avisos = await this.#calendarioService.buscarCalendario(
-        usuarioCPF,
+        usuarioGUID,
         escolaGUID,
         filters
       );
@@ -44,13 +44,13 @@ export default class CalendarioControl {
   showDia = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CalendarioControl.showDia()");
     try {
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
       const escolaGUID = request.query.EscolaGUID as string | undefined;
       const { data } = request.params;
       const tipoAviso = request.query.TipoAviso as CalendarioTipoAviso | undefined;
 
       const avisos = await this.#calendarioService.buscarDetalhesDia(
-        usuarioCPF,
+        usuarioGUID,
         escolaGUID,
         data,
         tipoAviso

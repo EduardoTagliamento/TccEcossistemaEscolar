@@ -26,14 +26,14 @@ export const plataformaAdminGuard = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const usuarioCPF = req.user?.UsuarioCPF;
-    if (!usuarioCPF) {
+    const usuarioGUID = req.user?.UsuarioGUID;
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para acessar este recurso.",
       });
     }
 
-    const usuario = await usuarioDAO.findById(usuarioCPF);
+    const usuario = await usuarioDAO.findByGUID(usuarioGUID);
     if (!usuario || !usuario.UsuarioIsPlataformaAdmin) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Este recurso é restrito a administradores de plataforma.",

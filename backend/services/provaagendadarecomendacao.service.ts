@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import MysqlDatabase from "../database/MysqlDatabase";
 import ProvaAgendadaRecomendacao, {
   ProvaAgendadaRecomendacaoStatus,
@@ -190,7 +190,7 @@ export default class ProvaAgendadaRecomendacaoService {
       const houveFalhaTotal = resultadoVideo.status === "rejected" && resultadoResumo.status === "rejected";
 
       const recomendacao = new ProvaAgendadaRecomendacao();
-      recomendacao.ProvaAgendadaRecomendacaoGUID = uuidv4();
+      recomendacao.ProvaAgendadaRecomendacaoGUID = gerarGUID();
       recomendacao.ProvaAgendadaGUID = provaAgendadaGUID;
       recomendacao.VideosJson = videos;
       recomendacao.ResumoTexto = resumo;
@@ -220,7 +220,7 @@ export default class ProvaAgendadaRecomendacaoService {
 
   #gravarFalhaTotal = async (provaAgendadaGUID: string, error: unknown): Promise<void> => {
     const recomendacao = new ProvaAgendadaRecomendacao();
-    recomendacao.ProvaAgendadaRecomendacaoGUID = uuidv4();
+    recomendacao.ProvaAgendadaRecomendacaoGUID = gerarGUID();
     recomendacao.ProvaAgendadaGUID = provaAgendadaGUID;
     recomendacao.StatusGeracao = "Falhou";
     recomendacao.ErroGeracao = error instanceof Error ? error.message : String(error);
