@@ -22,41 +22,41 @@ export class UsuarioxEscolaAcessoDAO {
    * Upsert com throttle: só atualiza UltimoAcessoEm se já passou mais de
    * 1 hora desde o último registro, evitando UPDATE a cada refresh.
    */
-  async upsert(usuarioCPF: string, escolaGUID: string): Promise<void> {
+  async upsert(usuarioGUID: string, escolaGUID: string): Promise<void> {
     console.log("🟢 UsuarioxEscolaAcessoDAO.upsert()");
 
     const query = `
-      INSERT INTO usuarioxescolaacesso (UsuarioCPF, EscolaGUID, UltimoAcessoEm)
+      INSERT INTO usuarioxescolaacesso (UsuarioGUID, EscolaGUID, UltimoAcessoEm)
       VALUES (?, ?, CURRENT_TIMESTAMP)
       ON DUPLICATE KEY UPDATE
         UltimoAcessoEm = IF(UltimoAcessoEm < NOW() - INTERVAL 1 HOUR, VALUES(UltimoAcessoEm), UltimoAcessoEm)
     `;
 
     const pool = await this.#database.getPool();
-    await pool.execute<ResultSetHeader>(query, [usuarioCPF, escolaGUID]);
+    await pool.execute<ResultSetHeader>(query, [usuarioGUID, escolaGUID]);
   }
 
   /** EscolaGUID → UltimoAcessoEm, pra uso em GET /api/usuario/:cpf/escolas */
-  async findByUsuario(usuarioCPF: string): Promise<Map<string, Date>> {
+  async findByUsuario(usuarioGUID: string): Promise<Map<string, Date>> {
     console.log("🟢 UsuarioxEscolaAcessoDAO.findByUsuario()");
 
-    const query = `SELECT EscolaGUID, UltimoAcessoEm FROM usuarioxescolaacesso WHERE UsuarioCPF = ?`;
+    const query = `SELECT EscolaGUID, UltimoAcessoEm FROM usuarioxescolaacesso WHERE UsuarioGUID = ?`;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioGUID]);
 
     return new Map(rows.map((row) => [row.EscolaGUID as string, new Date(row.UltimoAcessoEm)]));
   }
 
-  /** UsuarioCPF → UltimoAcessoEm, pra uso em GET /api/escolaxusuarioxfuncao?EscolaGUID= */
+  /** UsuarioGUID → UltimoAcessoEm, pra uso em GET /api/escolaxusuarioxfuncao?EscolaGUID= */
   async findByEscola(escolaGUID: string): Promise<Map<string, Date>> {
     console.log("🟢 UsuarioxEscolaAcessoDAO.findByEscola()");
 
-    const query = `SELECT UsuarioCPF, UltimoAcessoEm FROM usuarioxescolaacesso WHERE EscolaGUID = ?`;
+    const query = `SELECT UsuarioGUID, UltimoAcessoEm FROM usuarioxescolaacesso WHERE EscolaGUID = ?`;
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(query, [escolaGUID]);
 
-    return new Map(rows.map((row) => [row.UsuarioCPF as string, new Date(row.UltimoAcessoEm)]));
+    return new Map(rows.map((row) => [row.UsuarioGUID as string, new Date(row.UltimoAcessoEm)]));
   }
 }

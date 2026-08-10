@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import ErrorResponse from "../utils/ErrorResponse";
 import HorarioTurma from "../entities/horarioturma.model";
 import { HorarioTurmaDAO } from "../repositories/horarioturma.repository";
@@ -326,7 +326,7 @@ export default class HorarioTurmaService {
     }
 
     const horario = new HorarioTurma();
-    horario.HorarioTurmaGUID = uuidv4();
+    horario.HorarioTurmaGUID = gerarGUID();
     horario.TurmaGUID = turmaGUID;
     horario.MatProfTurGUID = data.MatProfTurGUID;
     horario.DiaSemana = data.DiaSemana;

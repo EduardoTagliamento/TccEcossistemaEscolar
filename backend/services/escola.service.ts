@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { RowDataPacket } from "mysql2";
 import ErrorResponse from "../utils/ErrorResponse";
 import Escola from "../entities/escola.model";
@@ -10,8 +10,8 @@ import { getNotificacaoService } from "./notificacao.service";
 import { pool } from "../database/mysql";
 
 export interface TransferirDirecaoResultadoDTO {
-  NovoDirecaoCPF: string;
-  NovoCoordenacaoCPF: string;
+  NovoDirecaoGUID: string;
+  NovoCoordenacaoGUID: string;
 }
 
 export interface EscolaDTO {
@@ -47,18 +47,18 @@ export default class EscolaService {
 
   createEscola = async (
     jsonEscola: Record<string, unknown>,
-    usuarioCPF?: string
+    usuarioGUIDAtor?: string
   ): Promise<EscolaDTO> => {
     console.log("🟣 EscolaService.createEscola()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUIDAtor) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para criar escola.",
       });
     }
 
     const escola = new Escola();
-    escola.EscolaGUID = (jsonEscola.EscolaGUID as string) || uuidv4();
+    escola.EscolaGUID = (jsonEscola.EscolaGUID as string) || gerarGUID();
     escola.EscolaNome = (jsonEscola.EscolaNome as string | null) ?? null;
     escola.EscolaCNPJ = (jsonEscola.EscolaCNPJ as string | null) ?? null;
     escola.EscolaTelefone = (jsonEscola.EscolaTelefone as string | null) ?? null;
@@ -95,14 +95,14 @@ export default class EscolaService {
     try {
       // Vincula automaticamente o usuário criador como Direção (FuncaoId = 6).
       const vinculoExistente = await this.#escolaxusuarioxfuncaoDAO.findByTripla(
-        usuarioCPF,
+        usuarioGUIDAtor,
         escola.EscolaGUID,
         6
       );
 
       if (!vinculoExistente) {
         const relacao = new EscolaxUsuarioxFuncao();
-        relacao.UsuarioCPF = this.normalizeCPF(usuarioCPF);
+        relacao.UsuarioGUID = usuarioGUIDAtor;
         relacao.EscolaGUID = escola.EscolaGUID;
         relacao.FuncaoId = 6;
         relacao.Status = "Ativo";
@@ -121,7 +121,7 @@ export default class EscolaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: escola.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
       AcaoTipo: "Create",
       EntidadeTipo: "escola",
       EntidadeGUID: escola.EscolaGUID,
@@ -154,11 +154,11 @@ export default class EscolaService {
   updateEscola = async (
     EscolaGUID: string,
     jsonEscola: Record<string, unknown>,
-    usuarioCPF?: string
+    usuarioGUIDAtor?: string
   ): Promise<EscolaDTO> => {
     console.log("🟣 EscolaService.updateEscola()");
 
-    await this.validarPermissaoDirecao(usuarioCPF, EscolaGUID);
+    await this.validarPermissaoDirecao(usuarioGUIDAtor, EscolaGUID);
 
     const existente = await this.#escolaDAO.findById(EscolaGUID);
     if (!existente) {
@@ -177,7 +177,7 @@ export default class EscolaService {
       (campo) => jsonEscola[campo] !== undefined && jsonEscola[campo] !== existente[campo]
     );
     if (alterandoCores) {
-      await this.validarPermissaoRepresentanteLegal(usuarioCPF!, EscolaGUID);
+      await this.validarPermissaoRepresentanteLegal(usuarioGUIDAtor!, EscolaGUID);
     }
 
     const escola = new Escola();
@@ -239,7 +239,7 @@ export default class EscolaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: escola.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF!,
+      UsuarioGUIDAtor: usuarioGUIDAtor!,
       AcaoTipo: "Update",
       EntidadeTipo: "escola",
       EntidadeGUID: escola.EscolaGUID,
@@ -250,10 +250,10 @@ export default class EscolaService {
     return this.toDTO(escola);
   };
 
-  deleteEscola = async (EscolaGUID: string, usuarioCPF?: string): Promise<boolean> => {
+  deleteEscola = async (EscolaGUID: string, usuarioGUIDAtor?: string): Promise<boolean> => {
     console.log("🟣 EscolaService.deleteEscola()");
 
-    await this.validarPermissaoDirecao(usuarioCPF, EscolaGUID);
+    await this.validarPermissaoDirecao(usuarioGUIDAtor, EscolaGUID);
 
     await this.#escolaxusuarioxfuncaoDAO.deleteByEscolaGUID(EscolaGUID);
     const deletado = await this.#escolaDAO.delete(EscolaGUID);
@@ -261,7 +261,7 @@ export default class EscolaService {
     if (deletado) {
       void getAuditoriaService().registrar({
         EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF!,
+        UsuarioGUIDAtor: usuarioGUIDAtor!,
         AcaoTipo: "Delete",
         EntidadeTipo: "escola",
         EntidadeGUID: EscolaGUID,
@@ -277,7 +277,7 @@ export default class EscolaService {
    * simétrica e imediata: quem chama (Direção atual) passa a Coordenação, o
    * eleito passa a Direção. Sem migration nova de schema — reaproveita
    * escolaxusuarioxfuncao (FuncaoId 1=Coordenação, 6=Direção), respeitando a
-   * UNIQUE KEY (UsuarioCPF, EscolaGUID, FuncaoId): se qualquer um dos dois já
+   * UNIQUE KEY (UsuarioGUID, EscolaGUID, FuncaoId): se qualquer um dos dois já
    * teve um vínculo anterior com a função de destino (ativo ou não), esse
    * vínculo é reativado em vez de duplicado.
    *
@@ -286,18 +286,18 @@ export default class EscolaService {
    */
   transferirDirecao = async (
     EscolaGUID: string,
-    novoDirecaoCPF: string,
-    direcaoAtualCPF?: string
+    novoDirecaoGUID: string,
+    direcaoAtualGUID?: string
   ): Promise<TransferirDirecaoResultadoDTO> => {
     console.log("🟣 EscolaService.transferirDirecao()");
 
-    await this.validarPermissaoDirecao(direcaoAtualCPF, EscolaGUID);
+    await this.validarPermissaoDirecao(direcaoAtualGUID, EscolaGUID);
 
-    if (!direcaoAtualCPF) {
+    if (!direcaoAtualGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado");
     }
 
-    if (novoDirecaoCPF === direcaoAtualCPF) {
+    if (novoDirecaoGUID === direcaoAtualGUID) {
       throw new ErrorResponse(400, "Sem alteração", {
         message: "Você já é a Direção desta escola.",
       });
@@ -309,8 +309,8 @@ export default class EscolaService {
 
       const [direcaoRows] = await connection.execute<RowDataPacket[]>(
         `SELECT EscolaxUsuarioxFuncaoId FROM escolaxusuarioxfuncao
-         WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId = 6 AND Status = 'Ativo' LIMIT 1`,
-        [direcaoAtualCPF, EscolaGUID]
+         WHERE UsuarioGUID = ? AND EscolaGUID = ? AND FuncaoId = 6 AND Status = 'Ativo' LIMIT 1`,
+        [direcaoAtualGUID, EscolaGUID]
       );
       if (direcaoRows.length === 0) {
         throw new ErrorResponse(403, "Sem permissão", {
@@ -321,8 +321,8 @@ export default class EscolaService {
 
       const [coordenacaoRows] = await connection.execute<RowDataPacket[]>(
         `SELECT EscolaxUsuarioxFuncaoId FROM escolaxusuarioxfuncao
-         WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId = 1 AND Status = 'Ativo' LIMIT 1`,
-        [novoDirecaoCPF, EscolaGUID]
+         WHERE UsuarioGUID = ? AND EscolaGUID = ? AND FuncaoId = 1 AND Status = 'Ativo' LIMIT 1`,
+        [novoDirecaoGUID, EscolaGUID]
       );
       if (coordenacaoRows.length === 0) {
         throw new ErrorResponse(400, "Usuário inválido", {
@@ -344,8 +344,8 @@ export default class EscolaService {
       // Quem sai da Direção assume (ou reassume) Coordenação.
       const [coordenacaoExistenteRows] = await connection.execute<RowDataPacket[]>(
         `SELECT EscolaxUsuarioxFuncaoId FROM escolaxusuarioxfuncao
-         WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId = 1 LIMIT 1`,
-        [direcaoAtualCPF, EscolaGUID]
+         WHERE UsuarioGUID = ? AND EscolaGUID = ? AND FuncaoId = 1 LIMIT 1`,
+        [direcaoAtualGUID, EscolaGUID]
       );
       if (coordenacaoExistenteRows.length > 0) {
         await connection.execute(
@@ -354,17 +354,17 @@ export default class EscolaService {
         );
       } else {
         await connection.execute(
-          `INSERT INTO escolaxusuarioxfuncao (UsuarioCPF, EscolaGUID, FuncaoId, DataInicio, Status)
+          `INSERT INTO escolaxusuarioxfuncao (UsuarioGUID, EscolaGUID, FuncaoId, DataInicio, Status)
            VALUES (?, ?, 1, CURDATE(), 'Ativo')`,
-          [direcaoAtualCPF, EscolaGUID]
+          [direcaoAtualGUID, EscolaGUID]
         );
       }
 
       // Quem era Coordenação assume (ou reassume) Direção.
       const [direcaoExistenteRows] = await connection.execute<RowDataPacket[]>(
         `SELECT EscolaxUsuarioxFuncaoId FROM escolaxusuarioxfuncao
-         WHERE UsuarioCPF = ? AND EscolaGUID = ? AND FuncaoId = 6 LIMIT 1`,
-        [novoDirecaoCPF, EscolaGUID]
+         WHERE UsuarioGUID = ? AND EscolaGUID = ? AND FuncaoId = 6 LIMIT 1`,
+        [novoDirecaoGUID, EscolaGUID]
       );
       if (direcaoExistenteRows.length > 0) {
         await connection.execute(
@@ -373,34 +373,34 @@ export default class EscolaService {
         );
       } else {
         await connection.execute(
-          `INSERT INTO escolaxusuarioxfuncao (UsuarioCPF, EscolaGUID, FuncaoId, DataInicio, Status)
+          `INSERT INTO escolaxusuarioxfuncao (UsuarioGUID, EscolaGUID, FuncaoId, DataInicio, Status)
            VALUES (?, ?, 6, CURDATE(), 'Ativo')`,
-          [novoDirecaoCPF, EscolaGUID]
+          [novoDirecaoGUID, EscolaGUID]
         );
       }
 
       const [nomesRows] = await connection.execute<RowDataPacket[]>(
-        `SELECT UsuarioCPF, UsuarioNome FROM usuario WHERE UsuarioCPF IN (?, ?)`,
-        [direcaoAtualCPF, novoDirecaoCPF]
+        `SELECT UsuarioGUID, UsuarioNome FROM usuario WHERE UsuarioGUID IN (?, ?)`,
+        [direcaoAtualGUID, novoDirecaoGUID]
       );
-      const nomePorCPF = new Map(nomesRows.map((r) => [r.UsuarioCPF as string, r.UsuarioNome as string]));
+      const nomePorGUID = new Map(nomesRows.map((r) => [r.UsuarioGUID as string, r.UsuarioNome as string]));
 
       await connection.commit();
 
       void getAuditoriaService().registrar({
         EscolaGUID,
-        UsuarioCPFAtor: direcaoAtualCPF,
+        UsuarioGUIDAtor: direcaoAtualGUID,
         AcaoTipo: "Update",
         EntidadeTipo: "escolaxusuarioxfuncao",
         EntidadeGUID: EscolaGUID,
-        EntidadeDescricao: `Direção transferida de ${nomePorCPF.get(direcaoAtualCPF) ?? direcaoAtualCPF} para ${nomePorCPF.get(novoDirecaoCPF) ?? novoDirecaoCPF}`,
+        EntidadeDescricao: `Direção transferida de ${nomePorGUID.get(direcaoAtualGUID) ?? direcaoAtualGUID} para ${nomePorGUID.get(novoDirecaoGUID) ?? novoDirecaoGUID}`,
         CategoriaAuditoriaId: 5, // SegurancaConta — mudança de função/permissão
       });
 
       getNotificacaoService()
         .disparar({
           tipoSlug: "promovido_direcao",
-          destinatarios: [novoDirecaoCPF],
+          destinatarios: [novoDirecaoGUID],
           escolaGUID: EscolaGUID,
           titulo: "Você foi eleito(a) para a Direção da escola",
         })
@@ -409,13 +409,13 @@ export default class EscolaService {
       getNotificacaoService()
         .disparar({
           tipoSlug: "rebaixado_coordenacao",
-          destinatarios: [direcaoAtualCPF],
+          destinatarios: [direcaoAtualGUID],
           escolaGUID: EscolaGUID,
-          titulo: `Você passou a Coordenação — ${nomePorCPF.get(novoDirecaoCPF) ?? "outro usuário"} assumiu a Direção`,
+          titulo: `Você passou a Coordenação — ${nomePorGUID.get(novoDirecaoGUID) ?? "outro usuário"} assumiu a Direção`,
         })
         .catch((error) => console.error("🔴 EscolaService.transferirDirecao() falhou ao notificar antigo Direção:", error));
 
-      return { NovoDirecaoCPF: novoDirecaoCPF, NovoCoordenacaoCPF: direcaoAtualCPF };
+      return { NovoDirecaoGUID: novoDirecaoGUID, NovoCoordenacaoGUID: direcaoAtualGUID };
     } catch (error) {
       await connection.rollback();
       throw error;
@@ -428,14 +428,14 @@ export default class EscolaService {
    * Valida se usuário tem papel de Direção na escola (FuncaoId = 6).
    * Alterar/excluir dados institucionais da escola é restrito à Direção.
    */
-  private async validarPermissaoDirecao(usuarioCPF: string | undefined, escolaGUID: string): Promise<void> {
-    if (!usuarioCPF) {
+  private async validarPermissaoDirecao(usuarioGUID: string | undefined, escolaGUID: string): Promise<void> {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para realizar esta operação.",
       });
     }
 
-    const direcao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(usuarioCPF, escolaGUID, 6);
+    const direcao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(usuarioGUID, escolaGUID, 6);
 
     if (direcao && direcao.Status === "Ativo") {
       return; // Tem permissão
@@ -452,10 +452,10 @@ export default class EscolaService {
    * Demais campos da escola continuam liberados para qualquer Direção
    * (validarPermissaoDirecao), só as 4 cores exigem essa checagem extra.
    */
-  private async validarPermissaoRepresentanteLegal(usuarioCPF: string, escolaGUID: string): Promise<void> {
+  private async validarPermissaoRepresentanteLegal(usuarioGUID: string, escolaGUID: string): Promise<void> {
     const representanteLegal = await this.#escolaxusuarioxfuncaoDAO.findRepresentanteLegal(escolaGUID);
 
-    if (!representanteLegal || representanteLegal.UsuarioCPF !== usuarioCPF) {
+    if (!representanteLegal || representanteLegal.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "A personalização de cores é restrita ao representante legal da escola (Direção ativo há mais tempo).",
       });
@@ -480,19 +480,5 @@ export default class EscolaService {
       EscolaCreatedAt: escola.EscolaCreatedAt ? escola.EscolaCreatedAt.toISOString() : null,
       EscolaUpdatedAt: escola.EscolaUpdatedAt ? escola.EscolaUpdatedAt.toISOString() : null,
     };
-  }
-
-  private normalizeCPF(cpf: string): string {
-    const normalized = cpf.trim();
-    if (/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(normalized)) {
-      return normalized;
-    }
-
-    const digits = normalized.replace(/\D/g, "");
-    if (digits.length === 11) {
-      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
-    }
-
-    return normalized;
   }
 }

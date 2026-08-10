@@ -5,29 +5,33 @@ import {
 } from "../entities/calendario.model";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import { CalendarioDAO } from "../repositories/calendario.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 
 export default class CalendarioService {
   #calendarioDAO: CalendarioDAO;
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     calendarioDAODependency: CalendarioDAO,
-    escolaxUsuarioxFuncaoDAODependency: EscolaxUsuarioxFuncaoDAO
+    escolaxUsuarioxFuncaoDAODependency: EscolaxUsuarioxFuncaoDAO,
+    usuarioDAODependency: UsuarioDAO
   ) {
     console.log("⬆️  CalendarioService.constructor()");
     this.#calendarioDAO = calendarioDAODependency;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAODependency;
+    this.#usuarioDAO = usuarioDAODependency;
   }
 
   buscarCalendario = async (
-    usuarioCPF?: string,
+    usuarioGUID?: string,
     escolaGUID?: string,
     filters?: CalendarioFilters
   ): Promise<CalendarioAviso[]> => {
     console.log("🟣 CalendarioService.buscarCalendario()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para consultar o calendário.",
       });
@@ -40,7 +44,7 @@ export default class CalendarioService {
     }
 
     const vinculoAtivo = await this.#escolaxUsuarioxFuncaoDAO.findAll({
-      UsuarioCPF: usuarioCPF,
+      UsuarioGUID: usuarioGUID,
       EscolaGUID: escolaGUID,
     });
 
@@ -52,10 +56,16 @@ export default class CalendarioService {
       });
     }
 
+    // `materiaxprofessorxturma` ainda não migrada pra UsuarioGUID (ver
+    // docs/PROGRESSO_MIGRACAO_USUARIO_GUID.md) — resolve o CPF aqui pro lado
+    // "professor" da consulta; o lado "aluno" (matricula) já usa GUID direto.
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+
     console.log("🟣 [CalendarioService] Chamando buscarAvisosCalendario...");
 
     const avisos = await this.#calendarioDAO.buscarAvisosCalendario(
-      usuarioCPF,
+      usuarioGUID,
+      usuario?.UsuarioCPF ?? null,
       escolaGUID,
       filters
     );
@@ -70,7 +80,7 @@ export default class CalendarioService {
   };
 
   buscarDetalhesDia = async (
-    usuarioCPF?: string,
+    usuarioGUID?: string,
     escolaGUID?: string,
     data?: string,
     tipoAviso?: CalendarioTipoAviso
@@ -90,7 +100,7 @@ export default class CalendarioService {
       });
     }
 
-    const avisos = await this.buscarCalendario(usuarioCPF, escolaGUID, {
+    const avisos = await this.buscarCalendario(usuarioGUID, escolaGUID, {
       TipoAviso: tipoAviso,
     });
 

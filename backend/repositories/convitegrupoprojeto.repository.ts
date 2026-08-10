@@ -1,7 +1,7 @@
 import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { Pool, PoolConnection } from 'mysql2/promise';
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import {
   ConviteGrupoProjeto,
   ConviteGrupoProjetoCreateDTO,
@@ -42,7 +42,7 @@ export class ConviteGrupoProjetoDAO {
   async create(data: ConviteGrupoProjetoCreateDTO): Promise<ConviteGrupoProjeto> {
     console.log('🟢 ConviteGrupoProjetoDAO.create()');
 
-    const conviteGUID = uuidv4();
+    const conviteGUID = gerarGUID();
 
     const query = `
       INSERT INTO convitegrupoprojeto (

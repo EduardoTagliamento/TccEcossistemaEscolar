@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { AnotacaoDAO, AnotacaoFilters } from '../repositories/anotacao.repository';
 import { EscolaxUsuarioxFuncaoDAO } from '../repositories/escolaxusuarioxfuncao.repository';
 import { Anotacao, AnotacaoEntity, AnotacaoCreateDTO, AnotacaoUpdateDTO } from '../entities/anotacao.model';
@@ -16,7 +16,7 @@ export class AnotacaoService {
     // Validar vínculo usuário-escola
     const vinculos = await this.escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: data.EscolaGUID,
-      UsuarioCPF: data.UsuarioCPF
+      UsuarioGUID: data.UsuarioGUID
     });
 
     // Considera QUALQUER vínculo ativo do usuário na escola, não só o
@@ -27,8 +27,8 @@ export class AnotacaoService {
 
     // Criar objeto Anotacao
     const anotacao: Anotacao = {
-      AnotacaoGUID: uuidv4(),
-      UsuarioCPF: data.UsuarioCPF,
+      AnotacaoGUID: gerarGUID(),
+      UsuarioGUID: data.UsuarioGUID,
       EscolaGUID: data.EscolaGUID,
       AnotacaoData: new Date(data.AnotacaoData),
       AnotacaoTitulo: data.AnotacaoTitulo.trim(),
@@ -47,7 +47,7 @@ export class AnotacaoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: created.EscolaGUID,
-      UsuarioCPFAtor: created.UsuarioCPF,
+      UsuarioGUIDAtor: created.UsuarioGUID,
       AcaoTipo: "Create",
       EntidadeTipo: "anotacao",
       EntidadeGUID: created.AnotacaoGUID,
@@ -64,10 +64,10 @@ export class AnotacaoService {
   }
 
   // READ (por usuário e escola)
-  async listarAnotacoesUsuario(usuarioCPF: string, escolaGUID: string): Promise<Anotacao[]> {
+  async listarAnotacoesUsuario(usuarioGUID: string, escolaGUID: string): Promise<Anotacao[]> {
     const vinculos = await this.escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: escolaGUID,
-      UsuarioCPF: usuarioCPF
+      UsuarioGUID: usuarioGUID
     });
 
     // Considera QUALQUER vínculo ativo do usuário na escola, não só o
@@ -76,19 +76,19 @@ export class AnotacaoService {
       throw new ErrorResponse(403, 'Usuário não vinculado à escola');
     }
 
-    return await this.anotacaoDAO.findAll({ UsuarioCPF: usuarioCPF, EscolaGUID: escolaGUID });
+    return await this.anotacaoDAO.findAll({ UsuarioGUID: usuarioGUID, EscolaGUID: escolaGUID });
   }
 
   // READ (por range de datas - para calendário)
   async listarAnotacoesPorPeriodo(
-    usuarioCPF: string,
+    usuarioGUID: string,
     escolaGUID: string,
     dataInicio: string,
     dataFim: string
   ): Promise<Anotacao[]> {
     const vinculos = await this.escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: escolaGUID,
-      UsuarioCPF: usuarioCPF
+      UsuarioGUID: usuarioGUID
     });
 
     // Considera QUALQUER vínculo ativo do usuário na escola, não só o
@@ -98,7 +98,7 @@ export class AnotacaoService {
     }
 
     return await this.anotacaoDAO.findByDateRange(
-      usuarioCPF,
+      usuarioGUID,
       escolaGUID,
       new Date(dataInicio),
       new Date(dataFim)
@@ -106,7 +106,7 @@ export class AnotacaoService {
   }
 
   // READ (por ID)
-  async buscarAnotacao(guid: string, usuarioCPF: string): Promise<Anotacao> {
+  async buscarAnotacao(guid: string, usuarioGUID: string): Promise<Anotacao> {
     const anotacao = await this.anotacaoDAO.findById(guid);
 
     if (!anotacao) {
@@ -114,7 +114,7 @@ export class AnotacaoService {
     }
 
     // Validar permissão (apenas dono pode ver)
-    if (anotacao.UsuarioCPF !== usuarioCPF) {
+    if (anotacao.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, 'Sem permissão para acessar esta anotação');
     }
 
@@ -124,7 +124,7 @@ export class AnotacaoService {
   // UPDATE
   async atualizarAnotacao(
     guid: string,
-    usuarioCPF: string,
+    usuarioGUID: string,
     updates: AnotacaoUpdateDTO
   ): Promise<Anotacao> {
     // Buscar anotação existente
@@ -135,7 +135,7 @@ export class AnotacaoService {
     }
 
     // Validar permissão (apenas dono pode editar)
-    if (anotacaoExistente.UsuarioCPF !== usuarioCPF) {
+    if (anotacaoExistente.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, 'Sem permissão para editar esta anotação');
     }
 
@@ -176,7 +176,7 @@ export class AnotacaoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: updated.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Update",
       EntidadeTipo: "anotacao",
       EntidadeGUID: updated.AnotacaoGUID,
@@ -188,14 +188,14 @@ export class AnotacaoService {
   }
 
   // TOGGLE FEITO
-  async marcarComoFeito(guid: string, usuarioCPF: string): Promise<Anotacao> {
+  async marcarComoFeito(guid: string, usuarioGUID: string): Promise<Anotacao> {
     const anotacao = await this.anotacaoDAO.findById(guid);
 
     if (!anotacao) {
       throw new ErrorResponse(404, 'Anotação não encontrada');
     }
 
-    if (anotacao.UsuarioCPF !== usuarioCPF) {
+    if (anotacao.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, 'Sem permissão para marcar esta anotação');
     }
 
@@ -211,7 +211,7 @@ export class AnotacaoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: updated.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Update",
       EntidadeTipo: "anotacao",
       EntidadeGUID: updated.AnotacaoGUID,
@@ -223,7 +223,7 @@ export class AnotacaoService {
   }
 
   // DELETE
-  async excluirAnotacao(guid: string, usuarioCPF: string): Promise<void> {
+  async excluirAnotacao(guid: string, usuarioGUID: string): Promise<void> {
     const anotacao = await this.anotacaoDAO.findById(guid);
 
     if (!anotacao) {
@@ -231,7 +231,7 @@ export class AnotacaoService {
     }
 
     // Validar permissão (apenas dono pode excluir)
-    if (anotacao.UsuarioCPF !== usuarioCPF) {
+    if (anotacao.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, 'Sem permissão para excluir esta anotação');
     }
 
@@ -243,7 +243,7 @@ export class AnotacaoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: anotacao.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Delete",
       EntidadeTipo: "anotacao",
       EntidadeGUID: anotacao.AnotacaoGUID,
@@ -253,14 +253,14 @@ export class AnotacaoService {
   }
 
   // ESTATÍSTICAS
-  async obterEstatisticas(usuarioCPF: string, escolaGUID: string): Promise<{
+  async obterEstatisticas(usuarioGUID: string, escolaGUID: string): Promise<{
     total: number;
     feitas: number;
     pendentes: number;
   }> {
     const vinculos = await this.escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: escolaGUID,
-      UsuarioCPF: usuarioCPF
+      UsuarioGUID: usuarioGUID
     });
 
     // Considera QUALQUER vínculo ativo do usuário na escola, não só o
@@ -270,12 +270,12 @@ export class AnotacaoService {
     }
 
     const total = await this.anotacaoDAO.count({
-      UsuarioCPF: usuarioCPF,
+      UsuarioGUID: usuarioGUID,
       EscolaGUID: escolaGUID
     });
 
     const feitas = await this.anotacaoDAO.count({
-      UsuarioCPF: usuarioCPF,
+      UsuarioGUID: usuarioGUID,
       EscolaGUID: escolaGUID,
       AnotacaoIsFeito: true
     });

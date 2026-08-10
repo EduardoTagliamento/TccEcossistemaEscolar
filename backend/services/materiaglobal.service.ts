@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { Schema, Type } from "@google/genai";
 import MysqlDatabase from "../database/MysqlDatabase";
 import MateriaGlobal from "../entities/materiaglobal.model";
@@ -90,7 +90,7 @@ export default class MateriaGlobalService {
     }
 
     const submateria = new SubMateriaGlobal();
-    submateria.SubMateriaGlobalGUID = uuidv4();
+    submateria.SubMateriaGlobalGUID = gerarGUID();
     submateria.MateriaGlobalGUID = materiaGlobalGUID;
     submateria.Nome = nome;
     await this.#submateriaGlobalDAO.create(submateria);
@@ -184,7 +184,7 @@ export default class MateriaGlobalService {
     }
 
     const alias = new MateriaGlobalAlias();
-    alias.MateriaGlobalAliasGUID = uuidv4();
+    alias.MateriaGlobalAliasGUID = gerarGUID();
     alias.MateriaGlobalGUID = mesclarEmGUID;
     alias.NomeAlias = pendente.Nome;
     await this.#aliasDAO.create(alias);
@@ -273,7 +273,7 @@ export default class MateriaGlobalService {
 
     if (!materiaGlobalGUIDFinal) {
       const novo = new MateriaGlobal();
-      novo.MateriaGlobalGUID = uuidv4();
+      novo.MateriaGlobalGUID = gerarGUID();
       novo.Nome = nomeOriginalTentado;
       novo.Status = "Confirmado";
       await this.#materiaGlobalDAO.create(novo);
@@ -290,7 +290,7 @@ export default class MateriaGlobalService {
       // item 17), pra similaridade futura já achar de primeira.
       if (materiaGlobalEscolhida.Nome.trim().toLowerCase() !== nomeOriginalTentado.trim().toLowerCase()) {
         const alias = new MateriaGlobalAlias();
-        alias.MateriaGlobalAliasGUID = uuidv4();
+        alias.MateriaGlobalAliasGUID = gerarGUID();
         alias.MateriaGlobalGUID = materiaGlobalGUIDFinal;
         alias.NomeAlias = nomeOriginalTentado.trim();
         await this.#aliasDAO.create(alias);
@@ -303,7 +303,7 @@ export default class MateriaGlobalService {
 
   #formalizarPendente = async (nomeMateria: string): Promise<ResolverMapeamentoResultado> => {
     const novo = new MateriaGlobal();
-    novo.MateriaGlobalGUID = uuidv4();
+    novo.MateriaGlobalGUID = gerarGUID();
     novo.Nome = nomeMateria;
     novo.Status = "Pendente";
 

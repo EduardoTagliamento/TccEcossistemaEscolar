@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { RowDataPacket } from "mysql2";
 import ProvaAgendada from "../entities/provaagendada.model";
 import ProvaAgendadaTurma from "../entities/provaagendada-turma.model";
@@ -187,7 +187,7 @@ export default class ProvaAgendadaService {
     }
 
     const visualizacao = new ProvaAgendadaVisualizacao();
-    visualizacao.ProvaAgendadaVisualizacaoGUID = uuidv4();
+    visualizacao.ProvaAgendadaVisualizacaoGUID = gerarGUID();
     visualizacao.ProvaAgendadaTurmaGUID = provaAgendadaTurmaGUID;
     visualizacao.MatriculaGUID = matricula.MatriculaGUID;
 
@@ -292,7 +292,7 @@ export default class ProvaAgendadaService {
 
     // 1. Criar prova ÚNICA (dados compartilhados)
     const prova = new ProvaAgendada();
-    prova.ProvaAgendadaGUID = uuidv4();
+    prova.ProvaAgendadaGUID = gerarGUID();
     prova.MateriaGUID = data.MateriaGUID;
     prova.ProvaData = dataProva;
     prova.ProvaDescricao = data.ProvaDescricao ? data.ProvaDescricao.trim() : null;
@@ -305,7 +305,7 @@ export default class ProvaAgendadaService {
     const atribuicoes: ProvaAgendadaTurma[] = [];
     for (const turmaGUID of data.TurmasGUID) {
       const atribuicao = new ProvaAgendadaTurma();
-      atribuicao.ProvaAgendadaTurmaGUID = uuidv4();
+      atribuicao.ProvaAgendadaTurmaGUID = gerarGUID();
       atribuicao.ProvaAgendadaGUID = provaCriada.ProvaAgendadaGUID;
       atribuicao.TurmaGUID = turmaGUID;
       atribuicao.ProvaDataTurma = data.DatasPorTurma?.[turmaGUID]

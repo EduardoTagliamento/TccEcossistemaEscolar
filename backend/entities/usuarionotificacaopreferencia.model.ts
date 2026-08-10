@@ -8,7 +8,7 @@
  */
 
 export default class UsuarioNotificacaoPreferencia {
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #NotificacaoTipoId!: number;
   #PreferenciaEmailAtivo!: boolean;
   #PreferenciaWhatsappAtivo!: boolean;
@@ -16,8 +16,8 @@ export default class UsuarioNotificacaoPreferencia {
 
   // ==================== GETTERS ====================
 
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
   get NotificacaoTipoId(): number {
@@ -38,15 +38,11 @@ export default class UsuarioNotificacaoPreferencia {
 
   // ==================== SETTERS ====================
 
-  set UsuarioCPF(value: string) {
-    if (typeof value !== "string") {
-      throw new Error("UsuarioCPF deve ser uma string");
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia");
     }
-    const cpfLimpo = value.replace(/\D/g, "");
-    if (cpfLimpo.length !== 11) {
-      throw new Error("UsuarioCPF deve ter 11 dígitos");
-    }
-    this.#UsuarioCPF = value;
+    this.#UsuarioGUID = value;
   }
 
   set NotificacaoTipoId(value: number) {
@@ -81,7 +77,7 @@ export default class UsuarioNotificacaoPreferencia {
 
   toJSON() {
     return {
-      UsuarioCPF: this.#UsuarioCPF,
+      UsuarioGUID: this.#UsuarioGUID,
       NotificacaoTipoId: this.#NotificacaoTipoId,
       PreferenciaEmailAtivo: this.#PreferenciaEmailAtivo,
       PreferenciaWhatsappAtivo: this.#PreferenciaWhatsappAtivo,
@@ -91,7 +87,7 @@ export default class UsuarioNotificacaoPreferencia {
 
   static fromPlainObject(data: any): UsuarioNotificacaoPreferencia {
     const preferencia = new UsuarioNotificacaoPreferencia();
-    preferencia.UsuarioCPF = data.UsuarioCPF;
+    preferencia.UsuarioGUID = data.UsuarioGUID;
     preferencia.NotificacaoTipoId = data.NotificacaoTipoId;
     preferencia.PreferenciaEmailAtivo = Boolean(data.PreferenciaEmailAtivo);
     preferencia.PreferenciaWhatsappAtivo = Boolean(data.PreferenciaWhatsappAtivo);

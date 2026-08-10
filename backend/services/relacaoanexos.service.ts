@@ -68,7 +68,7 @@ export default class RelacaoAnexosService {
     anexoGUID: string,
     tipoRecurso: TipoRecurso,
     recursoGUID: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<RelacaoAnexos> {
     console.log("🟣 RelacaoAnexosService.vincularAnexo()");
 
@@ -107,7 +107,7 @@ export default class RelacaoAnexosService {
           throw new ErrorResponse(404, "Pendência não encontrada");
         }
         // Só o destinatário pode anexar sua própria resposta à pendência
-        if (pendencia.UsuarioCPF !== usuarioCPF) {
+        if (pendencia.UsuarioGUID !== usuarioGUID) {
           throw new ErrorResponse(403, "Apenas o destinatário pode anexar arquivos a esta pendência");
         }
         escolaGUID = pendencia.EscolaGUID;
@@ -150,7 +150,7 @@ export default class RelacaoAnexosService {
   /**
    * Listar anexos de uma tarefa
    */
-  async listarAnexosTarefa(tarefaGUID: string, usuarioCPF: string): Promise<AnexoDTO[]> {
+  async listarAnexosTarefa(tarefaGUID: string, usuarioGUID: string): Promise<AnexoDTO[]> {
     console.log("🟣 RelacaoAnexosService.listarAnexosTarefa()");
 
     // Validar tarefa existe
@@ -167,7 +167,7 @@ export default class RelacaoAnexosService {
   /**
    * Listar anexos de uma pendência
    */
-  async listarAnexosPendencia(pendenciaGUID: string, usuarioCPF: string): Promise<AnexoDTO[]> {
+  async listarAnexosPendencia(pendenciaGUID: string, usuarioGUID: string): Promise<AnexoDTO[]> {
     console.log("🟣 RelacaoAnexosService.listarAnexosPendencia()");
 
     // Validar pendência existe
@@ -177,10 +177,10 @@ export default class RelacaoAnexosService {
     }
 
     // Validar acesso: destinatário sempre vê; caso contrário, precisa ser admin da escola
-    if (pendencia.UsuarioCPF !== usuarioCPF) {
+    if (pendencia.UsuarioGUID !== usuarioGUID) {
       const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
         EscolaGUID: pendencia.EscolaGUID,
-        UsuarioCPF: usuarioCPF
+        UsuarioGUID: usuarioGUID
       });
 
       if (!vinculos.some((v) => v.Status === "Ativo" && [1, 2, 6].includes(v.FuncaoId))) {
@@ -196,7 +196,7 @@ export default class RelacaoAnexosService {
   /**
    * Listar anexos de um evento
    */
-  async listarAnexosEvento(eventoGUID: string, usuarioCPF: string): Promise<AnexoDTO[]> {
+  async listarAnexosEvento(eventoGUID: string, usuarioGUID: string): Promise<AnexoDTO[]> {
     console.log("🟣 RelacaoAnexosService.listarAnexosEvento()");
 
     // Validar evento existe
@@ -213,7 +213,7 @@ export default class RelacaoAnexosService {
   /**
    * Remover vínculo entre anexo e recurso
    */
-  async desvincularAnexo(relacaoGUID: string, usuarioCPF: string): Promise<void> {
+  async desvincularAnexo(relacaoGUID: string, usuarioGUID: string): Promise<void> {
     console.log("🟣 RelacaoAnexosService.desvincularAnexo()");
 
     const sucesso = await this.#relacaoDAO.delete(relacaoGUID);

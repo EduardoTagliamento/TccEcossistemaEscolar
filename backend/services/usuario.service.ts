@@ -3,10 +3,12 @@ import ErrorResponse from "../utils/ErrorResponse";
 import Usuario from "../entities/usuario.model";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 
 export interface UsuarioDTO {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
   UsuarioEmail: string | null;
   UsuarioFotoUrl: string | null;
   UsuarioTema: "light" | "dark" | "system";
@@ -56,9 +58,9 @@ export default class UsuarioService {
   createUsuario = async (jsonUsuario: Record<string, unknown>): Promise<UsuarioDTO> => {
     console.log("🟣 UsuarioService.createUsuario()");
 
-    // Validar CPF único
+    // Validar CPF único (só se informado — CPF é opcional, ex.: usuário de piloto sem CPF cadastrado)
     if (jsonUsuario.UsuarioCPF) {
-      const cpfExistente = await this.#usuarioDAO.findById(jsonUsuario.UsuarioCPF as string);
+      const cpfExistente = await this.#usuarioDAO.findByCPF(jsonUsuario.UsuarioCPF as string);
       if (cpfExistente) {
         throw new ErrorResponse(400, "CPF já cadastrado", {
           message: `O CPF ${jsonUsuario.UsuarioCPF} já está cadastrado no sistema`,
@@ -77,7 +79,8 @@ export default class UsuarioService {
     }
 
     const usuario = new Usuario();
-    usuario.UsuarioCPF = jsonUsuario.UsuarioCPF as string;
+    usuario.UsuarioGUID = gerarGUID();
+    usuario.UsuarioCPF = (jsonUsuario.UsuarioCPF as string | null) ?? null;
     usuario.UsuarioNome = this.normalizeNomeCompleto(jsonUsuario);
     usuario.UsuarioEmail = (jsonUsuario.UsuarioEmail as string | null) ?? null;
     usuario.UsuarioId = (jsonUsuario.UsuarioId as string | null) ?? null;
@@ -106,27 +109,40 @@ export default class UsuarioService {
     return usuarios.map((usuario) => this.toDTO(usuario));
   };
 
-  findById = async (UsuarioCPF: string): Promise<UsuarioDTO> => {
-    console.log("🟣 UsuarioService.findById()");
-    const usuario = await this.#usuarioDAO.findById(UsuarioCPF);
+  findByGUID = async (UsuarioGUID: string): Promise<UsuarioDTO> => {
+    console.log("🟣 UsuarioService.findByGUID()");
+    const usuario = await this.#usuarioDAO.findByGUID(UsuarioGUID);
 
     if (!usuario) {
       throw new ErrorResponse(404, "Usuário não encontrado", {
-        message: `Não existe usuário com CPF ${UsuarioCPF}`,
+        message: `Não existe usuário com esse identificador`,
       });
     }
 
     return this.toDTO(usuario);
   };
 
-  updateUsuario = async (UsuarioCPF: string, jsonUsuario: Record<string, unknown>): Promise<UsuarioDTO> => {
+  updateUsuario = async (UsuarioGUID: string, jsonUsuario: Record<string, unknown>): Promise<UsuarioDTO> => {
     console.log("🟣 UsuarioService.updateUsuario()");
 
-    const existente = await this.#usuarioDAO.findById(UsuarioCPF);
+    const existente = await this.#usuarioDAO.findByGUID(UsuarioGUID);
     if (!existente) {
       throw new ErrorResponse(404, "Usuário não encontrado", {
-        message: `Não existe usuário com CPF ${UsuarioCPF}`,
+        message: `Não existe usuário com esse identificador`,
       });
+    }
+
+    // Validar CPF único (se estiver sendo alterado/informado)
+    if (
+      jsonUsuario.UsuarioCPF &&
+      jsonUsuario.UsuarioCPF !== existente.UsuarioCPF
+    ) {
+      const cpfExistente = await this.#usuarioDAO.findByCPF(jsonUsuario.UsuarioCPF as string);
+      if (cpfExistente) {
+        throw new ErrorResponse(400, "CPF já cadastrado", {
+          message: `O CPF ${jsonUsuario.UsuarioCPF} já está cadastrado no sistema`,
+        });
+      }
     }
 
     // Validar Email único (se estiver sendo alterado)
@@ -144,6 +160,7 @@ export default class UsuarioService {
       const nomeNormalizado = this.normalizeNomeCompleto(jsonUsuario, existente.UsuarioNome);
       existente.UsuarioNome = nomeNormalizado;
     }
+    existente.UsuarioCPF = (jsonUsuario.UsuarioCPF as string | null) ?? existente.UsuarioCPF;
     existente.UsuarioEmail = (jsonUsuario.UsuarioEmail as string | null) ?? existente.UsuarioEmail;
     existente.UsuarioId = (jsonUsuario.UsuarioId as string | null) ?? existente.UsuarioId;
     existente.UsuarioTelefone = (jsonUsuario.UsuarioTelefone as string | null) ?? existente.UsuarioTelefone;
@@ -208,13 +225,13 @@ export default class UsuarioService {
    * gravar o hash da nova. Usada pelo painel de "Configuração do usuário"
    * (dropdown do avatar no dashboard).
    */
-  trocarSenha = async (UsuarioCPF: string, senhaAtual: string, novaSenha: string): Promise<void> => {
+  trocarSenha = async (UsuarioGUID: string, senhaAtual: string, novaSenha: string): Promise<void> => {
     console.log("🟣 UsuarioService.trocarSenha()");
 
-    const existente = await this.#usuarioDAO.findById(UsuarioCPF);
+    const existente = await this.#usuarioDAO.findByGUID(UsuarioGUID);
     if (!existente) {
       throw new ErrorResponse(404, "Usuário não encontrado", {
-        message: `Não existe usuário com CPF ${UsuarioCPF}`,
+        message: `Não existe usuário com esse identificador`,
       });
     }
 
@@ -242,17 +259,17 @@ export default class UsuarioService {
     }
   };
 
-  deleteUsuario = async (UsuarioCPF: string): Promise<boolean> => {
+  deleteUsuario = async (UsuarioGUID: string): Promise<boolean> => {
     console.log("🟣 UsuarioService.deleteUsuario()");
 
-    const existente = await this.#usuarioDAO.findById(UsuarioCPF);
+    const existente = await this.#usuarioDAO.findByGUID(UsuarioGUID);
     if (!existente) {
       throw new ErrorResponse(404, "Usuário não encontrado", {
-        message: `Não existe usuário com CPF ${UsuarioCPF}`,
+        message: `Não existe usuário com esse identificador`,
       });
     }
 
-    const deletado = await this.#usuarioDAO.delete(UsuarioCPF);
+    const deletado = await this.#usuarioDAO.delete(UsuarioGUID);
     if (!deletado) {
       throw new ErrorResponse(500, "Erro ao deletar usuário", {
         message: "Não foi possível deletar o usuário do banco de dados",
@@ -267,6 +284,7 @@ export default class UsuarioService {
    */
   private toDTO = (usuario: Usuario): UsuarioDTO => {
     return {
+      UsuarioGUID: usuario.UsuarioGUID,
       UsuarioCPF: usuario.UsuarioCPF,
       UsuarioEmail: usuario.UsuarioEmail,
       UsuarioFotoUrl: usuario.UsuarioFotoUrl,
@@ -365,7 +383,7 @@ export default class UsuarioService {
         }
 
         // Verificar se usuário já existe
-        const usuarioExistente = await this.#usuarioDAO.findById(cpf);
+        const usuarioExistente = await this.#usuarioDAO.findByCPF(cpf);
 
         if (usuarioExistente) {
           // Usuário já cadastrado
@@ -397,6 +415,7 @@ export default class UsuarioService {
 
           // Criar usuário
           const novoUsuario = new Usuario();
+          novoUsuario.UsuarioGUID = gerarGUID();
           novoUsuario.UsuarioCPF = cpf;
           novoUsuario.UsuarioNome = this.normalizeNomeCompleto(dados);
           novoUsuario.UsuarioEmail = (dados.UsuarioEmail as string | null) ?? null;

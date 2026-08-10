@@ -3,7 +3,7 @@ import { CursoDAO, CursoFilters } from "../repositories/curso.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
 import ErrorResponse from "../utils/ErrorResponse";
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { getAuditoriaService } from "./auditoria.service";
 
 /**
@@ -81,9 +81,9 @@ export default class CursoService {
    * 3. Escola É TÉCNICA (regra principal)
    * 4. Nome único na escola
    */
-  async criarCurso(data: CursoCreateDTO, usuarioCPF: string): Promise<CursoDTO> {
+  async criarCurso(data: CursoCreateDTO, usuarioGUIDAtor: string): Promise<CursoDTO> {
     // 1. Validar permissão de escrita
-    await this.validarPermissaoEscrita(usuarioCPF, data.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUIDAtor, data.EscolaGUID);
 
     // 2. Validar que escola existe
     const escola = await this.#escolaDAO.findById(data.EscolaGUID);
@@ -114,7 +114,7 @@ export default class CursoService {
 
     // 5. Criar entidade
     const curso = new Curso();
-    curso.CursoGUID = uuidv4();
+    curso.CursoGUID = gerarGUID();
     curso.EscolaGUID = data.EscolaGUID;
     curso.CursoNome = data.CursoNome.trim();
     curso.CursoStatus = data.CursoStatus || 'Ativo';
@@ -128,7 +128,7 @@ export default class CursoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: cursoCriado.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
       AcaoTipo: "Create",
       EntidadeTipo: "curso",
       EntidadeGUID: cursoCriado.CursoGUID,
@@ -155,7 +155,7 @@ export default class CursoService {
    */
   async criarCursosEmMassa(
     cursos: CursoCreateDTO[],
-    usuarioCPF: string
+    usuarioGUIDAtor: string
   ): Promise<BatchCreateResponse> {
     const resultados: BatchItemResult[] = [];
     let criados = 0;
@@ -173,7 +173,7 @@ export default class CursoService {
 
     // Validar permissão uma única vez
     try {
-      await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+      await this.validarPermissaoEscrita(usuarioGUIDAtor, escolaGUID);
     } catch (error) {
       if (error instanceof ErrorResponse) {
         throw error;
@@ -222,7 +222,7 @@ export default class CursoService {
 
         // Criar curso
         const curso = new Curso();
-        curso.CursoGUID = uuidv4();
+        curso.CursoGUID = gerarGUID();
         curso.EscolaGUID = escolaGUID;
         curso.CursoNome = nomeNormalizado;
         curso.CursoStatus = cursoDados.CursoStatus || 'Ativo';
@@ -235,7 +235,7 @@ export default class CursoService {
 
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
-          UsuarioCPFAtor: usuarioCPF,
+          UsuarioGUIDAtor: usuarioGUIDAtor,
           AcaoTipo: "Create",
           EntidadeTipo: "curso",
           EntidadeGUID: cursoCriado.CursoGUID,
@@ -317,7 +317,7 @@ export default class CursoService {
   async atualizarCurso(
     cursoGUID: string,
     data: CursoUpdateDTO,
-    usuarioCPF: string
+    usuarioGUIDAtor: string
   ): Promise<CursoDTO> {
     // 1. Buscar curso
     const cursoExistente = await this.#cursoDAO.findById(cursoGUID);
@@ -328,7 +328,7 @@ export default class CursoService {
     }
 
     // 2. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, cursoExistente.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUIDAtor, cursoExistente.EscolaGUID);
 
     // 3. Se alterar nome, validar unicidade
     if (data.CursoNome && data.CursoNome.trim() !== cursoExistente.CursoNome) {
@@ -355,7 +355,7 @@ export default class CursoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: cursoAtualizado.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
       AcaoTipo: "Update",
       EntidadeTipo: "curso",
       EntidadeGUID: cursoGUID,
@@ -369,7 +369,7 @@ export default class CursoService {
   /**
    * Excluir curso (soft delete)
    */
-  async excluirCurso(cursoGUID: string, usuarioCPF: string): Promise<void> {
+  async excluirCurso(cursoGUID: string, usuarioGUIDAtor: string): Promise<void> {
     // 1. Buscar curso
     const curso = await this.#cursoDAO.findById(cursoGUID);
     if (!curso) {
@@ -379,7 +379,7 @@ export default class CursoService {
     }
 
     // 2. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, curso.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUIDAtor, curso.EscolaGUID);
 
     // 3. Soft delete
     const deletado = await this.#cursoDAO.delete(cursoGUID);
@@ -392,7 +392,7 @@ export default class CursoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: curso.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
       AcaoTipo: "Delete",
       EntidadeTipo: "curso",
       EntidadeGUID: cursoGUID,
@@ -406,12 +406,12 @@ export default class CursoService {
    * (FuncaoId 1 = Coordenação ou FuncaoId 6 = Direção)
    */
   private async validarPermissaoEscrita(
-    usuarioCPF: string,
+    usuarioGUIDAtor: string,
     escolaGUID: string
   ): Promise<void> {
     // Validar Coordenação (FuncaoId = 1)
     const coordenacao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      usuarioCPF,
+      usuarioGUIDAtor,
       escolaGUID,
       1
     );
@@ -422,7 +422,7 @@ export default class CursoService {
 
     // Validar Direção (FuncaoId = 6)
     const direcao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      usuarioCPF,
+      usuarioGUIDAtor,
       escolaGUID,
       6
     );

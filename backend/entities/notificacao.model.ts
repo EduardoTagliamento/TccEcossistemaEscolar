@@ -14,7 +14,7 @@
 export default class Notificacao {
   #NotificacaoGUID!: string;
   #NotificacaoTipoId!: number;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #EscolaGUID!: string;
   #NotificacaoTitulo!: string;
   #NotificacaoConteudo!: string | null;
@@ -35,8 +35,8 @@ export default class Notificacao {
     return this.#NotificacaoTipoId;
   }
 
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
   get EscolaGUID(): string {
@@ -95,15 +95,11 @@ export default class Notificacao {
     this.#NotificacaoTipoId = value;
   }
 
-  set UsuarioCPF(value: string) {
-    if (typeof value !== "string") {
-      throw new Error("UsuarioCPF deve ser uma string");
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia");
     }
-    const cpfLimpo = value.replace(/\D/g, "");
-    if (cpfLimpo.length !== 11) {
-      throw new Error("UsuarioCPF deve ter 11 dígitos");
-    }
-    this.#UsuarioCPF = value;
+    this.#UsuarioGUID = value;
   }
 
   set EscolaGUID(value: string) {
@@ -212,7 +208,7 @@ export default class Notificacao {
     return {
       NotificacaoGUID: this.#NotificacaoGUID,
       NotificacaoTipoId: this.#NotificacaoTipoId,
-      UsuarioCPF: this.#UsuarioCPF,
+      UsuarioGUID: this.#UsuarioGUID,
       EscolaGUID: this.#EscolaGUID,
       NotificacaoTitulo: this.#NotificacaoTitulo,
       NotificacaoConteudo: this.#NotificacaoConteudo,
@@ -229,7 +225,7 @@ export default class Notificacao {
     const notificacao = new Notificacao();
     notificacao.NotificacaoGUID = data.NotificacaoGUID;
     notificacao.NotificacaoTipoId = data.NotificacaoTipoId;
-    notificacao.UsuarioCPF = data.UsuarioCPF;
+    notificacao.UsuarioGUID = data.UsuarioGUID;
     notificacao.EscolaGUID = data.EscolaGUID;
     notificacao.NotificacaoTitulo = data.NotificacaoTitulo;
     notificacao.NotificacaoConteudo = data.NotificacaoConteudo ?? null;

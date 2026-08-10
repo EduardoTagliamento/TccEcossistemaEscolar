@@ -21,7 +21,7 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
  * Filtros para busca de pendências
  */
 export interface PendenciaFilters {
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   EscolaGUID?: string;
   PendenciaFeito?: boolean;
   atrasadas?: boolean;
@@ -49,7 +49,7 @@ export class PendenciaDAO {
     const query = `
       INSERT INTO pendencia (
         PendenciaGUID,
-        UsuarioCPF,
+        UsuarioGUID,
         EscolaGUID,
         PendenciaTitulo,
         PendenciaConteudo,
@@ -62,7 +62,7 @@ export class PendenciaDAO {
 
     const params = [
       pendencia.PendenciaGUID,
-      pendencia.UsuarioCPF,
+      pendencia.UsuarioGUID,
       pendencia.EscolaGUID,
       pendencia.PendenciaTitulo,
       pendencia.PendenciaConteudo,
@@ -93,7 +93,7 @@ export class PendenciaDAO {
     const query = `
       SELECT 
         PendenciaGUID,
-        UsuarioCPF,
+        UsuarioGUID,
         EscolaGUID,
         PendenciaTitulo,
         PendenciaConteudo,
@@ -126,7 +126,7 @@ export class PendenciaDAO {
     let query = `
       SELECT 
         PendenciaGUID,
-        UsuarioCPF,
+        UsuarioGUID,
         EscolaGUID,
         PendenciaTitulo,
         PendenciaConteudo,
@@ -143,9 +143,9 @@ export class PendenciaDAO {
     const params: any[] = [];
 
     // Filtro por usuário
-    if (filters.UsuarioCPF) {
-      query += ` AND UsuarioCPF = ?`;
-      params.push(filters.UsuarioCPF);
+    if (filters.UsuarioGUID) {
+      query += ` AND UsuarioGUID = ?`;
+      params.push(filters.UsuarioGUID);
     }
 
     // Filtro por escola
@@ -299,16 +299,16 @@ export class PendenciaDAO {
   /**
    * CONTAR PENDENTES - Contar pendências não concluídas por usuário
    */
-  async contarPendentes(usuarioCPF: string, escolaGUID?: string): Promise<number> {
+  async contarPendentes(usuarioGUID: string, escolaGUID?: string): Promise<number> {
     console.log("🟢 PendenciaDAO.contarPendentes()");
 
     let query = `
       SELECT COUNT(*) as total
       FROM pendencia
-      WHERE UsuarioCPF = ? AND PendenciaFeito = 0
+      WHERE UsuarioGUID = ? AND PendenciaFeito = 0
     `;
 
-    const params: any[] = [usuarioCPF];
+    const params: any[] = [usuarioGUID];
 
     if (escolaGUID) {
       query += ` AND EscolaGUID = ?`;
@@ -324,18 +324,18 @@ export class PendenciaDAO {
   /**
    * CONTAR ATRASADAS - Contar pendências atrasadas por usuário
    */
-  async contarAtrasadas(usuarioCPF: string, escolaGUID?: string): Promise<number> {
+  async contarAtrasadas(usuarioGUID: string, escolaGUID?: string): Promise<number> {
     console.log("🟢 PendenciaDAO.contarAtrasadas()");
 
     let query = `
       SELECT COUNT(*) as total
       FROM pendencia
-      WHERE UsuarioCPF = ? 
+      WHERE UsuarioGUID = ? 
         AND PendenciaFeito = 0
         AND PendenciaPrazoData < NOW()
     `;
 
-    const params: any[] = [usuarioCPF];
+    const params: any[] = [usuarioGUID];
 
     if (escolaGUID) {
       query += ` AND EscolaGUID = ?`;
@@ -354,7 +354,7 @@ export class PendenciaDAO {
   #mapRowToPendencia(row: RowDataPacket): Pendencia {
     return Pendencia.fromPlainObject({
       PendenciaGUID: row.PendenciaGUID,
-      UsuarioCPF: row.UsuarioCPF,
+      UsuarioGUID: row.UsuarioGUID,
       EscolaGUID: row.EscolaGUID,
       PendenciaTitulo: row.PendenciaTitulo,
       PendenciaConteudo: row.PendenciaConteudo,

@@ -33,7 +33,8 @@ export class CalendarioDAO {
   }
 
   buscarAvisosCalendario = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
+    usuarioCPF: string | null,
     escolaGUID: string,
     filters?: CalendarioFilters
   ): Promise<CalendarioAviso[]> => {
@@ -79,7 +80,7 @@ export class CalendarioDAO {
       LEFT JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
       WHERE tur.EscolaGUID = ?
         AND (
-          m.UsuarioCPF = ?
+          m.UsuarioGUID = ?
           OR (
             mpt.UsuarioCPF = ?
             AND mpt.AlocacaoStatus = 'Ativa'
@@ -122,7 +123,7 @@ export class CalendarioDAO {
        AND mpt.MateriaGUID = p.MateriaGUID
       WHERE tur.EscolaGUID = ?
         AND (
-          m.UsuarioCPF = ?
+          m.UsuarioGUID = ?
           OR (
             mpt.UsuarioCPF = ?
             AND mpt.AlocacaoStatus = 'Ativa'
@@ -135,14 +136,14 @@ export class CalendarioDAO {
 
     const params = [
       escolaGUID,
-      usuarioCPF,
+      usuarioGUID,
       usuarioCPF,
       filters?.DataInicio || null,
       filters?.DataInicio || null,
       filters?.DataFim || null,
       filters?.DataFim || null,
       escolaGUID,
-      usuarioCPF,
+      usuarioGUID,
       usuarioCPF,
       filters?.DataInicio || null,
       filters?.DataInicio || null,
@@ -151,7 +152,7 @@ export class CalendarioDAO {
     ];
 
     console.log("🟢 [CalendarioDAO] Executando query SQL...");
-    console.log("🟢 [CalendarioDAO] Params:", { escolaGUID, usuarioCPF, filters });
+    console.log("🟢 [CalendarioDAO] Params:", { escolaGUID, usuarioGUID, usuarioCPF, filters });
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<CalendarioAvisoRow[]>(query, params);
@@ -162,7 +163,8 @@ export class CalendarioDAO {
   };
 
   buscarDetalhesDia = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
+    usuarioCPF: string | null,
     escolaGUID: string,
     data: Date,
     filters?: Omit<CalendarioFilters, "DataInicio" | "DataFim">
@@ -175,7 +177,7 @@ export class CalendarioDAO {
     const fimDia = new Date(data);
     fimDia.setHours(23, 59, 59, 999);
 
-    return this.buscarAvisosCalendario(usuarioCPF, escolaGUID, {
+    return this.buscarAvisosCalendario(usuarioGUID, usuarioCPF, escolaGUID, {
       ...filters,
       DataInicio: inicioDia,
       DataFim: fimDia,

@@ -1,7 +1,7 @@
 import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { Pool, PoolConnection } from 'mysql2/promise';
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import {
   HistoricoGrupoProjeto,
   HistoricoGrupoProjetoCreateDTO,
@@ -39,7 +39,7 @@ export class HistoricoGrupoProjetoDAO {
   async create(data: HistoricoGrupoProjetoCreateDTO, executor?: Executor): Promise<HistoricoGrupoProjeto> {
     console.log('🟢 HistoricoGrupoProjetoDAO.create()');
 
-    const historicoGUID = uuidv4();
+    const historicoGUID = gerarGUID();
     const detalhesJSON = data.HistoricoDetalhes ? JSON.stringify(data.HistoricoDetalhes) : null;
 
     const query = `

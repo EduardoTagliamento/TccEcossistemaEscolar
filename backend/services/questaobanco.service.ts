@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import MysqlDatabase from "../database/MysqlDatabase";
 import QuestaoBanco, { QuestaoBancoDificuldade } from "../entities/questaobanco.model";
 import QuestaoBancoAlternativa from "../entities/questaobancoalternativa.model";
@@ -74,7 +74,7 @@ export default class QuestaoBancoService {
     }
 
     const questao = new QuestaoBanco();
-    questao.QuestaoBancoGUID = uuidv4();
+    questao.QuestaoBancoGUID = gerarGUID();
     questao.MateriaGlobalGUID = data.MateriaGlobalGUID;
     questao.SubMateriaGlobalGUID = data.SubMateriaGlobalGUID;
     questao.VestibularGUID = data.VestibularGUID;
@@ -87,7 +87,7 @@ export default class QuestaoBancoService {
 
     const alternativas = data.Alternativas.map((a, indice) => {
       const alternativa = new QuestaoBancoAlternativa();
-      alternativa.AlternativaGUID = uuidv4();
+      alternativa.AlternativaGUID = gerarGUID();
       alternativa.QuestaoBancoGUID = questao.QuestaoBancoGUID;
       alternativa.AlternativaTexto = a.Texto;
       alternativa.AlternativaCorreta = a.Correta;
@@ -134,7 +134,7 @@ export default class QuestaoBancoService {
     if (existente) return existente;
 
     const vestibular = new Vestibular();
-    vestibular.VestibularGUID = uuidv4();
+    vestibular.VestibularGUID = gerarGUID();
     vestibular.Nome = nome;
     await this.#vestibularDAO.create(vestibular);
     return vestibular;

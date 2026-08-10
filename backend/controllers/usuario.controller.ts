@@ -64,8 +64,8 @@ export default class UsuarioControl {
   show = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 UsuarioControl.show()");
     try {
-      const { UsuarioCPF } = request.params;
-      const usuario = await this.#usuarioService.findById(UsuarioCPF);
+      const { UsuarioGUID } = request.params;
+      const usuario = await this.#usuarioService.findByGUID(UsuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -80,8 +80,8 @@ export default class UsuarioControl {
   update = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 UsuarioControl.update()");
     try {
-      const { UsuarioCPF } = request.params;
-      const usuarioAtualizado = await this.#usuarioService.updateUsuario(UsuarioCPF, request.body.usuario);
+      const { UsuarioGUID } = request.params;
+      const usuarioAtualizado = await this.#usuarioService.updateUsuario(UsuarioGUID, request.body.usuario);
 
       response.status(200).json({
         success: true,
@@ -96,11 +96,11 @@ export default class UsuarioControl {
   updateSenha = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 UsuarioControl.updateSenha()");
     try {
-      const { UsuarioCPF } = request.params;
+      const { UsuarioGUID } = request.params;
       const { SenhaAtual, NovaSenha } = request.body;
 
       // Self-service: só o próprio usuário autenticado pode trocar a própria senha.
-      if (request.user?.UsuarioCPF !== UsuarioCPF) {
+      if (request.user?.UsuarioGUID !== UsuarioGUID) {
         response.status(403).json({
           success: false,
           message: "Você só pode alterar a própria senha",
@@ -108,7 +108,7 @@ export default class UsuarioControl {
         return;
       }
 
-      await this.#usuarioService.trocarSenha(UsuarioCPF, SenhaAtual, NovaSenha);
+      await this.#usuarioService.trocarSenha(UsuarioGUID, SenhaAtual, NovaSenha);
 
       response.status(200).json({
         success: true,
@@ -123,8 +123,8 @@ export default class UsuarioControl {
   destroy = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 UsuarioControl.destroy()");
     try {
-      const { UsuarioCPF } = request.params;
-      const excluiu = await this.#usuarioService.deleteUsuario(UsuarioCPF);
+      const { UsuarioGUID } = request.params;
+      const excluiu = await this.#usuarioService.deleteUsuario(UsuarioGUID);
 
       response.status(200).json({
         success: true,

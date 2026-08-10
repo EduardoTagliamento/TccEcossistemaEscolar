@@ -9,7 +9,8 @@
 import { normalizeCPF } from "../utils/helpers/cpf.helper";
 
 export default class Usuario {
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
+  #UsuarioCPF: string | null = null;
   #UsuarioEmail: string | null = null;
   #UsuarioFotoUrl: string | null = null;
   #UsuarioTema: "light" | "dark" | "system" = "system";
@@ -34,12 +35,28 @@ export default class Usuario {
     console.log("⬆️  Usuario.constructor()");
   }
 
-  // ========== CPF (Primary Key) ==========
-  get UsuarioCPF(): string {
+  // ========== GUID (Primary Key) ==========
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
+  }
+
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia.");
+    }
+    this.#UsuarioGUID = value;
+  }
+
+  // ========== CPF (opcional — nem todo usuário tem CPF cadastrado, ex.: piloto) ==========
+  get UsuarioCPF(): string | null {
     return this.#UsuarioCPF;
   }
 
-  set UsuarioCPF(value: string) {
+  set UsuarioCPF(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#UsuarioCPF = null;
+      return;
+    }
     this.#UsuarioCPF = normalizeCPF(value);
   }
 

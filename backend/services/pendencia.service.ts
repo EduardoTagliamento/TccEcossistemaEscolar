@@ -12,7 +12,7 @@
  * - Atualizar/Deletar: apenas criador ou admin da escola
  */
 
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import Pendencia from "../entities/pendencia.model";
 import { PendenciaDAO, PendenciaFilters } from "../repositories/pendencia.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
@@ -27,7 +27,7 @@ import { getAuditoriaService } from "./auditoria.service";
  */
 export interface PendenciaDTO {
   PendenciaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   PendenciaTitulo: string;
   PendenciaConteudo: string | null;
@@ -79,11 +79,11 @@ export default class PendenciaService {
    * CREATE - Criar nova pendência
    * Apenas Coordenação (1), Secretaria (2) ou Direção (6)
    */
-  async store(data: PendenciaCreateDTO, usuarioCPFCriador: string): Promise<PendenciaDTO> {
+  async store(data: PendenciaCreateDTO, usuarioGUIDCriador: string): Promise<PendenciaDTO> {
     console.log("🟣 PendenciaService.store()");
 
     // 1. Validar permissão de criação (Coordenação, Secretaria ou Direção)
-    await this.#validarPermissaoCriar(usuarioCPFCriador, data.EscolaGUID);
+    await this.#validarPermissaoCriar(usuarioGUIDCriador, data.EscolaGUID);
 
     // 2. Validar escola existe
     const escola = await this.#escolaDAO.findById(data.EscolaGUID);
@@ -100,7 +100,7 @@ export default class PendenciaService {
     // 4. Validar usuário destinatário está vinculado à escola
     const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: data.EscolaGUID,
-      UsuarioCPF: data.UsuarioCPFDestino
+      UsuarioGUID: usuarioDestino.UsuarioGUID
     });
 
     if (!vinculos.some((v) => v.Status === "Ativo")) {
@@ -118,8 +118,8 @@ export default class PendenciaService {
 
     // 6. Criar entidade Pendencia
     const pendencia = Pendencia.fromPlainObject({
-      PendenciaGUID: uuidv4(),
-      UsuarioCPF: data.UsuarioCPFDestino,
+      PendenciaGUID: gerarGUID(),
+      UsuarioGUID: usuarioDestino.UsuarioGUID,
       EscolaGUID: data.EscolaGUID,
       PendenciaTitulo: data.PendenciaTitulo.trim(),
       PendenciaConteudo: data.PendenciaConteudo?.trim() || null,
@@ -140,7 +140,7 @@ export default class PendenciaService {
     // 9. Notificar destinatário (tipo `pendencia_criada`) — não bloqueia a resposta
     getNotificacaoService().disparar({
       tipoSlug: "pendencia_criada",
-      destinatarios: [created.UsuarioCPF],
+      destinatarios: [created.UsuarioGUID],
       escolaGUID: created.EscolaGUID,
       titulo: `Nova pendência: ${created.PendenciaTitulo}`,
       conteudo: created.PendenciaConteudo,
@@ -152,7 +152,7 @@ export default class PendenciaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: created.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPFCriador,
+      UsuarioGUIDAtor: usuarioGUIDCriador,
       AcaoTipo: "Create",
       EntidadeTipo: "pendencia",
       EntidadeGUID: created.PendenciaGUID,
@@ -166,14 +166,14 @@ export default class PendenciaService {
   /**
    * INDEX - Listar pendências com filtros
    */
-  async index(filters: PendenciaFilters, usuarioCPF: string): Promise<PendenciaDTO[]> {
+  async index(filters: PendenciaFilters, usuarioGUID: string): Promise<PendenciaDTO[]> {
     console.log("🟣 PendenciaService.index()");
 
     // Se filtro de escola foi fornecido, validar acesso
     if (filters.EscolaGUID) {
       const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
         EscolaGUID: filters.EscolaGUID,
-        UsuarioCPF: usuarioCPF
+        UsuarioGUID: usuarioGUID
       });
 
       if (!vinculos.some((v) => v.Status === "Ativo")) {
@@ -182,11 +182,11 @@ export default class PendenciaService {
 
       // Se não for admin (Coord/Sec/Dir), só pode ver suas próprias pendências
       if (!vinculos.some((v) => v.Status === "Ativo" && [1, 2, 6].includes(v.FuncaoId))) {
-        filters.UsuarioCPF = usuarioCPF;
+        filters.UsuarioGUID = usuarioGUID;
       }
     } else {
       // Se não especificou escola, só pode ver suas próprias pendências
-      filters.UsuarioCPF = usuarioCPF;
+      filters.UsuarioGUID = usuarioGUID;
     }
 
     const pendencias = await this.#pendenciaDAO.findAll(filters);
@@ -196,7 +196,7 @@ export default class PendenciaService {
   /**
    * SHOW - Buscar pendência por ID
    */
-  async show(guid: string, usuarioCPF: string): Promise<PendenciaDTO> {
+  async show(guid: string, usuarioGUID: string): Promise<PendenciaDTO> {
     console.log("🟣 PendenciaService.show()");
 
     const pendencia = await this.#pendenciaDAO.findById(guid);
@@ -206,7 +206,7 @@ export default class PendenciaService {
     }
 
     // Validar acesso (destinatário ou admin da escola)
-    await this.#validarAcesso(pendencia, usuarioCPF);
+    await this.#validarAcesso(pendencia, usuarioGUID);
 
     return this.#toDTO(pendencia);
   }
@@ -215,7 +215,7 @@ export default class PendenciaService {
    * UPDATE - Atualizar pendência
    * Apenas admin da escola (Coord/Sec/Dir)
    */
-  async update(guid: string, data: PendenciaUpdateDTO, usuarioCPF: string): Promise<PendenciaDTO> {
+  async update(guid: string, data: PendenciaUpdateDTO, usuarioGUID: string): Promise<PendenciaDTO> {
     console.log("🟣 PendenciaService.update()");
 
     // 1. Buscar pendência
@@ -225,7 +225,7 @@ export default class PendenciaService {
     }
 
     // 2. Validar permissão (apenas admin)
-    await this.#validarPermissaoAdmin(usuarioCPF, pendencia.EscolaGUID);
+    await this.#validarPermissaoAdmin(usuarioGUID, pendencia.EscolaGUID);
 
     // 3. Validar dados
     const updateData: Partial<Pendencia> = {};
@@ -254,7 +254,7 @@ export default class PendenciaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: updated.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Update",
       EntidadeTipo: "pendencia",
       EntidadeGUID: updated.PendenciaGUID,
@@ -269,7 +269,7 @@ export default class PendenciaService {
    * DESTROY - Excluir pendência
    * Apenas admin da escola (Coord/Sec/Dir)
    */
-  async destroy(guid: string, usuarioCPF: string): Promise<void> {
+  async destroy(guid: string, usuarioGUID: string): Promise<void> {
     console.log("🟣 PendenciaService.destroy()");
 
     // 1. Buscar pendência
@@ -279,14 +279,14 @@ export default class PendenciaService {
     }
 
     // 2. Validar permissão (apenas admin)
-    await this.#validarPermissaoAdmin(usuarioCPF, pendencia.EscolaGUID);
+    await this.#validarPermissaoAdmin(usuarioGUID, pendencia.EscolaGUID);
 
     // 3. Deletar
     await this.#pendenciaDAO.delete(guid);
 
     void getAuditoriaService().registrar({
       EscolaGUID: pendencia.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Delete",
       EntidadeTipo: "pendencia",
       EntidadeGUID: pendencia.PendenciaGUID,
@@ -298,7 +298,7 @@ export default class PendenciaService {
   /**
    * MARCAR COMO FEITO - Usuário destinatário marca como concluída
    */
-  async marcarComoFeito(guid: string, usuarioCPF: string): Promise<PendenciaDTO> {
+  async marcarComoFeito(guid: string, usuarioGUID: string): Promise<PendenciaDTO> {
     console.log("🟣 PendenciaService.marcarComoFeito()");
 
     // 1. Buscar pendência
@@ -308,7 +308,7 @@ export default class PendenciaService {
     }
 
     // 2. Validar é o destinatário
-    if (pendencia.UsuarioCPF !== usuarioCPF) {
+    if (pendencia.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Apenas o destinatário pode marcar como feito");
     }
 
@@ -322,7 +322,7 @@ export default class PendenciaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: updated.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Update",
       EntidadeTipo: "pendencia",
       EntidadeGUID: updated.PendenciaGUID,
@@ -336,41 +336,41 @@ export default class PendenciaService {
   /**
    * CONTAR PENDENTES - Total de pendências não concluídas do usuário
    */
-  async contarPendentes(usuarioCPF: string, escolaGUID?: string): Promise<number> {
+  async contarPendentes(usuarioGUID: string, escolaGUID?: string): Promise<number> {
     console.log("🟣 PendenciaService.contarPendentes()");
 
     // Se especificou escola, validar acesso
     if (escolaGUID) {
       const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
         EscolaGUID: escolaGUID,
-        UsuarioCPF: usuarioCPF
+        UsuarioGUID: usuarioGUID
       });
       if (!vinculos.some((v) => v.Status === "Ativo")) {
         throw new ErrorResponse(403, "Sem acesso a esta escola");
       }
     }
 
-    return await this.#pendenciaDAO.contarPendentes(usuarioCPF, escolaGUID);
+    return await this.#pendenciaDAO.contarPendentes(usuarioGUID, escolaGUID);
   }
 
   /**
    * CONTAR ATRASADAS - Total de pendências atrasadas do usuário
    */
-  async contarAtrasadas(usuarioCPF: string, escolaGUID?: string): Promise<number> {
+  async contarAtrasadas(usuarioGUID: string, escolaGUID?: string): Promise<number> {
     console.log("🟣 PendenciaService.contarAtrasadas()");
 
     // Se especificou escola, validar acesso
     if (escolaGUID) {
       const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
         EscolaGUID: escolaGUID,
-        UsuarioCPF: usuarioCPF
+        UsuarioGUID: usuarioGUID
       });
       if (!vinculos.some((v) => v.Status === "Ativo")) {
         throw new ErrorResponse(403, "Sem acesso a esta escola");
       }
     }
 
-    return await this.#pendenciaDAO.contarAtrasadas(usuarioCPF, escolaGUID);
+    return await this.#pendenciaDAO.contarAtrasadas(usuarioGUID, escolaGUID);
   }
 
   // ==================== HELPERS PRIVADOS ====================
@@ -378,10 +378,10 @@ export default class PendenciaService {
   /**
    * Validar permissão para criar pendência (Coordenação, Secretaria ou Direção)
    */
-  async #validarPermissaoCriar(cpf: string, escolaGUID: string): Promise<void> {
+  async #validarPermissaoCriar(usuarioGUID: string, escolaGUID: string): Promise<void> {
     const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: escolaGUID,
-      UsuarioCPF: cpf
+      UsuarioGUID: usuarioGUID
     });
 
     if (!vinculos.some((v) => v.Status === "Ativo")) {
@@ -402,10 +402,10 @@ export default class PendenciaService {
   /**
    * Validar permissão de admin (Coordenação, Secretaria ou Direção)
    */
-  async #validarPermissaoAdmin(cpf: string, escolaGUID: string): Promise<void> {
+  async #validarPermissaoAdmin(usuarioGUID: string, escolaGUID: string): Promise<void> {
     const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: escolaGUID,
-      UsuarioCPF: cpf
+      UsuarioGUID: usuarioGUID
     });
 
     if (!vinculos.some((v) => v.Status === "Ativo")) {
@@ -420,16 +420,16 @@ export default class PendenciaService {
   /**
    * Validar acesso à pendência (destinatário ou admin)
    */
-  async #validarAcesso(pendencia: Pendencia, cpf: string): Promise<void> {
+  async #validarAcesso(pendencia: Pendencia, usuarioGUID: string): Promise<void> {
     // Se é o destinatário, tem acesso
-    if (pendencia.UsuarioCPF === cpf) {
+    if (pendencia.UsuarioGUID === usuarioGUID) {
       return;
     }
 
     // Se não é o destinatário, precisa ser admin da escola
     const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
       EscolaGUID: pendencia.EscolaGUID,
-      UsuarioCPF: cpf
+      UsuarioGUID: usuarioGUID
     });
 
     if (!vinculos.some((v) => v.Status === "Ativo" && [1, 2, 6].includes(v.FuncaoId))) {
@@ -443,7 +443,7 @@ export default class PendenciaService {
   #toDTO(pendencia: Pendencia): PendenciaDTO {
     return {
       PendenciaGUID: pendencia.PendenciaGUID,
-      UsuarioCPF: pendencia.UsuarioCPF,
+      UsuarioGUID: pendencia.UsuarioGUID,
       EscolaGUID: pendencia.EscolaGUID,
       PendenciaTitulo: pendencia.PendenciaTitulo,
       PendenciaConteudo: pendencia.PendenciaConteudo,

@@ -6,7 +6,7 @@
  * Coordenação/Secretaria/Direção da escola consultada.
  *
  * Endpoints:
- * - GET /api/auditoria?EscolaGUID=&UsuarioCPFAtor=&AcaoTipo=&EntidadeTipo=&CategoriaAuditoriaId=&dataInicio=&dataFim=&limit=&offset=
+ * - GET /api/auditoria?EscolaGUID=&UsuarioGUIDAtor=&AcaoTipo=&EntidadeTipo=&CategoriaAuditoriaId=&dataInicio=&dataFim=&limit=&offset=
  * - GET /api/auditoria/:RegistroAuditoriaGUID?EscolaGUID=
  * - GET /api/auditoria/categorias
  */
@@ -33,8 +33,8 @@ export default class AuditoriaController {
     try {
       console.log("🔵 AuditoriaController.index()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
@@ -43,7 +43,7 @@ export default class AuditoriaController {
         return next(new ErrorResponse(400, "Erro na validação de dados", { message: "O parâmetro 'EscolaGUID' é obrigatório." }));
       }
 
-      await this.#validarPermissao(usuarioCPF, escolaGUID);
+      await this.#validarPermissao(usuarioGUID, escolaGUID);
 
       const acaoTipoParam = typeof req.query.AcaoTipo === "string" ? req.query.AcaoTipo : undefined;
       if (acaoTipoParam && !ACOES_VALIDAS.includes(acaoTipoParam as AcaoAuditoriaTipo)) {
@@ -54,7 +54,7 @@ export default class AuditoriaController {
       const categoriaAuditoriaId = typeof categoriaParam === "string" && categoriaParam !== "" ? Number(categoriaParam) : undefined;
 
       const registros = await this.#auditoriaService.listar(escolaGUID, {
-        UsuarioCPFAtor: typeof req.query.UsuarioCPFAtor === "string" ? req.query.UsuarioCPFAtor : undefined,
+        UsuarioGUIDAtor: typeof req.query.UsuarioGUIDAtor === "string" ? req.query.UsuarioGUIDAtor : undefined,
         AcaoTipo: acaoTipoParam as AcaoAuditoriaTipo | undefined,
         EntidadeTipo: typeof req.query.EntidadeTipo === "string" ? req.query.EntidadeTipo : undefined,
         CategoriaAuditoriaId: categoriaAuditoriaId,
@@ -78,8 +78,8 @@ export default class AuditoriaController {
     try {
       console.log("🔵 AuditoriaController.show()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
@@ -88,7 +88,7 @@ export default class AuditoriaController {
         return next(new ErrorResponse(400, "Erro na validação de dados", { message: "O parâmetro 'EscolaGUID' é obrigatório." }));
       }
 
-      await this.#validarPermissao(usuarioCPF, escolaGUID);
+      await this.#validarPermissao(usuarioGUID, escolaGUID);
 
       const { RegistroAuditoriaGUID } = req.params;
       const registro = await this.#auditoriaService.buscarPorId(RegistroAuditoriaGUID, escolaGUID);
@@ -107,8 +107,8 @@ export default class AuditoriaController {
     try {
       console.log("🔵 AuditoriaController.categorias()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
@@ -124,8 +124,8 @@ export default class AuditoriaController {
     }
   };
 
-  #validarPermissao = async (usuarioCPF: string, escolaGUID: string): Promise<void> => {
-    const permitido = await this.#escolaxUsuarioxFuncaoDAO.isCoordSecretariaOuDirecaoEmEscola(usuarioCPF, escolaGUID);
+  #validarPermissao = async (usuarioGUID: string, escolaGUID: string): Promise<void> => {
+    const permitido = await this.#escolaxUsuarioxFuncaoDAO.isCoordSecretariaOuDirecaoEmEscola(usuarioGUID, escolaGUID);
     if (!permitido) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você não tem permissão para consultar o registro de auditoria desta escola. Apenas Coordenação, Secretaria ou Direção.",

@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { ProjetoDAO } from '../repositories/projeto.repository';
 import { TurmaDAO } from '../repositories/turma.repository';
 import { MatriculaDAO } from '../repositories/matricula.repository';

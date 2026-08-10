@@ -19,7 +19,7 @@ const FUNCOES_EVENTO = [1, 2, 3, 5, 6]; // Coordenacao, Secretaria, Professor, A
 const RETENCAO_NOTIFICACAO_LIDA_DIAS = 30;
 
 interface DestinatarioRow extends RowDataPacket {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   EntidadeGUID: string;
   Titulo: string;
@@ -95,7 +95,7 @@ export class NotificacaoScheduler {
     }
 
     for (const [entidadeGUID, linhas] of porEntidade) {
-      const destinatarios = linhas.map((l) => l.UsuarioCPF);
+      const destinatarios = linhas.map((l) => l.UsuarioGUID);
       const pendentes = await notificacaoService.filtrarNaoNotificadosHoje(destinatarios, tipoSlug, entidadeGUID);
       if (pendentes.length === 0) continue;
 
@@ -116,7 +116,7 @@ export class NotificacaoScheduler {
   async #executarTarefaPrazoAmanha(): Promise<void> {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(`
-      SELECT m.UsuarioCPF, t.EscolaGUID, ta.TarefaGUID AS EntidadeGUID, ta.TarefaTitulo AS Titulo, ta.TarefaCompartilhada AS Compartilhada
+      SELECT m.UsuarioGUID, t.EscolaGUID, ta.TarefaGUID AS EntidadeGUID, ta.TarefaTitulo AS Titulo, ta.TarefaCompartilhada AS Compartilhada
       FROM tarefaacademica_matricula tam
       INNER JOIN tarefaacademica ta ON ta.TarefaGUID = tam.TarefaGUID
       INNER JOIN matricula m ON m.MatriculaGUID = tam.MatriculaGUID
@@ -136,7 +136,7 @@ export class NotificacaoScheduler {
   async #executarProvaPrazoAmanha(): Promise<void> {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(`
-      SELECT DISTINCT m.UsuarioCPF, t.EscolaGUID, pa.ProvaAgendadaGUID AS EntidadeGUID, pa.ProvaDescricao AS Titulo
+      SELECT DISTINCT m.UsuarioGUID, t.EscolaGUID, pa.ProvaAgendadaGUID AS EntidadeGUID, pa.ProvaDescricao AS Titulo
       FROM provaagendada_turma pat
       INNER JOIN provaagendada pa ON pa.ProvaAgendadaGUID = pat.ProvaAgendadaGUID
       INNER JOIN turma t ON t.TurmaGUID = pat.TurmaGUID
@@ -154,7 +154,7 @@ export class NotificacaoScheduler {
   async #executarAnotacaoPrazoAmanha(): Promise<void> {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(`
-      SELECT UsuarioCPF, EscolaGUID, AnotacaoGUID AS EntidadeGUID, AnotacaoTitulo AS Titulo
+      SELECT UsuarioGUID, EscolaGUID, AnotacaoGUID AS EntidadeGUID, AnotacaoTitulo AS Titulo
       FROM anotacao
       WHERE AnotacaoIsFeito = 0
         AND DATE(AnotacaoData) = DATE(NOW() + INTERVAL 1 DAY)

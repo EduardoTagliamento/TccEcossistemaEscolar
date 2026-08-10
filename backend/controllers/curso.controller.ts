@@ -32,7 +32,7 @@ export class CursoController {
   store = async (req: Request, res: Response): Promise<void> => {
     try {
       const { curso, cursos } = req.body;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUIDAtor = req.user?.UsuarioGUID || '';
 
       // Cadastro em massa
       if (cursos && Array.isArray(cursos)) {
@@ -44,7 +44,7 @@ export class CursoController {
 
         const resultado = await this.#cursoService.criarCursosEmMassa(
           cursosDTO,
-          usuarioCPF
+          usuarioGUIDAtor
         );
 
         res.status(201).json({
@@ -65,7 +65,7 @@ export class CursoController {
 
         const cursoCriado = await this.#cursoService.criarCurso(
           cursoDTO,
-          usuarioCPF
+          usuarioGUIDAtor
         );
 
         res.status(201).json({
@@ -178,7 +178,7 @@ export class CursoController {
     try {
       const { guid } = req.params;
       const { curso } = req.body;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUIDAtor = req.user?.UsuarioGUID || '';
 
       const cursoDTO: CursoUpdateDTO = {
         CursoNome: curso.CursoNome,
@@ -188,7 +188,7 @@ export class CursoController {
       const cursoAtualizado = await this.#cursoService.atualizarCurso(
         guid,
         cursoDTO,
-        usuarioCPF
+        usuarioGUIDAtor
       );
 
       res.status(200).json({
@@ -219,9 +219,9 @@ export class CursoController {
   destroy = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUIDAtor = req.user?.UsuarioGUID || '';
 
-      await this.#cursoService.excluirCurso(guid, usuarioCPF);
+      await this.#cursoService.excluirCurso(guid, usuarioGUIDAtor);
 
       res.status(200).json({
         success: true,

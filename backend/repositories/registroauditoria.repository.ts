@@ -14,7 +14,7 @@ const LIMIT_MAXIMO = 100;
 
 export interface RegistroAuditoriaFilters {
   EscolaGUID: string;
-  UsuarioCPFAtor?: string;
+  UsuarioGUIDAtor?: string;
   AcaoTipo?: AcaoAuditoriaTipo;
   EntidadeTipo?: string;
   CategoriaAuditoriaId?: number;
@@ -37,7 +37,7 @@ export class RegistroAuditoriaDAO {
 
     const query = `
       INSERT INTO registroauditoria (
-        RegistroAuditoriaGUID, EscolaGUID, UsuarioCPFAtor, AcaoTipo,
+        RegistroAuditoriaGUID, EscolaGUID, UsuarioGUIDAtor, AcaoTipo,
         EntidadeTipo, EntidadeGUID, EntidadeDescricao, CategoriaAuditoriaId, CreatedAt
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
@@ -45,7 +45,7 @@ export class RegistroAuditoriaDAO {
     const params = [
       registro.RegistroAuditoriaGUID,
       registro.EscolaGUID,
-      registro.UsuarioCPFAtor,
+      registro.UsuarioGUIDAtor,
       registro.AcaoTipo,
       registro.EntidadeTipo,
       registro.EntidadeGUID,
@@ -68,7 +68,7 @@ export class RegistroAuditoriaDAO {
     console.log("🟢 RegistroAuditoriaDAO.findById()");
 
     const query = `
-      SELECT RegistroAuditoriaGUID, EscolaGUID, UsuarioCPFAtor, AcaoTipo,
+      SELECT RegistroAuditoriaGUID, EscolaGUID, UsuarioGUIDAtor, AcaoTipo,
         EntidadeTipo, EntidadeGUID, EntidadeDescricao, CategoriaAuditoriaId, CreatedAt
       FROM registroauditoria
       WHERE RegistroAuditoriaGUID = ?
@@ -87,16 +87,16 @@ export class RegistroAuditoriaDAO {
     console.log("🟢 RegistroAuditoriaDAO.findAll()");
 
     let query = `
-      SELECT RegistroAuditoriaGUID, EscolaGUID, UsuarioCPFAtor, AcaoTipo,
+      SELECT RegistroAuditoriaGUID, EscolaGUID, UsuarioGUIDAtor, AcaoTipo,
         EntidadeTipo, EntidadeGUID, EntidadeDescricao, CategoriaAuditoriaId, CreatedAt
       FROM registroauditoria
       WHERE EscolaGUID = ?
     `;
     const params: any[] = [filters.EscolaGUID];
 
-    if (filters.UsuarioCPFAtor) {
-      query += ` AND UsuarioCPFAtor = ?`;
-      params.push(filters.UsuarioCPFAtor);
+    if (filters.UsuarioGUIDAtor) {
+      query += ` AND UsuarioGUIDAtor = ?`;
+      params.push(filters.UsuarioGUIDAtor);
     }
     if (filters.AcaoTipo) {
       query += ` AND AcaoTipo = ?`;
@@ -163,7 +163,7 @@ export class RegistroAuditoriaDAO {
     return RegistroAuditoria.fromPlainObject({
       RegistroAuditoriaGUID: row.RegistroAuditoriaGUID,
       EscolaGUID: row.EscolaGUID,
-      UsuarioCPFAtor: row.UsuarioCPFAtor,
+      UsuarioGUIDAtor: row.UsuarioGUIDAtor,
       AcaoTipo: row.AcaoTipo,
       EntidadeTipo: row.EntidadeTipo,
       EntidadeGUID: row.EntidadeGUID,

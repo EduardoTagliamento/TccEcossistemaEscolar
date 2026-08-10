@@ -2,7 +2,8 @@ import MysqlDatabase from "../database/MysqlDatabase";
 import Usuario from "../entities/usuario.model";
 
 interface UsuarioRow {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
   UsuarioEmail: string | null;
   UsuarioFotoUrl: string | null;
   UsuarioTema: "light" | "dark" | "system";
@@ -37,11 +38,12 @@ export class UsuarioDAO {
 
     const SQL = `
       INSERT INTO usuario
-      (UsuarioCPF, UsuarioEmail, UsuarioId, UsuarioTelefone, UsuarioNome, UsuarioSenha,
+      (UsuarioGUID, UsuarioCPF, UsuarioEmail, UsuarioId, UsuarioTelefone, UsuarioNome, UsuarioSenha,
        UsuarioEmailVerificado, UsuarioDataNascimento, UsuarioStatus)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
+      usuario.UsuarioGUID,
       usuario.UsuarioCPF,
       usuario.UsuarioEmail,
       usuario.UsuarioId,
@@ -56,18 +58,18 @@ export class UsuarioDAO {
     const pool = await this.#database.getPool();
     await pool.execute(SQL, params);
 
-    return usuario.UsuarioCPF;
+    return usuario.UsuarioGUID;
   };
 
-  delete = async (UsuarioCPF: string): Promise<boolean> => {
+  delete = async (UsuarioGUID: string): Promise<boolean> => {
     console.log("🟢 UsuarioDAO.delete() - Soft Delete");
 
     const SQL = `
       UPDATE usuario
       SET UsuarioDeletedAt = CURRENT_TIMESTAMP
-      WHERE UsuarioCPF = ? AND UsuarioDeletedAt IS NULL;
+      WHERE UsuarioGUID = ? AND UsuarioDeletedAt IS NULL;
     `;
-    const params = [UsuarioCPF];
+    const params = [UsuarioGUID];
 
     const pool = await this.#database.getPool();
     const [resultado] = await pool.execute(SQL, params);
@@ -80,12 +82,12 @@ export class UsuarioDAO {
    * fluxo normal de update de perfil; hoje só usado via script/acesso
    * direto ao banco (bootstrap manual), sem tela própria nesta fase.
    */
-  atualizarPlataformaAdmin = async (usuarioCPF: string, isPlataformaAdmin: boolean): Promise<boolean> => {
+  atualizarPlataformaAdmin = async (usuarioGUID: string, isPlataformaAdmin: boolean): Promise<boolean> => {
     console.log("🟢 UsuarioDAO.atualizarPlataformaAdmin()");
 
-    const SQL = `UPDATE usuario SET UsuarioIsPlataformaAdmin = ? WHERE UsuarioCPF = ?`;
+    const SQL = `UPDATE usuario SET UsuarioIsPlataformaAdmin = ? WHERE UsuarioGUID = ?`;
     const pool = await this.#database.getPool();
-    const [resultado] = await pool.execute(SQL, [isPlataformaAdmin, usuarioCPF]);
+    const [resultado] = await pool.execute(SQL, [isPlataformaAdmin, usuarioGUID]);
 
     return (resultado as { affectedRows: number }).affectedRows > 0;
   };
@@ -95,12 +97,13 @@ export class UsuarioDAO {
 
     const SQL = `
       UPDATE usuario
-      SET UsuarioEmail = ?, UsuarioFotoUrl = ?, UsuarioTema = ?, UsuarioModoDaltonico = ?, UsuarioEscalaFonte = ?,
+      SET UsuarioCPF = ?, UsuarioEmail = ?, UsuarioFotoUrl = ?, UsuarioTema = ?, UsuarioModoDaltonico = ?, UsuarioEscalaFonte = ?,
           UsuarioReduzirMovimento = ?, UsuarioAltoContraste = ?, UsuarioId = ?, UsuarioTelefone = ?, UsuarioNome = ?, UsuarioSenha = ?,
           UsuarioEmailVerificado = ?, UsuarioDataNascimento = ?, UsuarioStatus = ?
-      WHERE UsuarioCPF = ? AND UsuarioDeletedAt IS NULL;
+      WHERE UsuarioGUID = ? AND UsuarioDeletedAt IS NULL;
     `;
     const params = [
+      usuario.UsuarioCPF,
       usuario.UsuarioEmail,
       usuario.UsuarioFotoUrl,
       usuario.UsuarioTema,
@@ -115,7 +118,7 @@ export class UsuarioDAO {
       usuario.UsuarioEmailVerificado,
       usuario.UsuarioDataNascimento,
       usuario.UsuarioStatus,
-      usuario.UsuarioCPF,
+      usuario.UsuarioGUID,
     ];
 
     const pool = await this.#database.getPool();
@@ -144,11 +147,11 @@ export class UsuarioDAO {
     return usuarios;
   };
 
-  findById = async (UsuarioCPF: string): Promise<Usuario | null> => {
-    console.log("🟢 UsuarioDAO.findById()");
+  findByGUID = async (UsuarioGUID: string): Promise<Usuario | null> => {
+    console.log("🟢 UsuarioDAO.findByGUID()");
 
-    const SQL = "SELECT * FROM usuario WHERE UsuarioCPF = ? AND UsuarioDeletedAt IS NULL;";
-    const params = [UsuarioCPF];
+    const SQL = "SELECT * FROM usuario WHERE UsuarioGUID = ? AND UsuarioDeletedAt IS NULL;";
+    const params = [UsuarioGUID];
 
     const pool = await this.#database.getPool();
     const [linhas] = await pool.execute(SQL, params);
@@ -196,28 +199,40 @@ export class UsuarioDAO {
   };
 
   findByCPF = async (UsuarioCPF: string): Promise<Usuario | null> => {
-    // Alias para findById (mantém consistência com findByEmail e findByTelefone)
-    return this.findById(UsuarioCPF);
-  };
+    console.log("🟢 UsuarioDAO.findByCPF()");
 
-  /** Nomes em lote por CPF — usado para enriquecer listagens (ex.: escolaxusuarioxfuncao) sem N+1. */
-  findNomesByCPFs = async (cpfs: string[]): Promise<Map<string, string>> => {
-    console.log("🟢 UsuarioDAO.findNomesByCPFs()");
-    if (cpfs.length === 0) return new Map();
+    const SQL = "SELECT * FROM usuario WHERE UsuarioCPF = ? AND UsuarioDeletedAt IS NULL;";
+    const params = [UsuarioCPF];
 
     const pool = await this.#database.getPool();
-    const placeholders = cpfs.map(() => "?").join(",");
+    const [linhas] = await pool.execute(SQL, params);
+
+    const rows = linhas as UsuarioRow[];
+    if (rows.length === 0) {
+      return null;
+    }
+
+    return this.mapRowToEntity(rows[0]);
+  };
+
+  /** Nomes em lote por GUID — usado para enriquecer listagens (ex.: escolaxusuarioxfuncao) sem N+1. */
+  findNomesByGUIDs = async (guids: string[]): Promise<Map<string, string>> => {
+    console.log("🟢 UsuarioDAO.findNomesByGUIDs()");
+    if (guids.length === 0) return new Map();
+
+    const pool = await this.#database.getPool();
+    const placeholders = guids.map(() => "?").join(",");
     const [linhas] = await pool.execute(
-      `SELECT UsuarioCPF, UsuarioNome FROM usuario WHERE UsuarioCPF IN (${placeholders})`,
-      cpfs
+      `SELECT UsuarioGUID, UsuarioNome FROM usuario WHERE UsuarioGUID IN (${placeholders})`,
+      guids
     );
-    return new Map((linhas as Array<{ UsuarioCPF: string; UsuarioNome: string }>).map((r) => [r.UsuarioCPF, r.UsuarioNome]));
+    return new Map((linhas as Array<{ UsuarioGUID: string; UsuarioNome: string }>).map((r) => [r.UsuarioGUID, r.UsuarioNome]));
   };
 
   findByField = async (field: string, value: string): Promise<Usuario[]> => {
     console.log("🟢 UsuarioDAO.findByField()");
 
-    const validFields = ["UsuarioCPF", "UsuarioEmail", "UsuarioId", "UsuarioNome"];
+    const validFields = ["UsuarioGUID", "UsuarioCPF", "UsuarioEmail", "UsuarioId", "UsuarioNome"];
     if (!validFields.includes(field)) {
       throw new Error(`Campo inválido: ${field}`);
     }
@@ -235,15 +250,15 @@ export class UsuarioDAO {
   /**
    * Atualiza o último acesso do usuário (usado no login)
    */
-  updateUltimoAcesso = async (UsuarioCPF: string): Promise<boolean> => {
+  updateUltimoAcesso = async (UsuarioGUID: string): Promise<boolean> => {
     console.log("🟢 UsuarioDAO.updateUltimoAcesso()");
 
     const SQL = `
       UPDATE usuario
       SET UsuarioUltimoAcesso = CURRENT_TIMESTAMP
-      WHERE UsuarioCPF = ? AND UsuarioDeletedAt IS NULL;
+      WHERE UsuarioGUID = ? AND UsuarioDeletedAt IS NULL;
     `;
-    const params = [UsuarioCPF];
+    const params = [UsuarioGUID];
 
     const pool = await this.#database.getPool();
     const [resultado] = await pool.execute(SQL, params);
@@ -254,15 +269,15 @@ export class UsuarioDAO {
   /**
    * Marca email do usuário como verificado
    */
-  verificarEmail = async (UsuarioCPF: string): Promise<boolean> => {
+  verificarEmail = async (UsuarioGUID: string): Promise<boolean> => {
     console.log("🟢 UsuarioDAO.verificarEmail()");
 
     const SQL = `
       UPDATE usuario
       SET UsuarioEmailVerificado = TRUE
-      WHERE UsuarioCPF = ? AND UsuarioDeletedAt IS NULL;
+      WHERE UsuarioGUID = ? AND UsuarioDeletedAt IS NULL;
     `;
-    const params = [UsuarioCPF];
+    const params = [UsuarioGUID];
 
     const pool = await this.#database.getPool();
     const [resultado] = await pool.execute(SQL, params);
@@ -272,6 +287,7 @@ export class UsuarioDAO {
 
   private mapRowToEntity = (row: UsuarioRow): Usuario => {
     const usuario = new Usuario();
+    usuario.UsuarioGUID = row.UsuarioGUID;
     usuario.UsuarioCPF = row.UsuarioCPF;
     usuario.UsuarioEmail = row.UsuarioEmail;
     usuario.UsuarioFotoUrl = row.UsuarioFotoUrl;

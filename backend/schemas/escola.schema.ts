@@ -96,10 +96,10 @@ export const EscolaUpdateBodySchema = z.preprocess(
 );
 
 export const EscolaTransferirDirecaoBodySchema = z.object({
-  NovoDirecaoCPF: z
-    .string({ message: "O campo 'NovoDirecaoCPF' é obrigatório." })
+  NovoDirecaoGUID: z
+    .string({ message: "O campo 'NovoDirecaoGUID' é obrigatório." })
     .trim()
-    .min(1, "O campo 'NovoDirecaoCPF' é obrigatório."),
+    .min(1, "O campo 'NovoDirecaoGUID' é obrigatório."),
 });
 
 export const EscolaIdParamSchema = z.object({

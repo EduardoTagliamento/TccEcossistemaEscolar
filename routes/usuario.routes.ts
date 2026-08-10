@@ -37,54 +37,54 @@ export default class UsuarioRoteador {
       this.#usuarioControle.store
     );
 
-    // PUT /api/usuario/:UsuarioCPF - Atualizar usuário (exige autenticação)
+    // PUT /api/usuario/:UsuarioGUID - Atualizar usuário (exige autenticação)
     this.#router.put(
-      "/:UsuarioCPF",
+      "/:UsuarioGUID",
       AuthMiddleware.authenticate,
-      this.#usuarioMiddleware.validateCpfParam,
+      this.#usuarioMiddleware.validateGuidParam,
       this.#usuarioMiddleware.validateUpdateBody,
       this.#usuarioControle.update
     );
 
-    // PATCH /api/usuario/:UsuarioCPF/senha - Trocar a própria senha (exige autenticação)
+    // PATCH /api/usuario/:UsuarioGUID/senha - Trocar a própria senha (exige autenticação)
     this.#router.patch(
-      "/:UsuarioCPF/senha",
+      "/:UsuarioGUID/senha",
       AuthMiddleware.authenticate,
-      this.#usuarioMiddleware.validateCpfParam,
+      this.#usuarioMiddleware.validateGuidParam,
       this.#usuarioMiddleware.validateSenhaBody,
       this.#usuarioControle.updateSenha
     );
 
-    // DELETE /api/usuario/:UsuarioCPF - Deletar usuário (exige autenticação)
+    // DELETE /api/usuario/:UsuarioGUID - Deletar usuário (exige autenticação)
     this.#router.delete(
-      "/:UsuarioCPF",
+      "/:UsuarioGUID",
       AuthMiddleware.authenticate,
-      this.#usuarioMiddleware.validateCpfParam,
+      this.#usuarioMiddleware.validateGuidParam,
       this.#usuarioControle.destroy
     );
 
     // GET /api/usuario - Listar usuários (com filtro opcional por nome)
     this.#router.get("/", this.#usuarioControle.index);
 
-    // GET /api/usuario/:UsuarioCPF/escolas - Buscar escolas do usuário
+    // GET /api/usuario/:UsuarioGUID/escolas - Buscar escolas do usuário
     this.#router.get(
-      "/:UsuarioCPF/escolas",
-      this.#usuarioMiddleware.validateCpfParam,
+      "/:UsuarioGUID/escolas",
+      this.#usuarioMiddleware.validateGuidParam,
       this.#escolaxUsuarioxFuncaoControle.getEscolasByUsuario
     );
 
-    // POST /api/usuario/:UsuarioCPF/escolas/:EscolaGUID/acesso - Registrar último acesso do usuário na escola
+    // POST /api/usuario/:UsuarioGUID/escolas/:EscolaGUID/acesso - Registrar último acesso do usuário na escola
     this.#router.post(
-      "/:UsuarioCPF/escolas/:EscolaGUID/acesso",
+      "/:UsuarioGUID/escolas/:EscolaGUID/acesso",
       AuthMiddleware.authenticate,
-      this.#usuarioMiddleware.validateCpfParam,
+      this.#usuarioMiddleware.validateGuidParam,
       this.#escolaxUsuarioxFuncaoControle.registrarAcesso
     );
 
-    // GET /api/usuario/:UsuarioCPF - Buscar usuário por CPF
+    // GET /api/usuario/:UsuarioGUID - Buscar usuário por GUID
     this.#router.get(
-      "/:UsuarioCPF",
-      this.#usuarioMiddleware.validateCpfParam,
+      "/:UsuarioGUID",
+      this.#usuarioMiddleware.validateGuidParam,
       this.#usuarioControle.show
     );
 

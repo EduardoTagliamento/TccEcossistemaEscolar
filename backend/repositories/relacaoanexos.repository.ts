@@ -22,6 +22,7 @@ import MysqlDatabase from "../database/MysqlDatabase";
 import { RelacaoAnexos } from "../entities/relacaoanexos.model";
 import Anexo from "../entities/anexo.model";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 
 /**
  * DAO de RelacaoAnexos
@@ -40,8 +41,7 @@ export class RelacaoAnexosDAO {
   async vincularAnexoTarefa(anexoGUID: string, tarefaGUID: string): Promise<RelacaoAnexos> {
     console.log("🟢 RelacaoAnexosDAO.vincularAnexoTarefa()");
 
-    const { v4: uuidv4 } = await import("uuid");
-    const relacaoGUID = uuidv4();
+    const relacaoGUID = gerarGUID();
 
     const query = `
       INSERT INTO relacaoanexostarefa (
@@ -71,8 +71,7 @@ export class RelacaoAnexosDAO {
   async vincularAnexoPendencia(anexoGUID: string, pendenciaGUID: string): Promise<RelacaoAnexos> {
     console.log("🟢 RelacaoAnexosDAO.vincularAnexoPendencia()");
 
-    const { v4: uuidv4 } = await import("uuid");
-    const relacaoGUID = uuidv4();
+    const relacaoGUID = gerarGUID();
 
     const query = `
       INSERT INTO relacaoanexospendencia (
@@ -102,8 +101,7 @@ export class RelacaoAnexosDAO {
   async vincularAnexoEvento(anexoGUID: string, eventoGUID: string): Promise<RelacaoAnexos> {
     console.log("🟢 RelacaoAnexosDAO.vincularAnexoEvento()");
 
-    const { v4: uuidv4 } = await import("uuid");
-    const relacaoGUID = uuidv4();
+    const relacaoGUID = gerarGUID();
 
     const query = `
       INSERT INTO relacaoanexosevento (
@@ -135,8 +133,7 @@ export class RelacaoAnexosDAO {
   async vincularAnexoAviso(anexoGUID: string, avisoGUID: string): Promise<void> {
     console.log("🟢 RelacaoAnexosDAO.vincularAnexoAviso()");
 
-    const { v4: uuidv4 } = await import("uuid");
-    const relacaoGUID = uuidv4();
+    const relacaoGUID = gerarGUID();
 
     const query = `
       INSERT INTO relacaoanexosaviso (
@@ -156,8 +153,7 @@ export class RelacaoAnexosDAO {
   async vincularAnexoSugestao(anexoGUID: string, sugestaoGUID: string): Promise<void> {
     console.log("🟢 RelacaoAnexosDAO.vincularAnexoSugestao()");
 
-    const { v4: uuidv4 } = await import("uuid");
-    const relacaoGUID = uuidv4();
+    const relacaoGUID = gerarGUID();
 
     const query = `
       INSERT INTO relacaoanexossugestao (
@@ -308,7 +304,7 @@ export class RelacaoAnexosDAO {
 
   /**
    * Remover vínculo entre anexo e recurso.
-   * O GUID de vínculo é único globalmente (uuidv4), mas pode estar em
+   * O GUID de vínculo é único globalmente (gerarGUID), mas pode estar em
    * qualquer uma das 5 tabelas de recurso — tenta nas cinco.
    */
   async delete(relacaoGUID: string): Promise<boolean> {

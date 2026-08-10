@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { ConversaDAO } from '../repositories/conversa.repository';
 import { ConversaGrupoDAO } from '../repositories/conversa-grupo.repository';
 import { MatriculaDAO } from '../repositories/matricula.repository';
@@ -35,7 +35,7 @@ export default class ConversaGrupoService {
   async criarGrupoTurma(turmaGUID: string, turmaNome: string): Promise<void> {
     console.log('🟣 ConversaGrupoService.criarGrupoTurma()');
     try {
-      const conversaGUID = uuidv4();
+      const conversaGUID = gerarGUID();
       await this.#conversaDAO.create(conversaGUID, 'Grupo');
       await this.#conversaGrupoDAO.createGrupo(conversaGUID, turmaNome, 'Turma', turmaGUID);
 
@@ -118,7 +118,7 @@ export default class ConversaGrupoService {
   async criarConversaParaGrupoTarefa(grupoTarefaGUID: string, nome: string, liderCPF: string): Promise<void> {
     console.log('🟣 ConversaGrupoService.criarConversaParaGrupoTarefa()');
     try {
-      const conversaGUID = uuidv4();
+      const conversaGUID = gerarGUID();
       await this.#conversaDAO.create(conversaGUID, 'Grupo');
       await this.#conversaGrupoDAO.createGrupo(conversaGUID, nome, 'Tarefa', grupoTarefaGUID);
       await this.#conversaGrupoDAO.addMembro(conversaGUID, liderCPF);

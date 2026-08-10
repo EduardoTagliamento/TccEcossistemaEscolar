@@ -14,7 +14,7 @@ export default class EscolaxUsuarioxFuncaoControl {
     console.log("Controller: EscolaxUsuarioxFuncaoControl.store()");
     try {
       const payload = request.body.escolaxusuarioxfuncao;
-      const relacao = await this.#service.createRelacao(payload, request.user?.UsuarioCPF);
+      const relacao = await this.#service.createRelacao(payload, request.user?.UsuarioGUID);
 
       response.status(201).json({
         success: true,
@@ -39,7 +39,7 @@ export default class EscolaxUsuarioxFuncaoControl {
         itens,
         EscolaGUID,
         Number(FuncaoId),
-        request.user?.UsuarioCPF
+        request.user?.UsuarioGUID
       );
 
       response.status(201).json({
@@ -56,9 +56,9 @@ export default class EscolaxUsuarioxFuncaoControl {
     console.log("Controller: EscolaxUsuarioxFuncaoControl.index()");
     try {
       const filters = {
-        UsuarioCPF:
-          typeof request.query.UsuarioCPF === "string"
-            ? request.query.UsuarioCPF
+        UsuarioGUID:
+          typeof request.query.UsuarioGUID === "string"
+            ? request.query.UsuarioGUID
             : undefined,
         EscolaGUID:
           typeof request.query.EscolaGUID === "string"
@@ -103,7 +103,7 @@ export default class EscolaxUsuarioxFuncaoControl {
     try {
       const id = Number(request.params.EscolaxUsuarioxFuncaoId);
       const payload = request.body.escolaxusuarioxfuncao;
-      const relacao = await this.#service.updateRelacao(id, payload, request.user?.UsuarioCPF);
+      const relacao = await this.#service.updateRelacao(id, payload, request.user?.UsuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -119,7 +119,7 @@ export default class EscolaxUsuarioxFuncaoControl {
     console.log("Controller: EscolaxUsuarioxFuncaoControl.destroy()");
     try {
       const id = Number(request.params.EscolaxUsuarioxFuncaoId);
-      const deleted = await this.#service.deleteRelacao(id, request.user?.UsuarioCPF);
+      const deleted = await this.#service.deleteRelacao(id, request.user?.UsuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -132,16 +132,16 @@ export default class EscolaxUsuarioxFuncaoControl {
   };
 
   /**
-   * GET /api/usuario/:cpf/escolas
+   * GET /api/usuario/:UsuarioGUID/escolas
    * Retorna todas as escolas vinculadas ao usuário com suas funções
    */
   getEscolasByUsuario = async (request: Request, response: Response, next: NextFunction) => {
     console.log("Controller: EscolaxUsuarioxFuncaoControl.getEscolasByUsuario()");
     try {
-      const UsuarioCPF = request.params.UsuarioCPF;
+      const UsuarioGUID = request.params.UsuarioGUID;
 
       // Busca as escolas normalmente
-      const escolas = await this.#service.findEscolasByUsuario(UsuarioCPF);
+      const escolas = await this.#service.findEscolasByUsuario(UsuarioGUID);
 
       // Sempre retorna 200, mesmo se lista vazia
       response.status(200).json({
@@ -158,7 +158,7 @@ export default class EscolaxUsuarioxFuncaoControl {
   };
 
   /**
-   * POST /api/usuario/:UsuarioCPF/escolas/:EscolaGUID/acesso
+   * POST /api/usuario/:UsuarioGUID/escolas/:EscolaGUID/acesso
    * Registra o "último acesso" do usuário autenticado nesta escola (não é
    * auditoria — ver docs/PLANO_IMPLEMENTACAO_REGISTRO_AUDITORIA.md, Seção
    * 3.4). Só o próprio usuário pode atualizar seu próprio registro.
@@ -166,19 +166,19 @@ export default class EscolaxUsuarioxFuncaoControl {
   registrarAcesso = async (request: Request, response: Response, next: NextFunction) => {
     console.log("Controller: EscolaxUsuarioxFuncaoControl.registrarAcesso()");
     try {
-      const { UsuarioCPF, EscolaGUID } = request.params;
-      const usuarioAutenticado = request.user?.UsuarioCPF;
+      const { UsuarioGUID, EscolaGUID } = request.params;
+      const usuarioAutenticado = request.user?.UsuarioGUID;
 
       if (!usuarioAutenticado) {
         throw new ErrorResponse(401, "Não autenticado");
       }
-      if (usuarioAutenticado !== UsuarioCPF) {
+      if (usuarioAutenticado !== UsuarioGUID) {
         throw new ErrorResponse(403, "Sem permissão", {
           message: "Só é possível registrar o próprio acesso.",
         });
       }
 
-      await this.#service.registrarAcesso(UsuarioCPF, EscolaGUID);
+      await this.#service.registrarAcesso(UsuarioGUID, EscolaGUID);
 
       response.status(200).json({
         success: true,

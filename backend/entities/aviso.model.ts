@@ -3,7 +3,7 @@ export type AvisoAbrangencia = 'Escola' | 'Turmas';
 export interface Aviso {
   AvisoGUID: string;
   EscolaGUID: string;
-  UsuarioCPFAutor: string;
+  UsuarioGUIDAutor: string;
   AvisoTitulo: string;
   AvisoConteudo: string;
   AvisoAbrangencia: AvisoAbrangencia;
@@ -12,7 +12,7 @@ export interface Aviso {
 
 export interface AvisoCreateDTO {
   EscolaGUID: string;
-  UsuarioCPFAutor: string;
+  UsuarioGUIDAutor: string;
   AvisoTitulo: string;
   AvisoConteudo: string;
   AvisoAbrangencia: AvisoAbrangencia;
@@ -23,7 +23,7 @@ export interface AvisoCreateDTO {
 export class AvisoEntity {
   #avisoGUID: string;
   #escolaGUID: string;
-  #usuarioCPFAutor: string;
+  #usuarioGUIDAutor: string;
   #avisoTitulo: string;
   #avisoConteudo: string;
   #avisoAbrangencia: AvisoAbrangencia;
@@ -32,7 +32,7 @@ export class AvisoEntity {
   constructor(data: Aviso) {
     this.#avisoGUID = data.AvisoGUID;
     this.#escolaGUID = data.EscolaGUID;
-    this.#usuarioCPFAutor = data.UsuarioCPFAutor;
+    this.#usuarioGUIDAutor = data.UsuarioGUIDAutor;
     this.#avisoTitulo = data.AvisoTitulo;
     this.#avisoConteudo = data.AvisoConteudo;
     this.#avisoAbrangencia = data.AvisoAbrangencia;
@@ -48,8 +48,8 @@ export class AvisoEntity {
     return this.#escolaGUID;
   }
 
-  get usuarioCPFAutor(): string {
-    return this.#usuarioCPFAutor;
+  get usuarioGUIDAutor(): string {
+    return this.#usuarioGUIDAutor;
   }
 
   get avisoTitulo(): string {
@@ -80,9 +80,8 @@ export class AvisoEntity {
       throw new Error('EscolaGUID inválido (deve ser UUID)');
     }
 
-    const cpfLimpo = this.#usuarioCPFAutor.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPFAutor deve ter 11 dígitos');
+    if (!this.#usuarioGUIDAutor || this.#usuarioGUIDAutor.trim().length === 0) {
+      throw new Error('UsuarioGUIDAutor é obrigatório');
     }
 
     if (!this.#avisoTitulo || this.#avisoTitulo.trim().length === 0) {
@@ -110,7 +109,7 @@ export class AvisoEntity {
     return {
       AvisoGUID: this.#avisoGUID,
       EscolaGUID: this.#escolaGUID,
-      UsuarioCPFAutor: this.#usuarioCPFAutor,
+      UsuarioGUIDAutor: this.#usuarioGUIDAutor,
       AvisoTitulo: this.#avisoTitulo,
       AvisoConteudo: this.#avisoConteudo,
       AvisoAbrangencia: this.#avisoAbrangencia,

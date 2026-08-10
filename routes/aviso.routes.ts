@@ -7,6 +7,7 @@ import { EscolaxUsuarioxFuncaoDAO } from '../backend/repositories/escolaxusuario
 import { RelacaoAnexosDAO } from '../backend/repositories/relacaoanexos.repository';
 import { AnexoDAO } from '../backend/repositories/anexo.repository';
 import { MatriculaDAO } from '../backend/repositories/matricula.repository';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import { AvisoMiddleware } from '../backend/middlewares/aviso.middleware';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
 
@@ -72,7 +73,8 @@ export const avisoRouterFactory = () => {
   const relacaoAnexosDAO = new RelacaoAnexosDAO(database);
   const anexoDAO = new AnexoDAO(database);
   const matriculaDAO = new MatriculaDAO(database);
-  const avisoService = new AvisoService(avisoDAO, escolaxUsuarioxFuncaoDAO, relacaoAnexosDAO, anexoDAO, matriculaDAO);
+  const usuarioDAO = new UsuarioDAO(database);
+  const avisoService = new AvisoService(avisoDAO, escolaxUsuarioxFuncaoDAO, relacaoAnexosDAO, anexoDAO, matriculaDAO, usuarioDAO);
   const avisoController = new AvisoController(avisoService);
   const roteador = new AvisoRoteador(avisoController);
 

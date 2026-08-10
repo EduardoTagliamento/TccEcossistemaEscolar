@@ -5,6 +5,7 @@ import CalendarioMiddleware from "../backend/middlewares/calendario.middleware";
 import CalendarioService from "../backend/services/calendario.service";
 import { CalendarioDAO } from "../backend/repositories/calendario.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class CalendarioRoteador {
@@ -44,7 +45,8 @@ export default class CalendarioRoteador {
 const db = MysqlDatabase.getInstance();
 const calendarioDAO = new CalendarioDAO(db);
 const eufDAO = new EscolaxUsuarioxFuncaoDAO(db);
-const calendarioService = new CalendarioService(calendarioDAO, eufDAO);
+const usuarioDAOCalendario = new UsuarioDAO(db);
+const calendarioService = new CalendarioService(calendarioDAO, eufDAO, usuarioDAOCalendario);
 const calendarioControl = new CalendarioControl(calendarioService);
 const calendarioMiddleware = new CalendarioMiddleware();
 

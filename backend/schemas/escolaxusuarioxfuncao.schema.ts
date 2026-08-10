@@ -3,7 +3,7 @@ import { z } from "zod";
 // Regex "solta" só desta rota — versão 1-5, case insensitive nos dois grupos
 // (diferente da estrita v4-only usada na maioria dos outros domínios).
 const GUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-const CPF_FORMATADO_REGEX = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
+const USUARIO_GUID_REGEX = /^[A-Za-z0-9_-]{12}$/;
 const DATA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const STATUS_ENUM = ["Ativo", "Inativo", "Finalizado"] as const;
 
@@ -17,8 +17,8 @@ const campoFuncaoId = (obrigatorio: boolean) => {
   return obrigatorio ? base : base.optional();
 };
 
-const campoCPF = (obrigatorio: boolean) => {
-  const base = z.string({ message: "O campo 'UsuarioCPF' deve ser string." }).regex(CPF_FORMATADO_REGEX, "O campo 'UsuarioCPF' deve estar no formato XXX.XXX.XXX-XX.");
+const campoUsuarioGUID = (obrigatorio: boolean) => {
+  const base = z.string({ message: "O campo 'UsuarioGUID' deve ser string." }).regex(USUARIO_GUID_REGEX, "UsuarioGUID invalido.");
   return obrigatorio ? base : base.optional();
 };
 
@@ -39,7 +39,7 @@ export const CriarEscolaxUsuarioxFuncaoBodySchema = z.object({
   escolaxusuarioxfuncao: z
     .object(
       {
-        UsuarioCPF: campoCPF(true),
+        UsuarioGUID: campoUsuarioGUID(true),
         EscolaGUID: campoEscolaGUID(true),
         FuncaoId: campoFuncaoId(true),
         DataInicio: campoData("DataInicio"),
@@ -54,7 +54,7 @@ export const AtualizarEscolaxUsuarioxFuncaoBodySchema = z.object({
   escolaxusuarioxfuncao: z
     .object(
       {
-        UsuarioCPF: campoCPF(false),
+        UsuarioGUID: campoUsuarioGUID(false),
         EscolaGUID: campoEscolaGUID(false),
         FuncaoId: campoFuncaoId(false),
         DataInicio: campoData("DataInicio"),
@@ -65,13 +65,13 @@ export const AtualizarEscolaxUsuarioxFuncaoBodySchema = z.object({
     )
     .refine(
       (v) =>
-        v.UsuarioCPF !== undefined ||
+        v.UsuarioGUID !== undefined ||
         v.EscolaGUID !== undefined ||
         v.FuncaoId !== undefined ||
         v.DataInicio !== undefined ||
         v.DataFim !== undefined ||
         v.Status !== undefined,
-      "Envie ao menos um campo para atualizar: UsuarioCPF, EscolaGUID, FuncaoId, DataInicio, DataFim ou Status."
+      "Envie ao menos um campo para atualizar: UsuarioGUID, EscolaGUID, FuncaoId, DataInicio, DataFim ou Status."
     ),
 });
 

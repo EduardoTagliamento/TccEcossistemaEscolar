@@ -1,8 +1,6 @@
-import { normalizeCPF } from "../utils/helpers/cpf.helper";
-
 export default class EscolaxUsuarioxFuncao {
   #EscolaxUsuarioxFuncaoId: number | null = null;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #EscolaGUID!: string;
   #FuncaoId!: number;
   #FuncaoNome: string | null = null;
@@ -33,12 +31,15 @@ export default class EscolaxUsuarioxFuncao {
     this.#EscolaxUsuarioxFuncaoId = value;
   }
 
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
-  set UsuarioCPF(value: string) {
-    this.#UsuarioCPF = normalizeCPF(value);
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia.");
+    }
+    this.#UsuarioGUID = value;
   }
 
   get EscolaGUID(): string {

@@ -38,8 +38,8 @@ export default class PendenciaController {
     try {
       console.log("🔵 PendenciaController.store()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -55,7 +55,7 @@ export default class PendenciaController {
         PendenciaPrazoData: req.body.PendenciaPrazoData
       };
 
-      const pendencia = await this.#pendenciaService.store(data, usuarioCPF);
+      const pendencia = await this.#pendenciaService.store(data, usuarioGUID);
 
       res.status(201).json({
         success: true,
@@ -77,8 +77,8 @@ export default class PendenciaController {
     try {
       console.log("🔵 PendenciaController.index()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -98,7 +98,7 @@ export default class PendenciaController {
         offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined
       };
 
-      const pendencias = await this.#pendenciaService.index(filters, usuarioCPF);
+      const pendencias = await this.#pendenciaService.index(filters, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -121,8 +121,8 @@ export default class PendenciaController {
     try {
       console.log("🔵 PendenciaController.show()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -132,7 +132,7 @@ export default class PendenciaController {
 
       const { PendenciaGUID } = req.params;
 
-      const pendencia = await this.#pendenciaService.show(PendenciaGUID, usuarioCPF);
+      const pendencia = await this.#pendenciaService.show(PendenciaGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -154,8 +154,8 @@ export default class PendenciaController {
     try {
       console.log("🔵 PendenciaController.update()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -171,7 +171,7 @@ export default class PendenciaController {
         PendenciaPrazoData: req.body.PendenciaPrazoData
       };
 
-      const pendencia = await this.#pendenciaService.update(PendenciaGUID, data, usuarioCPF);
+      const pendencia = await this.#pendenciaService.update(PendenciaGUID, data, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -193,8 +193,8 @@ export default class PendenciaController {
     try {
       console.log("🔵 PendenciaController.destroy()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -204,7 +204,7 @@ export default class PendenciaController {
 
       const { PendenciaGUID } = req.params;
 
-      await this.#pendenciaService.destroy(PendenciaGUID, usuarioCPF);
+      await this.#pendenciaService.destroy(PendenciaGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -224,8 +224,8 @@ export default class PendenciaController {
     try {
       console.log("🔵 PendenciaController.marcarComoFeito()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -235,7 +235,7 @@ export default class PendenciaController {
 
       const { PendenciaGUID } = req.params;
 
-      const pendencia = await this.#pendenciaService.marcarComoFeito(PendenciaGUID, usuarioCPF);
+      const pendencia = await this.#pendenciaService.marcarComoFeito(PendenciaGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -257,8 +257,8 @@ export default class PendenciaController {
     try {
       console.log("🔵 PendenciaController.contarPendentes()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -268,7 +268,7 @@ export default class PendenciaController {
 
       const escolaGUID = req.query.EscolaGUID as string | undefined;
 
-      const total = await this.#pendenciaService.contarPendentes(usuarioCPF, escolaGUID);
+      const total = await this.#pendenciaService.contarPendentes(usuarioGUID, escolaGUID);
 
       res.status(200).json({
         success: true,
@@ -290,8 +290,8 @@ export default class PendenciaController {
     try {
       console.log("🔵 PendenciaController.contarAtrasadas()");
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -301,7 +301,7 @@ export default class PendenciaController {
 
       const escolaGUID = req.query.EscolaGUID as string | undefined;
 
-      const total = await this.#pendenciaService.contarAtrasadas(usuarioCPF, escolaGUID);
+      const total = await this.#pendenciaService.contarAtrasadas(usuarioGUID, escolaGUID);
 
       res.status(200).json({
         success: true,
@@ -327,13 +327,13 @@ export default class PendenciaController {
       }
 
       const { PendenciaGUID } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
-      const anexos = await this.#relacaoAnexosService.listarAnexosPendencia(PendenciaGUID, usuarioCPF);
+      const anexos = await this.#relacaoAnexosService.listarAnexosPendencia(PendenciaGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -361,9 +361,9 @@ export default class PendenciaController {
 
       const { PendenciaGUID } = req.params;
       const { AnexoGUID } = req.body;
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
@@ -375,7 +375,7 @@ export default class PendenciaController {
         AnexoGUID,
         "pendencia",
         PendenciaGUID,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(201).json({

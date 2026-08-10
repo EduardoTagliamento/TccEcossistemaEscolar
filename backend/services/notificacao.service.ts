@@ -11,7 +11,7 @@
  * originou a notificação.
  */
 
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import MysqlDatabase from "../database/MysqlDatabase";
 import { NotificacaoDAO, NotificacaoFilters } from "../repositories/notificacao.repository";
 import { NotificacaoTipoDAO } from "../repositories/notificacaotipo.repository";
@@ -28,7 +28,7 @@ import ErrorResponse from "../utils/ErrorResponse";
 
 export interface DisparoNotificacaoInput {
   tipoSlug: string;
-  destinatarios: string[]; // UsuarioCPF[]
+  destinatarios: string[]; // UsuarioGUID[]
   escolaGUID: string;
   titulo: string;
   conteudo?: string | null;
@@ -83,20 +83,20 @@ export default class NotificacaoService {
 
       const destinatariosUnicos = [...new Set(input.destinatarios)];
 
-      for (const usuarioCPF of destinatariosUnicos) {
-        await this.#dispararParaUsuario(usuarioCPF, tipo, input);
+      for (const usuarioGUID of destinatariosUnicos) {
+        await this.#dispararParaUsuario(usuarioGUID, tipo, input);
       }
     } catch (error) {
       console.error("🔴 NotificacaoService.disparar() falhou (não propagado):", error);
     }
   }
 
-  async #dispararParaUsuario(usuarioCPF: string, tipo: NotificacaoTipo, input: DisparoNotificacaoInput): Promise<void> {
+  async #dispararParaUsuario(usuarioGUID: string, tipo: NotificacaoTipo, input: DisparoNotificacaoInput): Promise<void> {
     try {
       const notificacao = new Notificacao();
-      notificacao.NotificacaoGUID = uuidv4();
+      notificacao.NotificacaoGUID = gerarGUID();
       notificacao.NotificacaoTipoId = tipo.NotificacaoTipoId;
-      notificacao.UsuarioCPF = usuarioCPF;
+      notificacao.UsuarioGUID = usuarioGUID;
       notificacao.EscolaGUID = input.escolaGUID;
       notificacao.NotificacaoTitulo = input.titulo;
       notificacao.NotificacaoConteudo = input.conteudo ?? null;
@@ -114,29 +114,29 @@ export default class NotificacaoService {
       // Canais de e-mail/whatsapp: nunca aguardado pelo caller, e qualquer
       // falha fica isolada nessa promise (não deve nem pode subir).
       this.#despacharCanais(criada, tipo).catch((error) => {
-        console.error(`🔴 NotificacaoService.#despacharCanais() falhou para ${usuarioCPF}:`, error);
+        console.error(`🔴 NotificacaoService.#despacharCanais() falhou para ${usuarioGUID}:`, error);
       });
     } catch (error) {
-      console.error(`🔴 NotificacaoService.#dispararParaUsuario() falhou para ${usuarioCPF}:`, error);
+      console.error(`🔴 NotificacaoService.#dispararParaUsuario() falhou para ${usuarioGUID}:`, error);
     }
   }
 
   #emitirTempoReal(notificacao: Notificacao): void {
     try {
-      SocketServer.emit(`usuario:${notificacao.UsuarioCPF}`, "notificacao:nova", notificacao.toJSON());
+      SocketServer.emit(`usuario:${notificacao.UsuarioGUID}`, "notificacao:nova", notificacao.toJSON());
     } catch (error) {
       console.error("🔴 NotificacaoService.#emitirTempoReal() falhou:", error);
     }
   }
 
   async #despacharCanais(notificacao: Notificacao, tipo: NotificacaoTipo): Promise<void> {
-    const preferencia = await this.#resolverPreferencia(notificacao.UsuarioCPF, tipo);
+    const preferencia = await this.#resolverPreferencia(notificacao.UsuarioGUID, tipo);
 
     if (preferencia.email) {
       await this.#despacharEmail(notificacao);
     }
     if (preferencia.whatsapp) {
-      const usuario = await this.#usuarioDAO.findByCPF(notificacao.UsuarioCPF);
+      const usuario = await this.#usuarioDAO.findByGUID(notificacao.UsuarioGUID);
       await this.#whatsappChannel.enviar(usuario?.UsuarioTelefone ?? null, notificacao);
     }
   }
@@ -149,7 +149,7 @@ export default class NotificacaoService {
     }
 
     try {
-      const usuario = await this.#usuarioDAO.findByCPF(notificacao.UsuarioCPF);
+      const usuario = await this.#usuarioDAO.findByGUID(notificacao.UsuarioGUID);
       if (!usuario?.UsuarioEmail) {
         await this.#envioDAO.marcarFalhou(envioId, "Usuário sem e-mail cadastrado");
         return;
@@ -162,8 +162,8 @@ export default class NotificacaoService {
     }
   }
 
-  async #resolverPreferencia(usuarioCPF: string, tipo: NotificacaoTipo): Promise<{ email: boolean; whatsapp: boolean }> {
-    const override = await this.#preferenciaDAO.findByUsuarioETipo(usuarioCPF, tipo.NotificacaoTipoId);
+  async #resolverPreferencia(usuarioGUID: string, tipo: NotificacaoTipo): Promise<{ email: boolean; whatsapp: boolean }> {
+    const override = await this.#preferenciaDAO.findByUsuarioETipo(usuarioGUID, tipo.NotificacaoTipoId);
     if (override) {
       return { email: override.PreferenciaEmailAtivo, whatsapp: override.PreferenciaWhatsappAtivo };
     }
@@ -185,24 +185,24 @@ export default class NotificacaoService {
 
   // ==================== LEITURA DO FEED (sino) ====================
 
-  async listar(usuarioCPF: string, filters: NotificacaoFilters = {}): Promise<Notificacao[]> {
+  async listar(usuarioGUID: string, filters: NotificacaoFilters = {}): Promise<Notificacao[]> {
     console.log("🔔 NotificacaoService.listar()");
-    return this.#notificacaoDAO.findAllByUsuario(usuarioCPF, filters);
+    return this.#notificacaoDAO.findAllByUsuario(usuarioGUID, filters);
   }
 
-  async contarNaoLidas(usuarioCPF: string): Promise<number> {
+  async contarNaoLidas(usuarioGUID: string): Promise<number> {
     console.log("🔔 NotificacaoService.contarNaoLidas()");
-    return this.#notificacaoDAO.contarNaoLidas(usuarioCPF);
+    return this.#notificacaoDAO.contarNaoLidas(usuarioGUID);
   }
 
-  async marcarComoLida(notificacaoGUID: string, usuarioCPF: string): Promise<Notificacao> {
+  async marcarComoLida(notificacaoGUID: string, usuarioGUID: string): Promise<Notificacao> {
     console.log("🔔 NotificacaoService.marcarComoLida()");
-    return this.#notificacaoDAO.marcarComoLida(notificacaoGUID, usuarioCPF);
+    return this.#notificacaoDAO.marcarComoLida(notificacaoGUID, usuarioGUID);
   }
 
-  async marcarTodasComoLidas(usuarioCPF: string): Promise<number> {
+  async marcarTodasComoLidas(usuarioGUID: string): Promise<number> {
     console.log("🔔 NotificacaoService.marcarTodasComoLidas()");
-    return this.#notificacaoDAO.marcarTodasComoLidas(usuarioCPF);
+    return this.#notificacaoDAO.marcarTodasComoLidas(usuarioGUID);
   }
 
   /**
@@ -220,13 +220,13 @@ export default class NotificacaoService {
    * Uso: jobs de lembrete (cron), que rodam diariamente e não podem
    * duplicar o aviso se o processo for reiniciado/reexecutado no mesmo dia.
    */
-  async filtrarNaoNotificadosHoje(usuarioCPFs: string[], tipoSlug: string, entidadeGUID: string): Promise<string[]> {
+  async filtrarNaoNotificadosHoje(usuarioGUIDs: string[], tipoSlug: string, entidadeGUID: string): Promise<string[]> {
     const tipo = await this.#resolverTipo(tipoSlug);
     if (!tipo) {
-      return usuarioCPFs;
+      return usuarioGUIDs;
     }
     const jaNotificados = new Set(await this.#notificacaoDAO.findUsuariosNotificadosHoje(tipo.NotificacaoTipoId, entidadeGUID));
-    return usuarioCPFs.filter((cpf) => !jaNotificados.has(cpf));
+    return usuarioGUIDs.filter((guid) => !jaNotificados.has(guid));
   }
 
   // ==================== CATÁLOGO E PREFERÊNCIAS ====================
@@ -249,7 +249,7 @@ export default class NotificacaoService {
    * Preferências efetivas do usuário: pra cada tipo do catálogo, o valor
    * vigente (override do usuário, se existir, senão o padrão do catálogo).
    */
-  async listarPreferencias(usuarioCPF: string): Promise<Array<{
+  async listarPreferencias(usuarioGUID: string): Promise<Array<{
     NotificacaoTipoId: number;
     NotificacaoTipoSlug: string;
     NotificacaoTipoDescricao: string;
@@ -262,7 +262,7 @@ export default class NotificacaoService {
 
     const [tipos, overrides] = await Promise.all([
       this.#tipoDAO.findAll(),
-      this.#preferenciaDAO.findByUsuario(usuarioCPF),
+      this.#preferenciaDAO.findByUsuario(usuarioGUID),
     ]);
 
     const overridePorTipo = new Map(overrides.map((o) => [o.NotificacaoTipoId, o]));
@@ -282,7 +282,7 @@ export default class NotificacaoService {
   }
 
   async atualizarPreferencia(
-    usuarioCPF: string,
+    usuarioGUID: string,
     notificacaoTipoId: number,
     emailAtivo: boolean,
     whatsappAtivo: boolean
@@ -295,7 +295,7 @@ export default class NotificacaoService {
     }
 
     const preferencia = new UsuarioNotificacaoPreferencia();
-    preferencia.UsuarioCPF = usuarioCPF;
+    preferencia.UsuarioGUID = usuarioGUID;
     preferencia.NotificacaoTipoId = notificacaoTipoId;
     preferencia.PreferenciaEmailAtivo = emailAtivo;
     preferencia.PreferenciaWhatsappAtivo = whatsappAtivo;

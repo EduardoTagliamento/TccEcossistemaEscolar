@@ -8,8 +8,8 @@ export class AvisoController {
   // POST /api/aviso - Criar novo aviso
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });
         return;
       }
@@ -18,7 +18,7 @@ export class AvisoController {
 
       const createDTO: AvisoCreateDTO = {
         EscolaGUID,
-        UsuarioCPFAutor: usuarioCPF,
+        UsuarioGUIDAutor: usuarioGUID,
         AvisoTitulo,
         AvisoConteudo,
         AvisoAbrangencia,
@@ -41,14 +41,14 @@ export class AvisoController {
   // GET /api/aviso - Listar avisos enviados (só quem pode enviar)
   index = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });
         return;
       }
 
       const { EscolaGUID } = req.query;
-      const avisos = await this.avisoService.listarAvisos(EscolaGUID as string, usuarioCPF);
+      const avisos = await this.avisoService.listarAvisos(EscolaGUID as string, usuarioGUID);
 
       res.json({ success: true, data: avisos, total: avisos.length });
     } catch (error) {
@@ -59,14 +59,14 @@ export class AvisoController {
   // GET /api/aviso/nao-visualizado - Aviso mais recente ainda não visto (banner da home)
   naoVisualizado = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });
         return;
       }
 
       const { EscolaGUID } = req.query;
-      const aviso = await this.avisoService.buscarNaoVisualizadoMaisRecente(EscolaGUID as string, usuarioCPF);
+      const aviso = await this.avisoService.buscarNaoVisualizadoMaisRecente(EscolaGUID as string, usuarioGUID);
 
       res.json({ success: true, data: aviso });
     } catch (error) {
@@ -77,14 +77,14 @@ export class AvisoController {
   // GET /api/aviso/:guid - Buscar aviso específico (marca como visualizado)
   show = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });
         return;
       }
 
       const { guid } = req.params;
-      const aviso = await this.avisoService.buscarAviso(guid, usuarioCPF);
+      const aviso = await this.avisoService.buscarAviso(guid, usuarioGUID);
 
       res.json({ success: true, data: aviso });
     } catch (error) {
@@ -95,14 +95,14 @@ export class AvisoController {
   // DELETE /api/aviso/:guid - Excluir aviso
   destroy = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });
         return;
       }
 
       const { guid } = req.params;
-      await this.avisoService.excluirAviso(guid, usuarioCPF);
+      await this.avisoService.excluirAviso(guid, usuarioGUID);
 
       res.json({ success: true, message: 'Aviso excluído com sucesso' });
     } catch (error) {

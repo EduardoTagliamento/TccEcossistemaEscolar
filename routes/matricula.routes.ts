@@ -77,7 +77,7 @@ export function matriculaRouterFactory(): Router {
   /**
    * GET /api/matricula
    * Listar matrículas com filtros opcionais
-   * Query: ?UsuarioCPF=X&TurmaGUID=Y&MatriculaStatus=Z
+   * Query: ?UsuarioGUID=X&TurmaGUID=Y&MatriculaStatus=Z
    */
   router.get(
     "/",

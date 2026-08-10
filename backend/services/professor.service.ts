@@ -8,7 +8,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.
 import { MatriculaDAO } from "../repositories/matricula.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 import bcrypt from "bcrypt";
@@ -377,7 +377,7 @@ export default class ProfessorService {
 
     // 7. Criar alocação
     const alocacao = new MaterialProfessorTurma();
-    alocacao.MatProfTurGUID = uuidv4();
+    alocacao.MatProfTurGUID = gerarGUID();
     alocacao.MateriaGUID = data.MateriaGUID!;
     alocacao.TurmaGUID = data.TurmaGUID!;
     alocacao.UsuarioCPF = data.UsuarioCPF;
@@ -894,7 +894,7 @@ export default class ProfessorService {
 
         // Criar alocação
         const alocacao = new MaterialProfessorTurma();
-        alocacao.MatProfTurGUID = uuidv4();
+        alocacao.MatProfTurGUID = gerarGUID();
         alocacao.MateriaGUID = materiaGUID;
         alocacao.TurmaGUID = turmaGUID;
         alocacao.UsuarioCPF = dados.UsuarioCPF;

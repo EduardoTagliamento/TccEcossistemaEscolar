@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { gerarGUID } from "../utils/helpers/guid.helper";
 import ErrorResponse from "../utils/ErrorResponse";
 import Materia from "../entities/materia.model";
 import { MateriaDAO, MateriaFilters } from "../repositories/materia.repository";
@@ -196,7 +196,7 @@ export default class MateriaService {
 
     // 6. Gerar GUID e criar
     const materia = new Materia();
-    materia.MateriaGUID = uuidv4();
+    materia.MateriaGUID = gerarGUID();
     materia.EscolaGUID = data.EscolaGUID;
     materia.CursoGUID = cursoGUID;
     materia.MateriaNome = data.MateriaNome.trim();
@@ -350,7 +350,7 @@ export default class MateriaService {
 
         // Criar matéria
         const materia = new Materia();
-        materia.MateriaGUID = uuidv4();
+        materia.MateriaGUID = gerarGUID();
         materia.EscolaGUID = escolaGUID;
         materia.CursoGUID = cursoGUID;
         materia.MateriaNome = nomeNormalizado;
