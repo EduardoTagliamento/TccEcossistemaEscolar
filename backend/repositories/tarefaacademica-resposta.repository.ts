@@ -10,7 +10,7 @@ interface TarefaAcademicaRespostaRow extends RowDataPacket {
   RespostaTextoDiscursiva: string | null;
   RespostaPontosObtidos: number | null;
   RespostaAvaliadoEm: Date | null;
-  RespostaAvaliadoPorCPF: string | null;
+  RespostaAvaliadoPorGUID: string | null;
   RespondidoEm: Date;
   CreatedAt: Date;
   UpdatedAt: Date;
@@ -55,14 +55,14 @@ export class TarefaAcademicaRespostaDAO {
     const SQL = `
       INSERT INTO tarefaacademica_resposta
       (RespostaGUID, TarefaMatriculaGUID, QuestaoGUID, AlternativaGUID, RespostaTextoDiscursiva,
-       RespostaPontosObtidos, RespostaAvaliadoEm, RespostaAvaliadoPorCPF, RespondidoEm)
+       RespostaPontosObtidos, RespostaAvaliadoEm, RespostaAvaliadoPorGUID, RespondidoEm)
       VALUES (UUID(), ?, ?, ?, NULL, ?, NOW(), NULL, NOW())
       ON DUPLICATE KEY UPDATE
         AlternativaGUID = VALUES(AlternativaGUID),
         RespostaTextoDiscursiva = NULL,
         RespostaPontosObtidos = VALUES(RespostaPontosObtidos),
         RespostaAvaliadoEm = NOW(),
-        RespostaAvaliadoPorCPF = NULL,
+        RespostaAvaliadoPorGUID = NULL,
         RespondidoEm = NOW();
     `;
     const pool = await this.#database.getPool();
@@ -87,14 +87,14 @@ export class TarefaAcademicaRespostaDAO {
     const SQL = `
       INSERT INTO tarefaacademica_resposta
       (RespostaGUID, TarefaMatriculaGUID, QuestaoGUID, AlternativaGUID, RespostaTextoDiscursiva,
-       RespostaPontosObtidos, RespostaAvaliadoEm, RespostaAvaliadoPorCPF, RespondidoEm)
+       RespostaPontosObtidos, RespostaAvaliadoEm, RespostaAvaliadoPorGUID, RespondidoEm)
       VALUES (UUID(), ?, ?, NULL, ?, NULL, NULL, NULL, NOW())
       ON DUPLICATE KEY UPDATE
         AlternativaGUID = NULL,
         RespostaTextoDiscursiva = VALUES(RespostaTextoDiscursiva),
         RespostaPontosObtidos = NULL,
         RespostaAvaliadoEm = NULL,
-        RespostaAvaliadoPorCPF = NULL,
+        RespostaAvaliadoPorGUID = NULL,
         RespondidoEm = NOW();
     `;
     const pool = await this.#database.getPool();
@@ -108,17 +108,17 @@ export class TarefaAcademicaRespostaDAO {
   gradeDiscursiva = async (
     RespostaGUID: string,
     pontos: number,
-    professorCPF: string
+    professorGUID: string
   ): Promise<TarefaAcademicaResposta | null> => {
     console.log("🟢 TarefaAcademicaRespostaDAO.gradeDiscursiva()");
 
     const SQL = `
       UPDATE tarefaacademica_resposta
-      SET RespostaPontosObtidos = ?, RespostaAvaliadoEm = NOW(), RespostaAvaliadoPorCPF = ?
+      SET RespostaPontosObtidos = ?, RespostaAvaliadoEm = NOW(), RespostaAvaliadoPorGUID = ?
       WHERE RespostaGUID = ?;
     `;
     const pool = await this.#database.getPool();
-    await pool.execute(SQL, [pontos, professorCPF, RespostaGUID]);
+    await pool.execute(SQL, [pontos, professorGUID, RespostaGUID]);
 
     return this.findById(RespostaGUID);
   };
@@ -199,20 +199,20 @@ export class TarefaAcademicaRespostaDAO {
   };
 
   /**
-   * CPF do professor que corrigiu alguma discursiva dessa matrícula, ou null
+   * GUID do professor que corrigiu alguma discursiva dessa matrícula, ou null
    * se todas as questões corrigidas até agora foram automáticas (só
-   * objetivas) — usado pra decidir TarefaAvaliadoPorCPF no settle final
+   * objetivas) — usado pra decidir TarefaAvaliadoPorGUID no settle final
    * (mantém o sinal canônico de "correção automática vs. humana").
    */
   buscarAvaliadorHumano = async (TarefaMatriculaGUID: string): Promise<string | null> => {
     const SQL = `
-      SELECT RespostaAvaliadoPorCPF FROM tarefaacademica_resposta
-      WHERE TarefaMatriculaGUID = ? AND RespostaAvaliadoPorCPF IS NOT NULL
+      SELECT RespostaAvaliadoPorGUID FROM tarefaacademica_resposta
+      WHERE TarefaMatriculaGUID = ? AND RespostaAvaliadoPorGUID IS NOT NULL
       LIMIT 1;
     `;
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(SQL, [TarefaMatriculaGUID]);
-    return (rows[0] as any)?.RespostaAvaliadoPorCPF ?? null;
+    return (rows[0] as any)?.RespostaAvaliadoPorGUID ?? null;
   };
 
   /** true se alguma resposta já foi registrada pra qualquer questão dessa tarefa — usado pra bloquear alterar TemRespostas. */
@@ -305,7 +305,7 @@ export class TarefaAcademicaRespostaDAO {
       FROM tarefaacademica_questao q
       INNER JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = q.TarefaGUID
       INNER JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
-      INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+      INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
       LEFT JOIN tarefaacademica_resposta r ON r.QuestaoGUID = q.QuestaoGUID AND r.TarefaMatriculaGUID = tm.TarefaMatriculaGUID
       LEFT JOIN tarefaacademica_alternativa alt ON alt.AlternativaGUID = r.AlternativaGUID
       WHERE q.TarefaGUID = ?
@@ -327,7 +327,7 @@ export class TarefaAcademicaRespostaDAO {
 
     const SQL = `
       INSERT INTO tarefaacademica_resposta
-      (RespostaGUID, TarefaMatriculaGUID, QuestaoGUID, RespostaPontosObtidos, RespostaAvaliadoEm, RespostaAvaliadoPorCPF)
+      (RespostaGUID, TarefaMatriculaGUID, QuestaoGUID, RespostaPontosObtidos, RespostaAvaliadoEm, RespostaAvaliadoPorGUID)
       SELECT UUID(), ?, q.QuestaoGUID, 0, NOW(), NULL
       FROM tarefaacademica_questao q
       WHERE q.TarefaGUID = ?
@@ -349,7 +349,7 @@ export class TarefaAcademicaRespostaDAO {
     resposta.RespostaTextoDiscursiva = row.RespostaTextoDiscursiva;
     resposta.RespostaPontosObtidos = row.RespostaPontosObtidos;
     resposta.RespostaAvaliadoEm = row.RespostaAvaliadoEm;
-    resposta.RespostaAvaliadoPorCPF = row.RespostaAvaliadoPorCPF;
+    resposta.RespostaAvaliadoPorGUID = row.RespostaAvaliadoPorGUID;
     resposta.RespondidoEm = row.RespondidoEm;
     resposta.CreatedAt = row.CreatedAt;
     resposta.UpdatedAt = row.UpdatedAt;

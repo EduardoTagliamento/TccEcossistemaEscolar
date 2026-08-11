@@ -14,9 +14,9 @@ export class SugestaoDAO {
     console.log('🟢 SugestaoDAO.create()');
     const pool = await this.#database.getPool();
     await pool.execute<ResultSetHeader>(
-      `INSERT INTO sugestao (SugestaoGUID, UsuarioCPF, EscolaGUID, SugestaoTexto, SugestaoPaginaUrl)
+      `INSERT INTO sugestao (SugestaoGUID, UsuarioGUID, EscolaGUID, SugestaoTexto, SugestaoPaginaUrl)
        VALUES (?, ?, ?, ?, ?)`,
-      [sugestao.SugestaoGUID, sugestao.UsuarioCPF, sugestao.EscolaGUID, sugestao.SugestaoTexto, sugestao.SugestaoPaginaUrl]
+      [sugestao.SugestaoGUID, sugestao.UsuarioGUID, sugestao.EscolaGUID, sugestao.SugestaoTexto, sugestao.SugestaoPaginaUrl]
     );
     return sugestao;
   }
@@ -28,7 +28,7 @@ export class SugestaoDAO {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT s.*, u.UsuarioNome, u.UsuarioEmail
        FROM sugestao s
-       JOIN usuario u ON u.UsuarioCPF = s.UsuarioCPF
+       JOIN usuario u ON u.UsuarioGUID = s.UsuarioGUID
        ORDER BY s.SugestaoCreatedAt DESC`
     );
     return rows as SugestaoComAutor[];

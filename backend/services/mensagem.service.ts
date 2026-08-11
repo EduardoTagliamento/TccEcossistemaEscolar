@@ -20,7 +20,7 @@ import { getNotificacaoService } from './notificacao.service';
 export interface MensagemDTO {
   MensagemGUID: string;
   ConversaGUID: string;
-  MensagemRemetenteCPF: string;
+  MensagemRemetenteGUID: string;
   MensagemConteudo: string;
   MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
   MensagemCreatedAt: string;
@@ -33,7 +33,7 @@ export interface ReacaoAtualizadaDTO {
   ConversaGUID: string;
   MensagemGUID: string;
   Reacoes: ReacaoResumo[];
-  AtorCPF: string;
+  AtorGUID: string;
   Acao: 'adicionada' | 'removida';
 }
 
@@ -61,19 +61,9 @@ export default class MensagemService {
     this.#usuarioDAO = usuarioDAO;
   }
 
-  /** Resolve o CPF de um ator a partir do UsuarioGUID — conversa/mensagem/
-   * conversa_grupo_membro ainda usam CPF. */
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
-    }
-    return usuario.UsuarioCPF;
-  };
-
   async enviar(
     conversaGUID: string,
-    remetenteCPF: string,
+    remetenteGUID: string,
     conteudo: string,
     tipo: 'Texto' | 'Arquivo' | 'Imagem' = 'Texto'
   ): Promise<MensagemDTO> {
@@ -84,7 +74,7 @@ export default class MensagemService {
       throw new ErrorResponse(403, 'Conversa inativa ou inexistente');
     }
 
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, remetenteCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, remetenteGUID);
     if (!isParticipante) {
       throw new ErrorResponse(403, 'Você não faz parte desta conversa');
     }
@@ -100,7 +90,7 @@ export default class MensagemService {
     const mensagem = new Mensagem();
     mensagem.MensagemGUID = gerarGUID();
     mensagem.ConversaGUID = conversaGUID;
-    mensagem.MensagemRemetenteCPF = remetenteCPF;
+    mensagem.MensagemRemetenteGUID = remetenteGUID;
     mensagem.MensagemConteudo = conteudo;
     mensagem.MensagemTipo = tipo;
     mensagem.MensagemCreatedAt = new Date();
@@ -108,7 +98,7 @@ export default class MensagemService {
     await this.#mensagemDAO.create(mensagem);
 
     if (conversa.ConversaTipo === 'Grupo') {
-      this.#notificarMensagemGrupo(conversaGUID, remetenteCPF).catch((error) => {
+      this.#notificarMensagemGrupo(conversaGUID, remetenteGUID).catch((error) => {
         console.error('🔴 MensagemService.#notificarMensagemGrupo() falhou:', error);
       });
     }
@@ -121,7 +111,7 @@ export default class MensagemService {
   }
 
   /** Notifica os demais membros ativos do grupo (tipo `mensagem_grupo`) */
-  #notificarMensagemGrupo = async (conversaGUID: string, remetenteCPF: string): Promise<void> => {
+  #notificarMensagemGrupo = async (conversaGUID: string, remetenteGUID: string): Promise<void> => {
     const [grupoRows] = await pool.execute<RowDataPacket[]>(
       `SELECT ConversaGrupoTipo, ConversaGrupoRefGUID, ConversaGrupoNome FROM conversa_grupo WHERE ConversaGUID = ? LIMIT 1`,
       [conversaGUID]
@@ -139,24 +129,15 @@ export default class MensagemService {
     if (!escolaGUID) return;
 
     const [membrosRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT MembroUsuarioCPF FROM conversa_grupo_membro WHERE ConversaGUID = ? AND MembroStatus = 'Ativo' AND MembroUsuarioCPF != ?`,
-      [conversaGUID, remetenteCPF]
+      `SELECT MembroUsuarioGUID FROM conversa_grupo_membro WHERE ConversaGUID = ? AND MembroStatus = 'Ativo' AND MembroUsuarioGUID != ?`,
+      [conversaGUID, remetenteGUID]
     );
-    const membrosCPFs = (membrosRows as any[]).map((r) => r.MembroUsuarioCPF as string);
-    if (membrosCPFs.length === 0) return;
-
-    // notificacao já exige UsuarioGUID — conversa_grupo_membro ainda usa CPF.
-    const placeholders = membrosCPFs.map(() => '?').join(', ');
-    const [destinatariosRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT UsuarioGUID FROM usuario WHERE UsuarioCPF IN (${placeholders})`,
-      membrosCPFs
-    );
-    const destinatarios = (destinatariosRows as any[]).map((r) => r.UsuarioGUID as string);
+    const destinatarios = (membrosRows as any[]).map((r) => r.MembroUsuarioGUID as string);
     if (destinatarios.length === 0) return;
 
     const [remetenteRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT UsuarioNome FROM usuario WHERE UsuarioCPF = ? LIMIT 1`,
-      [remetenteCPF]
+      `SELECT UsuarioNome FROM usuario WHERE UsuarioGUID = ? LIMIT 1`,
+      [remetenteGUID]
     );
     const remetenteNome = (remetenteRows[0] as any)?.UsuarioNome ?? 'Alguém';
 
@@ -178,8 +159,7 @@ export default class MensagemService {
   ): Promise<HistoricoDTO> {
     console.log('🟣 MensagemService.listarHistorico()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!isParticipante) {
       throw new ErrorResponse(403, 'Você não faz parte desta conversa');
     }
@@ -205,8 +185,7 @@ export default class MensagemService {
   ): Promise<ReacaoAtualizadaDTO> {
     console.log('🟣 MensagemService.reagir()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!isParticipante) {
       throw new ErrorResponse(403, 'Você não faz parte desta conversa');
     }
@@ -221,7 +200,7 @@ export default class MensagemService {
       throw new ErrorResponse(400, `ReacaoEmoji deve ser um dos suportados: ${EMOJIS_REACAO_PERMITIDOS.join(' ')}`);
     }
 
-    const acao = await this.#mensagemDAO.toggleReacao(mensagemGUID, usuarioCPF, emojiTrimmed as ReacaoEmoji);
+    const acao = await this.#mensagemDAO.toggleReacao(mensagemGUID, usuarioGUID, emojiTrimmed as ReacaoEmoji);
     const reacoesRows = await this.#mensagemDAO.findReacoesPorMensagens([mensagemGUID]);
     const reacoes = agruparReacoesPorMensagem(reacoesRows)[mensagemGUID] ?? [];
 
@@ -229,7 +208,7 @@ export default class MensagemService {
       ConversaGUID: conversaGUID,
       MensagemGUID: mensagemGUID,
       Reacoes: reacoes,
-      AtorCPF: usuarioCPF,
+      AtorGUID: usuarioGUID,
       Acao: acao,
     };
 
@@ -238,20 +217,19 @@ export default class MensagemService {
     return payload;
   }
 
-  async marcarComoLida(conversaGUID: string, usuarioCPF: string): Promise<void> {
+  async marcarComoLida(conversaGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟣 MensagemService.marcarComoLida()');
 
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!isParticipante) throw new ErrorResponse(403, 'Você não faz parte desta conversa');
 
-    await this.#mensagemDAO.markAllAsRead(conversaGUID, usuarioCPF);
+    await this.#mensagemDAO.markAllAsRead(conversaGUID, usuarioGUID);
   }
 
   async deletarMensagem(mensagemGUID: string, conversaGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟣 MensagemService.deletarMensagem()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!isParticipante) throw new ErrorResponse(403, 'Você não faz parte desta conversa');
 
     const mensagem = await this.#mensagemDAO.findById(mensagemGUID);
@@ -259,13 +237,13 @@ export default class MensagemService {
       throw new ErrorResponse(404, 'Mensagem não encontrada nesta conversa');
     }
 
-    if (mensagem.MensagemRemetenteCPF !== usuarioCPF) {
+    if (mensagem.MensagemRemetenteGUID !== usuarioGUID) {
       const conversa = await this.#conversaDAO.findById(conversaGUID);
       if (conversa?.ConversaTipo === 'Individual') {
         throw new ErrorResponse(403, 'Você só pode deletar suas próprias mensagens em conversas individuais');
       }
       const grupo = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
-      const funcao = await this.#conversaGrupoDAO.getFuncao(conversaGUID, usuarioCPF);
+      const funcao = await this.#conversaGrupoDAO.getFuncao(conversaGUID, usuarioGUID);
       if (grupo?.ConversaGrupoTipo === 'Tarefa') {
         if (funcao !== 'Lider') {
           throw new ErrorResponse(403, 'Apenas o Líder pode deletar mensagens de outros membros');
@@ -283,7 +261,7 @@ export default class MensagemService {
     SocketServer.emit(conversaGUID, 'mensagem_deletada', {
       ConversaGUID: conversaGUID,
       MensagemGUID: mensagemGUID,
-      DeletadaPorCPF: usuarioCPF,
+      DeletadaPorGUID: usuarioGUID,
     });
   }
 
@@ -295,8 +273,7 @@ export default class MensagemService {
   ): Promise<MensagemDTO> {
     console.log('🟣 MensagemService.editarMensagem()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!isParticipante) throw new ErrorResponse(403, 'Você não faz parte desta conversa');
 
     const mensagem = await this.#mensagemDAO.findById(mensagemGUID);
@@ -304,7 +281,7 @@ export default class MensagemService {
       throw new ErrorResponse(404, 'Mensagem não encontrada nesta conversa');
     }
 
-    if (mensagem.MensagemRemetenteCPF !== usuarioCPF) {
+    if (mensagem.MensagemRemetenteGUID !== usuarioGUID) {
       throw new ErrorResponse(403, 'Você só pode editar suas próprias mensagens');
     }
 
@@ -321,7 +298,7 @@ export default class MensagemService {
     const dto: MensagemDTO = {
       MensagemGUID: mensagemGUID,
       ConversaGUID: conversaGUID,
-      MensagemRemetenteCPF: usuarioCPF,
+      MensagemRemetenteGUID: usuarioGUID,
       MensagemConteudo: conteudoTrimmed,
       MensagemTipo: mensagem.MensagemTipo,
       MensagemCreatedAt: mensagem.MensagemCreatedAt.toISOString(),
@@ -342,15 +319,14 @@ export default class MensagemService {
   ): Promise<MensagemFixadaDTO> {
     console.log('🟣 MensagemService.fixarMensagem()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!isParticipante) {
       throw new ErrorResponse(403, 'Você não faz parte desta conversa');
     }
 
     const conversa = await this.#conversaDAO.findById(conversaGUID);
     if (conversa?.ConversaTipo === 'Grupo') {
-      const funcao = await this.#conversaGrupoDAO.getFuncao(conversaGUID, usuarioCPF);
+      const funcao = await this.#conversaGrupoDAO.getFuncao(conversaGUID, usuarioGUID);
       if (!funcao || !['Lider', 'Representante', 'Vice-Representante'].includes(funcao)) {
         throw new ErrorResponse(403, 'Apenas o Líder, Representante ou Vice-Representante pode fixar mensagens em grupos');
       }
@@ -361,16 +337,16 @@ export default class MensagemService {
       throw new ErrorResponse(404, 'Mensagem não encontrada nesta conversa');
     }
 
-    const { FixadaAt } = await this.#mensagemDAO.pinMessage(mensagemGUID, conversaGUID, usuarioCPF);
+    const { FixadaAt } = await this.#mensagemDAO.pinMessage(mensagemGUID, conversaGUID, usuarioGUID);
 
     const dto: MensagemFixadaDTO = {
       MensagemGUID: mensagemGUID,
       ConversaGUID: conversaGUID,
       MensagemConteudo: mensagem.MensagemConteudo,
-      MensagemRemetenteCPF: mensagem.MensagemRemetenteCPF,
+      MensagemRemetenteGUID: mensagem.MensagemRemetenteGUID,
       MensagemCreatedAt: mensagem.MensagemCreatedAt.toISOString(),
       MensagemTipo: mensagem.MensagemTipo,
-      FixadaPorCPF: usuarioCPF,
+      FixadaPorGUID: usuarioGUID,
       FixadaAt: FixadaAt.toISOString(),
     };
 
@@ -386,15 +362,14 @@ export default class MensagemService {
   ): Promise<void> {
     console.log('🟣 MensagemService.desafixarMensagem()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!isParticipante) {
       throw new ErrorResponse(403, 'Você não faz parte desta conversa');
     }
 
     const conversa = await this.#conversaDAO.findById(conversaGUID);
     if (conversa?.ConversaTipo === 'Grupo') {
-      const funcao = await this.#conversaGrupoDAO.getFuncao(conversaGUID, usuarioCPF);
+      const funcao = await this.#conversaGrupoDAO.getFuncao(conversaGUID, usuarioGUID);
       if (!funcao || !['Lider', 'Representante', 'Vice-Representante'].includes(funcao)) {
         throw new ErrorResponse(403, 'Apenas o Líder, Representante ou Vice-Representante pode desafixar mensagens em grupos');
       }
@@ -406,7 +381,7 @@ export default class MensagemService {
     SocketServer.emit(conversaGUID, 'mensagem_desafixada', {
       ConversaGUID: conversaGUID,
       MensagemGUID: mensagemGUID,
-      DesafixadaPorCPF: usuarioCPF,
+      DesafixadaPorGUID: usuarioGUID,
     });
   }
 
@@ -416,8 +391,7 @@ export default class MensagemService {
   ): Promise<MensagemFixadaDTO[]> {
     console.log('🟣 MensagemService.listarMensagensFixadas()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!isParticipante) {
       throw new ErrorResponse(403, 'Você não faz parte desta conversa');
     }
@@ -427,10 +401,10 @@ export default class MensagemService {
       MensagemGUID: f.MensagemGUID,
       ConversaGUID: f.ConversaGUID,
       MensagemConteudo: f.MensagemConteudo,
-      MensagemRemetenteCPF: f.MensagemRemetenteCPF,
+      MensagemRemetenteGUID: f.MensagemRemetenteGUID,
       MensagemCreatedAt: (f.MensagemCreatedAt as Date).toISOString(),
       MensagemTipo: f.MensagemTipo,
-      FixadaPorCPF: f.FixadaPorCPF,
+      FixadaPorGUID: f.FixadaPorGUID,
       FixadaAt: (f.FixadaAt as Date).toISOString(),
     }));
   }
@@ -439,7 +413,7 @@ export default class MensagemService {
     return {
       MensagemGUID: m.MensagemGUID,
       ConversaGUID: m.ConversaGUID,
-      MensagemRemetenteCPF: m.MensagemRemetenteCPF,
+      MensagemRemetenteGUID: m.MensagemRemetenteGUID,
       MensagemConteudo: m.MensagemConteudo,
       MensagemTipo: m.MensagemTipo,
       MensagemCreatedAt: m.MensagemCreatedAt.toISOString(),

@@ -79,19 +79,11 @@ export default class GrupoTarefaService {
 
       for (const matricula of matriculas) {
         try {
-          // grupotarefa ainda não migrada — precisa do CPF real do aluno,
-          // não do UsuarioGUID (mesmo padrão de matricula.service.ts).
-          const aluno = await this.#usuarioDAO.findByGUID(matricula.UsuarioGUID);
-          if (!aluno?.UsuarioCPF) {
-            throw new Error('Usuário sem CPF cadastrado — grupotarefa ainda exige CPF até ser migrada para GUID');
-          }
-          const alunoCPF = aluno.UsuarioCPF;
-
           // Criar grupo com aluno como líder
           const grupoData: GrupoTarefaCreateDTO = {
             TarefaGUID: tarefaGUID,
             TurmaGUID: turmaGUID,
-            UsuarioCPFLider: alunoCPF,
+            UsuarioGUIDLider: matricula.UsuarioGUID,
             GrupoNome: undefined  // Será gerado automaticamente no frontend
           };
 
@@ -101,7 +93,7 @@ export default class GrupoTarefaService {
             await this.#conversaGrupoService.criarConversaParaGrupoTarefa(
               novoGrupo.GrupoTarefaGUID,
               tarefa.TarefaTitulo,
-              alunoCPF
+              matricula.UsuarioGUID
             );
           }
         } catch (error: any) {
@@ -153,14 +145,8 @@ export default class GrupoTarefaService {
       throw new ErrorResponse(404, 'Grupo não encontrado');
     }
 
-    // usuarioxgrupotarefa ainda usa CPF — resolver a partir do UsuarioGUID
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Você não tem acesso a este grupo');
-    }
-
     // Validar se usuário tem acesso ao grupo (é membro ou líder)
-    const temAcesso = await this.#grupoTarefaDAO.usuarioPertenceAoGrupo(usuario.UsuarioCPF, grupoGUID);
+    const temAcesso = await this.#grupoTarefaDAO.usuarioPertenceAoGrupo(usuarioGUID, grupoGUID);
     if (!temAcesso) {
       throw new ErrorResponse(403, 'Você não tem acesso a este grupo');
     }
@@ -175,18 +161,10 @@ export default class GrupoTarefaService {
    */
   async expulsarMembro(
     grupoGUID: string,
-    membroCPF: string,
+    membroGUID: string,
     liderGUID: string
   ): Promise<{ mensagem: string; novoGrupoGUID: string }> {
     console.log('🟣 GrupoTarefaService.expulsarMembro()');
-
-    // grupotarefa/usuarioxgrupotarefa/historicogrupotarefa ainda usam CPF —
-    // resolver o líder (ator) a partir do UsuarioGUID.
-    const liderUsuario = await this.#usuarioDAO.findByGUID(liderGUID);
-    if (!liderUsuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Apenas o líder pode expulsar membros');
-    }
-    const liderCPF = liderUsuario.UsuarioCPF;
 
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
@@ -201,29 +179,29 @@ export default class GrupoTarefaService {
       }
 
       // 2. Validar se quem expulsa é o líder
-      if (grupo.UsuarioCPFLider !== liderCPF) {
+      if (grupo.UsuarioGUIDLider !== liderGUID) {
         throw new ErrorResponse(403, 'Apenas o líder pode expulsar membros');
       }
 
       // 3. Validar se membro a ser expulso não é o líder
-      if (membroCPF === liderCPF) {
+      if (membroGUID === liderGUID) {
         throw new ErrorResponse(400, 'Líder não pode expulsar a si mesmo');
       }
 
       // 4. Validar se membro realmente pertence ao grupo
-      const isMembro = await this.#usuarioXGrupoDAO.isMembroNaoLider(membroCPF, grupoGUID);
+      const isMembro = await this.#usuarioXGrupoDAO.isMembroNaoLider(membroGUID, grupoGUID);
       if (!isMembro) {
         throw new ErrorResponse(404, 'Usuário não é membro deste grupo');
       }
 
       // 5. Remover membro do grupo
-      await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, membroCPF);
+      await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, membroGUID);
 
       // 6. Criar novo grupo para o membro expulso (ele vira líder do próprio grupo)
       const novoGrupoData: GrupoTarefaCreateDTO = {
         TarefaGUID: grupo.TarefaGUID,
         TurmaGUID: grupo.TurmaGUID,
-        UsuarioCPFLider: membroCPF,
+        UsuarioGUIDLider: membroGUID,
         GrupoNome: undefined
       };
 
@@ -231,12 +209,12 @@ export default class GrupoTarefaService {
 
       // 6a. Hooks de conversa
       if (this.#conversaGrupoService) {
-        await this.#conversaGrupoService.removerMembroGrupoTarefa(grupoGUID, membroCPF);
+        await this.#conversaGrupoService.removerMembroGrupoTarefa(grupoGUID, membroGUID);
         const tarefa = await this.#tarefaDAO.findById(grupo.TarefaGUID);
         await this.#conversaGrupoService.criarConversaParaGrupoTarefa(
           novoGrupo.GrupoTarefaGUID,
           tarefa?.TarefaTitulo ?? 'Grupo',
-          membroCPF
+          membroGUID
         );
       }
 
@@ -244,8 +222,8 @@ export default class GrupoTarefaService {
       await this.#historicoService.registrar({
         GrupoTarefaGUID: grupoGUID,
         HistoricoTipo: 'Expulsao',
-        UsuarioCPFAtor: liderCPF,
-        UsuarioCPFAlvo: membroCPF,
+        UsuarioCPFAtor: liderGUID,
+        UsuarioCPFAlvo: membroGUID,
         HistoricoDetalhes: {
           novoGrupoGUID: novoGrupo.GrupoTarefaGUID
         }
@@ -253,11 +231,11 @@ export default class GrupoTarefaService {
 
       await connection.commit();
 
-      this.#notificarRemovidoGrupo(grupo.TurmaGUID, grupo.TarefaGUID, membroCPF).catch((error) => {
+      this.#notificarRemovidoGrupo(grupo.TurmaGUID, grupo.TarefaGUID, membroGUID).catch((error) => {
         console.error('🔴 GrupoTarefaService.#notificarRemovidoGrupo() falhou:', error);
       });
 
-      this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', liderCPF, `Membro ${membroCPF} expulso do grupo`).catch((error) => {
+      this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', liderGUID, `Membro ${membroGUID} expulso do grupo`).catch((error) => {
         console.error('🔴 GrupoTarefaService.#registrarAuditoriaGrupo() falhou:', error);
       });
 
@@ -293,16 +271,14 @@ export default class GrupoTarefaService {
     turmaGUID: string,
     grupoGUID: string,
     acaoTipo: 'Create' | 'Update' | 'Delete',
-    usuarioCPFAtor: string,
+    usuarioGUIDAtor: string,
     entidadeDescricao?: string
   ): Promise<void> => {
     const escolaGUID = await this.#resolverEscolaGUID(turmaGUID);
     if (!escolaGUID) return;
-    const ator = await this.#usuarioDAO.findByCPF(usuarioCPFAtor);
-    if (!ator) return;
     void getAuditoriaService().registrar({
       EscolaGUID: escolaGUID,
-      UsuarioGUIDAtor: ator.UsuarioGUID,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
       AcaoTipo: acaoTipo,
       EntidadeTipo: 'grupotarefa',
       EntidadeGUID: grupoGUID,
@@ -312,7 +288,7 @@ export default class GrupoTarefaService {
   };
 
   /** Notifica o membro removido (tipo `removido_grupo`) */
-  #notificarRemovidoGrupo = async (turmaGUID: string, tarefaGUID: string, membroCPF: string): Promise<void> => {
+  #notificarRemovidoGrupo = async (turmaGUID: string, tarefaGUID: string, membroGUID: string): Promise<void> => {
     const [rows] = await mysqlPool.execute<RowDataPacket[]>(
       `SELECT t.EscolaGUID, ta.TarefaTitulo
        FROM turma t
@@ -324,12 +300,9 @@ export default class GrupoTarefaService {
     const info = rows[0] as any;
     if (!info?.EscolaGUID) return;
 
-    const membro = await this.#usuarioDAO.findByCPF(membroCPF);
-    if (!membro) return;
-
     await getNotificacaoService().disparar({
       tipoSlug: 'removido_grupo',
-      destinatarios: [membro.UsuarioGUID],
+      destinatarios: [membroGUID],
       escolaGUID: info.EscolaGUID,
       titulo: `Você foi removido do grupo da tarefa "${info.TarefaTitulo}"`,
       entidadeTipo: 'tarefa',

@@ -1,6 +1,6 @@
 export default class ConversaGrupoMembro {
   #ConversaGUID!: string;
-  #MembroUsuarioCPF!: string;
+  #MembroUsuarioGUID!: string;
   #MembroFuncao!: 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante';
   #MembroStatus!: 'Ativo' | 'Inativo';
   #MembroEntradaAt!: Date;
@@ -11,7 +11,7 @@ export default class ConversaGrupoMembro {
   }
 
   get ConversaGUID(): string { return this.#ConversaGUID; }
-  get MembroUsuarioCPF(): string { return this.#MembroUsuarioCPF; }
+  get MembroUsuarioGUID(): string { return this.#MembroUsuarioGUID; }
   get MembroFuncao(): 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante' { return this.#MembroFuncao; }
   get MembroStatus(): 'Ativo' | 'Inativo' { return this.#MembroStatus; }
   get MembroEntradaAt(): Date { return this.#MembroEntradaAt; }
@@ -24,11 +24,11 @@ export default class ConversaGrupoMembro {
     this.#ConversaGUID = value.trim();
   }
 
-  set MembroUsuarioCPF(value: string) {
+  set MembroUsuarioGUID(value: string) {
     if (typeof value !== 'string' || value.trim().length === 0) {
-      throw new Error('MembroUsuarioCPF não pode ser vazio');
+      throw new Error('MembroUsuarioGUID não pode ser vazio');
     }
-    this.#MembroUsuarioCPF = value.trim();
+    this.#MembroUsuarioGUID = value.trim();
   }
 
   set MembroFuncao(value: 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante') {
@@ -63,7 +63,7 @@ export default class ConversaGrupoMembro {
   toJSON() {
     return {
       ConversaGUID: this.#ConversaGUID,
-      MembroUsuarioCPF: this.#MembroUsuarioCPF,
+      MembroUsuarioGUID: this.#MembroUsuarioGUID,
       MembroFuncao: this.#MembroFuncao,
       MembroStatus: this.#MembroStatus,
       MembroEntradaAt: this.#MembroEntradaAt.toISOString(),
@@ -74,7 +74,7 @@ export default class ConversaGrupoMembro {
   static fromDatabase(data: any): ConversaGrupoMembro {
     const m = new ConversaGrupoMembro();
     m.ConversaGUID = data.ConversaGUID;
-    m.MembroUsuarioCPF = data.MembroUsuarioCPF;
+    m.MembroUsuarioGUID = data.MembroUsuarioGUID;
     m.MembroFuncao = data.MembroFuncao;
     m.MembroStatus = data.MembroStatus;
     m.MembroEntradaAt = data.MembroEntradaAt;

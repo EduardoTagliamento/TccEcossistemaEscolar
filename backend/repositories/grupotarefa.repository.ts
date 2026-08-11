@@ -13,7 +13,7 @@ interface GrupoTarefaRow extends RowDataPacket {
   GrupoTarefaGUID: string;
   TarefaGUID: string;
   TurmaGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   GrupoNome: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
@@ -22,7 +22,7 @@ interface GrupoTarefaRow extends RowDataPacket {
 export interface GrupoTarefaFilters {
   TarefaGUID?: string;
   TurmaGUID?: string;
-  UsuarioCPFLider?: string;
+  UsuarioGUIDLider?: string;
 }
 
 export class GrupoTarefaDAO {
@@ -45,7 +45,7 @@ export class GrupoTarefaDAO {
         GrupoTarefaGUID,
         TarefaGUID,
         TurmaGUID,
-        UsuarioCPFLider,
+        UsuarioGUIDLider,
         GrupoNome
       ) VALUES (?, ?, ?, ?, ?)
     `;
@@ -55,7 +55,7 @@ export class GrupoTarefaDAO {
       grupoGUID,
       data.TarefaGUID,
       data.TurmaGUID,
-      data.UsuarioCPFLider,
+      data.UsuarioGUIDLider,
       nomeDefault
     ]);
     
@@ -99,9 +99,9 @@ export class GrupoTarefaDAO {
       params.push(filters.TurmaGUID);
     }
     
-    if (filters.UsuarioCPFLider) {
-      query += ` AND UsuarioCPFLider = ?`;
-      params.push(filters.UsuarioCPFLider);
+    if (filters.UsuarioGUIDLider) {
+      query += ` AND UsuarioGUIDLider = ?`;
+      params.push(filters.UsuarioGUIDLider);
     }
     
     query += ` ORDER BY CreatedAt ASC`;
@@ -121,20 +121,20 @@ export class GrupoTarefaDAO {
         gt.GrupoTarefaGUID,
         gt.TarefaGUID,
         gt.TurmaGUID,
-        gt.UsuarioCPFLider,
+        gt.UsuarioGUIDLider,
         gt.GrupoNome,
         gt.CreatedAt,
         u_lider.UsuarioNome AS NomeLider,
         t.TarefaMaxPessoas AS LimiteMaximo,
         -- Membros não-líderes
-        uxgt.UsuarioCPF AS MembroCPF,
+        uxgt.UsuarioGUID AS MembroGUID,
         u_membro.UsuarioNome AS MembroNome,
         uxgt.DataEntrada AS MembroDataEntrada
       FROM grupotarefa gt
-      INNER JOIN usuario u_lider ON u_lider.UsuarioCPF = gt.UsuarioCPFLider
+      INNER JOIN usuario u_lider ON u_lider.UsuarioGUID = gt.UsuarioGUIDLider
       INNER JOIN tarefaacademica t ON t.TarefaGUID = gt.TarefaGUID
       LEFT JOIN usuarioxgrupotarefa uxgt ON uxgt.GrupoTarefaGUID = gt.GrupoTarefaGUID
-      LEFT JOIN usuario u_membro ON u_membro.UsuarioCPF = uxgt.UsuarioCPF
+      LEFT JOIN usuario u_membro ON u_membro.UsuarioGUID = uxgt.UsuarioGUID
       WHERE gt.GrupoTarefaGUID = ?
       ORDER BY uxgt.DataEntrada ASC
     `;
@@ -149,7 +149,7 @@ export class GrupoTarefaDAO {
     
     // Adicionar líder
     membros.push({
-      UsuarioCPF: primeiraLinha.UsuarioCPFLider,
+      UsuarioGUID: primeiraLinha.UsuarioGUIDLider,
       UsuarioNome: primeiraLinha.NomeLider,
       DataEntrada: primeiraLinha.CreatedAt,
       IsLider: true
@@ -157,9 +157,9 @@ export class GrupoTarefaDAO {
     
     // Adicionar membros não-líderes
     rows.forEach(row => {
-      if (row.MembroCPF) {
+      if (row.MembroGUID) {
         membros.push({
-          UsuarioCPF: row.MembroCPF,
+          UsuarioGUID: row.MembroGUID,
           UsuarioNome: row.MembroNome,
           DataEntrada: row.MembroDataEntrada,
           IsLider: false
@@ -174,7 +174,7 @@ export class GrupoTarefaDAO {
       GrupoTarefaGUID: primeiraLinha.GrupoTarefaGUID,
       TarefaGUID: primeiraLinha.TarefaGUID,
       TurmaGUID: primeiraLinha.TurmaGUID,
-      UsuarioCPFLider: primeiraLinha.UsuarioCPFLider,
+      UsuarioGUIDLider: primeiraLinha.UsuarioGUIDLider,
       NomeLider: primeiraLinha.NomeLider,
       GrupoNome: primeiraLinha.GrupoNome,
       Membros: membros,
@@ -197,9 +197,9 @@ export class GrupoTarefaDAO {
       params.push(data.GrupoNome);
     }
     
-    if (data.UsuarioCPFLider !== undefined) {
-      updates.push('UsuarioCPFLider = ?');
-      params.push(data.UsuarioCPFLider);
+    if (data.UsuarioGUIDLider !== undefined) {
+      updates.push('UsuarioGUIDLider = ?');
+      params.push(data.UsuarioGUIDLider);
     }
     
     if (updates.length === 0) {
@@ -238,7 +238,7 @@ export class GrupoTarefaDAO {
     
     const query = `
       SELECT 
-        (1 + COUNT(uxgt.UsuarioCPF)) AS TotalMembros
+        (1 + COUNT(uxgt.UsuarioGUID)) AS TotalMembros
       FROM grupotarefa gt
       LEFT JOIN usuarioxgrupotarefa uxgt ON uxgt.GrupoTarefaGUID = gt.GrupoTarefaGUID
       WHERE gt.GrupoTarefaGUID = ?
@@ -252,33 +252,33 @@ export class GrupoTarefaDAO {
   }
 
   // AUXILIAR - Buscar grupo onde usuário é líder (por tarefa)
-  async findGrupoOndeEhLider(usuarioCPF: string, tarefaGUID: string): Promise<GrupoTarefa | null> {
+  async findGrupoOndeEhLider(usuarioGUID: string, tarefaGUID: string): Promise<GrupoTarefa | null> {
     console.log('🟢 GrupoTarefaDAO.findGrupoOndeEhLider()');
     
     const query = `
       SELECT * FROM grupotarefa
-      WHERE UsuarioCPFLider = ? AND TarefaGUID = ?
+      WHERE UsuarioGUIDLider = ? AND TarefaGUID = ?
     `;
     
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<GrupoTarefaRow[]>(query, [usuarioCPF, tarefaGUID]);
+    const [rows] = await pool.execute<GrupoTarefaRow[]>(query, [usuarioGUID, tarefaGUID]);
     
     return rows.length > 0 ? this.mapRow(rows[0]) : null;
   }
 
   // AUXILIAR - Verificar se usuário pertence ao grupo (líder ou membro)
-  async usuarioPertenceAoGrupo(usuarioCPF: string, grupoGUID: string): Promise<boolean> {
+  async usuarioPertenceAoGrupo(usuarioGUID: string, grupoGUID: string): Promise<boolean> {
     console.log('🟢 GrupoTarefaDAO.usuarioPertenceAoGrupo()');
     
     const query = `
-      SELECT 1 FROM grupotarefa WHERE GrupoTarefaGUID = ? AND UsuarioCPFLider = ?
+      SELECT 1 FROM grupotarefa WHERE GrupoTarefaGUID = ? AND UsuarioGUIDLider = ?
       UNION
-      SELECT 1 FROM usuarioxgrupotarefa WHERE GrupoTarefaGUID = ? AND UsuarioCPF = ?
+      SELECT 1 FROM usuarioxgrupotarefa WHERE GrupoTarefaGUID = ? AND UsuarioGUID = ?
       LIMIT 1
     `;
     
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioCPF, grupoGUID, usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioGUID, grupoGUID, usuarioGUID]);
     
     return rows.length > 0;
   }
@@ -288,7 +288,7 @@ export class GrupoTarefaDAO {
       GrupoTarefaGUID: row.GrupoTarefaGUID,
       TarefaGUID: row.TarefaGUID,
       TurmaGUID: row.TurmaGUID,
-      UsuarioCPFLider: row.UsuarioCPFLider,
+      UsuarioGUIDLider: row.UsuarioGUIDLider,
       GrupoNome: row.GrupoNome,
       CreatedAt: row.CreatedAt,
       UpdatedAt: row.UpdatedAt

@@ -11,7 +11,7 @@ interface TarefaAcademicaMatriculaRow extends RowDataPacket {
   TarefaRealizacaoData: Date | null;
   TarefaNota: number | null;
   TarefaAvaliadoEm: Date | null;
-  TarefaAvaliadoPorCPF: string | null;
+  TarefaAvaliadoPorGUID: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }
@@ -20,7 +20,7 @@ export interface TarefaVencidaSemAvaliacao {
   TarefaMatriculaGUID: string;
   TarefaGUID: string;
   MatriculaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
 }
 
 /**
@@ -184,7 +184,7 @@ export class TarefaAcademicaMatriculaDAO {
     TarefaMatriculaGUID: string,
     updates: Partial<Pick<
       TarefaAcademicaMatricula,
-      "TarefaFeito" | "TarefaRealizacaoData" | "TarefaNota" | "TarefaAvaliadoEm" | "TarefaAvaliadoPorCPF"
+      "TarefaFeito" | "TarefaRealizacaoData" | "TarefaNota" | "TarefaAvaliadoEm" | "TarefaAvaliadoPorGUID"
     >>
   ): Promise<TarefaAcademicaMatricula | null> => {
     console.log("🟢 TarefaAcademicaMatriculaDAO.update()");
@@ -212,9 +212,9 @@ export class TarefaAcademicaMatriculaDAO {
       values.push(updates.TarefaAvaliadoEm);
     }
 
-    if (updates.TarefaAvaliadoPorCPF !== undefined) {
-      fields.push("TarefaAvaliadoPorCPF = ?");
-      values.push(updates.TarefaAvaliadoPorCPF);
+    if (updates.TarefaAvaliadoPorGUID !== undefined) {
+      fields.push("TarefaAvaliadoPorGUID = ?");
+      values.push(updates.TarefaAvaliadoPorGUID);
     }
 
     if (fields.length === 0) {
@@ -260,7 +260,7 @@ export class TarefaAcademicaMatriculaDAO {
     console.log("🟢 TarefaAcademicaMatriculaDAO.findVencidasSemAvaliacao()");
 
     const SQL = `
-      SELECT tm.TarefaMatriculaGUID, tm.TarefaGUID, tm.MatriculaGUID, mat.UsuarioCPF
+      SELECT tm.TarefaMatriculaGUID, tm.TarefaGUID, tm.MatriculaGUID, mat.UsuarioGUID
       FROM tarefaacademica_matricula tm
       INNER JOIN tarefaacademica t ON t.TarefaGUID = tm.TarefaGUID
       INNER JOIN matricula mat ON mat.MatriculaGUID = tm.MatriculaGUID
@@ -284,7 +284,7 @@ export class TarefaAcademicaMatriculaDAO {
     console.log("🟢 TarefaAcademicaMatriculaDAO.findListasVencidasParaFechar()");
 
     const SQL = `
-      SELECT tm.TarefaMatriculaGUID, tm.TarefaGUID, tm.MatriculaGUID, mat.UsuarioCPF
+      SELECT tm.TarefaMatriculaGUID, tm.TarefaGUID, tm.MatriculaGUID, mat.UsuarioGUID
       FROM tarefaacademica_matricula tm
       INNER JOIN tarefaacademica t ON t.TarefaGUID = tm.TarefaGUID
       INNER JOIN matricula mat ON mat.MatriculaGUID = tm.MatriculaGUID
@@ -341,7 +341,7 @@ export class TarefaAcademicaMatriculaDAO {
     atribuicao.TarefaRealizacaoData = row.TarefaRealizacaoData;
     atribuicao.TarefaNota = row.TarefaNota !== null && row.TarefaNota !== undefined ? Number(row.TarefaNota) : null;
     atribuicao.TarefaAvaliadoEm = row.TarefaAvaliadoEm;
-    atribuicao.TarefaAvaliadoPorCPF = row.TarefaAvaliadoPorCPF;
+    atribuicao.TarefaAvaliadoPorGUID = row.TarefaAvaliadoPorGUID;
     atribuicao.CreatedAt = row.CreatedAt;
     atribuicao.UpdatedAt = row.UpdatedAt;
     return atribuicao;

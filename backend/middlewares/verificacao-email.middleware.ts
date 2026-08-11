@@ -1,5 +1,5 @@
 import { Request } from "express";
-import { ValidarCodigoBodySchema, ValidarReenviarBodySchema, CpfParamSchema } from "../schemas/verificacaoEmail.schema";
+import { ValidarCodigoBodySchema, ValidarReenviarBodySchema, GuidParamSchema } from "../schemas/verificacaoEmail.schema";
 import { zodValidate } from "../utils/zodValidate";
 
 export default class VerificacaoEmailMiddleware {
@@ -19,9 +19,9 @@ export default class VerificacaoEmailMiddleware {
     },
   });
 
-  validateCpfParam = zodValidate(CpfParamSchema, "params", "Erro na validação de dados", {
+  validateGuidParam = zodValidate(GuidParamSchema, "params", "Erro na validação de dados", {
     aposSucesso: (request: Request, dados: unknown) => {
-      request.params.UsuarioCPF = dados as string;
+      request.params.UsuarioGUID = dados as string;
     },
   });
 }

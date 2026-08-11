@@ -2,8 +2,8 @@ import {
   ConversaGUIDParamSchema,
   MensagemGUIDParamSchema,
   IniciarIndividualBodySchema,
-  CPFBodySchema,
-  CPFParamSchema,
+  UsuarioGUIDBodySchema,
+  UsuarioGUIDParamSchema,
   EditarBodySchema,
   ReacaoBodySchema,
 } from "../schemas/conversa.schema";
@@ -14,18 +14,15 @@ export class ConversaMiddleware {
 
   static validarMsgGUID = zodValidate(MensagemGUIDParamSchema, "params", "", { semDetails: true });
 
-  // A checagem de "não pode iniciar conversa consigo mesmo" precisa comparar
-  // o CPF do destinatário com o CPF do usuário autenticado — mas `req.user`
-  // só carrega UsuarioGUID (JWT migrado pra GUID), então essa comparação não
-  // dá mais pra fazer aqui sem acesso ao banco. ConversaIndividualService.
-  // iniciarConversa() já faz essa mesma checagem internamente (com o CPF
-  // resolvido de verdade), então a validação de formato via Zod é suficiente
-  // neste nível.
+  // A checagem de "não pode iniciar conversa consigo mesmo" já é feita em
+  // ConversaIndividualService.iniciarConversa() (comparando UsuarioGUID
+  // diretamente, sem round-trip ao banco) — a validação de formato via Zod é
+  // suficiente neste nível.
   static validarIniciarIndividual = zodValidate(IniciarIndividualBodySchema, "body", "", { semDetails: true });
 
-  static validarCPFBody = zodValidate(CPFBodySchema, "body", "", { semDetails: true });
+  static validarUsuarioGUIDBody = zodValidate(UsuarioGUIDBodySchema, "body", "", { semDetails: true });
 
-  static validarCPFParam = zodValidate(CPFParamSchema, "params", "", { semDetails: true });
+  static validarUsuarioGUIDParam = zodValidate(UsuarioGUIDParamSchema, "params", "", { semDetails: true });
 
   static validarEditarBody = zodValidate(EditarBodySchema, "body", "", { semDetails: true });
 

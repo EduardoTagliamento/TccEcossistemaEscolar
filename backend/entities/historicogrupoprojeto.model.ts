@@ -10,7 +10,7 @@ export interface HistoricoGrupoProjeto {
   HistoricoGUID: string;
   GrupoProjetoGUID: string;
   HistoricoTipo: HistoricoTipo;
-  UsuarioCPFAtor: string;
+  UsuarioGUIDAtor: string;
   UsuarioCPFAlvo: string | null;
   HistoricoDetalhes: string | null; // JSON serializado
   CreatedAt: Date;
@@ -19,7 +19,7 @@ export interface HistoricoGrupoProjeto {
 export interface HistoricoGrupoProjetoCreateDTO {
   GrupoProjetoGUID: string;
   HistoricoTipo: HistoricoTipo;
-  UsuarioCPFAtor: string;
+  UsuarioGUIDAtor: string;
   UsuarioCPFAlvo?: string;
   HistoricoDetalhes?: Record<string, any>;
 }
@@ -28,7 +28,7 @@ export class HistoricoGrupoProjetoEntity {
   #historicoGUID: string;
   #grupoProjetoGUID: string;
   #historicoTipo: HistoricoTipo;
-  #usuarioCPFAtor: string;
+  #usuarioGUIDAtor: string;
   #usuarioCPFAlvo: string | null;
   #historicoDetalhes: string | null;
   #createdAt: Date;
@@ -37,7 +37,7 @@ export class HistoricoGrupoProjetoEntity {
     this.#historicoGUID = data.HistoricoGUID;
     this.#grupoProjetoGUID = data.GrupoProjetoGUID;
     this.#historicoTipo = data.HistoricoTipo;
-    this.#usuarioCPFAtor = data.UsuarioCPFAtor;
+    this.#usuarioGUIDAtor = data.UsuarioGUIDAtor;
     this.#usuarioCPFAlvo = data.UsuarioCPFAlvo;
     this.#historicoDetalhes = data.HistoricoDetalhes;
     this.#createdAt = data.CreatedAt;
@@ -46,7 +46,7 @@ export class HistoricoGrupoProjetoEntity {
   get historicoGUID(): string { return this.#historicoGUID; }
   get grupoProjetoGUID(): string { return this.#grupoProjetoGUID; }
   get historicoTipo(): HistoricoTipo { return this.#historicoTipo; }
-  get usuarioCPFAtor(): string { return this.#usuarioCPFAtor; }
+  get usuarioGUIDAtor(): string { return this.#usuarioGUIDAtor; }
   get usuarioCPFAlvo(): string | null { return this.#usuarioCPFAlvo; }
   get historicoDetalhes(): string | null { return this.#historicoDetalhes; }
   get createdAt(): Date { return this.#createdAt; }
@@ -75,7 +75,7 @@ export class HistoricoGrupoProjetoEntity {
       HistoricoGUID: this.#historicoGUID,
       GrupoProjetoGUID: this.#grupoProjetoGUID,
       HistoricoTipo: this.#historicoTipo,
-      UsuarioCPFAtor: this.#usuarioCPFAtor,
+      UsuarioGUIDAtor: this.#usuarioGUIDAtor,
       UsuarioCPFAlvo: this.#usuarioCPFAlvo,
       HistoricoDetalhes: this.#historicoDetalhes,
       CreatedAt: this.#createdAt

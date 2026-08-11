@@ -28,11 +28,11 @@ export default class ConversaGrupoService {
    * etc.) — usado pelo módulo Matérias pra decidir quem pode trocar a capa/cor
    * da turma. Retorna null se o usuário não é membro ou a turma não tem grupo.
    */
-  async getFuncaoNaTurma(turmaGUID: string, usuarioCPF: string): Promise<'Membro' | 'Lider' | 'Representante' | 'Vice-Representante' | null> {
+  async getFuncaoNaTurma(turmaGUID: string, usuarioGUID: string): Promise<'Membro' | 'Lider' | 'Representante' | 'Vice-Representante' | null> {
     console.log('🟣 ConversaGrupoService.getFuncaoNaTurma()');
     const grupo = await this.#conversaGrupoDAO.findByRefGUID(turmaGUID);
     if (!grupo) return null;
-    return this.#conversaGrupoDAO.getFuncao(grupo.ConversaGUID, usuarioCPF);
+    return this.#conversaGrupoDAO.getFuncao(grupo.ConversaGUID, usuarioGUID);
   }
 
   // Chamado após criação de uma Turma
@@ -43,15 +43,14 @@ export default class ConversaGrupoService {
       await this.#conversaDAO.create(conversaGUID, 'Grupo');
       await this.#conversaGrupoDAO.createGrupo(conversaGUID, turmaNome, 'Turma', turmaGUID);
 
-      // Popula membros com matrículas ativas da turma
+      // Popula membros com matrículas ativas da turma — matricula.UsuarioGUID
+      // já é a identidade real do aluno, sem resolução nenhuma necessária.
       const matriculas = await this.#matriculaDAO.findAll({
         TurmaGUID: turmaGUID,
         MatriculaStatus: 'Ativa',
       });
       for (const m of matriculas) {
-        const usuario = await this.#usuarioDAO.findByGUID(m.UsuarioGUID);
-        if (!usuario?.UsuarioCPF) continue;
-        await this.#conversaGrupoDAO.addMembro(conversaGUID, usuario.UsuarioCPF);
+        await this.#conversaGrupoDAO.addMembro(conversaGUID, m.UsuarioGUID);
       }
       console.log(`✅ Grupo de turma criado: ${turmaNome} (${conversaGUID}) com ${matriculas.length} membros`);
     } catch (err) {
@@ -87,16 +86,16 @@ export default class ConversaGrupoService {
   }
 
   // Chamado quando nova Matrícula é criada
-  async adicionarMembroTurma(turmaGUID: string, usuarioCPF: string): Promise<void> {
+  async adicionarMembroTurma(turmaGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟣 ConversaGrupoService.adicionarMembroTurma()');
     try {
       const grupo = await this.#conversaGrupoDAO.findByRefGUID(turmaGUID);
       if (!grupo) return;
-      await this.#conversaGrupoDAO.addMembro(grupo.ConversaGUID, usuarioCPF);
+      await this.#conversaGrupoDAO.addMembro(grupo.ConversaGUID, usuarioGUID);
       const { SocketServer } = await import('../websocket/SocketServer');
       SocketServer.emit(grupo.ConversaGUID, 'membro_entrou', {
         ConversaGUID: grupo.ConversaGUID,
-        UsuarioCPF: usuarioCPF,
+        UsuarioGUID: usuarioGUID,
       });
     } catch (err) {
       console.error('❌ ConversaGrupoService.adicionarMembroTurma() falhou:', err);
@@ -104,16 +103,16 @@ export default class ConversaGrupoService {
   }
 
   // Chamado quando Matrícula muda para Transferida/Cancelada/Concluida
-  async removerMembroTurma(turmaGUID: string, usuarioCPF: string): Promise<void> {
+  async removerMembroTurma(turmaGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟣 ConversaGrupoService.removerMembroTurma()');
     try {
       const grupo = await this.#conversaGrupoDAO.findByRefGUID(turmaGUID);
       if (!grupo) return;
-      await this.#conversaGrupoDAO.removeMembro(grupo.ConversaGUID, usuarioCPF);
+      await this.#conversaGrupoDAO.removeMembro(grupo.ConversaGUID, usuarioGUID);
       const { SocketServer } = await import('../websocket/SocketServer');
       SocketServer.emit(grupo.ConversaGUID, 'membro_saiu', {
         ConversaGUID: grupo.ConversaGUID,
-        UsuarioCPF: usuarioCPF,
+        UsuarioGUID: usuarioGUID,
       });
     } catch (err) {
       console.error('❌ ConversaGrupoService.removerMembroTurma() falhou:', err);
@@ -121,14 +120,14 @@ export default class ConversaGrupoService {
   }
 
   // Chamado após criação de um GrupoTarefa individual
-  async criarConversaParaGrupoTarefa(grupoTarefaGUID: string, nome: string, liderCPF: string): Promise<void> {
+  async criarConversaParaGrupoTarefa(grupoTarefaGUID: string, nome: string, liderGUID: string): Promise<void> {
     console.log('🟣 ConversaGrupoService.criarConversaParaGrupoTarefa()');
     try {
       const conversaGUID = gerarGUID();
       await this.#conversaDAO.create(conversaGUID, 'Grupo');
       await this.#conversaGrupoDAO.createGrupo(conversaGUID, nome, 'Tarefa', grupoTarefaGUID);
-      await this.#conversaGrupoDAO.addMembro(conversaGUID, liderCPF);
-      await this.#conversaGrupoDAO.setFuncao(conversaGUID, liderCPF, 'Lider');
+      await this.#conversaGrupoDAO.addMembro(conversaGUID, liderGUID);
+      await this.#conversaGrupoDAO.setFuncao(conversaGUID, liderGUID, 'Lider');
       console.log(`✅ Conversa para GrupoTarefa criada: ${grupoTarefaGUID} (${conversaGUID})`);
     } catch (err) {
       console.error('❌ ConversaGrupoService.criarConversaParaGrupoTarefa() falhou:', err);
@@ -136,16 +135,16 @@ export default class ConversaGrupoService {
   }
 
   // Chamado quando membro entra em GrupoTarefa
-  async adicionarMembroGrupoTarefa(grupoTarefaGUID: string, usuarioCPF: string): Promise<void> {
+  async adicionarMembroGrupoTarefa(grupoTarefaGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟣 ConversaGrupoService.adicionarMembroGrupoTarefa()');
     try {
       const grupo = await this.#conversaGrupoDAO.findByRefGUID(grupoTarefaGUID);
       if (!grupo) return;
-      await this.#conversaGrupoDAO.addMembro(grupo.ConversaGUID, usuarioCPF);
+      await this.#conversaGrupoDAO.addMembro(grupo.ConversaGUID, usuarioGUID);
       const { SocketServer } = await import('../websocket/SocketServer');
       SocketServer.emit(grupo.ConversaGUID, 'membro_entrou', {
         ConversaGUID: grupo.ConversaGUID,
-        UsuarioCPF: usuarioCPF,
+        UsuarioGUID: usuarioGUID,
       });
     } catch (err) {
       console.error('❌ ConversaGrupoService.adicionarMembroGrupoTarefa() falhou:', err);
@@ -153,16 +152,16 @@ export default class ConversaGrupoService {
   }
 
   // Chamado quando membro é removido/expulso de GrupoTarefa
-  async removerMembroGrupoTarefa(grupoTarefaGUID: string, usuarioCPF: string): Promise<void> {
+  async removerMembroGrupoTarefa(grupoTarefaGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟣 ConversaGrupoService.removerMembroGrupoTarefa()');
     try {
       const grupo = await this.#conversaGrupoDAO.findByRefGUID(grupoTarefaGUID);
       if (!grupo) return;
-      await this.#conversaGrupoDAO.removeMembro(grupo.ConversaGUID, usuarioCPF);
+      await this.#conversaGrupoDAO.removeMembro(grupo.ConversaGUID, usuarioGUID);
       const { SocketServer } = await import('../websocket/SocketServer');
       SocketServer.emit(grupo.ConversaGUID, 'membro_saiu', {
         ConversaGUID: grupo.ConversaGUID,
-        UsuarioCPF: usuarioCPF,
+        UsuarioGUID: usuarioGUID,
       });
     } catch (err) {
       console.error('❌ ConversaGrupoService.removerMembroGrupoTarefa() falhou:', err);
@@ -172,15 +171,15 @@ export default class ConversaGrupoService {
   // Chamado quando liderança é transferida em GrupoTarefa
   async transferirLiderGrupoTarefa(
     grupoTarefaGUID: string,
-    antigoLiderCPF: string,
-    novoLiderCPF: string
+    antigoLiderGUID: string,
+    novoLiderGUID: string
   ): Promise<void> {
     console.log('🟣 ConversaGrupoService.transferirLiderGrupoTarefa()');
     try {
       const grupo = await this.#conversaGrupoDAO.findByRefGUID(grupoTarefaGUID);
       if (!grupo) return;
-      await this.#conversaGrupoDAO.setFuncao(grupo.ConversaGUID, antigoLiderCPF, 'Membro');
-      await this.#conversaGrupoDAO.setFuncao(grupo.ConversaGUID, novoLiderCPF, 'Lider');
+      await this.#conversaGrupoDAO.setFuncao(grupo.ConversaGUID, antigoLiderGUID, 'Membro');
+      await this.#conversaGrupoDAO.setFuncao(grupo.ConversaGUID, novoLiderGUID, 'Lider');
     } catch (err) {
       console.error('❌ ConversaGrupoService.transferirLiderGrupoTarefa() falhou:', err);
     }

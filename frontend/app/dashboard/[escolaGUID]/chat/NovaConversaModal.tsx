@@ -10,7 +10,7 @@ import Loader from '@/components/Loader';
 import styles from './NovaConversaModal.module.css';
 
 interface PessoaSelecionavel {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   Papel: 'Aluno' | 'Professor';
 }
@@ -18,7 +18,7 @@ interface PessoaSelecionavel {
 interface NovaConversaModalProps {
   aberto: boolean;
   escolaGUID: string;
-  meuCPF: string;
+  meuGUID: string;
   onClose: () => void;
   onConversaIniciada: (conversaGUID: string) => void;
 }
@@ -49,7 +49,7 @@ function obterIniciais(nome: string): string {
 export default function NovaConversaModal({
   aberto,
   escolaGUID,
-  meuCPF,
+  meuGUID,
   onClose,
   onConversaIniciada,
 }: NovaConversaModalProps) {
@@ -57,7 +57,7 @@ export default function NovaConversaModal({
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
-  const [iniciandoCPF, setIniciandoCPF] = useState<string | null>(null);
+  const [iniciandoGUID, setIniciandoGUID] = useState<string | null>(null);
 
   useEffect(() => {
     if (!aberto) return;
@@ -83,20 +83,20 @@ export default function NovaConversaModal({
       const vistos = new Set<string>();
       const lista: PessoaSelecionavel[] = [];
 
-      // Só entram na lista quem tem CPF cadastrado — conversa individual
-      // ainda é endereçada por CPF (tabela não migrada pra GUID).
+      // conversa_individual agora é endereçada por UsuarioGUID (tabela migrada) —
+      // todo usuário autenticado tem GUID, diferente do CPF (opcional).
       listasAlunos.forEach(({ alunos }) => {
         alunos.forEach(({ usuario }) => {
-          if (!usuario?.UsuarioCPF || vistos.has(usuario.UsuarioCPF) || usuario.UsuarioCPF === meuCPF) return;
-          vistos.add(usuario.UsuarioCPF);
-          lista.push({ UsuarioCPF: usuario.UsuarioCPF, UsuarioNome: usuario.UsuarioNome, Papel: 'Aluno' });
+          if (!usuario?.UsuarioGUID || vistos.has(usuario.UsuarioGUID) || usuario.UsuarioGUID === meuGUID) return;
+          vistos.add(usuario.UsuarioGUID);
+          lista.push({ UsuarioGUID: usuario.UsuarioGUID, UsuarioNome: usuario.UsuarioNome, Papel: 'Aluno' });
         });
       });
 
       professores.forEach((professor) => {
-        if (!professor.UsuarioCPF || vistos.has(professor.UsuarioCPF) || professor.UsuarioCPF === meuCPF) return;
-        vistos.add(professor.UsuarioCPF);
-        lista.push({ UsuarioCPF: professor.UsuarioCPF, UsuarioNome: professor.UsuarioNome, Papel: 'Professor' });
+        if (!professor.UsuarioGUID || vistos.has(professor.UsuarioGUID) || professor.UsuarioGUID === meuGUID) return;
+        vistos.add(professor.UsuarioGUID);
+        lista.push({ UsuarioGUID: professor.UsuarioGUID, UsuarioNome: professor.UsuarioNome, Papel: 'Professor' });
       });
 
       lista.sort((a, b) => a.UsuarioNome.localeCompare(b.UsuarioNome, 'pt-BR'));
@@ -115,16 +115,16 @@ export default function NovaConversaModal({
   }, [pessoas, busca]);
 
   const handleSelecionar = async (pessoa: PessoaSelecionavel) => {
-    setIniciandoCPF(pessoa.UsuarioCPF);
+    setIniciandoGUID(pessoa.UsuarioGUID);
     setErro('');
     try {
-      const resultado = await ConversaAPI.iniciarConversaIndividual(pessoa.UsuarioCPF);
+      const resultado = await ConversaAPI.iniciarConversaIndividual(pessoa.UsuarioGUID);
       onConversaIniciada(resultado.ConversaGUID);
       onClose();
     } catch (erroIniciar: any) {
       setErro(erroIniciar?.message || 'Erro ao iniciar conversa');
     } finally {
-      setIniciandoCPF(null);
+      setIniciandoGUID(null);
     }
   };
 
@@ -162,17 +162,17 @@ export default function NovaConversaModal({
             pessoasFiltradas.map((pessoa) => (
               <button
                 type="button"
-                key={pessoa.UsuarioCPF}
+                key={pessoa.UsuarioGUID}
                 className={styles.pessoaItem}
                 onClick={() => handleSelecionar(pessoa)}
-                disabled={iniciandoCPF !== null}
+                disabled={iniciandoGUID !== null}
               >
                 <span className={styles.avatar}>{obterIniciais(pessoa.UsuarioNome)}</span>
                 <span className={styles.pessoaInfo}>
                   <span className={styles.pessoaNome}>{pessoa.UsuarioNome}</span>
                   <span className={styles.pessoaPapel}>{pessoa.Papel}</span>
                 </span>
-                {iniciandoCPF === pessoa.UsuarioCPF && <Loader size={16} inline />}
+                {iniciandoGUID === pessoa.UsuarioGUID && <Loader size={16} inline />}
               </button>
             ))
           )}

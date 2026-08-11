@@ -2,7 +2,7 @@ export interface GrupoTarefa {
   GrupoTarefaGUID: string;
   TarefaGUID: string;
   TurmaGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   GrupoNome: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
@@ -11,20 +11,20 @@ export interface GrupoTarefa {
 export interface GrupoTarefaCreateDTO {
   TarefaGUID: string;
   TurmaGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   GrupoNome?: string;
 }
 
 export interface GrupoTarefaUpdateDTO {
   GrupoNome?: string;
-  UsuarioCPFLider?: string;  // Para transferência de liderança
+  UsuarioGUIDLider?: string;  // Para transferência de liderança
 }
 
 export interface GrupoTarefaComMembrosDTO {
   GrupoTarefaGUID: string;
   TarefaGUID: string;
   TurmaGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   NomeLider: string;
   GrupoNome: string | null;
   Membros: MembroGrupoDTO[];
@@ -35,7 +35,7 @@ export interface GrupoTarefaComMembrosDTO {
 }
 
 export interface MembroGrupoDTO {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   DataEntrada: Date;
   IsLider: boolean;
@@ -48,7 +48,7 @@ export class GrupoTarefaEntity {
   #grupoTarefaGUID: string;
   #tarefaGUID: string;
   #turmaGUID: string;
-  #usuarioCPFLider: string;
+  #usuarioGUIDLider: string;
   #grupoNome: string | null;
   #createdAt: Date;
   #updatedAt: Date;
@@ -57,7 +57,7 @@ export class GrupoTarefaEntity {
     this.#grupoTarefaGUID = data.GrupoTarefaGUID;
     this.#tarefaGUID = data.TarefaGUID;
     this.#turmaGUID = data.TurmaGUID;
-    this.#usuarioCPFLider = data.UsuarioCPFLider;
+    this.#usuarioGUIDLider = data.UsuarioGUIDLider;
     this.#grupoNome = data.GrupoNome;
     this.#createdAt = data.CreatedAt;
     this.#updatedAt = data.UpdatedAt;
@@ -67,7 +67,7 @@ export class GrupoTarefaEntity {
   get grupoTarefaGUID(): string { return this.#grupoTarefaGUID; }
   get tarefaGUID(): string { return this.#tarefaGUID; }
   get turmaGUID(): string { return this.#turmaGUID; }
-  get usuarioCPFLider(): string { return this.#usuarioCPFLider; }
+  get usuarioGUIDLider(): string { return this.#usuarioGUIDLider; }
   get grupoNome(): string | null { return this.#grupoNome; }
   get createdAt(): Date { return this.#createdAt; }
   get updatedAt(): Date { return this.#updatedAt; }
@@ -80,12 +80,11 @@ export class GrupoTarefaEntity {
     this.#grupoNome = value;
   }
 
-  set usuarioCPFLider(value: string) {
-    const cpfLimpo = value.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPFLider deve ter 11 dígitos');
+  set usuarioGUIDLider(value: string) {
+    if (!value || value.trim() === '') {
+      throw new Error('UsuarioGUIDLider deve ser uma string não vazia');
     }
-    this.#usuarioCPFLider = value;
+    this.#usuarioGUIDLider = value;
   }
 
   // Validações
@@ -105,10 +104,9 @@ export class GrupoTarefaEntity {
       throw new Error('TurmaGUID inválido');
     }
 
-    // CPF do líder
-    const cpfLimpo = this.#usuarioCPFLider.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPFLider deve ter 11 dígitos');
+    // GUID do líder
+    if (!this.#usuarioGUIDLider || this.#usuarioGUIDLider.trim() === '') {
+      throw new Error('UsuarioGUIDLider deve ser uma string não vazia');
     }
 
     // Nome do grupo (opcional)
@@ -122,7 +120,7 @@ export class GrupoTarefaEntity {
       GrupoTarefaGUID: this.#grupoTarefaGUID,
       TarefaGUID: this.#tarefaGUID,
       TurmaGUID: this.#turmaGUID,
-      UsuarioCPFLider: this.#usuarioCPFLider,
+      UsuarioGUIDLider: this.#usuarioGUIDLider,
       GrupoNome: this.#grupoNome,
       CreatedAt: this.#createdAt,
       UpdatedAt: this.#updatedAt

@@ -27,7 +27,7 @@ export default class TarefaAcademicaMatricula {
   #TarefaRealizacaoData!: Date | null;
   #TarefaNota: number | null = null;
   #TarefaAvaliadoEm: Date | null = null;
-  #TarefaAvaliadoPorCPF: string | null = null;
+  #TarefaAvaliadoPorGUID: string | null = null;
   #CreatedAt?: Date;
   #UpdatedAt?: Date;
 
@@ -146,16 +146,16 @@ export default class TarefaAcademicaMatricula {
     this.#TarefaAvaliadoEm = value;
   }
 
-  get TarefaAvaliadoPorCPF(): string | null {
-    return this.#TarefaAvaliadoPorCPF;
+  get TarefaAvaliadoPorGUID(): string | null {
+    return this.#TarefaAvaliadoPorGUID;
   }
 
-  set TarefaAvaliadoPorCPF(value: string | null) {
+  set TarefaAvaliadoPorGUID(value: string | null) {
     if (value === null || value === undefined || value === "") {
-      this.#TarefaAvaliadoPorCPF = null;
+      this.#TarefaAvaliadoPorGUID = null;
       return;
     }
-    this.#TarefaAvaliadoPorCPF = value.trim();
+    this.#TarefaAvaliadoPorGUID = value.trim();
   }
 
   get CreatedAt(): Date | undefined {
@@ -218,7 +218,7 @@ export default class TarefaAcademicaMatricula {
       TarefaRealizacaoData: this.#TarefaRealizacaoData?.toISOString() || null,
       TarefaNota: this.#TarefaNota,
       TarefaAvaliadoEm: this.#TarefaAvaliadoEm?.toISOString() || null,
-      TarefaAvaliadoPorCPF: this.#TarefaAvaliadoPorCPF,
+      TarefaAvaliadoPorGUID: this.#TarefaAvaliadoPorGUID,
       CreatedAt: this.#CreatedAt?.toISOString() || null,
       UpdatedAt: this.#UpdatedAt?.toISOString() || null
     };

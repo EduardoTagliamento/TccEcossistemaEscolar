@@ -35,16 +35,8 @@ export class SocketServer {
         const token = raw.startsWith('Bearer ') ? raw.slice(7) : raw;
         const decoded = JwtService.verifyToken(token);
 
-        // conversa/mensagem/conversa_individual/conversa_grupo_membro ainda
-        // usam CPF — resolver uma vez na autenticação da conexão.
-        const usuario = await usuarioDAO.findByGUID(decoded.UsuarioGUID);
-        if (!usuario?.UsuarioCPF) {
-          throw new Error('Usuário sem CPF cadastrado');
-        }
-
         socket.data.usuario = {
           UsuarioGUID: decoded.UsuarioGUID,
-          UsuarioCPF: usuario.UsuarioCPF,
           UsuarioNome: decoded.UsuarioNome,
           UsuarioEmail: decoded.UsuarioEmail,
         };

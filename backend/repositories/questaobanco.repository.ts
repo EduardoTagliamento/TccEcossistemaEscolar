@@ -9,7 +9,7 @@ interface QuestaoBancoRow {
   Dificuldade: QuestaoBancoDificuldade;
   Enunciado: string;
   VideoResolucaoUrl: string | null;
-  CriadoPorCPF: string;
+  CriadoPorGUID: string;
   CreatedAt: Date;
 }
 
@@ -31,7 +31,7 @@ export class QuestaoBancoDAO {
     console.log("🟢 QuestaoBancoDAO.create()");
 
     const SQL = `
-      INSERT INTO questaobanco (QuestaoBancoGUID, MateriaGlobalGUID, SubMateriaGlobalGUID, VestibularGUID, Dificuldade, Enunciado, VideoResolucaoUrl, CriadoPorCPF)
+      INSERT INTO questaobanco (QuestaoBancoGUID, MateriaGlobalGUID, SubMateriaGlobalGUID, VestibularGUID, Dificuldade, Enunciado, VideoResolucaoUrl, CriadoPorGUID)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const pool = await this.#database.getPool();
@@ -43,7 +43,7 @@ export class QuestaoBancoDAO {
       questao.Dificuldade,
       questao.Enunciado,
       questao.VideoResolucaoUrl,
-      questao.CriadoPorCPF,
+      questao.CriadoPorGUID,
     ]);
   };
 
@@ -114,7 +114,7 @@ export class QuestaoBancoDAO {
       questao.Dificuldade = row.Dificuldade;
       questao.Enunciado = row.Enunciado;
       questao.VideoResolucaoUrl = row.VideoResolucaoUrl;
-      questao.CriadoPorCPF = row.CriadoPorCPF;
+      questao.CriadoPorGUID = row.CriadoPorGUID;
       questao.CreatedAt = row.CreatedAt ? new Date(row.CreatedAt) : null;
       return questao;
     });

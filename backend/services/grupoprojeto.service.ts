@@ -48,14 +48,17 @@ export default class GrupoProjetoService {
     this.#usuarioDAO = usuarioDAO;
   }
 
-  /** Resolve o CPF de um ator a partir do UsuarioGUID — grupoprojeto,
-   * usuarioxgrupoprojeto, historicogrupoprojeto e projeto ainda usam CPF. */
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+  /**
+   * `historicogrupoprojeto.UsuarioCPFAlvo` é o único campo que ainda é CPF
+   * de verdade neste domínio (não tem FK, nunca foi migrado — ver
+   * docs/PROGRESSO_MIGRACAO_USUARIO_GUID.md, "Alertas menores"). É só
+   * informativo (detalhe de histórico), então resolve best-effort: usuário
+   * sem CPF cadastrado (piloto) simplesmente não populariza o campo, não
+   * bloqueia a ação.
+   */
+  #resolverCPFAlvo = async (usuarioGUID: string): Promise<string | undefined> => {
     const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
-    }
-    return usuario.UsuarioCPF;
+    return usuario?.UsuarioCPF ?? undefined;
   };
 
   /**
@@ -66,26 +69,25 @@ export default class GrupoProjetoService {
   criarGrupo = async (data: GrupoProjetoCreateDTO, usuarioGUID: string): Promise<GrupoProjetoComMembrosDTO> => {
     console.log('🟣 GrupoProjetoService.criarGrupo()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const projeto = await this.#validarProjetoAbertoParaInscricao(data.ProjetoGUID);
 
-    const elegivel = await this.#projetoDAO.usuarioElegivel(data.ProjetoGUID, usuarioCPF);
+    const elegivel = await this.#projetoDAO.usuarioElegivel(data.ProjetoGUID, usuarioGUID);
     if (!elegivel) {
       throw new ErrorResponse(403, 'Você não é elegível para participar deste projeto');
     }
 
-    const jaParticipa = await this.#usuarioXGrupoDAO.contarParticipacoesNoProjeto(usuarioCPF, data.ProjetoGUID);
+    const jaParticipa = await this.#usuarioXGrupoDAO.contarParticipacoesNoProjeto(usuarioGUID, data.ProjetoGUID);
     if (jaParticipa > 0) {
       throw new ErrorResponse(409, 'Você já participa de um grupo neste projeto');
     }
 
-    const grupoCriado = await this.#grupoProjetoDAO.create({ ...data, UsuarioCPFLider: usuarioCPF });
+    const grupoCriado = await this.#grupoProjetoDAO.create({ ...data, UsuarioGUIDLider: usuarioGUID });
 
     await this.#historicoService.registrar({
       GrupoProjetoGUID: grupoCriado.GrupoProjetoGUID,
       HistoricoTipo: 'Entrada',
-      UsuarioCPFAtor: usuarioCPF,
-      UsuarioCPFAlvo: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
+      UsuarioCPFAlvo: await this.#resolverCPFAlvo(usuarioGUID),
       HistoricoDetalhes: { motivo: 'CriacaoGrupo' }
     });
 
@@ -159,13 +161,12 @@ export default class GrupoProjetoService {
   ): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.atualizarGrupo()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
     }
 
-    if (grupo.UsuarioCPFLider !== usuarioCPF) {
+    if (grupo.UsuarioGUIDLider !== usuarioGUID) {
       throw new ErrorResponse(403, 'Apenas o líder pode atualizar o grupo');
     }
 
@@ -183,7 +184,7 @@ export default class GrupoProjetoService {
       await this.#historicoService.registrar({
         GrupoProjetoGUID: grupoGUID,
         HistoricoTipo: 'MudancaVisibilidade',
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         HistoricoDetalhes: { de: grupo.GrupoProjetoVisibilidade, para: data.GrupoProjetoVisibilidade }
       });
     }
@@ -210,7 +211,6 @@ export default class GrupoProjetoService {
   entrarGrupo = async (grupoGUID: string, usuarioGUID: string): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.entrarGrupo()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -222,22 +222,22 @@ export default class GrupoProjetoService {
 
     await this.#validarProjetoAbertoParaInscricao(grupo.ProjetoGUID);
 
-    const elegivel = await this.#projetoDAO.usuarioElegivel(grupo.ProjetoGUID, usuarioCPF);
+    const elegivel = await this.#projetoDAO.usuarioElegivel(grupo.ProjetoGUID, usuarioGUID);
     if (!elegivel) {
       throw new ErrorResponse(403, 'Você não é elegível para participar deste projeto');
     }
 
-    const jaPertence = await this.#grupoProjetoDAO.usuarioPertenceAoGrupo(usuarioCPF, grupoGUID);
+    const jaPertence = await this.#grupoProjetoDAO.usuarioPertenceAoGrupo(usuarioGUID, grupoGUID);
     if (jaPertence) {
       throw new ErrorResponse(400, 'Você já é membro deste grupo');
     }
 
-    const jaParticipaDoProjeto = await this.#usuarioXGrupoDAO.contarParticipacoesNoProjeto(usuarioCPF, grupo.ProjetoGUID);
+    const jaParticipaDoProjeto = await this.#usuarioXGrupoDAO.contarParticipacoesNoProjeto(usuarioGUID, grupo.ProjetoGUID);
     if (jaParticipaDoProjeto > 0) {
       throw new ErrorResponse(409, 'Você já participa de outro grupo neste projeto');
     }
 
-    await this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, usuarioCPF);
+    await this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, usuarioGUID);
 
     return { mensagem: 'Você entrou no grupo com sucesso' };
   };
@@ -257,18 +257,18 @@ export default class GrupoProjetoService {
    */
   entrarNoGrupoComLimiteDeVagas = async (
     grupoGUID: string,
-    usuarioCPF: string,
+    usuarioGUID: string,
     executor?: Pool | PoolConnection,
-    atorCPFOverride?: string
+    atorGUIDOverride?: string
   ): Promise<void> => {
-    return this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, usuarioCPF, executor, atorCPFOverride);
+    return this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, usuarioGUID, executor, atorGUIDOverride);
   };
 
   #entrarNoGrupoComLimiteDeVagas = async (
     grupoGUID: string,
-    usuarioCPF: string,
+    usuarioGUID: string,
     executor?: Pool | PoolConnection,
-    atorCPFOverride?: string
+    atorGUIDOverride?: string
   ): Promise<void> => {
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
@@ -285,30 +285,29 @@ export default class GrupoProjetoService {
       throw new ErrorResponse(400, 'Grupo já atingiu o limite máximo de integrantes');
     }
 
-    await this.#usuarioXGrupoDAO.create({ GrupoProjetoGUID: grupoGUID, UsuarioCPF: usuarioCPF }, executor);
+    await this.#usuarioXGrupoDAO.create({ GrupoProjetoGUID: grupoGUID, UsuarioGUID: usuarioGUID }, executor);
 
     await this.#historicoService.registrar({
       GrupoProjetoGUID: grupoGUID,
       HistoricoTipo: 'Entrada',
-      UsuarioCPFAtor: usuarioCPF,
-      UsuarioCPFAlvo: usuarioCPF
+      UsuarioGUIDAtor: usuarioGUID,
+      UsuarioCPFAlvo: await this.#resolverCPFAlvo(usuarioGUID)
     }, executor);
 
     // Auditoria: fire-and-forget, fora da transação do `executor` (registro
     // de auditoria é best-effort, não pode travar/participar do commit
-    // principal — ver AuditoriaService.registrar()). `atorCPFOverride`
+    // principal — ver AuditoriaService.registrar()). `atorGUIDOverride`
     // existe pra ADICIONAR MEMBRO diretamente (adicionarMembro), onde quem
-    // executa a ação (atorCPF) é diferente de quem entra no grupo
-    // (usuarioCPF) — sem isso a auditoria atribuiria erroneamente a ação ao
-    // membro adicionado em vez de a quem adicionou.
-    const atorDaEntrada = await this.#usuarioDAO.findByCPF(atorCPFOverride ?? usuarioCPF);
-    if (atorDaEntrada) void getAuditoriaService().registrar({
+    // executa a ação (ator) é diferente de quem entra no grupo (usuarioGUID)
+    // — sem isso a auditoria atribuiria erroneamente a ação ao membro
+    // adicionado em vez de a quem adicionou.
+    void getAuditoriaService().registrar({
       EscolaGUID: projeto.EscolaGUID,
-      UsuarioGUIDAtor: atorDaEntrada.UsuarioGUID,
+      UsuarioGUIDAtor: atorGUIDOverride ?? usuarioGUID,
       AcaoTipo: 'Create',
       EntidadeTipo: 'grupoprojeto',
       EntidadeGUID: grupoGUID,
-      EntidadeDescricao: `${usuarioCPF} entrou no grupo do projeto "${projeto.ProjetoTitulo}"`,
+      EntidadeDescricao: `${usuarioGUID} entrou no grupo do projeto "${projeto.ProjetoTitulo}"`,
       CategoriaAuditoriaId: 1,
     });
   };
@@ -321,7 +320,6 @@ export default class GrupoProjetoService {
   sairGrupo = async (grupoGUID: string, usuarioGUID: string): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.sairGrupo()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -329,7 +327,7 @@ export default class GrupoProjetoService {
 
     const projeto = await this.#projetoDAO.findById(grupo.ProjetoGUID);
 
-    if (grupo.UsuarioCPFLider === usuarioCPF) {
+    if (grupo.UsuarioGUIDLider === usuarioGUID) {
       const totalMembros = await this.#grupoProjetoDAO.contarMembros(grupoGUID);
       if (totalMembros > 1) {
         throw new ErrorResponse(400, 'Transfira a liderança para outro membro antes de sair do grupo');
@@ -352,18 +350,18 @@ export default class GrupoProjetoService {
       return { mensagem: 'Grupo dissolvido — você era o único integrante' };
     }
 
-    const isMembro = await this.#usuarioXGrupoDAO.isMembroNaoLider(usuarioCPF, grupoGUID);
+    const isMembro = await this.#usuarioXGrupoDAO.isMembroNaoLider(usuarioGUID, grupoGUID);
     if (!isMembro) {
       throw new ErrorResponse(404, 'Você não é membro deste grupo');
     }
 
-    await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, usuarioCPF);
+    await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, usuarioGUID);
 
     await this.#historicoService.registrar({
       GrupoProjetoGUID: grupoGUID,
       HistoricoTipo: 'Saida',
-      UsuarioCPFAtor: usuarioCPF,
-      UsuarioCPFAlvo: usuarioCPF
+      UsuarioGUIDAtor: usuarioGUID,
+      UsuarioCPFAlvo: await this.#resolverCPFAlvo(usuarioGUID)
     });
 
     if (projeto) {
@@ -387,12 +385,11 @@ export default class GrupoProjetoService {
    */
   adicionarMembro = async (
     grupoGUID: string,
-    membroCPF: string,
+    membroGUID: string,
     atorGUID: string
   ): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.adicionarMembro()');
 
-    const atorCPF = await this.#resolverCPFAtor(atorGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -403,26 +400,26 @@ export default class GrupoProjetoService {
       throw new ErrorResponse(404, 'Projeto não encontrado');
     }
 
-    if (projeto.UsuarioCPFCriador !== atorCPF) {
+    if (projeto.UsuarioGUIDCriador !== atorGUID) {
       throw new ErrorResponse(403, 'Apenas o criador do projeto pode adicionar membros diretamente');
     }
 
-    const elegivel = await this.#projetoDAO.usuarioElegivel(grupo.ProjetoGUID, membroCPF);
+    const elegivel = await this.#projetoDAO.usuarioElegivel(grupo.ProjetoGUID, membroGUID);
     if (!elegivel) {
       throw new ErrorResponse(403, 'O aluno informado não é elegível para participar deste projeto');
     }
 
-    const jaPertence = await this.#grupoProjetoDAO.usuarioPertenceAoGrupo(membroCPF, grupoGUID);
+    const jaPertence = await this.#grupoProjetoDAO.usuarioPertenceAoGrupo(membroGUID, grupoGUID);
     if (jaPertence) {
       throw new ErrorResponse(400, 'Usuário já é membro deste grupo');
     }
 
-    const jaParticipaDoProjeto = await this.#usuarioXGrupoDAO.contarParticipacoesNoProjeto(membroCPF, grupo.ProjetoGUID);
+    const jaParticipaDoProjeto = await this.#usuarioXGrupoDAO.contarParticipacoesNoProjeto(membroGUID, grupo.ProjetoGUID);
     if (jaParticipaDoProjeto > 0) {
       throw new ErrorResponse(409, 'O aluno já participa de outro grupo neste projeto');
     }
 
-    await this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, membroCPF, undefined, atorCPF);
+    await this.#entrarNoGrupoComLimiteDeVagas(grupoGUID, membroGUID, undefined, atorGUID);
 
     return { mensagem: 'Membro adicionado com sucesso' };
   };
@@ -434,12 +431,10 @@ export default class GrupoProjetoService {
    */
   expulsarMembro = async (
     grupoGUID: string,
-    membroCPF: string,
+    membroGUID: string,
     atorGUID: string
-  ): Promise<{ mensagem: string; novoLiderCPF?: string; grupoDissolvido?: boolean }> => {
+  ): Promise<{ mensagem: string; novoLiderGUID?: string; grupoDissolvido?: boolean }> => {
     console.log('🟣 GrupoProjetoService.expulsarMembro()');
-
-    const atorCPF = await this.#resolverCPFAtor(atorGUID);
 
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
@@ -457,19 +452,19 @@ export default class GrupoProjetoService {
         throw new ErrorResponse(404, 'Projeto não encontrado');
       }
 
-      const ehLider = grupo.UsuarioCPFLider === atorCPF;
-      const ehCriadorDoProjeto = projeto.UsuarioCPFCriador === atorCPF;
+      const ehLider = grupo.UsuarioGUIDLider === atorGUID;
+      const ehCriadorDoProjeto = projeto.UsuarioGUIDCriador === atorGUID;
 
       if (!ehLider && !ehCriadorDoProjeto) {
         throw new ErrorResponse(403, 'Apenas o líder do grupo ou o criador do projeto podem expulsar membros');
       }
 
-      if (membroCPF === atorCPF) {
+      if (membroGUID === atorGUID) {
         throw new ErrorResponse(400, 'Você não pode expulsar a si mesmo — use a ação de sair do grupo');
       }
 
       // Expulsando o líder: só o criador do projeto pode fazer isso.
-      if (membroCPF === grupo.UsuarioCPFLider) {
+      if (membroGUID === grupo.UsuarioGUIDLider) {
         if (!ehCriadorDoProjeto) {
           throw new ErrorResponse(403, 'Apenas o criador do projeto pode remover o líder do grupo');
         }
@@ -480,7 +475,7 @@ export default class GrupoProjetoService {
           await this.#grupoProjetoDAO.delete(grupoGUID);
           await connection.commit();
 
-          this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroCPF, grupo.GrupoProjetoGUID).catch((error) => {
+          this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroGUID, grupo.GrupoProjetoGUID).catch((error) => {
             console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
           });
 
@@ -490,27 +485,27 @@ export default class GrupoProjetoService {
             AcaoTipo: 'Delete',
             EntidadeTipo: 'grupoprojeto',
             EntidadeGUID: grupoGUID,
-            EntidadeDescricao: `Líder ${membroCPF} removido — grupo dissolvido`,
+            EntidadeDescricao: `Líder ${membroGUID} removido — grupo dissolvido`,
             CategoriaAuditoriaId: 1,
           });
 
           return { mensagem: 'Líder removido — grupo dissolvido (não havia outros membros)', grupoDissolvido: true };
         }
 
-        await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, proximoLider.UsuarioCPF);
-        await this.#grupoProjetoDAO.update(grupoGUID, { UsuarioCPFLider: proximoLider.UsuarioCPF });
+        await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, proximoLider.UsuarioGUID);
+        await this.#grupoProjetoDAO.update(grupoGUID, { UsuarioGUIDLider: proximoLider.UsuarioGUID });
 
         await this.#historicoService.registrar({
           GrupoProjetoGUID: grupoGUID,
           HistoricoTipo: 'Expulsao',
-          UsuarioCPFAtor: atorCPF,
-          UsuarioCPFAlvo: membroCPF,
-          HistoricoDetalhes: { novoLiderCPF: proximoLider.UsuarioCPF }
+          UsuarioGUIDAtor: atorGUID,
+          UsuarioCPFAlvo: await this.#resolverCPFAlvo(membroGUID),
+          HistoricoDetalhes: { novoLiderGUID: proximoLider.UsuarioGUID }
         });
 
         await connection.commit();
 
-        this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroCPF, grupoGUID).catch((error) => {
+        this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroGUID, grupoGUID).catch((error) => {
           console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
         });
 
@@ -520,31 +515,31 @@ export default class GrupoProjetoService {
           AcaoTipo: 'Delete',
           EntidadeTipo: 'grupoprojeto',
           EntidadeGUID: grupoGUID,
-          EntidadeDescricao: `Líder ${membroCPF} removido — liderança transferida a ${proximoLider.UsuarioCPF}`,
+          EntidadeDescricao: `Líder ${membroGUID} removido — liderança transferida a ${proximoLider.UsuarioGUID}`,
           CategoriaAuditoriaId: 1,
         });
 
-        return { mensagem: 'Líder removido — liderança transferida ao membro mais antigo', novoLiderCPF: proximoLider.UsuarioCPF };
+        return { mensagem: 'Líder removido — liderança transferida ao membro mais antigo', novoLiderGUID: proximoLider.UsuarioGUID };
       }
 
       // Expulsando um membro comum
-      const isMembro = await this.#usuarioXGrupoDAO.isMembroNaoLider(membroCPF, grupoGUID);
+      const isMembro = await this.#usuarioXGrupoDAO.isMembroNaoLider(membroGUID, grupoGUID);
       if (!isMembro) {
         throw new ErrorResponse(404, 'Usuário não é membro deste grupo');
       }
 
-      await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, membroCPF);
+      await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, membroGUID);
 
       await this.#historicoService.registrar({
         GrupoProjetoGUID: grupoGUID,
         HistoricoTipo: 'Expulsao',
-        UsuarioCPFAtor: atorCPF,
-        UsuarioCPFAlvo: membroCPF
+        UsuarioGUIDAtor: atorGUID,
+        UsuarioCPFAlvo: await this.#resolverCPFAlvo(membroGUID)
       });
 
       await connection.commit();
 
-      this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroCPF, grupoGUID).catch((error) => {
+      this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroGUID, grupoGUID).catch((error) => {
         console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
       });
 
@@ -554,7 +549,7 @@ export default class GrupoProjetoService {
         AcaoTipo: 'Delete',
         EntidadeTipo: 'grupoprojeto',
         EntidadeGUID: grupoGUID,
-        EntidadeDescricao: `Membro ${membroCPF} expulso do grupo`,
+        EntidadeDescricao: `Membro ${membroGUID} expulso do grupo`,
         CategoriaAuditoriaId: 1,
       });
 
@@ -571,15 +566,12 @@ export default class GrupoProjetoService {
   #notificarRemovidoGrupo = async (
     escolaGUID: string,
     projetoTitulo: string,
-    membroCPF: string,
+    membroGUID: string,
     grupoGUID: string
   ): Promise<void> => {
-    const membro = await this.#usuarioDAO.findByCPF(membroCPF);
-    if (!membro) return;
-
     await getNotificacaoService().disparar({
       tipoSlug: 'removido_grupo_projeto',
-      destinatarios: [membro.UsuarioGUID],
+      destinatarios: [membroGUID],
       escolaGUID,
       titulo: `Você foi removido do grupo do projeto "${projetoTitulo}"`,
       entidadeTipo: 'grupoprojeto',
@@ -592,12 +584,10 @@ export default class GrupoProjetoService {
    */
   transferirLideranca = async (
     grupoGUID: string,
-    novoLiderCPF: string,
+    novoLiderGUID: string,
     liderAtualGUID: string
   ): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.transferirLideranca()');
-
-    const liderAtualCPF = await this.#resolverCPFAtor(liderAtualGUID);
 
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
@@ -610,24 +600,24 @@ export default class GrupoProjetoService {
         throw new ErrorResponse(404, 'Grupo não encontrado');
       }
 
-      if (grupo.UsuarioCPFLider !== liderAtualCPF) {
+      if (grupo.UsuarioGUIDLider !== liderAtualGUID) {
         throw new ErrorResponse(403, 'Apenas o líder pode transferir a liderança');
       }
 
-      const isMembroNaoLider = await this.#usuarioXGrupoDAO.isMembroNaoLider(novoLiderCPF, grupoGUID);
+      const isMembroNaoLider = await this.#usuarioXGrupoDAO.isMembroNaoLider(novoLiderGUID, grupoGUID);
       if (!isMembroNaoLider) {
         throw new ErrorResponse(400, 'Novo líder deve ser um membro do grupo');
       }
 
-      await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, novoLiderCPF);
-      await this.#usuarioXGrupoDAO.create({ GrupoProjetoGUID: grupoGUID, UsuarioCPF: liderAtualCPF });
-      await this.#grupoProjetoDAO.update(grupoGUID, { UsuarioCPFLider: novoLiderCPF });
+      await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, novoLiderGUID);
+      await this.#usuarioXGrupoDAO.create({ GrupoProjetoGUID: grupoGUID, UsuarioGUID: liderAtualGUID });
+      await this.#grupoProjetoDAO.update(grupoGUID, { UsuarioGUIDLider: novoLiderGUID });
 
       await this.#historicoService.registrar({
         GrupoProjetoGUID: grupoGUID,
         HistoricoTipo: 'TransferenciaLider',
-        UsuarioCPFAtor: liderAtualCPF,
-        UsuarioCPFAlvo: novoLiderCPF
+        UsuarioGUIDAtor: liderAtualGUID,
+        UsuarioCPFAlvo: await this.#resolverCPFAlvo(novoLiderGUID)
       });
 
       await connection.commit();
@@ -640,7 +630,7 @@ export default class GrupoProjetoService {
           AcaoTipo: 'Update',
           EntidadeTipo: 'grupoprojeto',
           EntidadeGUID: grupoGUID,
-          EntidadeDescricao: `Liderança transferida para ${novoLiderCPF}`,
+          EntidadeDescricao: `Liderança transferida para ${novoLiderGUID}`,
           CategoriaAuditoriaId: 1,
         });
       }
@@ -664,8 +654,6 @@ export default class GrupoProjetoService {
   ): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.atualizarPontuacao()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-
     if (isNaN(pontuacao) || pontuacao < 0) {
       throw new ErrorResponse(400, 'GrupoProjetoPontuacao deve ser um número >= 0');
     }
@@ -680,7 +668,7 @@ export default class GrupoProjetoService {
       throw new ErrorResponse(404, 'Projeto não encontrado');
     }
 
-    if (projeto.UsuarioCPFCriador !== usuarioCPF) {
+    if (projeto.UsuarioGUIDCriador !== usuarioGUID) {
       throw new ErrorResponse(403, 'Apenas o criador do projeto pode atribuir pontuação');
     }
 
@@ -689,7 +677,7 @@ export default class GrupoProjetoService {
     await this.#historicoService.registrar({
       GrupoProjetoGUID: grupoGUID,
       HistoricoTipo: 'PontuacaoAtribuida',
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       HistoricoDetalhes: { pontuacao }
     });
 
@@ -703,12 +691,7 @@ export default class GrupoProjetoService {
       CategoriaAuditoriaId: 1,
     });
 
-    const membrosUsuarios = await Promise.all(
-      grupo.Membros.map((m) => this.#usuarioDAO.findByCPF(m.UsuarioCPF))
-    );
-    const destinatarios = membrosUsuarios
-      .filter((u): u is NonNullable<typeof u> => u !== null)
-      .map((u) => u.UsuarioGUID);
+    const destinatarios = grupo.Membros.map((m) => m.UsuarioGUID);
     getNotificacaoService().disparar({
       tipoSlug: 'projeto_pontuacao_atribuida',
       destinatarios,

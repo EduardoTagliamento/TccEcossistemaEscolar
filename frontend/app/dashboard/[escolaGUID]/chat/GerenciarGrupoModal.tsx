@@ -10,7 +10,7 @@ import styles from './GerenciarGrupoModal.module.css';
 interface GerenciarGrupoModalProps {
   aberto: boolean;
   conversa: ConversaAPI.ConversaDetalhe;
-  meuCPF: string;
+  meuGUID: string;
   meuPapelNoGrupo: ConversaAPI.MembroFuncao | null;
   isCoordenacaoOuDirecao: boolean;
   onClose: () => void;
@@ -53,13 +53,13 @@ function rotuloFuncao(funcao: ConversaAPI.MembroFuncao): string {
 export default function GerenciarGrupoModal({
   aberto,
   conversa,
-  meuCPF,
+  meuGUID,
   meuPapelNoGrupo,
   isCoordenacaoOuDirecao,
   onClose,
   onAtualizado,
 }: GerenciarGrupoModalProps) {
-  const [cpfEmAcao, setCpfEmAcao] = useState<string | null>(null);
+  const [guidEmAcao, setGuidEmAcao] = useState<string | null>(null);
   const [erro, setErro] = useState('');
 
   if (!aberto) return null;
@@ -68,8 +68,8 @@ export default function GerenciarGrupoModal({
   const souRepresentante = meuPapelNoGrupo === 'Representante';
   const souLiderTarefa = !ehTurma && meuPapelNoGrupo === 'Lider';
 
-  const executar = async (cpf: string, acao: () => Promise<void>) => {
-    setCpfEmAcao(cpf);
+  const executar = async (guid: string, acao: () => Promise<void>) => {
+    setGuidEmAcao(guid);
     setErro('');
     try {
       await acao();
@@ -77,26 +77,31 @@ export default function GerenciarGrupoModal({
     } catch (erroAcao: any) {
       setErro(erroAcao?.message || 'Erro ao executar ação');
     } finally {
-      setCpfEmAcao(null);
+      setGuidEmAcao(null);
     }
   };
 
-  const handleDefinirRepresentante = (cpf: string) =>
-    executar(cpf, () => ConversaAPI.definirRepresentante(conversa.ConversaGUID, cpf));
+  const handleDefinirRepresentante = (guid: string) =>
+    executar(guid, () => ConversaAPI.definirRepresentante(conversa.ConversaGUID, guid));
 
-  const handleRemoverRepresentante = (cpf: string) =>
-    executar(cpf, () => ConversaAPI.removerRepresentante(conversa.ConversaGUID));
+  const handleRemoverRepresentante = (guid: string) =>
+    executar(guid, () => ConversaAPI.removerRepresentante(conversa.ConversaGUID));
 
-  const handleDefinirVice = (cpf: string) =>
-    executar(cpf, () => ConversaAPI.definirViceRepresentante(conversa.ConversaGUID, cpf));
+  const handleDefinirVice = (guid: string) =>
+    executar(guid, () => ConversaAPI.definirViceRepresentante(conversa.ConversaGUID, guid));
 
-  const handleRemoverVice = (cpf: string) =>
-    executar(cpf, () => ConversaAPI.removerViceRepresentante(conversa.ConversaGUID, cpf));
+  const handleRemoverVice = (guid: string) =>
+    executar(guid, () => ConversaAPI.removerViceRepresentante(conversa.ConversaGUID, guid));
 
-  const handleExpulsar = (cpf: string, nome: string) => {
+  // Nota: usuarioxgrupotarefa (tabela dona de GrupoTarefaAPI.expulsarMembro)
+  // também teve sua FK migrada pra UsuarioGUID na mesma migração de schema —
+  // o cluster de grupos/projetos/tarefas está atualizando esse endpoint em
+  // paralelo para aceitar GUID. conversa_grupo_membro não guarda mais CPF,
+  // então GUID é o único identificador disponível aqui.
+  const handleExpulsar = (guid: string, nome: string) => {
     if (!conversa.ConversaGrupoRefGUID) return;
     if (!confirm(`Expulsar ${nome} do grupo? Essa pessoa passa a ter um grupo próprio.`)) return;
-    return executar(cpf, () => GrupoTarefaAPI.expulsarMembro(conversa.ConversaGrupoRefGUID!, cpf));
+    return executar(guid, () => GrupoTarefaAPI.expulsarMembro(conversa.ConversaGrupoRefGUID!, guid));
   };
 
   return (
@@ -113,11 +118,11 @@ export default function GerenciarGrupoModal({
 
         <div className={styles.lista}>
           {(conversa.Membros || []).map((membro) => {
-            const ehEuMesmo = membro.UsuarioCPF === meuCPF;
-            const emAcao = cpfEmAcao === membro.UsuarioCPF;
+            const ehEuMesmo = membro.UsuarioGUID === meuGUID;
+            const emAcao = guidEmAcao === membro.UsuarioGUID;
 
             return (
-              <div key={membro.UsuarioCPF} className={styles.membroItem}>
+              <div key={membro.UsuarioGUID} className={styles.membroItem}>
                 <span className={styles.avatar}>{obterIniciais(membro.UsuarioNome)}</span>
                 <span className={styles.membroInfo}>
                   <span className={styles.membroNome}>
@@ -139,11 +144,11 @@ export default function GerenciarGrupoModal({
                     <>
                       {ehTurma && isCoordenacaoOuDirecao && membro.MembroFuncao !== 'Lider' && (
                         membro.MembroFuncao === 'Representante' ? (
-                          <button type="button" onClick={() => handleRemoverRepresentante(membro.UsuarioCPF)}>
+                          <button type="button" onClick={() => handleRemoverRepresentante(membro.UsuarioGUID)}>
                             Remover representante
                           </button>
                         ) : (
-                          <button type="button" onClick={() => handleDefinirRepresentante(membro.UsuarioCPF)}>
+                          <button type="button" onClick={() => handleDefinirRepresentante(membro.UsuarioGUID)}>
                             Definir representante
                           </button>
                         )
@@ -154,11 +159,11 @@ export default function GerenciarGrupoModal({
                         membro.MembroFuncao !== 'Representante' &&
                         membro.MembroFuncao !== 'Lider' &&
                         (membro.MembroFuncao === 'Vice-Representante' ? (
-                          <button type="button" onClick={() => handleRemoverVice(membro.UsuarioCPF)}>
+                          <button type="button" onClick={() => handleRemoverVice(membro.UsuarioGUID)}>
                             Remover vice
                           </button>
                         ) : (
-                          <button type="button" onClick={() => handleDefinirVice(membro.UsuarioCPF)}>
+                          <button type="button" onClick={() => handleDefinirVice(membro.UsuarioGUID)}>
                             Definir vice
                           </button>
                         ))}
@@ -167,7 +172,7 @@ export default function GerenciarGrupoModal({
                         <button
                           type="button"
                           className={styles.acaoPerigo}
-                          onClick={() => handleExpulsar(membro.UsuarioCPF, membro.UsuarioNome)}
+                          onClick={() => handleExpulsar(membro.UsuarioGUID, membro.UsuarioNome)}
                           aria-label={`Expulsar ${membro.UsuarioNome}`}
                         >
                           <Icon name="user-x" size={14} /> Expulsar

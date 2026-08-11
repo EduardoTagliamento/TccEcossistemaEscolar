@@ -84,7 +84,7 @@ export class TarefaAcademicaNotaScheduler {
         await this.#tarefaMatriculaDAO.update(item.TarefaMatriculaGUID, {
           TarefaNota: 0,
           TarefaAvaliadoEm: new Date(),
-          TarefaAvaliadoPorCPF: null,
+          TarefaAvaliadoPorGUID: null,
         });
 
         const tarefa = await this.#tarefaDAO.findById(item.TarefaGUID);
@@ -96,7 +96,7 @@ export class TarefaAcademicaNotaScheduler {
 
         await getNotificacaoService().disparar({
           tipoSlug: "tarefa_avaliada",
-          destinatarios: [item.UsuarioCPF],
+          destinatarios: [item.UsuarioGUID],
           escolaGUID: turma.EscolaGUID,
           titulo: `Prazo de "${tarefa.TarefaTitulo}" venceu sem entrega — nota 0 atribuída automaticamente`,
           entidadeTipo: "tarefa",
@@ -105,8 +105,8 @@ export class TarefaAcademicaNotaScheduler {
         });
 
         // Sem registro em `registroauditoria` aqui — o schema exige um ator
-        // humano (`UsuarioCPFAtor` não é nullable) e essa é uma ação de
-        // sistema. O rastro fica no próprio dado: `TarefaAvaliadoPorCPF IS
+        // humano (`UsuarioGUIDAtor` não é nullable) e essa é uma ação de
+        // sistema. O rastro fica no próprio dado: `TarefaAvaliadoPorGUID IS
         // NULL` + `TarefaAvaliadoEm` já distingue "automático" de "manual".
         zeradas++;
       } catch (error) {
@@ -146,7 +146,7 @@ export class TarefaAcademicaNotaScheduler {
           if (turma) {
             await getNotificacaoService().disparar({
               tipoSlug: "tarefa_avaliada",
-              destinatarios: [item.UsuarioCPF],
+              destinatarios: [item.UsuarioGUID],
               escolaGUID: turma.EscolaGUID,
               titulo: `Prazo de "${tarefa.TarefaTitulo}" venceu — as questões em branco foram zeradas automaticamente`,
               entidadeTipo: "tarefa",
@@ -187,7 +187,7 @@ export class TarefaAcademicaNotaScheduler {
     await this.#tarefaMatriculaDAO.update(TarefaMatriculaGUID, {
       TarefaNota: notaFinal,
       TarefaAvaliadoEm: new Date(),
-      TarefaAvaliadoPorCPF: await this.#respostaDAO.buscarAvaliadorHumano(TarefaMatriculaGUID),
+      TarefaAvaliadoPorGUID: await this.#respostaDAO.buscarAvaliadorHumano(TarefaMatriculaGUID),
     });
   };
 }

@@ -11,7 +11,7 @@ export type Executor = Pool | PoolConnection;
 
 interface UsuarioXGrupoProjetoRow extends RowDataPacket {
   GrupoProjetoGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   DataEntrada: Date;
 }
 
@@ -28,14 +28,14 @@ export class UsuarioXGrupoProjetoDAO {
     console.log('🟢 UsuarioXGrupoProjetoDAO.create()');
 
     const query = `
-      INSERT INTO usuarioxgrupoprojeto (GrupoProjetoGUID, UsuarioCPF)
+      INSERT INTO usuarioxgrupoprojeto (GrupoProjetoGUID, UsuarioGUID)
       VALUES (?, ?)
     `;
 
     const pool = executor ?? await this.#database.getPool();
-    await pool.execute(query, [data.GrupoProjetoGUID, data.UsuarioCPF]);
+    await pool.execute(query, [data.GrupoProjetoGUID, data.UsuarioGUID]);
 
-    const vinculoCriado = await this.findByGrupoAndUsuario(data.GrupoProjetoGUID, data.UsuarioCPF, executor);
+    const vinculoCriado = await this.findByGrupoAndUsuario(data.GrupoProjetoGUID, data.UsuarioGUID, executor);
     if (!vinculoCriado) {
       throw new Error('Erro ao buscar vínculo recém-criado');
     }
@@ -43,16 +43,16 @@ export class UsuarioXGrupoProjetoDAO {
     return vinculoCriado;
   }
 
-  async findByGrupoAndUsuario(grupoGUID: string, usuarioCPF: string, executor?: Executor): Promise<UsuarioXGrupoProjeto | null> {
+  async findByGrupoAndUsuario(grupoGUID: string, usuarioGUID: string, executor?: Executor): Promise<UsuarioXGrupoProjeto | null> {
     console.log('🟢 UsuarioXGrupoProjetoDAO.findByGrupoAndUsuario()');
 
     const query = `
       SELECT * FROM usuarioxgrupoprojeto
-      WHERE GrupoProjetoGUID = ? AND UsuarioCPF = ?
+      WHERE GrupoProjetoGUID = ? AND UsuarioGUID = ?
     `;
 
     const pool = executor ?? await this.#database.getPool();
-    const [rows] = await pool.execute<UsuarioXGrupoProjetoRow[]>(query, [grupoGUID, usuarioCPF]);
+    const [rows] = await pool.execute<UsuarioXGrupoProjetoRow[]>(query, [grupoGUID, usuarioGUID]);
 
     return rows.length > 0 ? this.mapRow(rows[0]) : null;
   }
@@ -74,17 +74,17 @@ export class UsuarioXGrupoProjetoDAO {
   }
 
   // READ - FIND BY USUARIO (todos os grupos de projeto que o usuário integra)
-  async findByUsuario(usuarioCPF: string): Promise<UsuarioXGrupoProjeto[]> {
+  async findByUsuario(usuarioGUID: string): Promise<UsuarioXGrupoProjeto[]> {
     console.log('🟢 UsuarioXGrupoProjetoDAO.findByUsuario()');
 
     const query = `
       SELECT * FROM usuarioxgrupoprojeto
-      WHERE UsuarioCPF = ?
+      WHERE UsuarioGUID = ?
       ORDER BY DataEntrada DESC
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<UsuarioXGrupoProjetoRow[]>(query, [usuarioCPF]);
+    const [rows] = await pool.execute<UsuarioXGrupoProjetoRow[]>(query, [usuarioGUID]);
 
     return rows.map((row) => this.mapRow(row));
   }
@@ -111,16 +111,16 @@ export class UsuarioXGrupoProjetoDAO {
   }
 
   // DELETE - Remover membro do grupo
-  async deleteByGrupoAndUsuario(grupoGUID: string, usuarioCPF: string): Promise<boolean> {
+  async deleteByGrupoAndUsuario(grupoGUID: string, usuarioGUID: string): Promise<boolean> {
     console.log('🟢 UsuarioXGrupoProjetoDAO.deleteByGrupoAndUsuario()');
 
     const query = `
       DELETE FROM usuarioxgrupoprojeto
-      WHERE GrupoProjetoGUID = ? AND UsuarioCPF = ?
+      WHERE GrupoProjetoGUID = ? AND UsuarioGUID = ?
     `;
 
     const pool = await this.#database.getPool();
-    const [result] = await pool.execute<ResultSetHeader>(query, [grupoGUID, usuarioCPF]);
+    const [result] = await pool.execute<ResultSetHeader>(query, [grupoGUID, usuarioGUID]);
 
     return result.affectedRows > 0;
   }
@@ -138,38 +138,38 @@ export class UsuarioXGrupoProjetoDAO {
   }
 
   // AUXILIAR - Verificar se usuário é membro (não-líder) do grupo
-  async isMembroNaoLider(usuarioCPF: string, grupoGUID: string): Promise<boolean> {
+  async isMembroNaoLider(usuarioGUID: string, grupoGUID: string): Promise<boolean> {
     console.log('🟢 UsuarioXGrupoProjetoDAO.isMembroNaoLider()');
 
     const query = `
       SELECT 1 FROM usuarioxgrupoprojeto
-      WHERE GrupoProjetoGUID = ? AND UsuarioCPF = ?
+      WHERE GrupoProjetoGUID = ? AND UsuarioGUID = ?
       LIMIT 1
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioGUID]);
 
     return rows.length > 0;
   }
 
   // AUXILIAR - Contar quantos grupos ativos do projeto o usuário já integra (líder ou membro)
-  async contarParticipacoesNoProjeto(usuarioCPF: string, projetoGUID: string): Promise<number> {
+  async contarParticipacoesNoProjeto(usuarioGUID: string, projetoGUID: string): Promise<number> {
     console.log('🟢 UsuarioXGrupoProjetoDAO.contarParticipacoesNoProjeto()');
 
     const query = `
       SELECT COUNT(*) AS total FROM (
         SELECT GrupoProjetoGUID FROM grupoprojeto
-        WHERE ProjetoGUID = ? AND UsuarioCPFLider = ?
+        WHERE ProjetoGUID = ? AND UsuarioGUIDLider = ?
         UNION ALL
         SELECT uxgp.GrupoProjetoGUID FROM usuarioxgrupoprojeto uxgp
         INNER JOIN grupoprojeto gp ON gp.GrupoProjetoGUID = uxgp.GrupoProjetoGUID
-        WHERE gp.ProjetoGUID = ? AND uxgp.UsuarioCPF = ?
+        WHERE gp.ProjetoGUID = ? AND uxgp.UsuarioGUID = ?
       ) participacoes
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [projetoGUID, usuarioCPF, projetoGUID, usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [projetoGUID, usuarioGUID, projetoGUID, usuarioGUID]);
 
     return (rows[0] as any).total;
   }
@@ -177,7 +177,7 @@ export class UsuarioXGrupoProjetoDAO {
   private mapRow(row: UsuarioXGrupoProjetoRow): UsuarioXGrupoProjeto {
     return {
       GrupoProjetoGUID: row.GrupoProjetoGUID,
-      UsuarioCPF: row.UsuarioCPF,
+      UsuarioGUID: row.UsuarioGUID,
       DataEntrada: row.DataEntrada
     };
   }

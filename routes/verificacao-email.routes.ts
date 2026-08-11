@@ -18,13 +18,13 @@ const verificacaoMiddleware = new VerificacaoEmailMiddleware();
 const verificacaoEmailRoutes = Router();
 
 /**
- * @route   POST /api/verificacao-email/solicitar/:UsuarioCPF
+ * @route   POST /api/verificacao-email/solicitar/:UsuarioGUID
  * @desc    Solicita código de verificação por email
- * @access  Public (usuário deve estar logado para ter CPF)
+ * @access  Public (usuário deve estar logado)
  */
 verificacaoEmailRoutes.post(
-  "/solicitar/:UsuarioCPF",
-  verificacaoMiddleware.validateCpfParam,
+  "/solicitar/:UsuarioGUID",
+  verificacaoMiddleware.validateGuidParam,
   verificacaoController.solicitarCodigo
 );
 
@@ -40,19 +40,19 @@ verificacaoEmailRoutes.post(
 );
 
 /**
- * @route   POST /api/verificacao-email/reenviar/:UsuarioCPF
+ * @route   POST /api/verificacao-email/reenviar/:UsuarioGUID
  * @desc    Reenvia código de verificação
- * @access  Public (usuário deve estar logado para ter CPF)
+ * @access  Public (usuário deve estar logado)
  */
 verificacaoEmailRoutes.post(
-  "/reenviar/:UsuarioCPF",
-  verificacaoMiddleware.validateCpfParam,
+  "/reenviar/:UsuarioGUID",
+  verificacaoMiddleware.validateGuidParam,
   verificacaoController.reenviarCodigo
 );
 
 /**
  * @route   POST /api/verificacao-email/reenviar
- * @desc    Reenvia código de verificação via body (UsuarioCPF ou email)
+ * @desc    Reenvia código de verificação via body (UsuarioGUID ou email)
  * @access  Public
  */
 verificacaoEmailRoutes.post(

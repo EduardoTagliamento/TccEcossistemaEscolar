@@ -14,7 +14,7 @@ type MembroFuncaoType = 'Membro' | 'Lider' | 'Representante' | 'Vice-Representan
 
 interface ConversaGrupoMembroRow extends RowDataPacket {
   ConversaGUID: string;
-  MembroUsuarioCPF: string;
+  MembroUsuarioGUID: string;
   MembroFuncao: MembroFuncaoType;
   MembroStatus: 'Ativo' | 'Inativo';
   MembroEntradaAt: Date;
@@ -82,26 +82,26 @@ export class ConversaGrupoDAO {
     );
   }
 
-  async addMembro(conversaGUID: string, usuarioCPF: string): Promise<void> {
+  async addMembro(conversaGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟢 ConversaGrupoDAO.addMembro()');
     const pool = await this.#database.getPool();
     // Upsert: se já existe (talvez inativo), reativa; se não existe, insere
     await pool.execute(
-      `INSERT INTO conversa_grupo_membro (ConversaGUID, MembroUsuarioCPF, MembroFuncao, MembroStatus, MembroEntradaAt, MembroSaidaAt)
+      `INSERT INTO conversa_grupo_membro (ConversaGUID, MembroUsuarioGUID, MembroFuncao, MembroStatus, MembroEntradaAt, MembroSaidaAt)
        VALUES (?, ?, 'Membro', 'Ativo', NOW(), NULL)
        ON DUPLICATE KEY UPDATE MembroStatus = 'Ativo', MembroSaidaAt = NULL, MembroEntradaAt = NOW()`,
-      [conversaGUID, usuarioCPF]
+      [conversaGUID, usuarioGUID]
     );
   }
 
-  async removeMembro(conversaGUID: string, usuarioCPF: string): Promise<void> {
+  async removeMembro(conversaGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟢 ConversaGrupoDAO.removeMembro()');
     const pool = await this.#database.getPool();
     await pool.execute(
       `UPDATE conversa_grupo_membro
        SET MembroStatus = 'Inativo', MembroSaidaAt = NOW()
-       WHERE ConversaGUID = ? AND MembroUsuarioCPF = ?`,
-      [conversaGUID, usuarioCPF]
+       WHERE ConversaGUID = ? AND MembroUsuarioGUID = ?`,
+      [conversaGUID, usuarioGUID]
     );
   }
 
@@ -120,14 +120,14 @@ export class ConversaGrupoDAO {
   // Rows cruas com nome do usuário via JOIN — só para exibição (não é a entidade ConversaGrupoMembro,
   // que espelha 1:1 a tabela conversa_grupo_membro e não tem coluna de nome).
   async findMembrosComNome(conversaGUID: string): Promise<
-    { MembroUsuarioCPF: string; UsuarioNome: string; MembroFuncao: MembroFuncaoType; MembroEntradaAt: Date }[]
+    { MembroUsuarioGUID: string; UsuarioNome: string; MembroFuncao: MembroFuncaoType; MembroEntradaAt: Date }[]
   > {
     console.log('🟢 ConversaGrupoDAO.findMembrosComNome()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
-      `SELECT cgm.MembroUsuarioCPF, u.UsuarioNome, cgm.MembroFuncao, cgm.MembroEntradaAt
+      `SELECT cgm.MembroUsuarioGUID, u.UsuarioNome, cgm.MembroFuncao, cgm.MembroEntradaAt
        FROM conversa_grupo_membro cgm
-       INNER JOIN usuario u ON u.UsuarioCPF = cgm.MembroUsuarioCPF
+       INNER JOIN usuario u ON u.UsuarioGUID = cgm.MembroUsuarioGUID
        WHERE cgm.ConversaGUID = ? AND cgm.MembroStatus = 'Ativo'
        ORDER BY cgm.MembroEntradaAt ASC`,
       [conversaGUID]
@@ -135,35 +135,35 @@ export class ConversaGrupoDAO {
     return rows as any[];
   }
 
-  async isMembro(conversaGUID: string, usuarioCPF: string): Promise<boolean> {
+  async isMembro(conversaGUID: string, usuarioGUID: string): Promise<boolean> {
     console.log('🟢 ConversaGrupoDAO.isMembro()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
       `SELECT 1 FROM conversa_grupo_membro
-       WHERE ConversaGUID = ? AND MembroUsuarioCPF = ? AND MembroStatus = 'Ativo'
+       WHERE ConversaGUID = ? AND MembroUsuarioGUID = ? AND MembroStatus = 'Ativo'
        LIMIT 1`,
-      [conversaGUID, usuarioCPF]
+      [conversaGUID, usuarioGUID]
     );
     return (rows as RowDataPacket[]).length > 0;
   }
 
-  async setFuncao(conversaGUID: string, usuarioCPF: string, funcao: MembroFuncaoType): Promise<void> {
+  async setFuncao(conversaGUID: string, usuarioGUID: string, funcao: MembroFuncaoType): Promise<void> {
     console.log('🟢 ConversaGrupoDAO.setFuncao()');
     const pool = await this.#database.getPool();
     await pool.execute(
       `UPDATE conversa_grupo_membro SET MembroFuncao = ?
-       WHERE ConversaGUID = ? AND MembroUsuarioCPF = ? AND MembroStatus = 'Ativo'`,
-      [funcao, conversaGUID, usuarioCPF]
+       WHERE ConversaGUID = ? AND MembroUsuarioGUID = ? AND MembroStatus = 'Ativo'`,
+      [funcao, conversaGUID, usuarioGUID]
     );
   }
 
-  async getFuncao(conversaGUID: string, usuarioCPF: string): Promise<MembroFuncaoType | null> {
+  async getFuncao(conversaGUID: string, usuarioGUID: string): Promise<MembroFuncaoType | null> {
     console.log('🟢 ConversaGrupoDAO.getFuncao()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
       `SELECT MembroFuncao FROM conversa_grupo_membro
-       WHERE ConversaGUID = ? AND MembroUsuarioCPF = ? AND MembroStatus = 'Ativo' LIMIT 1`,
-      [conversaGUID, usuarioCPF]
+       WHERE ConversaGUID = ? AND MembroUsuarioGUID = ? AND MembroStatus = 'Ativo' LIMIT 1`,
+      [conversaGUID, usuarioGUID]
     );
     const list = rows as RowDataPacket[];
     if (list.length === 0) return null;

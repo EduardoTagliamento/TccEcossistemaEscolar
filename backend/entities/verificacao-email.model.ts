@@ -5,11 +5,9 @@
  * - Armazenar códigos de verificação enviados por email
  * - Controlar expiração e uso único dos códigos
  */
-import { normalizeCPF } from "../utils/helpers/cpf.helper";
-
 export default class VerificacaoEmail {
   #VerificacaoId: number | null = null;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #VerificacaoCodigo!: string;
   #VerificacaoExpiresAt!: Date;
   #VerificacaoUsado: boolean = false;
@@ -37,13 +35,16 @@ export default class VerificacaoEmail {
     this.#VerificacaoId = value;
   }
 
-  // ========== CPF do Usuário ==========
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  // ========== GUID do Usuário ==========
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
-  set UsuarioCPF(value: string) {
-    this.#UsuarioCPF = normalizeCPF(value);
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia.");
+    }
+    this.#UsuarioGUID = value.trim();
   }
 
   // ========== Código de Verificação ==========

@@ -15,16 +15,15 @@ export function registerConversaHandlers(
   const { conversaDAO, mensagemService } = deps;
   const usuario = socket.data.usuario as {
     UsuarioGUID: string;
-    UsuarioCPF: string;
     UsuarioNome: string;
     UsuarioEmail: string;
   };
 
   // join_conversa: entra na room da conversa (valida pertencimento — grupo ou individual)
   socket.on('join_conversa', async ({ ConversaGUID }: { ConversaGUID: string }) => {
-    console.log(`🔵 [WS] join_conversa: ${usuario.UsuarioCPF} → ${ConversaGUID}`);
+    console.log(`🔵 [WS] join_conversa: ${usuario.UsuarioGUID} → ${ConversaGUID}`);
     try {
-      const isParticipante = await conversaDAO.isParticipante(ConversaGUID, usuario.UsuarioCPF);
+      const isParticipante = await conversaDAO.isParticipante(ConversaGUID, usuario.UsuarioGUID);
       if (!isParticipante) {
         socket.emit('erro', { message: 'Acesso negado a esta conversa' });
         return;
@@ -51,11 +50,11 @@ export function registerConversaHandlers(
       MensagemConteudo: string;
       MensagemTipo?: 'Texto' | 'Arquivo' | 'Imagem';
     }) => {
-      console.log(`🔵 [WS] send_mensagem: ${usuario.UsuarioCPF} → ${ConversaGUID}`);
+      console.log(`🔵 [WS] send_mensagem: ${usuario.UsuarioGUID} → ${ConversaGUID}`);
       try {
         const mensagem = await mensagemService.enviar(
           ConversaGUID,
-          usuario.UsuarioCPF,
+          usuario.UsuarioGUID,
           MensagemConteudo,
           MensagemTipo || 'Texto'
         );
@@ -68,12 +67,12 @@ export function registerConversaHandlers(
 
   // mark_as_read: marca todas as mensagens da conversa como lidas
   socket.on('mark_as_read', async ({ ConversaGUID }: { ConversaGUID: string }) => {
-    console.log(`🔵 [WS] mark_as_read: ${usuario.UsuarioCPF} → ${ConversaGUID}`);
+    console.log(`🔵 [WS] mark_as_read: ${usuario.UsuarioGUID} → ${ConversaGUID}`);
     try {
-      await mensagemService.marcarComoLida(ConversaGUID, usuario.UsuarioCPF);
+      await mensagemService.marcarComoLida(ConversaGUID, usuario.UsuarioGUID);
       io.to(ConversaGUID).emit('mensagem_lida', {
         ConversaGUID,
-        UsuarioCPF: usuario.UsuarioCPF,
+        UsuarioGUID: usuario.UsuarioGUID,
         LidaAt: new Date().toISOString(),
       });
     } catch {
@@ -86,12 +85,12 @@ export function registerConversaHandlers(
     'typing',
     async ({ ConversaGUID, isTyping }: { ConversaGUID: string; isTyping: boolean }) => {
       try {
-        const isParticipante = await conversaDAO.isParticipante(ConversaGUID, usuario.UsuarioCPF);
+        const isParticipante = await conversaDAO.isParticipante(ConversaGUID, usuario.UsuarioGUID);
         if (!isParticipante) return;
 
         socket.to(ConversaGUID).emit('usuario_digitando', {
           ConversaGUID,
-          UsuarioCPF: usuario.UsuarioCPF,
+          UsuarioGUID: usuario.UsuarioGUID,
           UsuarioNome: usuario.UsuarioNome,
           isTyping,
         });
@@ -106,7 +105,7 @@ export function registerConversaHandlers(
   socket.on(
     'pin_mensagem',
     async ({ ConversaGUID, MensagemGUID }: { ConversaGUID: string; MensagemGUID: string }) => {
-      console.log(`🔵 [WS] pin_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID}`);
+      console.log(`🔵 [WS] pin_mensagem: ${usuario.UsuarioGUID} → ${MensagemGUID}`);
       try {
         await mensagemService.fixarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioGUID);
       } catch (err: any) {
@@ -120,7 +119,7 @@ export function registerConversaHandlers(
   socket.on(
     'unpin_mensagem',
     async ({ ConversaGUID, MensagemGUID }: { ConversaGUID: string; MensagemGUID: string }) => {
-      console.log(`🔵 [WS] unpin_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID}`);
+      console.log(`🔵 [WS] unpin_mensagem: ${usuario.UsuarioGUID} → ${MensagemGUID}`);
       try {
         await mensagemService.desafixarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioGUID);
       } catch (err: any) {
@@ -134,7 +133,7 @@ export function registerConversaHandlers(
   socket.on(
     'deletar_mensagem',
     async ({ ConversaGUID, MensagemGUID }: { ConversaGUID: string; MensagemGUID: string }) => {
-      console.log(`🔵 [WS] deletar_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID}`);
+      console.log(`🔵 [WS] deletar_mensagem: ${usuario.UsuarioGUID} → ${MensagemGUID}`);
       try {
         await mensagemService.deletarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioGUID);
       } catch (err: any) {
@@ -156,7 +155,7 @@ export function registerConversaHandlers(
       MensagemGUID: string;
       MensagemConteudo: string;
     }) => {
-      console.log(`🔵 [WS] editar_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID}`);
+      console.log(`🔵 [WS] editar_mensagem: ${usuario.UsuarioGUID} → ${MensagemGUID}`);
       try {
         await mensagemService.editarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioGUID, MensagemConteudo);
       } catch (err: any) {
@@ -178,7 +177,7 @@ export function registerConversaHandlers(
       MensagemGUID: string;
       ReacaoEmoji: string;
     }) => {
-      console.log(`🔵 [WS] reagir_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID} (${ReacaoEmoji})`);
+      console.log(`🔵 [WS] reagir_mensagem: ${usuario.UsuarioGUID} → ${MensagemGUID} (${ReacaoEmoji})`);
       try {
         await mensagemService.reagir(MensagemGUID, ConversaGUID, usuario.UsuarioGUID, ReacaoEmoji);
       } catch (err: any) {

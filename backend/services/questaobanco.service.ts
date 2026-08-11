@@ -85,11 +85,7 @@ export default class QuestaoBancoService {
     questao.Dificuldade = data.Dificuldade;
     questao.Enunciado = data.Enunciado;
     questao.VideoResolucaoUrl = data.VideoResolucaoUrl ?? null;
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    questao.CriadoPorCPF = usuario.UsuarioCPF;
+    questao.CriadoPorGUID = usuarioGUID;
 
     await this.#questaoDAO.create(questao);
 

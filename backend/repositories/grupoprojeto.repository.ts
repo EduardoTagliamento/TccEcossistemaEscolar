@@ -16,7 +16,7 @@ export type Executor = Pool | PoolConnection;
 interface GrupoProjetoRow extends RowDataPacket {
   GrupoProjetoGUID: string;
   ProjetoGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   GrupoProjetoNome: string | null;
   GrupoProjetoProposta: string;
   GrupoProjetoVisibilidade: 'Aberto' | 'Fechado';
@@ -27,7 +27,7 @@ interface GrupoProjetoRow extends RowDataPacket {
 
 export interface GrupoProjetoFilters {
   ProjetoGUID?: string;
-  UsuarioCPFLider?: string;
+  UsuarioGUIDLider?: string;
 }
 
 export class GrupoProjetoDAO {
@@ -48,7 +48,7 @@ export class GrupoProjetoDAO {
       INSERT INTO grupoprojeto (
         GrupoProjetoGUID,
         ProjetoGUID,
-        UsuarioCPFLider,
+        UsuarioGUIDLider,
         GrupoProjetoNome,
         GrupoProjetoProposta,
         GrupoProjetoVisibilidade
@@ -59,7 +59,7 @@ export class GrupoProjetoDAO {
     await pool.execute(query, [
       grupoGUID,
       data.ProjetoGUID,
-      data.UsuarioCPFLider,
+      data.UsuarioGUIDLider,
       data.GrupoProjetoNome || null,
       data.GrupoProjetoProposta.trim(),
       data.GrupoProjetoVisibilidade
@@ -97,9 +97,9 @@ export class GrupoProjetoDAO {
       params.push(filters.ProjetoGUID);
     }
 
-    if (filters.UsuarioCPFLider) {
-      query += ` AND UsuarioCPFLider = ?`;
-      params.push(filters.UsuarioCPFLider);
+    if (filters.UsuarioGUIDLider) {
+      query += ` AND UsuarioGUIDLider = ?`;
+      params.push(filters.UsuarioGUIDLider);
     }
 
     query += ` ORDER BY CreatedAt ASC`;
@@ -118,7 +118,7 @@ export class GrupoProjetoDAO {
       SELECT
         gp.GrupoProjetoGUID,
         gp.ProjetoGUID,
-        gp.UsuarioCPFLider,
+        gp.UsuarioGUIDLider,
         gp.GrupoProjetoNome,
         gp.GrupoProjetoProposta,
         gp.GrupoProjetoVisibilidade,
@@ -126,14 +126,14 @@ export class GrupoProjetoDAO {
         gp.CreatedAt,
         u_lider.UsuarioNome AS NomeLider,
         p.ProjetoGrupoMaxPessoas AS LimiteMaximo,
-        uxgp.UsuarioCPF AS MembroCPF,
+        uxgp.UsuarioGUID AS MembroGUID,
         u_membro.UsuarioNome AS MembroNome,
         uxgp.DataEntrada AS MembroDataEntrada
       FROM grupoprojeto gp
-      INNER JOIN usuario u_lider ON u_lider.UsuarioCPF = gp.UsuarioCPFLider
+      INNER JOIN usuario u_lider ON u_lider.UsuarioGUID = gp.UsuarioGUIDLider
       INNER JOIN projeto p ON p.ProjetoGUID = gp.ProjetoGUID
       LEFT JOIN usuarioxgrupoprojeto uxgp ON uxgp.GrupoProjetoGUID = gp.GrupoProjetoGUID
-      LEFT JOIN usuario u_membro ON u_membro.UsuarioCPF = uxgp.UsuarioCPF
+      LEFT JOIN usuario u_membro ON u_membro.UsuarioGUID = uxgp.UsuarioGUID
       WHERE gp.GrupoProjetoGUID = ?
       ORDER BY uxgp.DataEntrada ASC
     `;
@@ -147,16 +147,16 @@ export class GrupoProjetoDAO {
     const membros: MembroGrupoProjetoDTO[] = [];
 
     membros.push({
-      UsuarioCPF: primeiraLinha.UsuarioCPFLider,
+      UsuarioGUID: primeiraLinha.UsuarioGUIDLider,
       UsuarioNome: primeiraLinha.NomeLider,
       DataEntrada: primeiraLinha.CreatedAt,
       IsLider: true
     });
 
     rows.forEach((row) => {
-      if (row.MembroCPF) {
+      if (row.MembroGUID) {
         membros.push({
-          UsuarioCPF: row.MembroCPF,
+          UsuarioGUID: row.MembroGUID,
           UsuarioNome: row.MembroNome,
           DataEntrada: row.MembroDataEntrada,
           IsLider: false
@@ -170,7 +170,7 @@ export class GrupoProjetoDAO {
     return {
       GrupoProjetoGUID: primeiraLinha.GrupoProjetoGUID,
       ProjetoGUID: primeiraLinha.ProjetoGUID,
-      UsuarioCPFLider: primeiraLinha.UsuarioCPFLider,
+      UsuarioGUIDLider: primeiraLinha.UsuarioGUIDLider,
       NomeLider: primeiraLinha.NomeLider,
       GrupoProjetoNome: primeiraLinha.GrupoProjetoNome,
       GrupoProjetoProposta: primeiraLinha.GrupoProjetoProposta,
@@ -206,9 +206,9 @@ export class GrupoProjetoDAO {
       params.push(data.GrupoProjetoVisibilidade);
     }
 
-    if (data.UsuarioCPFLider !== undefined) {
-      updates.push('UsuarioCPFLider = ?');
-      params.push(data.UsuarioCPFLider);
+    if (data.UsuarioGUIDLider !== undefined) {
+      updates.push('UsuarioGUIDLider = ?');
+      params.push(data.UsuarioGUIDLider);
     }
 
     if (updates.length === 0) {
@@ -249,7 +249,7 @@ export class GrupoProjetoDAO {
     console.log('🟢 GrupoProjetoDAO.contarMembros()');
 
     const query = `
-      SELECT (1 + COUNT(uxgp.UsuarioCPF)) AS TotalMembros
+      SELECT (1 + COUNT(uxgp.UsuarioGUID)) AS TotalMembros
       FROM grupoprojeto gp
       LEFT JOIN usuarioxgrupoprojeto uxgp ON uxgp.GrupoProjetoGUID = gp.GrupoProjetoGUID
       WHERE gp.GrupoProjetoGUID = ?
@@ -263,18 +263,18 @@ export class GrupoProjetoDAO {
   }
 
   // AUXILIAR - Verificar se usuário pertence ao grupo (líder ou membro)
-  async usuarioPertenceAoGrupo(usuarioCPF: string, grupoGUID: string): Promise<boolean> {
+  async usuarioPertenceAoGrupo(usuarioGUID: string, grupoGUID: string): Promise<boolean> {
     console.log('🟢 GrupoProjetoDAO.usuarioPertenceAoGrupo()');
 
     const query = `
-      SELECT 1 FROM grupoprojeto WHERE GrupoProjetoGUID = ? AND UsuarioCPFLider = ?
+      SELECT 1 FROM grupoprojeto WHERE GrupoProjetoGUID = ? AND UsuarioGUIDLider = ?
       UNION
-      SELECT 1 FROM usuarioxgrupoprojeto WHERE GrupoProjetoGUID = ? AND UsuarioCPF = ?
+      SELECT 1 FROM usuarioxgrupoprojeto WHERE GrupoProjetoGUID = ? AND UsuarioGUID = ?
       LIMIT 1
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioCPF, grupoGUID, usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioGUID, grupoGUID, usuarioGUID]);
 
     return rows.length > 0;
   }
@@ -283,7 +283,7 @@ export class GrupoProjetoDAO {
     return {
       GrupoProjetoGUID: row.GrupoProjetoGUID,
       ProjetoGUID: row.ProjetoGUID,
-      UsuarioCPFLider: row.UsuarioCPFLider,
+      UsuarioGUIDLider: row.UsuarioGUIDLider,
       GrupoProjetoNome: row.GrupoProjetoNome,
       GrupoProjetoProposta: row.GrupoProjetoProposta,
       GrupoProjetoVisibilidade: row.GrupoProjetoVisibilidade,

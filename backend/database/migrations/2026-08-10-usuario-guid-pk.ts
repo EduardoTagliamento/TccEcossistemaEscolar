@@ -118,6 +118,15 @@ async function run() {
   // ---------------------------------------------------------------------
   // ETAPA 2 — descobrir e migrar toda tabela dependente (FK -> usuario.UsuarioCPF)
   // ---------------------------------------------------------------------
+  // A coluna nova em cada tabela dependente precisa do MESMO charset/collation
+  // de usuario.UsuarioGUID, explicitado — nem toda tabela do banco tem o mesmo
+  // collation padrão (achado real: tarefaacademica_matricula/_resposta usam
+  // utf8mb4_unicode_ci, o resto do banco usa utf8mb4_0900_ai_ci; um ADD COLUMN
+  // sem CHARACTER SET/COLLATE explícito herda o padrão da TABELA, não o de
+  // usuario, e o ADD CONSTRAINT da FK falha depois com "Referencing column
+  // and referenced column are incompatible").
+  const collationUsuarioGUID = await obterCollationColuna(pool, "usuario", "UsuarioGUID");
+
   const fks = await descobrirFksParaUsuarioCPF(pool);
 
   if (fks.length === 0) {
@@ -130,7 +139,7 @@ async function run() {
   }
 
   for (const fk of fks) {
-    await migrarTabelaDependente(pool, fk, modoAplicar);
+    await migrarTabelaDependente(pool, fk, modoAplicar, collationUsuarioGUID);
   }
 
   // ---------------------------------------------------------------------
@@ -163,11 +172,21 @@ async function migrarColunaUsuarioGUID(pool: any, aplicar: boolean) {
     console.log("  [1/3] usuario.UsuarioGUID já existe — pulando criação.");
   }
 
-  // Backfill
-  const [pendentes] = (await pool.query(
-    "SELECT UsuarioCPF FROM usuario WHERE UsuarioGUID IS NULL"
-  )) as any;
-  const linhasPendentes = pendentes as Array<{ UsuarioCPF: string }>;
+  // Backfill — em modo --check, se a coluna ainda não existe de verdade (não
+  // foi criada porque estamos só simulando), não dá pra fazer
+  // "WHERE UsuarioGUID IS NULL" contra uma coluna inexistente. Nesse caso,
+  // só reporta o total de linhas da tabela (todas receberiam GUID novo).
+  let linhasPendentes: Array<{ UsuarioCPF: string }>;
+  if (!colunaExiste && !aplicar) {
+    const [totalRows] = (await pool.query("SELECT COUNT(*) AS total FROM usuario")) as any;
+    const total = (totalRows as any)[0]?.total ?? 0;
+    linhasPendentes = Array.from({ length: total }) as Array<{ UsuarioCPF: string }>;
+  } else {
+    const [pendentes] = (await pool.query(
+      "SELECT UsuarioCPF FROM usuario WHERE UsuarioGUID IS NULL"
+    )) as any;
+    linhasPendentes = pendentes as Array<{ UsuarioCPF: string }>;
+  }
 
   console.log(`  [2/3] ${linhasPendentes.length} usuário(s) sem UsuarioGUID.`);
   if (linhasPendentes.length > 0) {
@@ -251,7 +270,7 @@ async function descobrirFksParaUsuarioCPF(pool: any): Promise<FkInfo[]> {
   return rows as FkInfo[];
 }
 
-async function migrarTabelaDependente(pool: any, fk: FkInfo, aplicar: boolean) {
+async function migrarTabelaDependente(pool: any, fk: FkInfo, aplicar: boolean, collationUsuarioGUID: string) {
   const { tableName, columnName, constraintName, updateRule, deleteRule } = fk;
   const novaColuna = columnName.replace(/CPF/g, "GUID");
 
@@ -264,26 +283,38 @@ async function migrarTabelaDependente(pool: any, fk: FkInfo, aplicar: boolean) {
 
   const colInfo = await infoColuna(pool, tableName, columnName);
   const novaColunaExiste = await colunaExisteEm(pool, tableName, novaColuna);
+  const clausulaCollation = `CHARACTER SET utf8mb4 COLLATE ${collationUsuarioGUID}`;
 
-  // 1) adicionar coluna nova
+  // 1) adicionar coluna nova (charset/collation IGUAIS a usuario.UsuarioGUID,
+  // explícitos — nunca herdados do default da tabela, ver comentário acima)
   if (!novaColunaExiste) {
-    console.log(`  [1/6] adicionar ${novaColuna} (CHAR(12) NULL)`);
+    console.log(`  [1/6] adicionar ${novaColuna} (CHAR(12) ${clausulaCollation} NULL)`);
     if (aplicar) {
       await pool.query(
-        `ALTER TABLE \`${tableName}\` ADD COLUMN \`${novaColuna}\` CHAR(12) NULL AFTER \`${columnName}\``
+        `ALTER TABLE \`${tableName}\` ADD COLUMN \`${novaColuna}\` CHAR(12) ${clausulaCollation} NULL AFTER \`${columnName}\``
       );
     } else {
-      console.log(`        [check] ALTER TABLE ${tableName} ADD COLUMN ${novaColuna} CHAR(12) NULL`);
+      console.log(`        [check] ALTER TABLE ${tableName} ADD COLUMN ${novaColuna} CHAR(12) ${clausulaCollation} NULL`);
     }
   } else {
     console.log(`  [1/6] ${novaColuna} já existe — pulando.`);
   }
 
-  // 2) backfill
-  const [pendentes] = (await pool.query(
-    `SELECT COUNT(*) AS total FROM \`${tableName}\` WHERE \`${columnName}\` IS NOT NULL AND \`${novaColuna}\` IS NULL`
-  )) as any;
-  const totalPendente = (pendentes as any)[0]?.total ?? 0;
+  // 2) backfill — em --check com a coluna nova ainda inexistente, não dá pra
+  // referenciá-la na query; usa a contagem de linhas com a coluna antiga
+  // preenchida como proxy (é exatamente quantas seriam backfilladas).
+  let totalPendente: number;
+  if (!novaColunaExiste && !aplicar) {
+    const [totalRows] = (await pool.query(
+      `SELECT COUNT(*) AS total FROM \`${tableName}\` WHERE \`${columnName}\` IS NOT NULL`
+    )) as any;
+    totalPendente = (totalRows as any)[0]?.total ?? 0;
+  } else {
+    const [pendentes] = (await pool.query(
+      `SELECT COUNT(*) AS total FROM \`${tableName}\` WHERE \`${columnName}\` IS NOT NULL AND \`${novaColuna}\` IS NULL`
+    )) as any;
+    totalPendente = (pendentes as any)[0]?.total ?? 0;
+  }
 
   console.log(`  [2/6] ${totalPendente} linha(s) pendente(s) de backfill.`);
   if (totalPendente > 0) {
@@ -343,9 +374,12 @@ async function migrarTabelaDependente(pool: any, fk: FkInfo, aplicar: boolean) {
     }
   }
 
-  if (!colInfo.isNullable) {
-    clausulas.push(`MODIFY COLUMN \`${novaColuna}\` CHAR(12) NOT NULL`);
-  }
+  // Sempre reafirma charset/collation aqui (não só na criação em [1/6]) —
+  // cobre o caso de retomar uma execução parcial anterior em que a coluna já
+  // foi criada com o collation errado (herdado do default da tabela).
+  clausulas.push(
+    `MODIFY COLUMN \`${novaColuna}\` CHAR(12) ${clausulaCollation} ${colInfo.isNullable ? "NULL" : "NOT NULL"}`
+  );
 
   console.log(`  [5/6] ALTER TABLE ${tableName} ${clausulas.join(", ")}`);
   if (aplicar) {
@@ -445,6 +479,18 @@ async function colunaExisteEm(pool: any, table: string, column: string): Promise
     [table, column]
   )) as any;
   return (rows as any[]).length > 0;
+}
+
+async function obterCollationColuna(pool: any, table: string, column: string): Promise<string> {
+  const [rows] = (await pool.query(
+    `SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column]
+  )) as any;
+  const collation = (rows as any[])[0]?.COLLATION_NAME;
+  if (!collation) {
+    throw new Error(`Não foi possível determinar o collation de ${table}.${column} — a coluna existe?`);
+  }
+  return collation;
 }
 
 async function infoColuna(pool: any, table: string, column: string): Promise<ColumnInfo> {

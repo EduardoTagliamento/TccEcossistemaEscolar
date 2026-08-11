@@ -8,7 +8,7 @@ export default class VerificacaoEmailService {
   #verificacaoDAO: VerificacaoEmailDAO;
   #usuarioDAO: UsuarioDAO;
   #emailService: ResendEmailService;
-  
+
   // Configurações
   private readonly CODIGO_LENGTH = 6;
   private readonly EXPIRATION_MINUTES = 15;
@@ -27,14 +27,14 @@ export default class VerificacaoEmailService {
   /**
    * Solicita verificação de email (gera código e envia email)
    */
-  async solicitarVerificacao(cpf: string): Promise<{ message: string }> {
+  async solicitarVerificacao(usuarioGUID: string): Promise<{ message: string }> {
     console.log("🟣 VerificacaoEmailService.solicitarVerificacao()");
 
     // 1. Verificar se usuário existe
-    const usuario = await this.#usuarioDAO.findByCPF(cpf);
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
     if (!usuario) {
       throw new ErrorResponse(404, "Usuário não encontrado", {
-        message: `Não existe usuário com CPF ${cpf}`,
+        message: `Não existe usuário com GUID ${usuarioGUID}`,
       });
     }
 
@@ -53,7 +53,7 @@ export default class VerificacaoEmailService {
     }
 
     // 4. Anti-spam: verificar tentativas recentes
-    const tentativasRecentes = await this.#verificacaoDAO.countRecentAttempts(cpf, 1);
+    const tentativasRecentes = await this.#verificacaoDAO.countRecentAttempts(usuarioGUID, 1);
     if (tentativasRecentes >= this.MAX_ATTEMPTS_PER_HOUR) {
       throw new ErrorResponse(429, "Muitas tentativas", {
         message: `Você excedeu o limite de ${this.MAX_ATTEMPTS_PER_HOUR} solicitações por hora. Tente novamente mais tarde.`,
@@ -61,14 +61,14 @@ export default class VerificacaoEmailService {
     }
 
     // 5. Invalidar códigos antigos
-    await this.#verificacaoDAO.invalidateOldCodes(cpf);
+    await this.#verificacaoDAO.invalidateOldCodes(usuarioGUID);
 
     // 6. Gerar código aleatório
     const codigo = this.gerarCodigoAleatorio();
 
     // 7. Criar registro no banco
     const verificacao = new VerificacaoEmail();
-    verificacao.UsuarioCPF = cpf;
+    verificacao.UsuarioGUID = usuarioGUID;
     verificacao.VerificacaoCodigo = codigo;
     verificacao.VerificacaoExpiresAt = this.calcularExpiracao();
 
@@ -85,12 +85,12 @@ export default class VerificacaoEmailService {
   /**
    * Valida código de verificação e marca email como verificado
    */
-  async validarCodigo(cpf: string, codigo: string): Promise<{ message: string }> {
+  async validarCodigo(usuarioGUID: string, codigo: string): Promise<{ message: string }> {
     console.log("🟣 VerificacaoEmailService.validarCodigo()");
 
     // 1. Buscar código válido no banco
-    const verificacao = await this.#verificacaoDAO.findValidCode(cpf, codigo);
-    
+    const verificacao = await this.#verificacaoDAO.findValidCode(usuarioGUID, codigo);
+
     if (!verificacao) {
       throw new ErrorResponse(400, "Código inválido", {
         message: "O código informado é inválido, já foi usado ou expirou.",
@@ -101,7 +101,7 @@ export default class VerificacaoEmailService {
     await this.#verificacaoDAO.markAsUsed(verificacao.VerificacaoId!);
 
     // 3. Marcar email do usuário como verificado
-    await this.#usuarioDAO.verificarEmail(cpf);
+    await this.#usuarioDAO.verificarEmail(usuarioGUID);
 
     return {
       message: "Email verificado com sucesso! ✅",
@@ -109,31 +109,31 @@ export default class VerificacaoEmailService {
   }
 
   /**
-   * Valida código usando email (resolve CPF internamente)
+   * Valida código usando email (resolve GUID internamente)
    */
   async validarCodigoPorEmail(email: string, codigo: string): Promise<{ message: string }> {
     console.log("🟣 VerificacaoEmailService.validarCodigoPorEmail()");
-    const cpf = await this.obterCpfPorEmail(email);
-    return this.validarCodigo(cpf, codigo);
+    const usuarioGUID = await this.obterGuidPorEmail(email);
+    return this.validarCodigo(usuarioGUID, codigo);
   }
 
   /**
    * Reenvia código de verificação (usa mesma lógica de solicitar)
    */
-  async reenviarCodigo(cpf: string): Promise<{ message: string }> {
+  async reenviarCodigo(usuarioGUID: string): Promise<{ message: string }> {
     console.log("🟣 VerificacaoEmailService.reenviarCodigo()");
-    
+
     // Reaproveita lógica de solicitação (inclui anti-spam)
-    return this.solicitarVerificacao(cpf);
+    return this.solicitarVerificacao(usuarioGUID);
   }
 
   /**
-   * Reenvia código usando email (resolve CPF internamente)
+   * Reenvia código usando email (resolve GUID internamente)
    */
   async reenviarCodigoPorEmail(email: string): Promise<{ message: string }> {
     console.log("🟣 VerificacaoEmailService.reenviarCodigoPorEmail()");
-    const cpf = await this.obterCpfPorEmail(email);
-    return this.reenviarCodigo(cpf);
+    const usuarioGUID = await this.obterGuidPorEmail(email);
+    return this.reenviarCodigo(usuarioGUID);
   }
 
   /**
@@ -168,9 +168,9 @@ export default class VerificacaoEmailService {
   }
 
   /**
-   * Resolve CPF a partir do email do usuário.
+   * Resolve o GUID do usuário a partir do email.
    */
-  private async obterCpfPorEmail(email: string): Promise<string> {
+  private async obterGuidPorEmail(email: string): Promise<string> {
     const usuario = await this.#usuarioDAO.findByEmail(email);
 
     if (!usuario) {
@@ -179,13 +179,7 @@ export default class VerificacaoEmailService {
       });
     }
 
-    if (!usuario.UsuarioCPF) {
-      throw new ErrorResponse(400, "Usuário sem CPF cadastrado", {
-        message: "Este usuário não possui CPF cadastrado no sistema.",
-      });
-    }
-
-    return usuario.UsuarioCPF;
+    return usuario.UsuarioGUID;
   }
 
   /**
