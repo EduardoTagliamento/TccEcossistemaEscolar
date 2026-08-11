@@ -24,7 +24,7 @@
 - [x] Upload de foto de perfil (`upload.service.ts`/`.controller.ts`, `routes/upload.routes.ts`) — rota `/foto-usuario/:UsuarioGUID`
 - [x] `plataformaAdmin.guard.ts`
 
-## ✅ Tabelas/serviços migrados nesta sessão (11)
+## ✅ Tabelas/serviços migrados nesta sessão (12 tabelas + 2 arquivos de correção cruzada)
 
 | Tabela/arquivo | Notas |
 |---|---|
