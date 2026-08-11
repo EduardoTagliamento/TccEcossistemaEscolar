@@ -31,7 +31,7 @@ export default class VerificacaoEmailService {
     console.log("🟣 VerificacaoEmailService.solicitarVerificacao()");
 
     // 1. Verificar se usuário existe
-    const usuario = await this.#usuarioDAO.findById(cpf);
+    const usuario = await this.#usuarioDAO.findByCPF(cpf);
     if (!usuario) {
       throw new ErrorResponse(404, "Usuário não encontrado", {
         message: `Não existe usuário com CPF ${cpf}`,
@@ -176,6 +176,12 @@ export default class VerificacaoEmailService {
     if (!usuario) {
       throw new ErrorResponse(404, "Usuário não encontrado", {
         message: `Não existe usuário com email ${email}`,
+      });
+    }
+
+    if (!usuario.UsuarioCPF) {
+      throw new ErrorResponse(400, "Usuário sem CPF cadastrado", {
+        message: "Este usuário não possui CPF cadastrado no sistema.",
       });
     }
 

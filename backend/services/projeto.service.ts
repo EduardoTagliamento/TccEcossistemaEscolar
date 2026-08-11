@@ -6,6 +6,7 @@ import { EscolaxUsuarioxFuncaoDAO } from '../repositories/escolaxusuarioxfuncao.
 import ErrorResponse from '../utils/ErrorResponse';
 import { getNotificacaoService } from './notificacao.service';
 import { getAuditoriaService } from './auditoria.service';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import {
   Projeto,
   ProjetoCreateDTO,
@@ -18,32 +19,47 @@ export default class ProjetoService {
   #turmaDAO: TurmaDAO;
   #matriculaDAO: MatriculaDAO;
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     projetoDAO: ProjetoDAO,
     turmaDAO: TurmaDAO,
     matriculaDAO: MatriculaDAO,
-    escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO
+    escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO,
+    usuarioDAO: UsuarioDAO
   ) {
     console.log('⬆️  ProjetoService.constructor()');
     this.#projetoDAO = projetoDAO;
     this.#turmaDAO = turmaDAO;
     this.#matriculaDAO = matriculaDAO;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
+
+  /** Resolve o CPF de um ator a partir do UsuarioGUID — a tabela `projeto`
+   * ainda usa CPF (UsuarioCPFCriador). */
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
+    }
+    return usuario.UsuarioCPF;
+  };
 
   /**
    * CRIAR PROJETO
    * Apenas Professor (FuncaoId=3) ou Direção (FuncaoId=6) da escola —
    * ver docs/PLANO_IMPLEMENTACAO_PROJETOS.md, Seção 1 decisão #1.
    */
-  criarProjeto = async (data: ProjetoCreateDTO, usuarioCPF: string): Promise<ProjetoDTO> => {
+  criarProjeto = async (data: ProjetoCreateDTO, usuarioGUID: string): Promise<ProjetoDTO> => {
     console.log('🟣 ProjetoService.criarProjeto()');
 
-    const podecriar = await this.#escolaxUsuarioxFuncaoDAO.isProfessorOuDirecaoEmEscola(usuarioCPF, data.EscolaGUID);
+    const podecriar = await this.#escolaxUsuarioxFuncaoDAO.isProfessorOuDirecaoEmEscola(usuarioGUID, data.EscolaGUID);
     if (!podecriar) {
       throw new ErrorResponse(403, 'Apenas Professor ou Direção podem criar um projeto');
     }
+
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     if (data.ProjetoGrupoMinPessoas < 1) {
       throw new ErrorResponse(400, 'ProjetoGrupoMinPessoas deve ser >= 1');
@@ -99,7 +115,7 @@ export default class ProjetoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: data.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: 'Create',
       EntidadeTipo: 'projeto',
       EntidadeGUID: projetoCriado.ProjetoGUID,
@@ -128,9 +144,9 @@ export default class ProjetoService {
       const matriculasPorTurma = await Promise.all(
         turmasGUID.map((turmaGUID) => this.#matriculaDAO.findByTurma(turmaGUID))
       );
-      const cpfsUnicos = new Set<string>();
-      matriculasPorTurma.flat().forEach((matricula) => cpfsUnicos.add(matricula.UsuarioCPF));
-      destinatarios = Array.from(cpfsUnicos);
+      const guidsUnicos = new Set<string>();
+      matriculasPorTurma.flat().forEach((matricula) => guidsUnicos.add(matricula.UsuarioGUID));
+      destinatarios = Array.from(guidsUnicos);
     }
 
     if (destinatarios.length === 0) return;
@@ -152,10 +168,11 @@ export default class ProjetoService {
    * Se o usuário for Professor/Direção, retorna os que ele criou.
    * Se o usuário for Aluno, retorna os elegíveis (público ou turma dele).
    */
-  listarProjetos = async (escolaGUID: string, usuarioCPF: string): Promise<Projeto[]> => {
+  listarProjetos = async (escolaGUID: string, usuarioGUID: string): Promise<Projeto[]> => {
     console.log('🟣 ProjetoService.listarProjetos()');
 
-    const eProfessorOuDirecao = await this.#escolaxUsuarioxFuncaoDAO.isProfessorOuDirecaoEmEscola(usuarioCPF, escolaGUID);
+    const eProfessorOuDirecao = await this.#escolaxUsuarioxFuncaoDAO.isProfessorOuDirecaoEmEscola(usuarioGUID, escolaGUID);
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     if (eProfessorOuDirecao) {
       return await this.#projetoDAO.findAll({ EscolaGUID: escolaGUID, UsuarioCPFCriador: usuarioCPF });
@@ -184,10 +201,11 @@ export default class ProjetoService {
   atualizarProjeto = async (
     projetoGUID: string,
     data: ProjetoUpdateDTO,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<ProjetoDTO> => {
     console.log('🟣 ProjetoService.atualizarProjeto()');
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const projeto = await this.#projetoDAO.findById(projetoGUID);
     if (!projeto) {
       throw new ErrorResponse(404, 'Projeto não encontrado');
@@ -209,7 +227,7 @@ export default class ProjetoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: projeto.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: 'Update',
       EntidadeTipo: 'projeto',
       EntidadeGUID: projetoGUID,
@@ -229,9 +247,10 @@ export default class ProjetoService {
    * ENCERRAR PROJETO (apenas o criador)
    * Não há DELETE físico — ver docs/PLANO_IMPLEMENTACAO_PROJETOS.md, Seção 7 ponto 3.
    */
-  encerrarProjeto = async (projetoGUID: string, usuarioCPF: string): Promise<{ mensagem: string }> => {
+  encerrarProjeto = async (projetoGUID: string, usuarioGUID: string): Promise<{ mensagem: string }> => {
     console.log('🟣 ProjetoService.encerrarProjeto()');
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const projeto = await this.#projetoDAO.findById(projetoGUID);
     if (!projeto) {
       throw new ErrorResponse(404, 'Projeto não encontrado');
@@ -249,7 +268,7 @@ export default class ProjetoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: projeto.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: 'Update',
       EntidadeTipo: 'projeto',
       EntidadeGUID: projetoGUID,

@@ -5,6 +5,7 @@ import QuestaoBancoService from "../backend/services/questaobanco.service";
 import { QuestaoBancoDAO } from "../backend/repositories/questaobanco.repository";
 import { QuestaoBancoAlternativaDAO } from "../backend/repositories/questaobancoalternativa.repository";
 import { VestibularDAO } from "../backend/repositories/vestibular.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { plataformaAdminGuard } from "../backend/guards/plataformaAdmin.guard";
 
@@ -41,7 +42,8 @@ export const questaoBancoRouterFactory = () => {
   const questaoDAO = new QuestaoBancoDAO(database);
   const alternativaDAO = new QuestaoBancoAlternativaDAO(database);
   const vestibularDAO = new VestibularDAO(database);
-  const service = new QuestaoBancoService(questaoDAO, alternativaDAO, vestibularDAO);
+  const usuarioDAO = new UsuarioDAO(database);
+  const service = new QuestaoBancoService(questaoDAO, alternativaDAO, vestibularDAO, usuarioDAO);
   const controller = new QuestaoBancoController(service);
   const roteador = new QuestaoBancoRoteador(controller);
 

@@ -7,6 +7,7 @@ import { MaterialDidaticoPaginaDAO } from "../repositories/materialdidaticopagin
 import { MaterialDidaticoCapituloDAO } from "../repositories/materialdidaticocapitulo.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import R2StorageService from "./r2storage.service";
 import { getExtracaoPaginaAgent } from "../ai/agents/extracaoPaginaAgent";
@@ -30,13 +31,15 @@ export default class MaterialDidaticoService {
   #capituloDAO: MaterialDidaticoCapituloDAO;
   #materiaDAO: MateriaDAO;
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     materialDAODependency: MaterialDidaticoDAO,
     paginaDAODependency: MaterialDidaticoPaginaDAO,
     capituloDAODependency: MaterialDidaticoCapituloDAO,
     materiaDAODependency: MateriaDAO,
-    escolaxUsuarioxFuncaoDAODependency: EscolaxUsuarioxFuncaoDAO
+    escolaxUsuarioxFuncaoDAODependency: EscolaxUsuarioxFuncaoDAO,
+    usuarioDAODependency: UsuarioDAO
   ) {
     console.log("⬆️  MaterialDidaticoService.constructor()");
     this.#materialDAO = materialDAODependency;
@@ -44,14 +47,23 @@ export default class MaterialDidaticoService {
     this.#capituloDAO = capituloDAODependency;
     this.#materiaDAO = materiaDAODependency;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAODependency;
+    this.#usuarioDAO = usuarioDAODependency;
   }
 
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    return usuario.UsuarioCPF;
+  };
+
   /** Cadastro do livro é fluxo de Direção/Coordenação (não passa pela tela de Matérias, que eles não acessam). */
-  #validarPermissaoEscrita = async (escolaGUID: string, usuarioCPF: string): Promise<void> => {
-    const coordenacao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(usuarioCPF, escolaGUID, 1);
+  #validarPermissaoEscrita = async (escolaGUID: string, usuarioGUID: string): Promise<void> => {
+    const coordenacao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(usuarioGUID, escolaGUID, 1);
     if (coordenacao && coordenacao.Status === "Ativo") return;
 
-    const direcao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(usuarioCPF, escolaGUID, 6);
+    const direcao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(usuarioGUID, escolaGUID, 6);
     if (direcao && direcao.Status === "Ativo") return;
 
     throw new ErrorResponse(403, "Sem permissão", {
@@ -59,16 +71,16 @@ export default class MaterialDidaticoService {
     });
   };
 
-  cadastrarLivro = async (escolaGUID: string, titulo: string, usuarioCPF: string): Promise<MaterialDidatico> => {
+  cadastrarLivro = async (escolaGUID: string, titulo: string, usuarioGUID: string): Promise<MaterialDidatico> => {
     console.log("🟣 MaterialDidaticoService.cadastrarLivro()");
 
-    await this.#validarPermissaoEscrita(escolaGUID, usuarioCPF);
+    await this.#validarPermissaoEscrita(escolaGUID, usuarioGUID);
 
     const material = new MaterialDidatico();
     material.MaterialDidaticoGUID = gerarGUID();
     material.EscolaGUID = escolaGUID;
     material.Titulo = titulo;
-    material.CriadoPorCPF = usuarioCPF;
+    material.CriadoPorCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     await this.#materialDAO.create(material);
     return material;
@@ -97,7 +109,7 @@ export default class MaterialDidaticoService {
   uploadPaginas = async (
     materialDidaticoGUID: string,
     arquivos: ArquivoUpload[],
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<MaterialDidaticoPagina[]> => {
     console.log("🟣 MaterialDidaticoService.uploadPaginas()");
 
@@ -107,7 +119,7 @@ export default class MaterialDidaticoService {
         message: `Não existe material didático com id ${materialDidaticoGUID}`,
       });
     }
-    await this.#validarPermissaoEscrita(material.EscolaGUID, usuarioCPF);
+    await this.#validarPermissaoEscrita(material.EscolaGUID, usuarioGUID);
 
     if (arquivos.length === 0) {
       throw new ErrorResponse(400, "Nenhum arquivo enviado", {
@@ -175,7 +187,7 @@ export default class MaterialDidaticoService {
    * "vale" oficialmente como fonte de grounding. `textoRevisado` é o texto
    * final (o revisor pode corrigir o que a extração automática errou).
    */
-  revisarPagina = async (paginaGUID: string, usuarioCPF: string, textoRevisado: string): Promise<void> => {
+  revisarPagina = async (paginaGUID: string, usuarioGUID: string, textoRevisado: string): Promise<void> => {
     console.log("🟣 MaterialDidaticoService.revisarPagina()");
 
     const pagina = await this.#paginaDAO.findById(paginaGUID);
@@ -187,7 +199,7 @@ export default class MaterialDidaticoService {
 
     const material = await this.#materialDAO.findById(pagina.MaterialDidaticoGUID);
     if (material) {
-      await this.#validarPermissaoEscrita(material.EscolaGUID, usuarioCPF);
+      await this.#validarPermissaoEscrita(material.EscolaGUID, usuarioGUID);
     }
 
     if (!textoRevisado || !textoRevisado.trim()) {
@@ -196,6 +208,7 @@ export default class MaterialDidaticoService {
       });
     }
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     await this.#paginaDAO.revisar(paginaGUID, usuarioCPF, textoRevisado.trim());
   };
 
@@ -234,7 +247,7 @@ export default class MaterialDidaticoService {
 
   criarCapitulo = async (
     data: { MaterialDidaticoGUID: string; MateriaGUID: string; Titulo: string; PaginaInicio: number; PaginaFim: number; AssuntoGUID?: string | null },
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<MaterialDidaticoCapitulo> => {
     console.log("🟣 MaterialDidaticoService.criarCapitulo()");
 
@@ -244,7 +257,7 @@ export default class MaterialDidaticoService {
         message: `Não existe material didático com id ${data.MaterialDidaticoGUID}`,
       });
     }
-    await this.#validarPermissaoEscrita(material.EscolaGUID, usuarioCPF);
+    await this.#validarPermissaoEscrita(material.EscolaGUID, usuarioGUID);
 
     const materia = await this.#materiaDAO.findById(data.MateriaGUID);
     if (!materia || materia.EscolaGUID !== material.EscolaGUID) {

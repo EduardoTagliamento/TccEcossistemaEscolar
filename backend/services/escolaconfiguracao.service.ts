@@ -99,7 +99,7 @@ export default class EscolaConfiguracaoService {
   salvarConfiguracao = async (
     escolaGUID: string,
     data: EscolaConfiguracaoSalvarDTO,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<{ configuracao: EscolaConfiguracaoDTO; avisos: string[] }> => {
     console.log("🟣 EscolaConfiguracaoService.salvarConfiguracao()");
 
@@ -110,7 +110,7 @@ export default class EscolaConfiguracaoService {
       });
     }
 
-    await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, escolaGUID);
 
     const existente = await this.#escolaConfiguracaoDAO.findByEscola(escolaGUID);
 
@@ -145,7 +145,7 @@ export default class EscolaConfiguracaoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: escolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: existente ? "Update" : "Create",
       EntidadeTipo: "escolaconfiguracao",
       EntidadeGUID: config.EscolaConfiguracaoGUID,
@@ -291,15 +291,15 @@ export default class EscolaConfiguracaoService {
     return null;
   }
 
-  private async validarPermissaoEscrita(cpf: string, escolaGUID: string): Promise<void> {
+  private async validarPermissaoEscrita(usuarioGUID: string, escolaGUID: string): Promise<void> {
     console.log("🔒 EscolaConfiguracaoService.validarPermissaoEscrita()");
 
-    const coordenacao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(cpf, escolaGUID, 1);
+    const coordenacao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(usuarioGUID, escolaGUID, 1);
     if (coordenacao && coordenacao.Status === "Ativo") {
       return;
     }
 
-    const direcao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(cpf, escolaGUID, 6);
+    const direcao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(usuarioGUID, escolaGUID, 6);
     if (direcao && direcao.Status === "Ativo") {
       return;
     }

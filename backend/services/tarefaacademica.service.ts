@@ -14,6 +14,7 @@ import { AnexoDAO } from "../repositories/anexo.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
 import { CategoriaConteudoDAO } from "../repositories/categoriaconteudo.repository";
 import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
@@ -256,6 +257,7 @@ export default class TarefaAcademicaService {
   #questaoDAO: TarefaAcademicaQuestaoDAO;
   #alternativaDAO: TarefaAcademicaAlternativaDAO;
   #respostaDAO: TarefaAcademicaRespostaDAO;
+  #usuarioDAO: UsuarioDAO;
   constructor(
     tarefaDAODependency: TarefaAcademicaDAO,
     tarefaMatriculaDAODependency: TarefaAcademicaMatriculaDAO,
@@ -265,7 +267,8 @@ export default class TarefaAcademicaService {
     alocacaoDAODependency: MaterialProfessorTurmaDAO,
     questaoDAODependency: TarefaAcademicaQuestaoDAO,
     alternativaDAODependency: TarefaAcademicaAlternativaDAO,
-    respostaDAODependency: TarefaAcademicaRespostaDAO
+    respostaDAODependency: TarefaAcademicaRespostaDAO,
+    usuarioDAODependency: UsuarioDAO
   ) {
     console.log("⬆️  TarefaAcademicaService.constructor()");
     this.#tarefaDAO = tarefaDAODependency;
@@ -277,11 +280,25 @@ export default class TarefaAcademicaService {
     this.#questaoDAO = questaoDAODependency;
     this.#alternativaDAO = alternativaDAODependency;
     this.#respostaDAO = respostaDAODependency;
+    this.#usuarioDAO = usuarioDAODependency;
   }
 
+  /** Resolve o CPF de um ator a partir do UsuarioGUID — categoriaconteudo,
+   * materiaxprofessorxturma, tarefaacademica_matricula (avaliador) e
+   * tarefaacademica_resposta (avaliador) ainda usam CPF. */
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    return usuario.UsuarioCPF;
+  };
+
   /** Valida que a categoria (se informada) pertence ao professor e à mesma turma do alocação da tarefa. */
-  #validarCategoria = async (categoriaGUID: string | null | undefined, matXprofXturxescGUID: string, usuarioCPF: string): Promise<void> => {
+  #validarCategoria = async (categoriaGUID: string | null | undefined, matXprofXturxescGUID: string, usuarioGUID: string): Promise<void> => {
     if (!categoriaGUID) return;
+
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     const categoria = await this.#categoriaDAO.findById(categoriaGUID);
     if (!categoria) {
@@ -314,11 +331,11 @@ export default class TarefaAcademicaService {
    */
   criarTarefa = async (
     data: TarefaAcademicaCreateDTO,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<TarefaAcademicaDTO> => {
     console.log("🟣 TarefaAcademicaService.criarTarefa()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para criar uma tarefa.",
       });
@@ -370,7 +387,7 @@ export default class TarefaAcademicaService {
       });
     }
 
-    await this.#validarCategoria(data.CategoriaGUID, data.matXprofXturxescGUID, usuarioCPF);
+    await this.#validarCategoria(data.CategoriaGUID, data.matXprofXturxescGUID, usuarioGUID);
 
     // PASSO 1: Criar tarefa única (dados compartilhados)
     const tarefa = new TarefaAcademica();
@@ -433,7 +450,7 @@ export default class TarefaAcademicaService {
       if (escolaGUID) {
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
-          UsuarioCPFAtor: usuarioCPF,
+          UsuarioGUIDAtor: usuarioGUID,
           AcaoTipo: "Create",
           EntidadeTipo: "tarefaacademica",
           EntidadeGUID: tarefaCriada.TarefaGUID,
@@ -462,7 +479,7 @@ export default class TarefaAcademicaService {
    */
   #notificarTarefaPostada = async (
     tarefa: TarefaAcademica,
-    matriculas: Array<{ UsuarioCPF: string; TurmaGUID: string } | null>
+    matriculas: Array<{ UsuarioGUID: string; TurmaGUID: string } | null>
   ): Promise<void> => {
     const primeiraMatricula = matriculas.find((m) => m !== null);
     if (!primeiraMatricula) return;
@@ -474,7 +491,7 @@ export default class TarefaAcademicaService {
     const escolaGUID = (turmaRows[0] as any)?.EscolaGUID;
     if (!escolaGUID) return;
 
-    const destinatarios = matriculas.filter((m): m is { UsuarioCPF: string; TurmaGUID: string } => m !== null).map((m) => m.UsuarioCPF);
+    const destinatarios = matriculas.filter((m): m is { UsuarioGUID: string; TurmaGUID: string } => m !== null).map((m) => m.UsuarioGUID);
 
     await getNotificacaoService().disparar({
       tipoSlug: "tarefa_postada",
@@ -495,11 +512,11 @@ export default class TarefaAcademicaService {
    */
   criarTarefasBatch = async (
     data: TarefaAcademicaBatchCreateDTO,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<{ tarefas: TarefaAcademicaDTO[]; count: number }> => {
     console.log(`🟣 TarefaAcademicaService.criarTarefasBatch() - ${data.MatriculasGUID.length} alunos`);
 
-    const tarefaDTO = await this.criarTarefa(data, usuarioCPF);
+    const tarefaDTO = await this.criarTarefa(data, usuarioGUID);
     
     // Retornar array com UMA tarefa para manter compatibilidade com frontend
     return {
@@ -525,12 +542,12 @@ export default class TarefaAcademicaService {
   };
 
   /**
-   * @param usuarioCPFFiltro Quando informado, restringe `MatriculasAtribuidas` à
-   * matrícula pertencente a esse CPF — usado quando um aluno consulta a própria
+   * @param usuarioGUIDFiltro Quando informado, restringe `MatriculasAtribuidas` à
+   * matrícula pertencente a esse usuário — usado quando um aluno consulta a própria
    * tarefa (uma linha de TarefaAcademica é compartilhada por N alunos da turma;
    * sem esse filtro, todo aluno veria a lista completa de colegas).
    */
-  buscarTarefa = async (TarefaGUID: string, usuarioCPFFiltro?: string): Promise<TarefaAcademicaDTO> => {
+  buscarTarefa = async (TarefaGUID: string, usuarioGUIDFiltro?: string): Promise<TarefaAcademicaDTO> => {
     console.log("🟣 TarefaAcademicaService.buscarTarefa()");
 
     const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
@@ -543,12 +560,12 @@ export default class TarefaAcademicaService {
 
     let atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
 
-    if (usuarioCPFFiltro) {
+    if (usuarioGUIDFiltro) {
       const infoPorMatricula = await this.#buscarInfoPorMatricula(
         atribuicoes.map((atrib) => atrib.MatriculaGUID)
       );
       atribuicoes = atribuicoes.filter(
-        (atrib) => infoPorMatricula.get(atrib.MatriculaGUID)?.UsuarioCPF === usuarioCPFFiltro
+        (atrib) => infoPorMatricula.get(atrib.MatriculaGUID)?.UsuarioGUID === usuarioGUIDFiltro
       );
     }
 
@@ -558,11 +575,11 @@ export default class TarefaAcademicaService {
   atualizarTarefa = async (
     TarefaGUID: string,
     data: TarefaAcademicaUpdateDTO,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<TarefaAcademicaDTO> => {
     console.log("🟣 TarefaAcademicaService.atualizarTarefa()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para atualizar uma tarefa.",
       });
@@ -575,8 +592,10 @@ export default class TarefaAcademicaService {
       });
     }
 
+    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado
+    const professorAtualizar = await this.#resolverCPFAtor(usuarioGUID);
     const alocacaoAtualizar = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
-    if (!alocacaoAtualizar || alocacaoAtualizar.UsuarioCPF !== usuarioCPF) {
+    if (!alocacaoAtualizar || alocacaoAtualizar.UsuarioCPF !== professorAtualizar) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Só o professor responsável por esta tarefa pode atualizá-la.",
       });
@@ -623,7 +642,7 @@ export default class TarefaAcademicaService {
     }
 
     if (data.CategoriaGUID !== undefined) {
-      await this.#validarCategoria(data.CategoriaGUID, tarefa.matXprofXturxescGUID, usuarioCPF);
+      await this.#validarCategoria(data.CategoriaGUID, tarefa.matXprofXturxescGUID, usuarioGUID);
     }
 
     const updates: Partial<Pick<
@@ -663,7 +682,7 @@ export default class TarefaAcademicaService {
       if (escolaGUID) {
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
-          UsuarioCPFAtor: usuarioCPF,
+          UsuarioGUIDAtor: usuarioGUID,
           AcaoTipo: "Update",
           EntidadeTipo: "tarefaacademica",
           EntidadeGUID: tarefaAtualizada.TarefaGUID,
@@ -694,7 +713,7 @@ export default class TarefaAcademicaService {
 
     await getNotificacaoService().disparar({
       tipoSlug: "tarefa_prazo_alterado",
-      destinatarios: validas.map((m) => m.UsuarioCPF),
+      destinatarios: validas.map((m) => m.UsuarioGUID),
       escolaGUID,
       titulo: `O prazo da tarefa "${tarefa.TarefaTitulo}" foi alterado`,
       entidadeTipo: "tarefa",
@@ -703,10 +722,10 @@ export default class TarefaAcademicaService {
     });
   };
 
-  excluirTarefa = async (TarefaGUID: string, usuarioCPF?: string): Promise<boolean> => {
+  excluirTarefa = async (TarefaGUID: string, usuarioGUID?: string): Promise<boolean> => {
     console.log("🟣 TarefaAcademicaService.excluirTarefa()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para excluir uma tarefa.",
       });
@@ -719,8 +738,10 @@ export default class TarefaAcademicaService {
       });
     }
 
+    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado
+    const professorExcluir = await this.#resolverCPFAtor(usuarioGUID);
     const alocacaoExcluir = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
-    if (!alocacaoExcluir || alocacaoExcluir.UsuarioCPF !== usuarioCPF) {
+    if (!alocacaoExcluir || alocacaoExcluir.UsuarioCPF !== professorExcluir) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Só o professor responsável por esta tarefa pode excluí-la.",
       });
@@ -740,7 +761,7 @@ export default class TarefaAcademicaService {
     if (excluida && escolaGUIDParaAuditoria) {
       void getAuditoriaService().registrar({
         EscolaGUID: escolaGUIDParaAuditoria,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: "Delete",
         EntidadeTipo: "tarefaacademica",
         EntidadeGUID: tarefa.TarefaGUID,
@@ -760,11 +781,11 @@ export default class TarefaAcademicaService {
     TarefaGUID: string,
     MatriculaGUID: string,
     TarefaFeito: boolean,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<MatriculaAtribuidaDTO> => {
     console.log("🟣 TarefaAcademicaService.marcarComoFeito()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para marcar tarefa.",
       });
@@ -797,7 +818,7 @@ export default class TarefaAcademicaService {
     const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
 
     if (TarefaFeito && tarefa) {
-      this.#notificarTarefaRespostaRecebida(tarefa, usuarioCPF).catch((error) => {
+      this.#notificarTarefaRespostaRecebida(tarefa, usuarioGUID).catch((error) => {
         console.error("🔴 TarefaAcademicaService.#notificarTarefaRespostaRecebida() falhou:", error);
       });
     }
@@ -807,7 +828,7 @@ export default class TarefaAcademicaService {
     if (escolaGUIDFeito) {
       void getAuditoriaService().registrar({
         EscolaGUID: escolaGUIDFeito,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: "Update",
         EntidadeTipo: "tarefaacademica",
         EntidadeGUID: TarefaGUID,
@@ -848,7 +869,7 @@ export default class TarefaAcademicaService {
   avaliarTarefa = async (
     TarefaMatriculaGUID: string,
     nota: number,
-    professorCPF: string
+    professorGUID: string
   ): Promise<MatriculaAtribuidaDTO> => {
     console.log("🟣 TarefaAcademicaService.avaliarTarefa()");
 
@@ -857,6 +878,10 @@ export default class TarefaAcademicaService {
         message: "A nota deve ser um número entre 0 e 10.",
       });
     }
+
+    // materiaxprofessorxturma/tarefaacademica_matricula ainda usam CPF —
+    // resolver o professor logado.
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
 
     // Buscar a atribuição diretamente pelo seu próprio GUID (não temos TarefaGUID+MatriculaGUID aqui)
     const [rows] = await pool.execute<RowDataPacket[]>(
@@ -911,7 +936,7 @@ export default class TarefaAcademicaService {
       if (escolaGUID) {
         await getNotificacaoService().disparar({
           tipoSlug: "tarefa_avaliada",
-          destinatarios: [matricula.UsuarioCPF],
+          destinatarios: [matricula.UsuarioGUID],
           escolaGUID,
           titulo: `Sua tarefa "${tarefa.TarefaTitulo}" foi avaliada: nota ${nota.toFixed(2)}`,
           entidadeTipo: "tarefa",
@@ -921,7 +946,7 @@ export default class TarefaAcademicaService {
 
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
-          UsuarioCPFAtor: professorCPF,
+          UsuarioGUIDAtor: professorGUID,
           AcaoTipo: "Update",
           EntidadeTipo: "tarefaacademicamatricula",
           EntidadeGUID: TarefaMatriculaGUID,
@@ -954,7 +979,7 @@ export default class TarefaAcademicaService {
    * Dashboard do aluno: tarefas com prazo no futuro e ainda não feitas.
    * Explicitamente NÃO inclui atrasadas nem já enviadas/marcadas.
    */
-  listarPendentesAluno = async (usuarioCPF: string): Promise<Array<{
+  listarPendentesAluno = async (usuarioGUID: string): Promise<Array<{
     TarefaGUID: string;
     TarefaTitulo: string;
     TarefaPrazoData: string;
@@ -975,11 +1000,11 @@ export default class TarefaAcademicaService {
        INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
        INNER JOIN materia mat ON mat.MateriaGUID = mpt.MateriaGUID
        INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
-       WHERE m.UsuarioCPF = ?
+       WHERE m.UsuarioGUID = ?
          AND tm.TarefaFeito = FALSE
          AND COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) > NOW()
        ORDER BY TarefaPrazoData ASC`,
-      [usuarioCPF]
+      [usuarioGUID]
     );
 
     return rows.map((row: any) => ({
@@ -996,7 +1021,7 @@ export default class TarefaAcademicaService {
   /**
    * Dashboard do professor: entregas já feitas/marcadas, ainda sem nota.
    */
-  listarPendentesAvaliacaoProfessor = async (usuarioCPF: string): Promise<Array<{
+  listarPendentesAvaliacaoProfessor = async (usuarioGUID: string): Promise<Array<{
     TarefaMatriculaGUID: string;
     TarefaGUID: string;
     TarefaTitulo: string;
@@ -1008,6 +1033,9 @@ export default class TarefaAcademicaService {
   }>> => {
     console.log("🟣 TarefaAcademicaService.listarPendentesAvaliacaoProfessor()");
 
+    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
+    const professorCPF = await this.#resolverCPFAtor(usuarioGUID);
+
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT tm.TarefaMatriculaGUID, t.TarefaGUID, t.TarefaTitulo,
               mat.MateriaGUID, mat.MateriaNome, tu.TurmaGUID, tu.TurmaNome, u.UsuarioNome AS AlunoNome
@@ -1017,12 +1045,12 @@ export default class TarefaAcademicaService {
        INNER JOIN materia mat ON mat.MateriaGUID = mpt.MateriaGUID
        INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
        INNER JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
-       INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+       INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
        WHERE mpt.UsuarioCPF = ?
          AND tm.TarefaFeito = TRUE
          AND tm.TarefaNota IS NULL
        ORDER BY tm.TarefaRealizacaoData ASC`,
-      [usuarioCPF]
+      [professorCPF]
     );
 
     return rows.map((row: any) => ({
@@ -1037,7 +1065,7 @@ export default class TarefaAcademicaService {
     }));
   };
 
-  #notificarTarefaRespostaRecebida = async (tarefa: TarefaAcademica, alunoCPF: string): Promise<void> => {
+  #notificarTarefaRespostaRecebida = async (tarefa: TarefaAcademica, alunoGUID: string): Promise<void> => {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT mpt.UsuarioCPF AS ProfessorCPF, t.EscolaGUID
        FROM materiaxprofessorxturma mpt
@@ -1049,15 +1077,19 @@ export default class TarefaAcademicaService {
     const info = rows[0] as any;
     if (!info?.ProfessorCPF || !info?.EscolaGUID) return;
 
+    // materiaxprofessorxturma ainda usa CPF — resolver pra GUID (notificacao já exige GUID)
+    const professor = await this.#usuarioDAO.findByCPF(info.ProfessorCPF);
+    if (!professor) return;
+
     const [alunoRows] = await pool.execute<RowDataPacket[]>(
-      "SELECT UsuarioNome FROM usuario WHERE UsuarioCPF = ? LIMIT 1",
-      [alunoCPF]
+      "SELECT UsuarioNome FROM usuario WHERE UsuarioGUID = ? LIMIT 1",
+      [alunoGUID]
     );
     const alunoNome = (alunoRows[0] as any)?.UsuarioNome ?? "Um aluno";
 
     await getNotificacaoService().disparar({
       tipoSlug: "tarefa_resposta_recebida",
-      destinatarios: [info.ProfessorCPF],
+      destinatarios: [professor.UsuarioGUID],
       escolaGUID: info.EscolaGUID,
       titulo: `${alunoNome} enviou a resposta da tarefa "${tarefa.TarefaTitulo}"`,
       entidadeTipo: "tarefa",
@@ -1069,11 +1101,11 @@ export default class TarefaAcademicaService {
   enviarAnexoEntrega = async (
     TarefaGUID: string,
     AnexoGUID: string,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<void> => {
     console.log("🟣 TarefaAcademicaService.enviarAnexoEntrega()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para enviar anexo de entrega.",
       });
@@ -1101,6 +1133,8 @@ export default class TarefaAcademicaService {
       });
     }
 
+    // anexo ainda usa CPF — resolver o usuário logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     if (anexo.UsuarioCPF !== usuarioCPF) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode enviar como entrega um anexo que você mesmo enviou.",
@@ -1114,7 +1148,7 @@ export default class TarefaAcademicaService {
     const atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
     const infoPorMatricula = await this.#buscarInfoPorMatricula(atribuicoes.map((a) => a.MatriculaGUID));
     const minhaAtribuicao = atribuicoes.find(
-      (a) => infoPorMatricula.get(a.MatriculaGUID)?.UsuarioCPF === usuarioCPF
+      (a) => infoPorMatricula.get(a.MatriculaGUID)?.UsuarioGUID === usuarioGUID
     );
 
     if (!minhaAtribuicao) {
@@ -1128,7 +1162,7 @@ export default class TarefaAcademicaService {
     // Enviar o anexo É a entrega da tarefa digital — marca automaticamente
     // como feito (mesmo efeito de marcarComoFeito(true)), sem exigir que o
     // aluno também clique num checkbox separado depois de já ter enviado.
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF);
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
     if (matricula) {
       const atribuicao = await this.#tarefaMatriculaDAO.findByTarefaAndMatricula(TarefaGUID, matricula.MatriculaGUID);
       if (atribuicao && !atribuicao.TarefaFeito) {
@@ -1136,7 +1170,7 @@ export default class TarefaAcademicaService {
       }
     }
 
-    this.#notificarTarefaRespostaRecebida(tarefa, usuarioCPF).catch((error) => {
+    this.#notificarTarefaRespostaRecebida(tarefa, usuarioGUID).catch((error) => {
       console.error("🔴 TarefaAcademicaService.#notificarTarefaRespostaRecebida() falhou:", error);
     });
   };
@@ -1144,11 +1178,11 @@ export default class TarefaAcademicaService {
   removerAnexo = async (
     TarefaGUID: string,
     AnexoGUID: string,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<void> => {
     console.log("🟣 TarefaAcademicaService.removerAnexo()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para remover anexo.",
       });
@@ -1172,18 +1206,20 @@ export default class TarefaAcademicaService {
       // Entrega: só o próprio aluno dono da atribuição pode remover.
       const infoPorMatricula = vinculo.TarefaMatriculaGUID
         ? await this.#buscarInfoPorMatriculaTarefa([vinculo.TarefaMatriculaGUID])
-        : new Map<string, { UsuarioCPF: string; UsuarioNome: string }>();
-      const donoCPF = vinculo.TarefaMatriculaGUID
-        ? infoPorMatricula.get(vinculo.TarefaMatriculaGUID)?.UsuarioCPF
+        : new Map<string, { UsuarioGUID: string; UsuarioNome: string }>();
+      const donoGUID = vinculo.TarefaMatriculaGUID
+        ? infoPorMatricula.get(vinculo.TarefaMatriculaGUID)?.UsuarioGUID
         : undefined;
 
-      if (donoCPF !== usuarioCPF) {
+      if (donoGUID !== usuarioGUID) {
         throw new ErrorResponse(403, "Sem permissão", {
           message: "Você só pode remover a própria entrega.",
         });
       }
     } else {
       // Material de apoio (descrição): só o professor responsável pela tarefa.
+      // materiaxprofessorxturma ainda usa CPF — resolver o usuário logado.
+      const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
       const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
       if (!alocacao || alocacao.UsuarioCPF !== usuarioCPF) {
         throw new ErrorResponse(403, "Sem permissão", {
@@ -1198,27 +1234,27 @@ export default class TarefaAcademicaService {
   // ========== Métodos Auxiliares ==========
 
   /**
-   * Resolve MatriculaGUID -> {UsuarioCPF, UsuarioNome} em uma única query
+   * Resolve MatriculaGUID -> {UsuarioGUID, UsuarioNome} em uma única query
    * (evita N+1 ao montar MatriculasAtribuidas). Usado pela tela de avaliação
    * do professor (nome em vez do GUID cru da matrícula) e para filtrar
    * "minha matrícula" quando um aluno consulta a própria tarefa.
    */
   #buscarInfoPorMatricula = async (
     matriculaGUIDs: string[]
-  ): Promise<Map<string, { UsuarioCPF: string; UsuarioNome: string }>> => {
+  ): Promise<Map<string, { UsuarioGUID: string; UsuarioNome: string }>> => {
     const unicos = Array.from(new Set(matriculaGUIDs));
     if (unicos.length === 0) return new Map();
 
     const placeholders = unicos.map(() => "?").join(", ");
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT m.MatriculaGUID, u.UsuarioCPF, u.UsuarioNome
+      `SELECT m.MatriculaGUID, u.UsuarioGUID, u.UsuarioNome
        FROM matricula m
-       INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+       INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
        WHERE m.MatriculaGUID IN (${placeholders})`,
       unicos
     );
 
-    return new Map(rows.map((row: any) => [row.MatriculaGUID, { UsuarioCPF: row.UsuarioCPF, UsuarioNome: row.UsuarioNome }]));
+    return new Map(rows.map((row: any) => [row.MatriculaGUID, { UsuarioGUID: row.UsuarioGUID, UsuarioNome: row.UsuarioNome }]));
   };
 
   /**
@@ -1228,21 +1264,21 @@ export default class TarefaAcademicaService {
    */
   #buscarInfoPorMatriculaTarefa = async (
     tarefaMatriculaGUIDs: string[]
-  ): Promise<Map<string, { UsuarioCPF: string; UsuarioNome: string }>> => {
+  ): Promise<Map<string, { UsuarioGUID: string; UsuarioNome: string }>> => {
     const unicos = Array.from(new Set(tarefaMatriculaGUIDs));
     if (unicos.length === 0) return new Map();
 
     const placeholders = unicos.map(() => "?").join(", ");
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT tm.TarefaMatriculaGUID, u.UsuarioCPF, u.UsuarioNome
+      `SELECT tm.TarefaMatriculaGUID, u.UsuarioGUID, u.UsuarioNome
        FROM tarefaacademica_matricula tm
        INNER JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
-       INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+       INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
        WHERE tm.TarefaMatriculaGUID IN (${placeholders})`,
       unicos
     );
 
-    return new Map(rows.map((row: any) => [row.TarefaMatriculaGUID, { UsuarioCPF: row.UsuarioCPF, UsuarioNome: row.UsuarioNome }]));
+    return new Map(rows.map((row: any) => [row.TarefaMatriculaGUID, { UsuarioGUID: row.UsuarioGUID, UsuarioNome: row.UsuarioNome }]));
   };
 
   #mapAnexosEntrega = (
@@ -1388,9 +1424,10 @@ export default class TarefaAcademicaService {
   });
 
   /** Professor cria uma questão (objetiva ou discursiva) numa tarefa 'lista'. */
-  criarQuestao = async (TarefaGUID: string, data: QuestaoCreateDTO, professorCPF: string): Promise<QuestaoDTO> => {
+  criarQuestao = async (TarefaGUID: string, data: QuestaoCreateDTO, professorGUID: string): Promise<QuestaoDTO> => {
     console.log("🟣 TarefaAcademicaService.criarQuestao()");
 
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
 
     if (data.QuestaoTipo === "objetiva") {
@@ -1441,10 +1478,11 @@ export default class TarefaAcademicaService {
   criarQuestoesBatch = async (
     TarefaGUID: string,
     questoesData: QuestaoCreateDTO[],
-    professorCPF: string
+    professorGUID: string
   ): Promise<{ criadas: QuestaoDTO[]; count: number }> => {
     console.log(`🟣 TarefaAcademicaService.criarQuestoesBatch() - ${questoesData.length} questões`);
 
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
 
     if (questoesData.length === 0) {
@@ -1522,10 +1560,11 @@ export default class TarefaAcademicaService {
   importarQuestoesPlanilha = async (
     TarefaGUID: string,
     linhas: QuestaoImportRowDTO[],
-    professorCPF: string
+    professorGUID: string
   ): Promise<ImportacaoResultadoDTO> => {
     console.log(`🟣 TarefaAcademicaService.importarQuestoesPlanilha() - ${linhas.length} linhas`);
 
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
 
     const questoesExistentes = await this.#questaoDAO.findByTarefa(TarefaGUID);
@@ -1580,9 +1619,10 @@ export default class TarefaAcademicaService {
    * a visão do aluno (com respostas e sem revelar gabarito antecipadamente)
    * é `buscarQuestoesComRespostas`.
    */
-  listarQuestoes = async (TarefaGUID: string, professorCPF: string): Promise<QuestaoDTO[]> => {
+  listarQuestoes = async (TarefaGUID: string, professorGUID: string): Promise<QuestaoDTO[]> => {
     console.log("🟣 TarefaAcademicaService.listarQuestoes()");
 
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
 
     const questoes = await this.#questaoDAO.findByTarefa(TarefaGUID);
@@ -1606,7 +1646,7 @@ export default class TarefaAcademicaService {
   };
 
   /** Professor atualiza uma questão. Mudança estrutural (Tipo, Alternativas) é bloqueada se já existir resposta. */
-  atualizarQuestao = async (QuestaoGUID: string, data: QuestaoUpdateDTO, professorCPF: string): Promise<QuestaoDTO> => {
+  atualizarQuestao = async (QuestaoGUID: string, data: QuestaoUpdateDTO, professorGUID: string): Promise<QuestaoDTO> => {
     console.log("🟣 TarefaAcademicaService.atualizarQuestao()");
 
     const questao = await this.#questaoDAO.findById(QuestaoGUID);
@@ -1615,6 +1655,7 @@ export default class TarefaAcademicaService {
         message: `Não existe questão com id ${QuestaoGUID}`,
       });
     }
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
 
     const temResposta = await this.#respostaDAO.existeRespostaParaQuestao(QuestaoGUID);
@@ -1707,7 +1748,7 @@ export default class TarefaAcademicaService {
   };
 
   /** Professor exclui uma questão — bloqueado se já existir resposta registrada. */
-  excluirQuestao = async (QuestaoGUID: string, professorCPF: string): Promise<void> => {
+  excluirQuestao = async (QuestaoGUID: string, professorGUID: string): Promise<void> => {
     console.log("🟣 TarefaAcademicaService.excluirQuestao()");
 
     const questao = await this.#questaoDAO.findById(QuestaoGUID);
@@ -1716,6 +1757,7 @@ export default class TarefaAcademicaService {
         message: `Não existe questão com id ${QuestaoGUID}`,
       });
     }
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
 
     const temResposta = await this.#respostaDAO.existeRespostaParaQuestao(QuestaoGUID);
@@ -1732,10 +1774,11 @@ export default class TarefaAcademicaService {
   reordenarQuestoes = async (
     TarefaGUID: string,
     ordens: Array<{ QuestaoGUID: string; QuestaoOrdem: number }>,
-    professorCPF: string
+    professorGUID: string
   ): Promise<void> => {
     console.log("🟣 TarefaAcademicaService.reordenarQuestoes()");
 
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
 
     const questoesExistentes = await this.#questaoDAO.findByTarefa(TarefaGUID);
@@ -1752,7 +1795,7 @@ export default class TarefaAcademicaService {
   };
 
   /** Professor vincula um anexo (que ele mesmo enviou) a uma questão — vários anexos por questão são permitidos. */
-  vincularAnexoQuestao = async (QuestaoGUID: string, AnexoGUID: string, professorCPF: string): Promise<void> => {
+  vincularAnexoQuestao = async (QuestaoGUID: string, AnexoGUID: string, professorGUID: string): Promise<void> => {
     console.log("🟣 TarefaAcademicaService.vincularAnexoQuestao()");
 
     const questao = await this.#questaoDAO.findById(QuestaoGUID);
@@ -1761,6 +1804,7 @@ export default class TarefaAcademicaService {
         message: `Não existe questão com id ${QuestaoGUID}`,
       });
     }
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
 
     const anexo = await this.#anexoDAO.findById(AnexoGUID);
@@ -1779,7 +1823,7 @@ export default class TarefaAcademicaService {
   };
 
   /** Professor desvincula um anexo de uma questão. */
-  desvincularAnexoQuestao = async (QuestaoGUID: string, AnexoGUID: string, professorCPF: string): Promise<void> => {
+  desvincularAnexoQuestao = async (QuestaoGUID: string, AnexoGUID: string, professorGUID: string): Promise<void> => {
     console.log("🟣 TarefaAcademicaService.desvincularAnexoQuestao()");
 
     const questao = await this.#questaoDAO.findById(QuestaoGUID);
@@ -1788,6 +1832,7 @@ export default class TarefaAcademicaService {
         message: `Não existe questão com id ${QuestaoGUID}`,
       });
     }
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
 
     await this.#questaoDAO.desvincularAnexo(QuestaoGUID, AnexoGUID);
@@ -1809,7 +1854,7 @@ export default class TarefaAcademicaService {
   /** Resolve a tarefa (tipo 'lista') + a atribuição do aluno autenticado, com as checagens comuns a toda resposta. */
   #resolverAtribuicaoListaDoAluno = async (
     TarefaGUID: string,
-    alunoCPF: string
+    alunoGUID: string
   ): Promise<{ tarefa: TarefaAcademica; atribuicao: TarefaAcademicaMatricula }> => {
     const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
     if (!tarefa) {
@@ -1823,7 +1868,7 @@ export default class TarefaAcademicaService {
       });
     }
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(alunoCPF);
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(alunoGUID);
     if (!matricula) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você não tem matrícula ativa.",
@@ -1905,7 +1950,7 @@ export default class TarefaAcademicaService {
     // Aluno terminou de responder tudo — avisa o professor (mesmo evento
     // "resposta recebida" já usado por marcarComoFeito/enviarAnexoEntrega).
     if (vaiTerminarAgora) {
-      this.#notificarTarefaRespostaRecebida(tarefa, matricula.UsuarioCPF).catch((error) => {
+      this.#notificarTarefaRespostaRecebida(tarefa, matricula.UsuarioGUID).catch((error) => {
         console.error("🔴 TarefaAcademicaService.#tentarSettleTarefaLista() falhou ao notificar professor:", error);
       });
     }
@@ -1917,7 +1962,7 @@ export default class TarefaAcademicaService {
       if (escolaGUID) {
         await getNotificacaoService().disparar({
           tipoSlug: "tarefa_avaliada",
-          destinatarios: [matricula.UsuarioCPF],
+          destinatarios: [matricula.UsuarioGUID],
           escolaGUID,
           titulo: `Sua tarefa "${tarefa.TarefaTitulo}" foi avaliada: nota ${notaFinal.toFixed(2)}`,
           entidadeTipo: "tarefa",
@@ -1933,11 +1978,11 @@ export default class TarefaAcademicaService {
     TarefaGUID: string,
     QuestaoGUID: string,
     AlternativaGUID: string,
-    alunoCPF: string
+    alunoGUID: string
   ): Promise<RespostaDTO> => {
     console.log("🟣 TarefaAcademicaService.responderObjetiva()");
 
-    const { atribuicao } = await this.#resolverAtribuicaoListaDoAluno(TarefaGUID, alunoCPF);
+    const { atribuicao } = await this.#resolverAtribuicaoListaDoAluno(TarefaGUID, alunoGUID);
 
     const questao = await this.#questaoDAO.findById(QuestaoGUID);
     if (!questao || questao.TarefaGUID !== TarefaGUID) {
@@ -1975,11 +2020,11 @@ export default class TarefaAcademicaService {
     TarefaGUID: string,
     QuestaoGUID: string,
     texto: string,
-    alunoCPF: string
+    alunoGUID: string
   ): Promise<RespostaDTO> => {
     console.log("🟣 TarefaAcademicaService.responderDiscursiva()");
 
-    const { atribuicao } = await this.#resolverAtribuicaoListaDoAluno(TarefaGUID, alunoCPF);
+    const { atribuicao } = await this.#resolverAtribuicaoListaDoAluno(TarefaGUID, alunoGUID);
 
     const questao = await this.#questaoDAO.findById(QuestaoGUID);
     if (!questao || questao.TarefaGUID !== TarefaGUID) {
@@ -2006,7 +2051,7 @@ export default class TarefaAcademicaService {
    * QuestaoExplicacao só aparecem depois que a questão foi resolvida —
    * objetiva na hora, discursiva só depois de corrigida.
    */
-  buscarQuestoesComRespostas = async (TarefaGUID: string, alunoCPF: string): Promise<QuestaoComRespostaDTO[]> => {
+  buscarQuestoesComRespostas = async (TarefaGUID: string, alunoGUID: string): Promise<QuestaoComRespostaDTO[]> => {
     console.log("🟣 TarefaAcademicaService.buscarQuestoesComRespostas()");
 
     const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
@@ -2021,7 +2066,7 @@ export default class TarefaAcademicaService {
       });
     }
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(alunoCPF);
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(alunoGUID);
     if (!matricula) {
       throw new ErrorResponse(403, "Sem permissão", { message: "Você não tem matrícula ativa." });
     }
@@ -2092,10 +2137,11 @@ export default class TarefaAcademicaService {
   buscarRespostasAluno = async (
     TarefaGUID: string,
     TarefaMatriculaGUID: string,
-    professorCPF: string
+    professorGUID: string
   ): Promise<QuestaoComRespostaProfessorDTO[]> => {
     console.log("🟣 TarefaAcademicaService.buscarRespostasAluno()");
 
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
 
     const atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
@@ -2158,9 +2204,10 @@ export default class TarefaAcademicaService {
    * tarefa inteira (o professor pode corrigir discursivas de quem ainda não
    * terminou a lista).
    */
-  avaliarQuestaoDiscursiva = async (RespostaGUID: string, pontos: number, professorCPF: string): Promise<RespostaDTO> => {
+  avaliarQuestaoDiscursiva = async (RespostaGUID: string, pontos: number, professorGUID: string): Promise<RespostaDTO> => {
     console.log("🟣 TarefaAcademicaService.avaliarQuestaoDiscursiva()");
 
+    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     const resposta = await this.#respostaDAO.findById(RespostaGUID);
     if (!resposta) {
       throw new ErrorResponse(404, "Resposta não encontrada", {
@@ -2204,7 +2251,7 @@ export default class TarefaAcademicaService {
         if (escolaGUID) {
           void getAuditoriaService().registrar({
             EscolaGUID: escolaGUID,
-            UsuarioCPFAtor: professorCPF,
+            UsuarioGUIDAtor: professorGUID,
             AcaoTipo: "Update",
             EntidadeTipo: "tarefaacademicaresposta",
             EntidadeGUID: RespostaGUID,

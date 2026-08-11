@@ -14,8 +14,8 @@ export class QuestaoBancoController {
   store = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 QuestaoBancoController.store()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
-      const questao = await this.#service.criarQuestao(req.body, usuarioCPF);
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      const questao = await this.#service.criarQuestao(req.body, usuarioGUID);
       res.status(201).json({ success: true, message: "Questão criada com sucesso", data: { questao } });
     } catch (error) {
       next(error);

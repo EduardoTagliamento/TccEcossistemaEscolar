@@ -163,7 +163,7 @@ export default function ChatPage() {
     if (!escolaGUID || !usuario) return;
     (async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/usuario/${usuario.UsuarioCPF}/escolas`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/usuario/${usuario.UsuarioGUID}/escolas`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
@@ -886,7 +886,7 @@ export default function ChatPage() {
                                 {!editandoEsta && mensagem.Reacoes && mensagem.Reacoes.length > 0 && (
                                   <div className={styles.reacoesLinha}>
                                     {mensagem.Reacoes.map((reacao) => {
-                                      const euReagi = usuario ? reacao.UsuariosCPF.includes(usuario.UsuarioCPF) : false;
+                                      const euReagi = usuario?.UsuarioCPF ? reacao.UsuariosCPF.includes(usuario.UsuarioCPF) : false;
                                       return (
                                         <button
                                           type="button"

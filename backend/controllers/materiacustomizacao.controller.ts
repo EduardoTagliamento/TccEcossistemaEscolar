@@ -16,10 +16,10 @@ export class MateriaCustomizacaoController {
   salvar = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF || "";
+      const usuarioGUID = req.user?.UsuarioGUID || "";
       const arquivo = (req as any).file as Express.Multer.File | undefined;
 
-      const customizacao = await this.#service.salvarCustomizacao(guid, usuarioCPF, {
+      const customizacao = await this.#service.salvarCustomizacao(guid, usuarioGUID, {
         imagem: arquivo ? { buffer: arquivo.buffer, mimetype: arquivo.mimetype } : undefined,
         cor: req.body.cor,
         mensagem: req.body.mensagem,
@@ -36,14 +36,14 @@ export class MateriaCustomizacaoController {
   };
 
   /**
-   * GET /api/materia/:guid/customizacao?UsuarioCPF=
+   * GET /api/materia/:guid/customizacao
    */
   buscar = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = (req.query.UsuarioCPF as string) || req.user?.UsuarioCPF || "";
+      const usuarioGUID = req.user?.UsuarioGUID || "";
 
-      const customizacao = await this.#service.buscarCustomizacao(guid, usuarioCPF);
+      const customizacao = await this.#service.buscarCustomizacao(guid, usuarioGUID);
 
       res.status(200).json({
         success: true,

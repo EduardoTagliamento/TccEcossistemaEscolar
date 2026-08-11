@@ -5,6 +5,7 @@ import MysqlDatabase from '../database/MysqlDatabase';
 import { ConversaDAO } from '../repositories/conversa.repository';
 import { ConversaGrupoDAO } from '../repositories/conversa-grupo.repository';
 import { MensagemDAO } from '../repositories/mensagem.repository';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import MensagemService from '../services/mensagem.service';
 import { registerConversaHandlers } from './conversa.handler';
 
@@ -19,15 +20,31 @@ export class SocketServer {
       path: '/socket.io',
     });
 
+    const db = new MysqlDatabase();
+    const conversaDAO = new ConversaDAO(db);
+    const conversaGrupoDAO = new ConversaGrupoDAO(db);
+    const mensagemDAO = new MensagemDAO(db);
+    const usuarioDAO = new UsuarioDAO(db);
+    const mensagemService = new MensagemService(mensagemDAO, conversaGrupoDAO, conversaDAO, usuarioDAO);
+
     // Middleware de autenticação JWT em todas as conexões
-    io.use((socket, next) => {
+    io.use(async (socket, next) => {
       try {
         const raw = socket.handshake.auth?.token as string | undefined;
         if (!raw) throw new Error('Token não fornecido');
         const token = raw.startsWith('Bearer ') ? raw.slice(7) : raw;
         const decoded = JwtService.verifyToken(token);
+
+        // conversa/mensagem/conversa_individual/conversa_grupo_membro ainda
+        // usam CPF — resolver uma vez na autenticação da conexão.
+        const usuario = await usuarioDAO.findByGUID(decoded.UsuarioGUID);
+        if (!usuario?.UsuarioCPF) {
+          throw new Error('Usuário sem CPF cadastrado');
+        }
+
         socket.data.usuario = {
-          UsuarioCPF: decoded.UsuarioCPF,
+          UsuarioGUID: decoded.UsuarioGUID,
+          UsuarioCPF: usuario.UsuarioCPF,
           UsuarioNome: decoded.UsuarioNome,
           UsuarioEmail: decoded.UsuarioEmail,
         };
@@ -37,12 +54,6 @@ export class SocketServer {
       }
     });
 
-    const db = new MysqlDatabase();
-    const conversaDAO = new ConversaDAO(db);
-    const conversaGrupoDAO = new ConversaGrupoDAO(db);
-    const mensagemDAO = new MensagemDAO(db);
-    const mensagemService = new MensagemService(mensagemDAO, conversaGrupoDAO, conversaDAO);
-
     io.on('connection', (socket) => {
       const nome = socket.data.usuario?.UsuarioNome ?? 'desconhecido';
       console.log(`🔌 [WS] Conectado: ${nome} (${socket.id})`);
@@ -50,9 +61,9 @@ export class SocketServer {
       // Room pessoal do usuário — permite ao NotificacaoService emitir
       // 'notificacao:nova' em tempo real sem o cliente precisar entrar
       // manualmente em nenhuma room (ver NotificacaoService.#emitirTempoReal).
-      const usuarioCPF = socket.data.usuario?.UsuarioCPF;
-      if (usuarioCPF) {
-        socket.join(`usuario:${usuarioCPF}`);
+      const usuarioGUID = socket.data.usuario?.UsuarioGUID;
+      if (usuarioGUID) {
+        socket.join(`usuario:${usuarioGUID}`);
       }
 
       registerConversaHandlers(io, socket, { conversaDAO, mensagemService });

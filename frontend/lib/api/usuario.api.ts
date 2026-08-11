@@ -23,7 +23,8 @@ function getHeaders(): HeadersInit {
 }
 
 export interface UsuarioBusca {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
   UsuarioNome: string;
   UsuarioEmail: string | null;
   UsuarioTelefone: string | null;
@@ -32,14 +33,15 @@ export interface UsuarioBusca {
 }
 
 /**
- * GET /api/usuario/:UsuarioCPF — busca um usuário já cadastrado na plataforma
- * (precisa ter feito /cadastro) por CPF. Usado em telas que vinculam um
- * usuário existente a uma função na escola (ex.: Secretaria/Coordenação em
- * Gestão de Dados) antes de criar o vínculo via escolaxusuarioxfuncao.api.ts.
- * Lança erro (inclusive 404) se o CPF não existir — sempre trate com try/catch.
+ * GET /api/usuario/busca-cpf?cpf= — busca um usuário já cadastrado na
+ * plataforma (precisa ter feito /cadastro) por CPF. Usado em telas que
+ * vinculam um usuário existente a uma função na escola (ex.:
+ * Secretaria/Coordenação em Gestão de Dados) antes de criar o vínculo via
+ * escolaxusuarioxfuncao.api.ts. Lança erro (inclusive 404) se o CPF não
+ * existir — sempre trate com try/catch.
  */
 export async function buscarUsuarioPorCPF(cpf: string): Promise<UsuarioBusca> {
-  const response = await fetch(`${API_URL}/usuario/${cpf}`, {
+  const response = await fetch(`${API_URL}/usuario/busca-cpf?cpf=${encodeURIComponent(cpf)}`, {
     headers: getHeaders(),
   });
   const resultado = await response.json();
@@ -50,7 +52,8 @@ export async function buscarUsuarioPorCPF(cpf: string): Promise<UsuarioBusca> {
 }
 
 export interface UsuarioAtualizado {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
   UsuarioEmail: string | null;
   UsuarioFotoUrl: string | null;
   UsuarioTema: 'light' | 'dark' | 'system';
@@ -65,14 +68,14 @@ export interface UsuarioAtualizado {
 }
 
 /**
- * PUT /api/usuario/:UsuarioCPF — atualiza dado cadastral básico
+ * PUT /api/usuario/:UsuarioGUID — atualiza dado cadastral básico
  * (nome/e-mail/telefone) e/ou preferências de acessibilidade (tema, modo
  * daltônico, escala de fonte, redução de movimento, alto contraste — seção
  * "Preferências de acessibilidade" em Meu Perfil). Campos omitidos mantêm
  * o valor existente (PUT parcial).
  */
 export async function atualizarUsuario(
-  usuarioCPF: string,
+  usuarioGUID: string,
   dados: {
     UsuarioNome?: string;
     UsuarioEmail?: string;
@@ -84,7 +87,7 @@ export async function atualizarUsuario(
     UsuarioAltoContraste?: boolean;
   }
 ): Promise<UsuarioAtualizado> {
-  const response = await fetch(`${API_URL}/usuario/${usuarioCPF}`, {
+  const response = await fetch(`${API_URL}/usuario/${usuarioGUID}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ usuario: dados }),
@@ -96,9 +99,9 @@ export async function atualizarUsuario(
   return resultado.data.usuario as UsuarioAtualizado;
 }
 
-/** PATCH /api/usuario/:UsuarioCPF/senha — exige a senha atual. */
-export async function trocarSenha(usuarioCPF: string, senhaAtual: string, novaSenha: string): Promise<void> {
-  const response = await fetch(`${API_URL}/usuario/${usuarioCPF}/senha`, {
+/** PATCH /api/usuario/:UsuarioGUID/senha — exige a senha atual. */
+export async function trocarSenha(usuarioGUID: string, senhaAtual: string, novaSenha: string): Promise<void> {
+  const response = await fetch(`${API_URL}/usuario/${usuarioGUID}/senha`, {
     method: 'PATCH',
     headers: getHeaders(),
     body: JSON.stringify({ SenhaAtual: senhaAtual, NovaSenha: novaSenha }),

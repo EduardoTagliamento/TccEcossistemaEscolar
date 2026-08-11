@@ -6,6 +6,7 @@ import Vestibular from "../entities/vestibular.model";
 import { QuestaoBancoDAO, QuestaoBancoFiltros } from "../repositories/questaobanco.repository";
 import { QuestaoBancoAlternativaDAO } from "../repositories/questaobancoalternativa.repository";
 import { VestibularDAO } from "../repositories/vestibular.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 
 export interface AlternativaDTO {
@@ -46,19 +47,22 @@ export default class QuestaoBancoService {
   #questaoDAO: QuestaoBancoDAO;
   #alternativaDAO: QuestaoBancoAlternativaDAO;
   #vestibularDAO: VestibularDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     questaoDAODependency: QuestaoBancoDAO,
     alternativaDAODependency: QuestaoBancoAlternativaDAO,
-    vestibularDAODependency: VestibularDAO
+    vestibularDAODependency: VestibularDAO,
+    usuarioDAODependency: UsuarioDAO
   ) {
     console.log("⬆️  QuestaoBancoService.constructor()");
     this.#questaoDAO = questaoDAODependency;
     this.#alternativaDAO = alternativaDAODependency;
     this.#vestibularDAO = vestibularDAODependency;
+    this.#usuarioDAO = usuarioDAODependency;
   }
 
-  criarQuestao = async (data: QuestaoBancoCreateDTO, usuarioCPF: string): Promise<QuestaoBancoDTO> => {
+  criarQuestao = async (data: QuestaoBancoCreateDTO, usuarioGUID: string): Promise<QuestaoBancoDTO> => {
     console.log("🟣 QuestaoBancoService.criarQuestao()");
 
     if (!data.Alternativas || data.Alternativas.length < 2) {
@@ -81,7 +85,11 @@ export default class QuestaoBancoService {
     questao.Dificuldade = data.Dificuldade;
     questao.Enunciado = data.Enunciado;
     questao.VideoResolucaoUrl = data.VideoResolucaoUrl ?? null;
-    questao.CriadoPorCPF = usuarioCPF;
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    questao.CriadoPorCPF = usuario.UsuarioCPF;
 
     await this.#questaoDAO.create(questao);
 
@@ -173,7 +181,8 @@ export function getQuestaoBancoService(): QuestaoBancoService {
     instanciaSingleton = new QuestaoBancoService(
       new QuestaoBancoDAO(database),
       new QuestaoBancoAlternativaDAO(database),
-      new VestibularDAO(database)
+      new VestibularDAO(database),
+      new UsuarioDAO(database)
     );
   }
   return instanciaSingleton;

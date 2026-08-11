@@ -18,6 +18,7 @@ import { UsuarioXGrupoTarefaDAO } from '../backend/repositories/usuarioxgrupotar
 import { TarefaAcademicaDAO } from '../backend/repositories/tarefaacademica.repository';
 import { MatriculaDAO } from '../backend/repositories/matricula.repository';
 import { TarefaAcademicaMatriculaDAO } from '../backend/repositories/tarefaacademica-matricula.repository';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import { HistoricoGrupoTarefaDAO } from '../backend/repositories/historicogrupotarefa.repository';
 import { ConversaDAO } from '../backend/repositories/conversa.repository';
 import { ConversaGrupoDAO } from '../backend/repositories/conversa-grupo.repository';
@@ -41,13 +42,14 @@ export function grupoTarefaRoutes(): Router {
   const tarefaDAO = new TarefaAcademicaDAO(database);
   const matriculaDAO = new MatriculaDAO(database);
   const tarefaMatriculaDAO = new TarefaAcademicaMatriculaDAO(database);
+  const usuarioDAO = new UsuarioDAO(database);
   const historicoDAO = new HistoricoGrupoTarefaDAO(database);
 
   const conversaDAO = new ConversaDAO(database);
   const conversaGrupoDAO = new ConversaGrupoDAO(database);
 
   const historicoService = new HistoricoGrupoTarefaService(historicoDAO);
-  const conversaGrupoService = new ConversaGrupoService(conversaDAO, conversaGrupoDAO, matriculaDAO);
+  const conversaGrupoService = new ConversaGrupoService(conversaDAO, conversaGrupoDAO, matriculaDAO, usuarioDAO);
 
   const grupoTarefaService = new GrupoTarefaService(
     grupoTarefaDAO,
@@ -55,6 +57,7 @@ export function grupoTarefaRoutes(): Router {
     tarefaDAO,
     matriculaDAO,
     tarefaMatriculaDAO,
+    usuarioDAO,
     historicoService,
     database,
     conversaGrupoService

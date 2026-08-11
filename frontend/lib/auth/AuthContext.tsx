@@ -28,7 +28,8 @@ if (typeof window !== 'undefined') {
 }
 
 interface Usuario {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
   UsuarioNome: string;
   UsuarioSobrenome: string;
   UsuarioEmail: string;

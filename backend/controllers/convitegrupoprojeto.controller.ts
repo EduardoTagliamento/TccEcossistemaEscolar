@@ -23,8 +23,8 @@ export default class ConviteGrupoProjetoController {
     try {
       console.log('🔵 ConviteGrupoProjetoController.enviarConvite()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
@@ -32,7 +32,7 @@ export default class ConviteGrupoProjetoController {
       const { grupoGUID } = req.params;
       const { UsuarioCPFConvidado } = req.body;
 
-      const convite = await this.#conviteService.enviarConvite(grupoGUID, UsuarioCPFConvidado, usuarioCPF);
+      const convite = await this.#conviteService.enviarConvite(grupoGUID, UsuarioCPFConvidado, usuarioGUID);
 
       res.status(201).json({
         success: true,
@@ -48,15 +48,15 @@ export default class ConviteGrupoProjetoController {
     try {
       console.log('🔵 ConviteGrupoProjetoController.solicitarEntrada()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { grupoGUID } = req.params;
 
-      const solicitacao = await this.#conviteService.solicitarEntrada(grupoGUID, usuarioCPF);
+      const solicitacao = await this.#conviteService.solicitarEntrada(grupoGUID, usuarioGUID);
 
       res.status(201).json({
         success: true,
@@ -72,13 +72,13 @@ export default class ConviteGrupoProjetoController {
     try {
       console.log('🔵 ConviteGrupoProjetoController.listarPendentes()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
-      const convites = await this.#conviteService.listarPendentes(usuarioCPF);
+      const convites = await this.#conviteService.listarPendentes(usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -94,14 +94,14 @@ export default class ConviteGrupoProjetoController {
     try {
       console.log('🔵 ConviteGrupoProjetoController.aceitarConvite()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { conviteGUID } = req.params;
-      const resultado = await this.#conviteService.aceitar(conviteGUID, usuarioCPF);
+      const resultado = await this.#conviteService.aceitar(conviteGUID, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {
@@ -113,14 +113,14 @@ export default class ConviteGrupoProjetoController {
     try {
       console.log('🔵 ConviteGrupoProjetoController.recusarConvite()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { conviteGUID } = req.params;
-      const resultado = await this.#conviteService.recusar(conviteGUID, usuarioCPF);
+      const resultado = await this.#conviteService.recusar(conviteGUID, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {

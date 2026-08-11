@@ -42,6 +42,8 @@ export interface EscolaxUsuarioxFuncaoDTO {
   EscolaxUsuarioxFuncaoId: number;
   UsuarioGUID: string;
   UsuarioNome: string | null;
+  /** Informativo (não é identificador — usar UsuarioGUID pra ações). Pode ser null (usuário sem CPF cadastrado). */
+  UsuarioCPF: string | null;
   EscolaGUID: string;
   FuncaoId: number;
   FuncaoNome: string | null;
@@ -282,7 +284,7 @@ export default class EscolaxUsuarioxFuncaoService {
           cpf,
           sucesso: true,
           mensagem: contaCriada ? "Conta criada e usuario vinculado com sucesso." : "Usuario vinculado com sucesso.",
-          dados: this.toDTO(created, null, usuario.UsuarioNome),
+          dados: this.toDTO(created, null, usuario.UsuarioNome, usuario.UsuarioCPF),
           contaCriada,
           senhaTemporaria,
           tipo: "criado",
@@ -325,11 +327,12 @@ export default class EscolaxUsuarioxFuncaoService {
       ? await this.#acessoDAO.findByEscola(filters.EscolaGUID)
       : new Map<string, Date>();
 
-    const nomesMap = await this.#usuarioDAO.findNomesByGUIDs([...new Set(relacoes.map((r) => r.UsuarioGUID))]);
+    const dadosMap = await this.#usuarioDAO.findNomesECPFsByGUIDs([...new Set(relacoes.map((r) => r.UsuarioGUID))]);
 
-    return relacoes.map((item) =>
-      this.toDTO(item, acessoMap.get(item.UsuarioGUID) ?? null, nomesMap.get(item.UsuarioGUID) ?? null)
-    );
+    return relacoes.map((item) => {
+      const dados = dadosMap.get(item.UsuarioGUID);
+      return this.toDTO(item, acessoMap.get(item.UsuarioGUID) ?? null, dados?.UsuarioNome ?? null, dados?.UsuarioCPF ?? null);
+    });
   };
 
   findById = async (EscolaxUsuarioxFuncaoId: number): Promise<EscolaxUsuarioxFuncaoDTO> => {
@@ -342,8 +345,9 @@ export default class EscolaxUsuarioxFuncaoService {
       });
     }
 
-    const nomesMap = await this.#usuarioDAO.findNomesByGUIDs([relacao.UsuarioGUID]);
-    return this.toDTO(relacao, null, nomesMap.get(relacao.UsuarioGUID) ?? null);
+    const dadosMap = await this.#usuarioDAO.findNomesECPFsByGUIDs([relacao.UsuarioGUID]);
+    const dados = dadosMap.get(relacao.UsuarioGUID);
+    return this.toDTO(relacao, null, dados?.UsuarioNome ?? null, dados?.UsuarioCPF ?? null);
   };
 
   updateRelacao = async (
@@ -564,7 +568,8 @@ export default class EscolaxUsuarioxFuncaoService {
   private toDTO = (
     relacao: EscolaxUsuarioxFuncao,
     ultimoAcessoEm: Date | null = null,
-    usuarioNome: string | null = null
+    usuarioNome: string | null = null,
+    usuarioCPF: string | null = null
   ): EscolaxUsuarioxFuncaoDTO => {
     const id = relacao.EscolaxUsuarioxFuncaoId;
     if (id === null) {
@@ -579,6 +584,7 @@ export default class EscolaxUsuarioxFuncaoService {
       EscolaxUsuarioxFuncaoId: id,
       UsuarioGUID: relacao.UsuarioGUID,
       UsuarioNome: usuarioNome,
+      UsuarioCPF: usuarioCPF,
       EscolaGUID: relacao.EscolaGUID,
       FuncaoId: relacao.FuncaoId,
       FuncaoNome: relacao.FuncaoNome,

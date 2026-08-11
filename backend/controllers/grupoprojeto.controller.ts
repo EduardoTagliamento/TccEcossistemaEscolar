@@ -28,13 +28,13 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.criarGrupo()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
-      const grupo = await this.#grupoProjetoService.criarGrupo(req.body, usuarioCPF);
+      const grupo = await this.#grupoProjetoService.criarGrupo(req.body, usuarioGUID);
 
       res.status(201).json({
         success: true,
@@ -84,14 +84,14 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.atualizarGrupo()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { grupoGUID } = req.params;
-      const resultado = await this.#grupoProjetoService.atualizarGrupo(grupoGUID, req.body, usuarioCPF);
+      const resultado = await this.#grupoProjetoService.atualizarGrupo(grupoGUID, req.body, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {
@@ -103,15 +103,15 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.atualizarPontuacao()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { grupoGUID } = req.params;
       const { GrupoProjetoPontuacao } = req.body;
-      const resultado = await this.#grupoProjetoService.atualizarPontuacao(grupoGUID, GrupoProjetoPontuacao, usuarioCPF);
+      const resultado = await this.#grupoProjetoService.atualizarPontuacao(grupoGUID, GrupoProjetoPontuacao, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {
@@ -123,14 +123,14 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.entrarGrupo()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { grupoGUID } = req.params;
-      const resultado = await this.#grupoProjetoService.entrarGrupo(grupoGUID, usuarioCPF);
+      const resultado = await this.#grupoProjetoService.entrarGrupo(grupoGUID, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {
@@ -142,14 +142,14 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.sairGrupo()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { grupoGUID } = req.params;
-      const resultado = await this.#grupoProjetoService.sairGrupo(grupoGUID, usuarioCPF);
+      const resultado = await this.#grupoProjetoService.sairGrupo(grupoGUID, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {
@@ -161,14 +161,14 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.expulsarMembro()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { grupoGUID, cpf } = req.params;
-      const resultado = await this.#grupoProjetoService.expulsarMembro(grupoGUID, cpf, usuarioCPF);
+      const resultado = await this.#grupoProjetoService.expulsarMembro(grupoGUID, cpf, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -184,15 +184,15 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.adicionarMembro()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { grupoGUID } = req.params;
       const { UsuarioCPF } = req.body;
-      const resultado = await this.#grupoProjetoService.adicionarMembro(grupoGUID, UsuarioCPF, usuarioCPF);
+      const resultado = await this.#grupoProjetoService.adicionarMembro(grupoGUID, UsuarioCPF, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {
@@ -204,15 +204,15 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.transferirLideranca()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { grupoGUID } = req.params;
       const { NovoLiderCPF } = req.body;
-      const resultado = await this.#grupoProjetoService.transferirLideranca(grupoGUID, NovoLiderCPF, usuarioCPF);
+      const resultado = await this.#grupoProjetoService.transferirLideranca(grupoGUID, NovoLiderCPF, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {

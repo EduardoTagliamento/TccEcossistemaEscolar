@@ -17,6 +17,7 @@ import { ProjetoDAO } from '../backend/repositories/projeto.repository';
 import { TurmaDAO } from '../backend/repositories/turma.repository';
 import { MatriculaDAO } from '../backend/repositories/matricula.repository';
 import { EscolaxUsuarioxFuncaoDAO } from '../backend/repositories/escolaxusuarioxfuncao.repository';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import ProjetoService from '../backend/services/projeto.service';
 import ProjetoController from '../backend/controllers/projeto.controller';
 import ProjetoMiddleware from '../backend/middlewares/projeto.middleware';
@@ -30,8 +31,9 @@ export function projetoRoutes(): Router {
   const turmaDAO = new TurmaDAO(database);
   const matriculaDAO = new MatriculaDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
+  const usuarioDAO = new UsuarioDAO(database);
 
-  const projetoService = new ProjetoService(projetoDAO, turmaDAO, matriculaDAO, escolaxUsuarioxFuncaoDAO);
+  const projetoService = new ProjetoService(projetoDAO, turmaDAO, matriculaDAO, escolaxUsuarioxFuncaoDAO, usuarioDAO);
   const projetoController = new ProjetoController(projetoService);
   const projetoMiddleware = new ProjetoMiddleware();
 

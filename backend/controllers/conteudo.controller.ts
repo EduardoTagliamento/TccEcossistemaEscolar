@@ -15,8 +15,8 @@ export class ConteudoController {
     console.log("🔵 ConteudoController.store()");
 
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
@@ -82,7 +82,7 @@ export class ConteudoController {
           arquivoCronometrado: arquivosRecebidos?.arquivo?.[0],
           arquivosPaginado: arquivosRecebidos?.arquivos,
         },
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(201).json({
@@ -138,8 +138,8 @@ export class ConteudoController {
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 ConteudoController.update()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
@@ -157,7 +157,7 @@ export class ConteudoController {
           ConteudoHtml: body.ConteudoHtml,
           LinkUrl: body.LinkUrl,
         },
-        usuarioCPF,
+        usuarioGUID,
         {
           arquivoCronometrado: arquivosRecebidos?.arquivo?.[0],
           arquivosPaginado: arquivosRecebidos?.arquivos,
@@ -178,13 +178,13 @@ export class ConteudoController {
   destroy = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 ConteudoController.destroy()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
-      await this.#conteudoService.excluirConteudo(req.params.guid, usuarioCPF);
+      await this.#conteudoService.excluirConteudo(req.params.guid, usuarioGUID);
 
       res.json({
         success: true,
@@ -203,8 +203,8 @@ export class ConteudoController {
   destroyDeTurma = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 ConteudoController.destroyDeTurma()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
@@ -212,7 +212,7 @@ export class ConteudoController {
       const resultado = await this.#conteudoService.removerConteudoDeTurma(
         req.params.guid,
         req.params.turmaGUID,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.json({
