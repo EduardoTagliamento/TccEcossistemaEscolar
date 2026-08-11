@@ -25,7 +25,7 @@ export type AvisoAbrangencia = 'Escola' | 'Turmas';
 export interface Aviso {
   AvisoGUID: string;
   EscolaGUID: string;
-  UsuarioCPFAutor: string;
+  UsuarioGUIDAutor: string;
   AvisoTitulo: string;
   AvisoConteudo: string;
   AvisoAbrangencia: AvisoAbrangencia;

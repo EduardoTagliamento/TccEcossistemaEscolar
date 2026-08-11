@@ -38,6 +38,7 @@ import styles from './page.module.css';
 
 interface MembroEscola {
   UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   papel: 'Aluno' | 'Professor';
 }
@@ -103,12 +104,15 @@ export default function CadastroPendenciaPage() {
         AlunoAPI.listarAlunos({ EscolaGUID: escolaGUID }),
         ProfessorAPI.listarProfessores({ EscolaGUID: escolaGUID }),
       ]);
-      // Só entram na lista quem tem CPF cadastrado — pendência ainda é
-      // endereçada por CPF (tabela não migrada pra GUID).
+      // Só entram na lista quem tem CPF cadastrado — a CRIAÇÃO da pendência
+      // ainda recebe o destinatário por CPF (PendenciaCreateDTO.UsuarioCPFDestino,
+      // resolvido internamente pro GUID real no backend; a tabela em si já
+      // guarda UsuarioGUID desde a migração usuario->GUID).
       const alunos: MembroEscola[] = resultadoAlunos.alunos
         .filter((a) => !!a.usuario.UsuarioCPF)
         .map((a) => ({
           UsuarioCPF: a.usuario.UsuarioCPF as string,
+          UsuarioGUID: a.usuario.UsuarioGUID,
           UsuarioNome: a.usuario.UsuarioNome,
           papel: 'Aluno',
         }));
@@ -116,6 +120,7 @@ export default function CadastroPendenciaPage() {
         .filter((p) => !!p.UsuarioCPF)
         .map((p) => ({
           UsuarioCPF: p.UsuarioCPF as string,
+          UsuarioGUID: p.UsuarioGUID,
           UsuarioNome: p.UsuarioNome,
           papel: 'Professor',
         }));
@@ -128,6 +133,12 @@ export default function CadastroPendenciaPage() {
   const nomePorCPF = useMemo(() => {
     const mapa = new Map<string, string>();
     membrosEscola.forEach((m) => mapa.set(m.UsuarioCPF, m.UsuarioNome));
+    return mapa;
+  }, [membrosEscola]);
+
+  const nomePorGUID = useMemo(() => {
+    const mapa = new Map<string, string>();
+    membrosEscola.forEach((m) => mapa.set(m.UsuarioGUID, m.UsuarioNome));
     return mapa;
   }, [membrosEscola]);
 
@@ -162,8 +173,14 @@ export default function CadastroPendenciaPage() {
 
   const editarPendencia = (pendencia: Pendencia) => {
     setEditingGUID(pendencia.PendenciaGUID);
+    // O destinatário não pode ser trocado na edição (PendenciaUpdateDTO não
+    // aceita esse campo) — este valor só alimenta a exibição (nome) do campo
+    // desabilitado abaixo. `pendencia.UsuarioGUID` é resolvido pro CPF do
+    // membro só pra reaproveitar `nomePorCPF`; se a pessoa não estiver mais
+    // na lista de membros carregada, cai no próprio GUID como fallback.
+    const membro = membrosEscola.find((m) => m.UsuarioGUID === pendencia.UsuarioGUID);
     setForm({
-      UsuarioCPFDestino: pendencia.UsuarioCPF,
+      UsuarioCPFDestino: membro?.UsuarioCPF ?? pendencia.UsuarioGUID,
       PendenciaTitulo: pendencia.PendenciaTitulo,
       PendenciaConteudo: pendencia.PendenciaConteudo || '',
       PendenciaPrazoData: converterDoBrasil(pendencia.PendenciaPrazoData),
@@ -373,7 +390,7 @@ export default function CadastroPendenciaPage() {
                       <span className={`${styles.badge} ${status.classe}`}>{status.texto}</span>
                     </div>
                     <p className={styles.cardDestinatario}>
-                      Destinatário: {nomePorCPF.get(pendencia.UsuarioCPF) || pendencia.UsuarioCPF}
+                      Destinatário: {nomePorGUID.get(pendencia.UsuarioGUID) || pendencia.UsuarioGUID}
                     </p>
                     <p className={styles.cardData}>
                       Prazo: {new Date(pendencia.PendenciaPrazoData).toLocaleString('pt-BR')}

@@ -32,7 +32,10 @@ export type AcaoAuditoriaTipo = 'Create' | 'Update' | 'Delete';
 export interface RegistroAuditoria {
   RegistroAuditoriaGUID: string;
   EscolaGUID: string;
-  UsuarioCPFAtor: string;
+  UsuarioGUIDAtor: string;
+  /** Informativo (exibição) — resolvido pelo backend a partir de UsuarioGUIDAtor, não é o identificador. */
+  UsuarioNomeAtor: string | null;
+  UsuarioCPFAtor: string | null;
   AcaoTipo: AcaoAuditoriaTipo;
   EntidadeTipo: string;
   EntidadeGUID: string;
@@ -56,7 +59,7 @@ export interface CategoriaAuditoria {
 }
 
 export interface AuditoriaFiltros {
-  UsuarioCPFAtor?: string;
+  UsuarioGUIDAtor?: string;
   AcaoTipo?: AcaoAuditoriaTipo;
   EntidadeTipo?: string;
   CategoriaAuditoriaId?: number;
@@ -75,7 +78,7 @@ export async function listarRegistros(
   const params = new URLSearchParams();
   params.set('EscolaGUID', escolaGUID);
 
-  if (filtros.UsuarioCPFAtor) params.set('UsuarioCPFAtor', filtros.UsuarioCPFAtor);
+  if (filtros.UsuarioGUIDAtor) params.set('UsuarioGUIDAtor', filtros.UsuarioGUIDAtor);
   if (filtros.AcaoTipo) params.set('AcaoTipo', filtros.AcaoTipo);
   if (filtros.EntidadeTipo) params.set('EntidadeTipo', filtros.EntidadeTipo);
   if (filtros.CategoriaAuditoriaId) params.set('CategoriaAuditoriaId', String(filtros.CategoriaAuditoriaId));

@@ -14,9 +14,25 @@ import { gerarGUID } from "../utils/helpers/guid.helper";
 import MysqlDatabase from "../database/MysqlDatabase";
 import { RegistroAuditoriaDAO, RegistroAuditoriaFilters } from "../repositories/registroauditoria.repository";
 import { CategoriaAuditoriaDAO } from "../repositories/categoriaauditoria.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import RegistroAuditoria, { AcaoAuditoriaTipo } from "../entities/registroauditoria.model";
 import CategoriaAuditoria from "../entities/categoriaauditoria.model";
 import ErrorResponse from "../utils/ErrorResponse";
+
+/** Registro de auditoria com nome/CPF do ator resolvidos — só informativo (exibição), a identidade real continua UsuarioGUIDAtor. */
+export interface RegistroAuditoriaComAutor {
+  RegistroAuditoriaGUID: string;
+  EscolaGUID: string;
+  UsuarioGUIDAtor: string;
+  UsuarioNomeAtor: string | null;
+  UsuarioCPFAtor: string | null;
+  AcaoTipo: AcaoAuditoriaTipo;
+  EntidadeTipo: string;
+  EntidadeGUID: string;
+  EntidadeDescricao: string | null;
+  CategoriaAuditoriaId: number;
+  CreatedAt: Date;
+}
 
 export interface RegistroAuditoriaCreateDTO {
   EscolaGUID: string;
@@ -42,11 +58,13 @@ export interface ListarAuditoriaFilters {
 export default class AuditoriaService {
   #registroDAO: RegistroAuditoriaDAO;
   #categoriaDAO: CategoriaAuditoriaDAO;
+  #usuarioDAO: UsuarioDAO;
 
-  constructor(registroDAO: RegistroAuditoriaDAO, categoriaDAO: CategoriaAuditoriaDAO) {
+  constructor(registroDAO: RegistroAuditoriaDAO, categoriaDAO: CategoriaAuditoriaDAO, usuarioDAO: UsuarioDAO) {
     console.log("🗂️ AuditoriaService.constructor()");
     this.#registroDAO = registroDAO;
     this.#categoriaDAO = categoriaDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
 
   /**
@@ -75,7 +93,7 @@ export default class AuditoriaService {
     }
   }
 
-  async listar(escolaGUID: string, filters: ListarAuditoriaFilters = {}): Promise<RegistroAuditoria[]> {
+  async listar(escolaGUID: string, filters: ListarAuditoriaFilters = {}): Promise<RegistroAuditoriaComAutor[]> {
     console.log("🗂️ AuditoriaService.listar()");
 
     const filtrosCompletos: RegistroAuditoriaFilters = {
@@ -83,11 +101,14 @@ export default class AuditoriaService {
       ...filters,
     };
 
-    return this.#registroDAO.findAll(filtrosCompletos);
+    const registros = await this.#registroDAO.findAll(filtrosCompletos);
+    const dadosMap = await this.#usuarioDAO.findNomesECPFsByGUIDs([...new Set(registros.map((r) => r.UsuarioGUIDAtor))]);
+
+    return registros.map((registro) => this.#toDTOComAutor(registro, dadosMap));
   }
 
   /** Lança 404 tanto se o registro não existir quanto se pertencer a outra escola (não vaza dado entre escolas). */
-  async buscarPorId(guid: string, escolaGUID: string): Promise<RegistroAuditoria> {
+  async buscarPorId(guid: string, escolaGUID: string): Promise<RegistroAuditoriaComAutor> {
     console.log("🗂️ AuditoriaService.buscarPorId()");
 
     const registro = await this.#registroDAO.findById(guid);
@@ -97,7 +118,28 @@ export default class AuditoriaService {
       });
     }
 
-    return registro;
+    const dadosMap = await this.#usuarioDAO.findNomesECPFsByGUIDs([registro.UsuarioGUIDAtor]);
+    return this.#toDTOComAutor(registro, dadosMap);
+  }
+
+  #toDTOComAutor(
+    registro: RegistroAuditoria,
+    dadosMap: Map<string, { UsuarioNome: string; UsuarioCPF: string | null }>
+  ): RegistroAuditoriaComAutor {
+    const dados = dadosMap.get(registro.UsuarioGUIDAtor);
+    return {
+      RegistroAuditoriaGUID: registro.RegistroAuditoriaGUID,
+      EscolaGUID: registro.EscolaGUID,
+      UsuarioGUIDAtor: registro.UsuarioGUIDAtor,
+      UsuarioNomeAtor: dados?.UsuarioNome ?? null,
+      UsuarioCPFAtor: dados?.UsuarioCPF ?? null,
+      AcaoTipo: registro.AcaoTipo,
+      EntidadeTipo: registro.EntidadeTipo,
+      EntidadeGUID: registro.EntidadeGUID,
+      EntidadeDescricao: registro.EntidadeDescricao,
+      CategoriaAuditoriaId: registro.CategoriaAuditoriaId,
+      CreatedAt: registro.CreatedAt,
+    };
   }
 
   async listarCategorias(): Promise<CategoriaAuditoria[]> {
@@ -126,7 +168,8 @@ export function getAuditoriaService(): AuditoriaService {
     const database = new MysqlDatabase();
     instanciaSingleton = new AuditoriaService(
       new RegistroAuditoriaDAO(database),
-      new CategoriaAuditoriaDAO(database)
+      new CategoriaAuditoriaDAO(database),
+      new UsuarioDAO(database)
     );
   }
   return instanciaSingleton;

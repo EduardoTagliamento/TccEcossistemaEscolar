@@ -28,7 +28,7 @@ function getHeaders(): HeadersInit {
 export interface Notificacao {
   NotificacaoGUID: string;
   NotificacaoTipoId: number;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   NotificacaoTitulo: string;
   NotificacaoConteudo: string | null;
