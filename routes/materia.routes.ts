@@ -44,8 +44,8 @@ export default class MateriaRoteador {
     // GET /api/materia?EscolaGUID=&MateriaStatus=&MateriaIsTecnico=
     this.#router.get("/", this.#materiaController.index);
 
-    // GET /api/materia/aluno/:usuarioCPF?EscolaGUID= (DEVE vir antes de "/:guid")
-    this.#router.get("/aluno/:usuarioCPF", this.#materiaController.listarDoAluno);
+    // GET /api/materia/aluno/:usuarioGUID?EscolaGUID= (DEVE vir antes de "/:guid")
+    this.#router.get("/aluno/:usuarioGUID", this.#materiaController.listarDoAluno);
 
     // GET /api/materia/:guid
     this.#router.get(
@@ -92,7 +92,7 @@ export default class MateriaRoteador {
       this.#customizacaoController.salvar
     );
 
-    // GET /api/materia/:guid/customizacao?UsuarioCPF=
+    // GET /api/materia/:guid/customizacao
     this.#router.get(
       "/:guid/customizacao",
       MateriaMiddleware.validarGUID,
@@ -132,7 +132,7 @@ export const materiaRouterFactory = () => {
   );
   const materiaController = new MateriaController(materiaService);
 
-  const customizacaoService = new MateriaCustomizacaoService(customizacaoDAO, materiaDAO, escolaDAO, alocacaoDAO);
+  const customizacaoService = new MateriaCustomizacaoService(customizacaoDAO, materiaDAO, escolaDAO, alocacaoDAO, usuarioDAO);
   const customizacaoController = new MateriaCustomizacaoController(customizacaoService);
 
   const roteador = new MateriaRoteador(materiaController, customizacaoController);

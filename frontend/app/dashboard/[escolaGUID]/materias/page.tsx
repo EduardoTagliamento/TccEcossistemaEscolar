@@ -40,7 +40,7 @@ export default function MateriasPage() {
     if (!usuario) return;
     try {
       setCarregando(true);
-      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioGUID}/escolas`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -57,7 +57,7 @@ export default function MateriasPage() {
       setModo(aluno ? 'aluno' : 'professor');
 
       if (aluno) {
-        const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioCPF, escolaGUID);
+        const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioGUID, escolaGUID);
         setMateriasAluno(materias);
         void carregarPendenciasAluno(materias);
       }

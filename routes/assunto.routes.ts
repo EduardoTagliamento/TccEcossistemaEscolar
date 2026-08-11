@@ -5,6 +5,7 @@ import AssuntoService from "../backend/services/assunto.service";
 import { AssuntoDAO } from "../backend/repositories/assunto.repository";
 import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofessorxturma.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class AssuntoRoteador {
@@ -35,7 +36,8 @@ export const assuntoRouterFactory = () => {
   const assuntoDAO = new AssuntoDAO(database);
   const materiaDAO = new MateriaDAO(database);
   const alocacaoDAO = new MaterialProfessorTurmaDAO(database);
-  const assuntoService = new AssuntoService(assuntoDAO, materiaDAO, alocacaoDAO);
+  const usuarioDAO = new UsuarioDAO(database);
+  const assuntoService = new AssuntoService(assuntoDAO, materiaDAO, alocacaoDAO, usuarioDAO);
   const controller = new AssuntoController(assuntoService);
   const roteador = new AssuntoRoteador(controller);
 

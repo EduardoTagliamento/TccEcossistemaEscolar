@@ -28,8 +28,8 @@ export default class GrupoTarefaController {
     try {
       console.log('🔵 GrupoTarefaController.listarGruposDaTarefa()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -39,7 +39,7 @@ export default class GrupoTarefaController {
 
       const { tarefaGUID } = req.params;
 
-      const grupos = await this.#grupoTarefaService.listarGruposDaTarefa(tarefaGUID, usuarioCPF);
+      const grupos = await this.#grupoTarefaService.listarGruposDaTarefa(tarefaGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -62,8 +62,8 @@ export default class GrupoTarefaController {
     try {
       console.log('🔵 GrupoTarefaController.buscarGrupo()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -73,7 +73,7 @@ export default class GrupoTarefaController {
 
       const { grupoGUID } = req.params;
 
-      const grupo = await this.#grupoTarefaService.buscarGrupo(grupoGUID, usuarioCPF);
+      const grupo = await this.#grupoTarefaService.buscarGrupo(grupoGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -95,8 +95,8 @@ export default class GrupoTarefaController {
     try {
       console.log('🔵 GrupoTarefaController.atualizarNomeGrupo()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -110,7 +110,7 @@ export default class GrupoTarefaController {
       const resultado = await this.#grupoTarefaService.atualizarNomeGrupo(
         grupoGUID,
         GrupoNome,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(200).json({
@@ -131,8 +131,8 @@ export default class GrupoTarefaController {
     try {
       console.log('🔵 GrupoTarefaController.expulsarMembro()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -145,7 +145,7 @@ export default class GrupoTarefaController {
       const resultado = await this.#grupoTarefaService.expulsarMembro(
         grupoGUID,
         cpf,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(200).json({
@@ -168,8 +168,8 @@ export default class GrupoTarefaController {
     try {
       console.log('🔵 GrupoTarefaController.transferirLideranca()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -183,7 +183,7 @@ export default class GrupoTarefaController {
       const resultado = await this.#grupoTarefaService.transferirLideranca(
         grupoGUID,
         NovoLiderCPF,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(200).json({

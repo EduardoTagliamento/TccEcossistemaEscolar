@@ -83,16 +83,18 @@ export default function NovaConversaModal({
       const vistos = new Set<string>();
       const lista: PessoaSelecionavel[] = [];
 
+      // Só entram na lista quem tem CPF cadastrado — conversa individual
+      // ainda é endereçada por CPF (tabela não migrada pra GUID).
       listasAlunos.forEach(({ alunos }) => {
         alunos.forEach(({ usuario }) => {
-          if (!usuario || vistos.has(usuario.UsuarioCPF) || usuario.UsuarioCPF === meuCPF) return;
+          if (!usuario?.UsuarioCPF || vistos.has(usuario.UsuarioCPF) || usuario.UsuarioCPF === meuCPF) return;
           vistos.add(usuario.UsuarioCPF);
           lista.push({ UsuarioCPF: usuario.UsuarioCPF, UsuarioNome: usuario.UsuarioNome, Papel: 'Aluno' });
         });
       });
 
       professores.forEach((professor) => {
-        if (vistos.has(professor.UsuarioCPF) || professor.UsuarioCPF === meuCPF) return;
+        if (!professor.UsuarioCPF || vistos.has(professor.UsuarioCPF) || professor.UsuarioCPF === meuCPF) return;
         vistos.add(professor.UsuarioCPF);
         lista.push({ UsuarioCPF: professor.UsuarioCPF, UsuarioNome: professor.UsuarioNome, Papel: 'Professor' });
       });

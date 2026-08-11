@@ -14,6 +14,7 @@ export function registerConversaHandlers(
 ): void {
   const { conversaDAO, mensagemService } = deps;
   const usuario = socket.data.usuario as {
+    UsuarioGUID: string;
     UsuarioCPF: string;
     UsuarioNome: string;
     UsuarioEmail: string;
@@ -107,7 +108,7 @@ export function registerConversaHandlers(
     async ({ ConversaGUID, MensagemGUID }: { ConversaGUID: string; MensagemGUID: string }) => {
       console.log(`🔵 [WS] pin_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID}`);
       try {
-        await mensagemService.fixarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioCPF);
+        await mensagemService.fixarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioGUID);
       } catch (err: any) {
         socket.emit('erro', { message: err.message || 'Erro ao fixar mensagem' });
       }
@@ -121,7 +122,7 @@ export function registerConversaHandlers(
     async ({ ConversaGUID, MensagemGUID }: { ConversaGUID: string; MensagemGUID: string }) => {
       console.log(`🔵 [WS] unpin_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID}`);
       try {
-        await mensagemService.desafixarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioCPF);
+        await mensagemService.desafixarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioGUID);
       } catch (err: any) {
         socket.emit('erro', { message: err.message || 'Erro ao desafixar mensagem' });
       }
@@ -135,7 +136,7 @@ export function registerConversaHandlers(
     async ({ ConversaGUID, MensagemGUID }: { ConversaGUID: string; MensagemGUID: string }) => {
       console.log(`🔵 [WS] deletar_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID}`);
       try {
-        await mensagemService.deletarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioCPF);
+        await mensagemService.deletarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioGUID);
       } catch (err: any) {
         socket.emit('erro', { message: err.message || 'Erro ao deletar mensagem' });
       }
@@ -157,7 +158,7 @@ export function registerConversaHandlers(
     }) => {
       console.log(`🔵 [WS] editar_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID}`);
       try {
-        await mensagemService.editarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioCPF, MensagemConteudo);
+        await mensagemService.editarMensagem(MensagemGUID, ConversaGUID, usuario.UsuarioGUID, MensagemConteudo);
       } catch (err: any) {
         socket.emit('erro', { message: err.message || 'Erro ao editar mensagem' });
       }
@@ -179,7 +180,7 @@ export function registerConversaHandlers(
     }) => {
       console.log(`🔵 [WS] reagir_mensagem: ${usuario.UsuarioCPF} → ${MensagemGUID} (${ReacaoEmoji})`);
       try {
-        await mensagemService.reagir(MensagemGUID, ConversaGUID, usuario.UsuarioCPF, ReacaoEmoji);
+        await mensagemService.reagir(MensagemGUID, ConversaGUID, usuario.UsuarioGUID, ReacaoEmoji);
       } catch (err: any) {
         socket.emit('erro', { message: err.message || 'Erro ao reagir à mensagem' });
       }

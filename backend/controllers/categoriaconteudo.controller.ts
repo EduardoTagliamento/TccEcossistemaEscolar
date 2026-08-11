@@ -13,13 +13,13 @@ export class CategoriaConteudoController {
   store = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.store()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
-      const categoria = await this.#categoriaService.criarCategoria(req.body.categoria, usuarioCPF);
+      const categoria = await this.#categoriaService.criarCategoria(req.body.categoria, usuarioGUID);
 
       res.status(201).json({
         success: true,
@@ -55,8 +55,8 @@ export class CategoriaConteudoController {
   buscarEstatisticasItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.buscarEstatisticasItem()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
@@ -69,7 +69,7 @@ export class CategoriaConteudoController {
       }
 
       const estatisticas = await this.#categoriaService.buscarEstatisticasItem(
-        usuarioCPF,
+        usuarioGUID,
         tipo as any,
         itemGUID,
         turmaGUID
@@ -85,14 +85,14 @@ export class CategoriaConteudoController {
   buscarEstatisticasPorQuestao = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.buscarEstatisticasPorQuestao()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const { TarefaGUID, turmaGUID } = req.params;
-      const estatisticas = await this.#categoriaService.buscarEstatisticasPorQuestao(usuarioCPF, TarefaGUID, turmaGUID);
+      const estatisticas = await this.#categoriaService.buscarEstatisticasPorQuestao(usuarioGUID, TarefaGUID, turmaGUID);
 
       res.json({ success: true, message: "Estatísticas por questão obtidas com sucesso", data: estatisticas });
     } catch (error) {
@@ -105,9 +105,9 @@ export class CategoriaConteudoController {
     console.log("🔵 CategoriaConteudoController.buscarCategoriasCompletas()");
     try {
       const { materiaGUID, turmaGUID } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF || "";
+      const usuarioGUID = req.user?.UsuarioGUID || "";
 
-      const resultado = await this.#categoriaService.buscarCategoriasCompletas(materiaGUID, turmaGUID, usuarioCPF);
+      const resultado = await this.#categoriaService.buscarCategoriasCompletas(materiaGUID, turmaGUID, usuarioGUID);
 
       res.json({ success: true, message: "Categorias obtidas com sucesso", data: resultado });
     } catch (error) {
@@ -120,10 +120,10 @@ export class CategoriaConteudoController {
     console.log("🔵 CategoriaConteudoController.temPendencia()");
     try {
       const { materiaGUID, turmaGUID } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF || "";
+      const usuarioGUID = req.user?.UsuarioGUID || "";
       const ehProfessor = req.query.EhProfessor === "true";
 
-      const pendencia = await this.#categoriaService.verificarPendencia(materiaGUID, turmaGUID, usuarioCPF, ehProfessor);
+      const pendencia = await this.#categoriaService.verificarPendencia(materiaGUID, turmaGUID, usuarioGUID, ehProfessor);
 
       res.json({ success: true, message: "Verificado com sucesso", data: { pendencia } });
     } catch (error) {
@@ -135,14 +135,14 @@ export class CategoriaConteudoController {
   reordenar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.reordenar()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const { MateriaGUID, TurmaGUID, ordem } = req.body;
-      const categorias = await this.#categoriaService.reordenarCategorias(usuarioCPF, MateriaGUID, TurmaGUID, ordem);
+      const categorias = await this.#categoriaService.reordenarCategorias(usuarioGUID, MateriaGUID, TurmaGUID, ordem);
 
       res.json({
         success: true,
@@ -158,14 +158,14 @@ export class CategoriaConteudoController {
   buscarBoardGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.buscarBoardGeral()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const { materiaGUID } = req.params;
-      const board = await this.#categoriaService.buscarBoardGeral(usuarioCPF, materiaGUID);
+      const board = await this.#categoriaService.buscarBoardGeral(usuarioGUID, materiaGUID);
 
       res.json({ success: true, message: "Board geral obtido com sucesso", data: { board } });
     } catch (error) {
@@ -177,15 +177,15 @@ export class CategoriaConteudoController {
   criarCategoriaGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.criarCategoriaGeral()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const { MateriaGUID, CategoriaNome } = req.body;
-      await this.#categoriaService.criarCategoriaGeral(usuarioCPF, MateriaGUID, CategoriaNome);
-      const board = await this.#categoriaService.buscarBoardGeral(usuarioCPF, MateriaGUID);
+      await this.#categoriaService.criarCategoriaGeral(usuarioGUID, MateriaGUID, CategoriaNome);
+      const board = await this.#categoriaService.buscarBoardGeral(usuarioGUID, MateriaGUID);
 
       res.status(201).json({ success: true, message: "Categoria aplicada a todas as turmas com sucesso", data: { board } });
     } catch (error) {
@@ -197,14 +197,14 @@ export class CategoriaConteudoController {
   reordenarCategoriasGerais = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.reordenarCategoriasGerais()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const { MateriaGUID, ordem } = req.body;
-      const board = await this.#categoriaService.reordenarCategoriasGerais(usuarioCPF, MateriaGUID, ordem);
+      const board = await this.#categoriaService.reordenarCategoriasGerais(usuarioGUID, MateriaGUID, ordem);
 
       res.json({ success: true, message: "Categorias gerais reordenadas com sucesso", data: { board } });
     } catch (error) {
@@ -216,15 +216,15 @@ export class CategoriaConteudoController {
   atualizarCategoriaGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.atualizarCategoriaGeral()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const { MateriaGUID, CategoriaNomeAtual, NovoNome } = req.body;
-      const resultado = await this.#categoriaService.atualizarCategoriaGeral(usuarioCPF, MateriaGUID, CategoriaNomeAtual, NovoNome);
-      const board = await this.#categoriaService.buscarBoardGeral(usuarioCPF, MateriaGUID);
+      const resultado = await this.#categoriaService.atualizarCategoriaGeral(usuarioGUID, MateriaGUID, CategoriaNomeAtual, NovoNome);
+      const board = await this.#categoriaService.buscarBoardGeral(usuarioGUID, MateriaGUID);
 
       res.json({ success: true, message: "Categoria renomeada em todas as turmas", data: { ...resultado, board } });
     } catch (error) {
@@ -236,15 +236,15 @@ export class CategoriaConteudoController {
   excluirCategoriaGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.excluirCategoriaGeral()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const MateriaGUID = req.query.MateriaGUID as string;
       const CategoriaNome = req.query.CategoriaNome as string;
-      const resultado = await this.#categoriaService.excluirCategoriaGeral(usuarioCPF, MateriaGUID, CategoriaNome);
+      const resultado = await this.#categoriaService.excluirCategoriaGeral(usuarioGUID, MateriaGUID, CategoriaNome);
 
       res.json({ success: true, message: "Categoria excluída de todas as turmas", data: resultado });
     } catch (error) {
@@ -256,15 +256,15 @@ export class CategoriaConteudoController {
   resolverCategoriaPorNome = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.resolverCategoriaPorNome()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const { MateriaGUID, TurmasGUID, CategoriaNome } = req.body;
       const categoriasPorTurma = await this.#categoriaService.resolverCategoriaPorNomeParaTurmas(
-        usuarioCPF,
+        usuarioGUID,
         MateriaGUID,
         TurmasGUID,
         CategoriaNome
@@ -280,15 +280,15 @@ export class CategoriaConteudoController {
   moverItemBoardGeral = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.moverItemBoardGeral()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const { MateriaGUID, ItemGUID, Tipo, TurmaGUID, CategoriaNome } = req.body;
       const board = await this.#categoriaService.moverItemBoardGeral(
-        usuarioCPF,
+        usuarioGUID,
         MateriaGUID,
         ItemGUID,
         Tipo,
@@ -306,10 +306,10 @@ export class CategoriaConteudoController {
   temPendenciaAgregada = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.temPendenciaAgregada()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
+      const usuarioGUID = req.user?.UsuarioGUID || "";
       const ehProfessor = req.query.EhProfessor === "true";
 
-      const pendencia = await this.#categoriaService.verificarPendenciaAgregada(usuarioCPF, ehProfessor);
+      const pendencia = await this.#categoriaService.verificarPendenciaAgregada(usuarioGUID, ehProfessor);
 
       res.json({ success: true, message: "Verificado com sucesso", data: { pendencia } });
     } catch (error) {
@@ -321,15 +321,15 @@ export class CategoriaConteudoController {
   reordenarItens = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.reordenarItens()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
       const { MateriaGUID, TurmaGUID, CategoriaGUID, itens } = req.body;
       const resultado = await this.#categoriaService.reordenarItens(
-        usuarioCPF,
+        usuarioGUID,
         MateriaGUID,
         TurmaGUID,
         CategoriaGUID,
@@ -350,8 +350,8 @@ export class CategoriaConteudoController {
   update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.update()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
@@ -359,7 +359,7 @@ export class CategoriaConteudoController {
       const categoria = await this.#categoriaService.atualizarCategoria(
         req.params.guid,
         req.body.categoria?.CategoriaNome,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.json({
@@ -376,13 +376,13 @@ export class CategoriaConteudoController {
   destroy = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.destroy()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
         return;
       }
 
-      await this.#categoriaService.excluirCategoria(req.params.guid, usuarioCPF);
+      await this.#categoriaService.excluirCategoria(req.params.guid, usuarioGUID);
 
       res.json({
         success: true,

@@ -122,6 +122,25 @@ export default class UsuarioService {
     return this.toDTO(usuario);
   };
 
+  /**
+   * Busca por CPF — usado por telas de Gestão de Dados (Secretaria/Coordenação
+   * digitam o CPF de um usuário já cadastrado pra vincular a uma função na
+   * escola). Fica de fora do path (`?cpf=`, não `/:cpf`) pra não repetir o
+   * mesmo problema de LGPD que motivou trocar a PK pra GUID.
+   */
+  findByCPF = async (cpf: string): Promise<UsuarioDTO> => {
+    console.log("🟣 UsuarioService.findByCPF()");
+    const usuario = await this.#usuarioDAO.findByCPF(cpf);
+
+    if (!usuario) {
+      throw new ErrorResponse(404, "Usuário não encontrado", {
+        message: `Não existe usuário com o CPF informado`,
+      });
+    }
+
+    return this.toDTO(usuario);
+  };
+
   updateUsuario = async (UsuarioGUID: string, jsonUsuario: Record<string, unknown>): Promise<UsuarioDTO> => {
     console.log("🟣 UsuarioService.updateUsuario()");
 

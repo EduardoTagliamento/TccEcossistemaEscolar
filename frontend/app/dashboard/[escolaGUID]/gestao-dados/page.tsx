@@ -69,7 +69,7 @@ export default function GestaoDadosPage() {
   const verificarDirecao = async () => {
     if (!usuario) return;
     try {
-      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioGUID}/escolas`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();

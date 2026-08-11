@@ -46,7 +46,7 @@ export default function ProjetosPage() {
   const verificarPermissaoCriacao = async () => {
     if (!usuario) return;
     try {
-      const response = await fetch(`${API_URL}/usuario/${usuario.UsuarioCPF}/escolas`, {
+      const response = await fetch(`${API_URL}/usuario/${usuario.UsuarioGUID}/escolas`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();

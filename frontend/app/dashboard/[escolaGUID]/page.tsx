@@ -128,7 +128,7 @@ export default function DashboardPage() {
   const buscarFuncoesDaEscola = async () => {
     if (!usuario) return;
     try {
-      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioGUID}/escolas`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -176,7 +176,7 @@ export default function DashboardPage() {
     setCarregandoMaterias(true);
     try {
       if (!usuario) return;
-      const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioCPF, escolaGUID);
+      const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioGUID, escolaGUID);
       setMateriasAtalho(
         materias.slice(0, 6).map((m) => ({
           guid: m.MateriaGUID,

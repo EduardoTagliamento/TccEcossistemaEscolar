@@ -8,6 +8,7 @@ import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { TurmaDAO } from "../backend/repositories/turma.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { TarefaAcademicaRespostaDAO } from "../backend/repositories/tarefaacademica-resposta.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class CategoriaConteudoRoteador {
@@ -84,7 +85,8 @@ export const categoriaConteudoRouterFactory = () => {
   const turmaDAO = new TurmaDAO(database);
   const matriculaDAO = new MatriculaDAO(database);
   const respostaDAO = new TarefaAcademicaRespostaDAO(database);
-  const categoriaService = new CategoriaConteudoService(categoriaDAO, materiaDAO, turmaDAO, matriculaDAO, respostaDAO);
+  const usuarioDAO = new UsuarioDAO(database);
+  const categoriaService = new CategoriaConteudoService(categoriaDAO, materiaDAO, turmaDAO, usuarioDAO, matriculaDAO, respostaDAO);
   const controller = new CategoriaConteudoController(categoriaService);
   const roteador = new CategoriaConteudoRoteador(controller);
 

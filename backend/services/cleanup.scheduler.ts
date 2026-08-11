@@ -11,6 +11,7 @@ import ConversaGrupoService from "./conversa-grupo.service";
 import { ConversaDAO } from "../repositories/conversa.repository";
 import { ConversaGrupoDAO } from "../repositories/conversa-grupo.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import MysqlDatabase from "../database/MysqlDatabase";
 
 export class CleanupScheduler {
@@ -22,7 +23,8 @@ export class CleanupScheduler {
         this.#conversaGrupoService = new ConversaGrupoService(
             new ConversaDAO(db),
             new ConversaGrupoDAO(db),
-            new MatriculaDAO(db)
+            new MatriculaDAO(db),
+            new UsuarioDAO(db)
         );
     }
 

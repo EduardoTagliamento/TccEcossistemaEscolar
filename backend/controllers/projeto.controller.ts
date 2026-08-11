@@ -23,13 +23,13 @@ export default class ProjetoController {
     try {
       console.log('🔵 ProjetoController.criarProjeto()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
-      const projeto = await this.#projetoService.criarProjeto(req.body, usuarioCPF);
+      const projeto = await this.#projetoService.criarProjeto(req.body, usuarioGUID);
 
       res.status(201).json({
         success: true,
@@ -45,15 +45,15 @@ export default class ProjetoController {
     try {
       console.log('🔵 ProjetoController.listarProjetos()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { EscolaGUID } = req.query as { EscolaGUID: string };
 
-      const projetos = await this.#projetoService.listarProjetos(EscolaGUID, usuarioCPF);
+      const projetos = await this.#projetoService.listarProjetos(EscolaGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -86,14 +86,14 @@ export default class ProjetoController {
     try {
       console.log('🔵 ProjetoController.atualizarProjeto()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { projetoGUID } = req.params;
-      const projeto = await this.#projetoService.atualizarProjeto(projetoGUID, req.body, usuarioCPF);
+      const projeto = await this.#projetoService.atualizarProjeto(projetoGUID, req.body, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -109,14 +109,14 @@ export default class ProjetoController {
     try {
       console.log('🔵 ProjetoController.encerrarProjeto()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Não autenticado' });
         return;
       }
 
       const { projetoGUID } = req.params;
-      const resultado = await this.#projetoService.encerrarProjeto(projetoGUID, usuarioCPF);
+      const resultado = await this.#projetoService.encerrarProjeto(projetoGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,

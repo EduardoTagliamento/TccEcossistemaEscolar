@@ -5,6 +5,7 @@ import { CategoriaConteudoDAO, CategoriaConteudoFilters } from "../repositories/
 import { MateriaDAO } from "../repositories/materia.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import { TarefaAcademicaRespostaDAO, AgregadoAlunoLista } from "../repositories/tarefaacademica-resposta.repository";
 import { pool } from "../database/mysql";
 import { RowDataPacket } from "mysql2";
@@ -129,6 +130,7 @@ export default class CategoriaConteudoService {
   #categoriaDAO: CategoriaConteudoDAO;
   #materiaDAO: MateriaDAO;
   #turmaDAO: TurmaDAO;
+  #usuarioDAO: UsuarioDAO;
   #matriculaDAO?: MatriculaDAO;
   #respostaDAO?: TarefaAcademicaRespostaDAO;
 
@@ -136,6 +138,7 @@ export default class CategoriaConteudoService {
     categoriaDAO: CategoriaConteudoDAO,
     materiaDAO: MateriaDAO,
     turmaDAO: TurmaDAO,
+    usuarioDAO: UsuarioDAO,
     matriculaDAO?: MatriculaDAO,
     respostaDAO?: TarefaAcademicaRespostaDAO
   ) {
@@ -143,9 +146,20 @@ export default class CategoriaConteudoService {
     this.#categoriaDAO = categoriaDAO;
     this.#materiaDAO = materiaDAO;
     this.#turmaDAO = turmaDAO;
+    this.#usuarioDAO = usuarioDAO;
     this.#matriculaDAO = matriculaDAO;
     this.#respostaDAO = respostaDAO;
   }
+
+  /** Resolve o CPF de um ator a partir do UsuarioGUID — categoriaconteudo e
+   * materiaxprofessorxturma ainda usam CPF. */
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    return usuario.UsuarioCPF;
+  };
 
   /**
    * Resolve Estado/Percentual de um item "tarefa_lista" — o progresso é por
@@ -189,13 +203,13 @@ export default class CategoriaConteudoService {
   buscarCategoriasCompletas = async (
     materiaGUID: string,
     turmaGUID: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<CategoriasCompletasResultDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarCategoriasCompletas()");
 
     const categorias = await this.#categoriaDAO.findAll({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
 
-    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF) : null;
+    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID) : null;
     const matriculaGUID = matricula?.MatriculaGUID ?? null;
 
     const mapaItens = new Map<string, ItemCategoriaDTO[]>();
@@ -348,7 +362,7 @@ export default class CategoriaConteudoService {
    * A lista deve vir na ordem final desejada (índice = ItemOrdem).
    */
   reordenarItens = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     materiaGUID: string,
     turmaGUID: string,
     categoriaDestinoGUID: string,
@@ -356,6 +370,8 @@ export default class CategoriaConteudoService {
   ): Promise<CategoriasCompletasResultDTO> => {
     console.log("🟣 CategoriaConteudoService.reordenarItens()");
 
+    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
       `SELECT 1 FROM materiaxprofessorxturma
        WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
@@ -435,14 +451,17 @@ export default class CategoriaConteudoService {
       }
     }
 
-    return this.buscarCategoriasCompletas(materiaGUID, turmaGUID, usuarioCPF);
+    return this.buscarCategoriasCompletas(materiaGUID, turmaGUID, usuarioGUID);
   };
 
   criarCategoria = async (
     data: CategoriaConteudoCreateDTO,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<CategoriaConteudoDTO> => {
     console.log("🟣 CategoriaConteudoService.criarCategoria()");
+
+    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     const materia = await this.#materiaDAO.findById(data.MateriaGUID);
     if (!materia) {
@@ -510,10 +529,12 @@ export default class CategoriaConteudoService {
   atualizarCategoria = async (
     guid: string,
     novoNome: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<CategoriaConteudoDTO> => {
     console.log("🟣 CategoriaConteudoService.atualizarCategoria()");
 
+    // categoriaconteudo ainda usa CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const categoria = await this.#categoriaDAO.findById(guid);
     if (!categoria) {
       throw new ErrorResponse(404, "Categoria não encontrada", {
@@ -552,13 +573,15 @@ export default class CategoriaConteudoService {
   };
 
   reordenarCategorias = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     materiaGUID: string,
     turmaGUID: string,
     ordemGUIDs: string[]
   ): Promise<CategoriaConteudoDTO[]> => {
     console.log("🟣 CategoriaConteudoService.reordenarCategorias()");
 
+    // categoriaconteudo ainda usa CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const categoriasAtuais = await this.#categoriaDAO.findAll({
       UsuarioCPF: usuarioCPF,
       MateriaGUID: materiaGUID,
@@ -602,8 +625,11 @@ export default class CategoriaConteudoService {
    * Cria (ou aplica em turmas que ainda não tinham) uma categoria com esse
    * nome em TODAS as turmas ativas do professor nessa matéria de uma vez.
    */
-  criarCategoriaGeral = async (usuarioCPF: string, materiaGUID: string, categoriaNome: string): Promise<void> => {
+  criarCategoriaGeral = async (usuarioGUID: string, materiaGUID: string, categoriaNome: string): Promise<void> => {
     console.log("🟣 CategoriaConteudoService.criarCategoriaGeral()");
+
+    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     const nome = categoriaNome.trim();
     if (nome.length < 2 || nome.length > 100) {
@@ -643,12 +669,15 @@ export default class CategoriaConteudoService {
    * com o nome novo são puladas (não sobrescreve), pra não colidir.
    */
   atualizarCategoriaGeral = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     materiaGUID: string,
     categoriaNomeAtual: string,
     novoNome: string
   ): Promise<{ turmasAtualizadas: number }> => {
     console.log("🟣 CategoriaConteudoService.atualizarCategoriaGeral()");
+
+    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     const nomeAtual = categoriaNomeAtual.trim();
     const nome = novoNome.trim();
@@ -692,11 +721,14 @@ export default class CategoriaConteudoService {
    * desvincula os itens antes de excluir cada linha) linha a linha.
    */
   excluirCategoriaGeral = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     materiaGUID: string,
     categoriaNome: string
   ): Promise<{ turmasExcluidas: number }> => {
     console.log("🟣 CategoriaConteudoService.excluirCategoriaGeral()");
+
+    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     const nome = categoriaNome.trim();
     const turmas = await this.#turmasAtivasDoProfessor(usuarioCPF, materiaGUID);
@@ -705,7 +737,7 @@ export default class CategoriaConteudoService {
     for (const turma of turmas) {
       const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nome);
       if (!existente) continue;
-      await this.excluirCategoria(existente.CategoriaGUID, usuarioCPF);
+      await this.excluirCategoria(existente.CategoriaGUID, usuarioGUID);
       turmasExcluidas++;
     }
 
@@ -744,9 +776,11 @@ export default class CategoriaConteudoService {
    * na tela se estiverem em 2+ turmas (o que só 1 turma tem fica de fora,
    * por ser organização específica daquela turma, não "geral").
    */
-  buscarBoardGeral = async (usuarioCPF: string, materiaGUID: string): Promise<BoardGeralDTO> => {
+  buscarBoardGeral = async (usuarioGUID: string, materiaGUID: string): Promise<BoardGeralDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarBoardGeral()");
 
+    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const categoriasRows = await this.#categoriaDAO.findAll({ UsuarioCPF: usuarioCPF, MateriaGUID: materiaGUID });
     const nomeParaOrdem = new Map<string, number>();
     categoriasRows.forEach((c) => {
@@ -882,9 +916,11 @@ export default class CategoriaConteudoService {
   };
 
   /** Reordena as categorias gerais (por nome) — aplica a mesma Ordem em todas as turmas de uma vez. */
-  reordenarCategoriasGerais = async (usuarioCPF: string, materiaGUID: string, ordemNomes: string[]): Promise<BoardGeralDTO> => {
+  reordenarCategoriasGerais = async (usuarioGUID: string, materiaGUID: string, ordemNomes: string[]): Promise<BoardGeralDTO> => {
     console.log("🟣 CategoriaConteudoService.reordenarCategoriasGerais()");
 
+    // categoriaconteudo ainda usa CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const categoriasAtuais = await this.#categoriaDAO.findAll({ UsuarioCPF: usuarioCPF, MateriaGUID: materiaGUID });
     const nomesValidos = new Set(categoriasAtuais.map((c) => c.CategoriaNome));
     if (ordemNomes.length !== nomesValidos.size || !ordemNomes.every((nome) => nomesValidos.has(nome))) {
@@ -898,7 +934,7 @@ export default class CategoriaConteudoService {
       categoriasAtuais.map((c) => ({ CategoriaGUID: c.CategoriaGUID, Ordem: ordemPorNome.get(c.CategoriaNome || "")! }))
     );
 
-    return this.buscarBoardGeral(usuarioCPF, materiaGUID);
+    return this.buscarBoardGeral(usuarioGUID, materiaGUID);
   };
 
   /** Resolve o GUID da categoria (por nome) numa turma, criando-a se essa turma ainda não a tinha. */
@@ -939,12 +975,15 @@ export default class CategoriaConteudoService {
    * `CategoriasPorTurma` no payload de criação de Conteúdo/Prova.
    */
   resolverCategoriaPorNomeParaTurmas = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     materiaGUID: string,
     turmasGUID: string[],
     categoriaNome: string
   ): Promise<Record<string, string>> => {
     console.log("🟣 CategoriaConteudoService.resolverCategoriaPorNomeParaTurmas()");
+
+    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     const nome = categoriaNome.trim();
     if (nome.length < 2 || nome.length > 100) {
@@ -988,7 +1027,7 @@ export default class CategoriaConteudoService {
    * hora — mantém o "em massa".
    */
   moverItemBoardGeral = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     materiaGUID: string,
     itemGUID: string,
     tipo: ItemTipo,
@@ -997,6 +1036,8 @@ export default class CategoriaConteudoService {
   ): Promise<BoardGeralDTO> => {
     console.log("🟣 CategoriaConteudoService.moverItemBoardGeral()");
 
+    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const nome = categoriaNomeDestino?.trim() || null;
 
     if (tipo === "tarefa_digital" || tipo === "tarefa_presencial" || tipo === "tarefa_lista") {
@@ -1062,7 +1103,7 @@ export default class CategoriaConteudoService {
       throw new ErrorResponse(400, "Tipo de item inválido", { message: `Tipo desconhecido: ${tipo}` });
     }
 
-    return this.buscarBoardGeral(usuarioCPF, materiaGUID);
+    return this.buscarBoardGeral(usuarioGUID, materiaGUID);
   };
 
   /**
@@ -1072,12 +1113,14 @@ export default class CategoriaConteudoService {
   verificarPendencia = async (
     materiaGUID: string,
     turmaGUID: string,
-    usuarioCPF: string,
+    usuarioGUID: string,
     ehProfessor: boolean
   ): Promise<boolean> => {
     console.log("🟣 CategoriaConteudoService.verificarPendencia()");
 
     if (ehProfessor) {
+      // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
+      const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT 1
          FROM tarefaacademica t
@@ -1091,7 +1134,7 @@ export default class CategoriaConteudoService {
       return rows.length > 0;
     }
 
-    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF) : null;
+    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID) : null;
     if (!matricula) return false;
 
     const [rows] = await pool.execute<RowDataPacket[]>(
@@ -1112,10 +1155,12 @@ export default class CategoriaConteudoService {
    * matéria/turma do usuário? Mesma regra de verificarPendencia, sem
    * escopar por matéria/turma específica.
    */
-  verificarPendenciaAgregada = async (usuarioCPF: string, ehProfessor: boolean): Promise<boolean> => {
+  verificarPendenciaAgregada = async (usuarioGUID: string, ehProfessor: boolean): Promise<boolean> => {
     console.log("🟣 CategoriaConteudoService.verificarPendenciaAgregada()");
 
     if (ehProfessor) {
+      // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
+      const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT 1
          FROM tarefaacademica t
@@ -1129,7 +1174,7 @@ export default class CategoriaConteudoService {
       return rows.length > 0;
     }
 
-    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF) : null;
+    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID) : null;
     if (!matricula) return false;
 
     const [rows] = await pool.execute<RowDataPacket[]>(
@@ -1153,13 +1198,15 @@ export default class CategoriaConteudoService {
    * vez de só o usuário autenticado.
    */
   buscarEstatisticasItem = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     tipo: ItemTipo,
     itemGUID: string,
     turmaGUID: string
   ): Promise<EstatisticasItemDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarEstatisticasItem()");
 
+    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     let materiaGUID: string;
 
     if (tipo === "tarefa_digital" || tipo === "tarefa_presencial" || tipo === "tarefa_lista") {
@@ -1206,7 +1253,7 @@ export default class CategoriaConteudoService {
         `SELECT m.MatriculaGUID, u.UsuarioNome, tm.TarefaFeito, tm.TarefaNota,
                 COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS Prazo
          FROM matricula m
-         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
          CROSS JOIN tarefaacademica t
          LEFT JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID AND tm.MatriculaGUID = m.MatriculaGUID
          WHERE t.TarefaGUID = ? AND m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
@@ -1229,7 +1276,7 @@ export default class CategoriaConteudoService {
         `SELECT m.MatriculaGUID, u.UsuarioNome, tm.TarefaMatriculaGUID, tm.TarefaFeito, tm.TarefaNota,
                 COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS Prazo
          FROM matricula m
-         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
          CROSS JOIN tarefaacademica t
          LEFT JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID AND tm.MatriculaGUID = m.MatriculaGUID
          WHERE t.TarefaGUID = ? AND m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
@@ -1252,7 +1299,7 @@ export default class CategoriaConteudoService {
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT m.MatriculaGUID, u.UsuarioNome, cp.PercentualConcluido
          FROM matricula m
-         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
          LEFT JOIN conteudoprogresso cp ON cp.ConteudoGUID = ? AND cp.MatriculaGUID = m.MatriculaGUID
          WHERE m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
         [itemGUID, turmaGUID]
@@ -1277,7 +1324,7 @@ export default class CategoriaConteudoService {
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT m.MatriculaGUID, u.UsuarioNome, pv.ProvaAgendadaVisualizacaoGUID
          FROM matricula m
-         INNER JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+         INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
          LEFT JOIN provaagendadavisualizacao pv ON pv.ProvaAgendadaTurmaGUID = ? AND pv.MatriculaGUID = m.MatriculaGUID
          WHERE m.TurmaGUID = ? AND m.MatriculaStatus = 'Ativa'`,
         [provaAgendadaTurmaGUID, turmaGUID]
@@ -1305,11 +1352,14 @@ export default class CategoriaConteudoService {
    * buscarEstatisticasItem).
    */
   buscarEstatisticasPorQuestao = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     TarefaGUID: string,
     turmaGUID: string
   ): Promise<EstatisticasPorQuestaoDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarEstatisticasPorQuestao()");
+
+    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     if (!this.#respostaDAO) {
       throw new ErrorResponse(500, "Serviço indisponível", { message: "Estatística por questão não configurada." });
@@ -1408,9 +1458,11 @@ export default class CategoriaConteudoService {
     return { Questoes };
   };
 
-  excluirCategoria = async (guid: string, usuarioCPF: string): Promise<void> => {
+  excluirCategoria = async (guid: string, usuarioGUID: string): Promise<void> => {
     console.log("🟣 CategoriaConteudoService.excluirCategoria()");
 
+    // categoriaconteudo ainda usa CPF — resolver o professor logado.
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const categoria = await this.#categoriaDAO.findById(guid);
     if (!categoria) {
       throw new ErrorResponse(404, "Categoria não encontrada", {

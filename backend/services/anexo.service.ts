@@ -5,6 +5,7 @@ import Anexo from "../entities/anexo.model";
 import { AnexoDAO, AnexoFilters } from "../repositories/anexo.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import R2StorageService from "./r2storage.service";
 
 export interface AnexoDTO {
@@ -21,26 +22,37 @@ export default class AnexoService {
   #anexoDAO: AnexoDAO;
   #escolaDAO: EscolaDAO;
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     anexoDAODependency: AnexoDAO,
     escolaDAODependency: EscolaDAO,
-    escolaxUsuarioxFuncaoDAODependency: EscolaxUsuarioxFuncaoDAO
+    escolaxUsuarioxFuncaoDAODependency: EscolaxUsuarioxFuncaoDAO,
+    usuarioDAODependency: UsuarioDAO
   ) {
     console.log("⬆️  AnexoService.constructor()");
     this.#anexoDAO = anexoDAODependency;
     this.#escolaDAO = escolaDAODependency;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAODependency;
+    this.#usuarioDAO = usuarioDAODependency;
   }
+
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    return usuario.UsuarioCPF;
+  };
 
   uploadAnexo = async (
     file: Express.Multer.File,
     EscolaGUID: string,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<AnexoDTO> => {
     console.log("🟣 AnexoService.uploadAnexo()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para fazer upload de anexo.",
       });
@@ -63,6 +75,7 @@ export default class AnexoService {
     const fileUrl = await R2StorageService.upload(chave, file.buffer, file.mimetype, contentDisposition);
 
     // Criar registro do anexo
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const anexo = new Anexo();
     anexo.AnexoGUID = anexoGUID;
     anexo.UsuarioCPF = this.normalizeCPF(usuarioCPF);
@@ -76,7 +89,7 @@ export default class AnexoService {
     return this.toDTO(anexo);
   };
 
-  buscarAnexo = async (AnexoGUID: string, usuarioCPF?: string): Promise<AnexoDTO> => {
+  buscarAnexo = async (AnexoGUID: string, usuarioGUID?: string): Promise<AnexoDTO> => {
     console.log("🟣 AnexoService.buscarAnexo()");
 
     const anexo = await this.#anexoDAO.findById(AnexoGUID);
@@ -87,14 +100,14 @@ export default class AnexoService {
       });
     }
 
-    await this.validarPermissaoLeitura(usuarioCPF, anexo);
+    await this.validarPermissaoLeitura(usuarioGUID, anexo);
 
     return this.toDTO(anexo);
   };
 
   downloadAnexo = async (
     AnexoGUID: string,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<{ caminho: string; nomeOriginal: string }> => {
     console.log("🟣 AnexoService.downloadAnexo()");
 
@@ -106,7 +119,7 @@ export default class AnexoService {
       });
     }
 
-    await this.validarPermissaoLeitura(usuarioCPF, anexo);
+    await this.validarPermissaoLeitura(usuarioGUID, anexo);
 
     // AnexoCaminho já é a URL pública completa no R2 (o objeto foi
     // enviado com ContentDisposition "attachment", então o navegador
@@ -117,10 +130,10 @@ export default class AnexoService {
     };
   };
 
-  excluirAnexo = async (AnexoGUID: string, usuarioCPF?: string): Promise<boolean> => {
+  excluirAnexo = async (AnexoGUID: string, usuarioGUID?: string): Promise<boolean> => {
     console.log("🟣 AnexoService.excluirAnexo()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para excluir anexo.",
       });
@@ -135,7 +148,7 @@ export default class AnexoService {
     }
 
     // Validar permissão: apenas o dono ou admin pode deletar
-    await this.validarPermissaoEscrita(usuarioCPF, anexo);
+    await this.validarPermissaoEscrita(usuarioGUID, anexo);
 
     // Deletar registro do banco
     const deletado = await this.#anexoDAO.delete(AnexoGUID);
@@ -197,21 +210,21 @@ export default class AnexoService {
    * usuário autenticado de qualquer escola conseguia ler/baixar anexo de
    * outra escola só sabendo o GUID.
    */
-  private async validarPermissaoLeitura(usuarioCPF: string | undefined, anexo: Anexo): Promise<void> {
-    if (!usuarioCPF) {
+  private async validarPermissaoLeitura(usuarioGUID: string | undefined, anexo: Anexo): Promise<void> {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para acessar este anexo.",
       });
     }
 
-    const cpfNormalizado = this.normalizeCPF(usuarioCPF);
+    const cpfNormalizado = this.normalizeCPF(await this.#resolverCPFAtor(usuarioGUID));
 
     if (anexo.UsuarioCPF === cpfNormalizado) {
       return;
     }
 
     const vinculos = await this.#escolaxUsuarioxFuncaoDAO.findAll({
-      UsuarioCPF: cpfNormalizado,
+      UsuarioGUID: usuarioGUID,
       EscolaGUID: anexo.EscolaGUID,
     });
 
@@ -228,8 +241,8 @@ export default class AnexoService {
    * Valida se usuário pode escrever/deletar o anexo
    * Apenas dono do arquivo OU Coordenação/Direção da escola podem deletar
    */
-  private async validarPermissaoEscrita(usuarioCPF: string, anexo: Anexo): Promise<void> {
-    const cpfNormalizado = this.normalizeCPF(usuarioCPF);
+  private async validarPermissaoEscrita(usuarioGUID: string, anexo: Anexo): Promise<void> {
+    const cpfNormalizado = this.normalizeCPF(await this.#resolverCPFAtor(usuarioGUID));
 
     // Permitir se for o dono do arquivo
     if (anexo.UsuarioCPF === cpfNormalizado) {
@@ -237,7 +250,7 @@ export default class AnexoService {
     }
 
     const ehCoordOuDirecao = await this.#escolaxUsuarioxFuncaoDAO.isCoordOuDirecaoEmEscola(
-      cpfNormalizado,
+      usuarioGUID,
       anexo.EscolaGUID
     );
     if (ehCoordOuDirecao) {

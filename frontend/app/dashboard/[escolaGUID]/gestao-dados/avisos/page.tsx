@@ -85,7 +85,7 @@ export default function AvisosPage() {
     if (!usuario) return;
     try {
       setVerificandoPermissao(true);
-      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioGUID}/escolas`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();

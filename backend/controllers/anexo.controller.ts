@@ -19,7 +19,7 @@ export default class AnexoControl {
     try {
       const file = request.file;
       const { EscolaGUID } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
       if (!file) {
         response.status(400).json({
@@ -30,7 +30,7 @@ export default class AnexoControl {
         return;
       }
 
-      const anexoCriado = await this.#anexoService.uploadAnexo(file, EscolaGUID, usuarioCPF);
+      const anexoCriado = await this.#anexoService.uploadAnexo(file, EscolaGUID, usuarioGUID);
 
       response.status(201).json({
         success: true,
@@ -78,8 +78,8 @@ export default class AnexoControl {
     console.log("🔵 AnexoControl.show()");
     try {
       const { AnexoGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
-      const anexo = await this.#anexoService.buscarAnexo(AnexoGUID, usuarioCPF);
+      const usuarioGUID = request.user?.UsuarioGUID;
+      const anexo = await this.#anexoService.buscarAnexo(AnexoGUID, usuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -101,8 +101,8 @@ export default class AnexoControl {
     console.log("🔵 AnexoControl.download()");
     try {
       const { AnexoGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
-      const { caminho } = await this.#anexoService.downloadAnexo(AnexoGUID, usuarioCPF);
+      const usuarioGUID = request.user?.UsuarioGUID;
+      const { caminho } = await this.#anexoService.downloadAnexo(AnexoGUID, usuarioGUID);
 
       response.redirect(caminho);
     } catch (error) {
@@ -118,9 +118,9 @@ export default class AnexoControl {
     console.log("🔵 AnexoControl.destroy()");
     try {
       const { AnexoGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
-      const excluido = await this.#anexoService.excluirAnexo(AnexoGUID, usuarioCPF);
+      const excluido = await this.#anexoService.excluirAnexo(AnexoGUID, usuarioGUID);
 
       if (!excluido) {
         return response.status(404).json({

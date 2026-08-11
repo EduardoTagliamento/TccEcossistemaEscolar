@@ -30,8 +30,8 @@ export function useCriarProfessor() {
 export function useAtualizarProfessor() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ cpf, updates }: { cpf: string; updates: Parameters<typeof atualizarProfessor>[1] }) =>
-      atualizarProfessor(cpf, updates),
+    mutationFn: ({ usuarioGUID, updates }: { usuarioGUID: string; updates: Parameters<typeof atualizarProfessor>[1] }) =>
+      atualizarProfessor(usuarioGUID, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: professorKeys.all });
     },
@@ -69,7 +69,7 @@ export function useInativarProfessor() {
 export function useReativarProfessor() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (cpf: string) => reativarProfessor(cpf),
+    mutationFn: (usuarioGUID: string) => reativarProfessor(usuarioGUID),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: professorKeys.all });
     },

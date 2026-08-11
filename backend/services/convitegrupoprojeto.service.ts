@@ -8,6 +8,7 @@ import ErrorResponse from '../utils/ErrorResponse';
 import MysqlDatabase from '../database/MysqlDatabase';
 import { getNotificacaoService } from './notificacao.service';
 import { getAuditoriaService } from './auditoria.service';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import {
   ConviteGrupoProjeto,
   ConviteGrupoProjetoCreateDTO,
@@ -22,6 +23,7 @@ export default class ConviteGrupoProjetoService {
   #historicoService: HistoricoGrupoProjetoService;
   #grupoProjetoService: GrupoProjetoService;
   #database: MysqlDatabase;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     conviteDAO: ConviteGrupoProjetoDAO,
@@ -30,7 +32,8 @@ export default class ConviteGrupoProjetoService {
     projetoDAO: ProjetoDAO,
     historicoService: HistoricoGrupoProjetoService,
     grupoProjetoService: GrupoProjetoService,
-    database: MysqlDatabase
+    database: MysqlDatabase,
+    usuarioDAO: UsuarioDAO
   ) {
     console.log('⬆️  ConviteGrupoProjetoService.constructor()');
     this.#conviteDAO = conviteDAO;
@@ -40,7 +43,18 @@ export default class ConviteGrupoProjetoService {
     this.#historicoService = historicoService;
     this.#grupoProjetoService = grupoProjetoService;
     this.#database = database;
+    this.#usuarioDAO = usuarioDAO;
   }
+
+  /** Resolve o CPF de um ator a partir do UsuarioGUID — convitegrupoprojeto,
+   * grupoprojeto e projeto ainda usam CPF. */
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
+    }
+    return usuario.UsuarioCPF;
+  };
 
   /**
    * LÍDER ENVIA CONVITE para aluno.
@@ -51,10 +65,11 @@ export default class ConviteGrupoProjetoService {
   enviarConvite = async (
     grupoGUID: string,
     convidadoCPF: string,
-    liderCPF: string
+    liderGUID: string
   ): Promise<ConviteGrupoProjeto> => {
     console.log('🟣 ConviteGrupoProjetoService.enviarConvite()');
 
+    const liderCPF = await this.#resolverCPFAtor(liderGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -97,20 +112,23 @@ export default class ConviteGrupoProjetoService {
 
     const convite = await this.#conviteDAO.create(conviteData);
 
-    getNotificacaoService().disparar({
-      tipoSlug: 'convite_grupo_projeto',
-      destinatarios: [convidadoCPF],
-      escolaGUID: projeto.EscolaGUID,
-      titulo: `Você recebeu um convite para um grupo do projeto "${projeto.ProjetoTitulo}"`,
-      entidadeTipo: 'grupoprojeto',
-      entidadeGUID: grupoGUID
-    }).catch((error) => {
-      console.error('🔴 ConviteGrupoProjetoService.enviarConvite() falhou ao notificar:', error);
-    });
+    const convidado = await this.#usuarioDAO.findByCPF(convidadoCPF);
+    if (convidado) {
+      getNotificacaoService().disparar({
+        tipoSlug: 'convite_grupo_projeto',
+        destinatarios: [convidado.UsuarioGUID],
+        escolaGUID: projeto.EscolaGUID,
+        titulo: `Você recebeu um convite para um grupo do projeto "${projeto.ProjetoTitulo}"`,
+        entidadeTipo: 'grupoprojeto',
+        entidadeGUID: grupoGUID
+      }).catch((error) => {
+        console.error('🔴 ConviteGrupoProjetoService.enviarConvite() falhou ao notificar:', error);
+      });
+    }
 
     void getAuditoriaService().registrar({
       EscolaGUID: projeto.EscolaGUID,
-      UsuarioCPFAtor: liderCPF,
+      UsuarioGUIDAtor: liderGUID,
       AcaoTipo: 'Create',
       EntidadeTipo: 'convitegrupoprojeto',
       EntidadeGUID: convite.ConviteGUID,
@@ -127,9 +145,10 @@ export default class ConviteGrupoProjetoService {
    * projeto — substitui a validação "estar sozinho" do módulo original de
    * Tarefa Compartilhada (aqui não há grupo automático a comparar).
    */
-  solicitarEntrada = async (grupoGUID: string, solicitanteCPF: string): Promise<ConviteGrupoProjeto> => {
+  solicitarEntrada = async (grupoGUID: string, solicitanteGUID: string): Promise<ConviteGrupoProjeto> => {
     console.log('🟣 ConviteGrupoProjetoService.solicitarEntrada()');
 
+    const solicitanteCPF = await this.#resolverCPFAtor(solicitanteGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -173,20 +192,23 @@ export default class ConviteGrupoProjetoService {
 
     const solicitacao = await this.#conviteDAO.create(solicitacaoData);
 
-    getNotificacaoService().disparar({
-      tipoSlug: 'solicitacao_grupo_projeto',
-      destinatarios: [grupo.UsuarioCPFLider],
-      escolaGUID: projeto.EscolaGUID,
-      titulo: `Novo pedido de entrada no seu grupo do projeto "${projeto.ProjetoTitulo}"`,
-      entidadeTipo: 'grupoprojeto',
-      entidadeGUID: grupoGUID
-    }).catch((error) => {
-      console.error('🔴 ConviteGrupoProjetoService.solicitarEntrada() falhou ao notificar:', error);
-    });
+    const lider = await this.#usuarioDAO.findByCPF(grupo.UsuarioCPFLider);
+    if (lider) {
+      getNotificacaoService().disparar({
+        tipoSlug: 'solicitacao_grupo_projeto',
+        destinatarios: [lider.UsuarioGUID],
+        escolaGUID: projeto.EscolaGUID,
+        titulo: `Novo pedido de entrada no seu grupo do projeto "${projeto.ProjetoTitulo}"`,
+        entidadeTipo: 'grupoprojeto',
+        entidadeGUID: grupoGUID
+      }).catch((error) => {
+        console.error('🔴 ConviteGrupoProjetoService.solicitarEntrada() falhou ao notificar:', error);
+      });
+    }
 
     void getAuditoriaService().registrar({
       EscolaGUID: projeto.EscolaGUID,
-      UsuarioCPFAtor: solicitanteCPF,
+      UsuarioGUIDAtor: solicitanteGUID,
       AcaoTipo: 'Create',
       EntidadeTipo: 'convitegrupoprojeto',
       EntidadeGUID: solicitacao.ConviteGUID,
@@ -206,9 +228,10 @@ export default class ConviteGrupoProjetoService {
    * sempre se o processo cair entre as duas escritas (mesma proteção que
    * `ConviteGrupoTarefaService.aceitar` já tinha).
    */
-  aceitar = async (conviteGUID: string, usuarioCPF: string): Promise<{ mensagem: string }> => {
+  aceitar = async (conviteGUID: string, usuarioGUID: string): Promise<{ mensagem: string }> => {
     console.log('🟣 ConviteGrupoProjetoService.aceitar()');
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const convite = await this.#conviteDAO.findById(conviteGUID);
     if (!convite) {
       throw new ErrorResponse(404, 'Convite não encontrado');
@@ -254,7 +277,7 @@ export default class ConviteGrupoProjetoService {
     if (projetoDoGrupo) {
       void getAuditoriaService().registrar({
         EscolaGUID: projetoDoGrupo.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: 'Update',
         EntidadeTipo: 'convitegrupoprojeto',
         EntidadeGUID: conviteGUID,
@@ -269,9 +292,10 @@ export default class ConviteGrupoProjetoService {
   /**
    * RECUSAR CONVITE OU SOLICITAÇÃO
    */
-  recusar = async (conviteGUID: string, usuarioCPF: string): Promise<{ mensagem: string }> => {
+  recusar = async (conviteGUID: string, usuarioGUID: string): Promise<{ mensagem: string }> => {
     console.log('🟣 ConviteGrupoProjetoService.recusar()');
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const convite = await this.#conviteDAO.findById(conviteGUID);
     if (!convite) {
       throw new ErrorResponse(404, 'Convite não encontrado');
@@ -300,7 +324,7 @@ export default class ConviteGrupoProjetoService {
     if (projetoDoGrupo) {
       void getAuditoriaService().registrar({
         EscolaGUID: projetoDoGrupo.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: 'Update',
         EntidadeTipo: 'convitegrupoprojeto',
         EntidadeGUID: conviteGUID,
@@ -315,8 +339,12 @@ export default class ConviteGrupoProjetoService {
   /**
    * LISTAR CONVITES/SOLICITAÇÕES PENDENTES do usuário
    */
-  listarPendentes = async (usuarioCPF: string): Promise<ConviteGrupoProjetoDTO[]> => {
+  listarPendentes = async (usuarioGUID: string): Promise<ConviteGrupoProjetoDTO[]> => {
     console.log('🟣 ConviteGrupoProjetoService.listarPendentes()');
-    return await this.#conviteDAO.findAllComDetalhes(usuarioCPF);
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      return [];
+    }
+    return await this.#conviteDAO.findAllComDetalhes(usuario.UsuarioCPF);
   };
 }

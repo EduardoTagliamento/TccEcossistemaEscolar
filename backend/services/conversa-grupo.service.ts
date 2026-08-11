@@ -2,21 +2,25 @@ import { gerarGUID } from "../utils/helpers/guid.helper";
 import { ConversaDAO } from '../repositories/conversa.repository';
 import { ConversaGrupoDAO } from '../repositories/conversa-grupo.repository';
 import { MatriculaDAO } from '../repositories/matricula.repository';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 
 export default class ConversaGrupoService {
   #conversaDAO: ConversaDAO;
   #conversaGrupoDAO: ConversaGrupoDAO;
   #matriculaDAO: MatriculaDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     conversaDAO: ConversaDAO,
     conversaGrupoDAO: ConversaGrupoDAO,
-    matriculaDAO: MatriculaDAO
+    matriculaDAO: MatriculaDAO,
+    usuarioDAO: UsuarioDAO
   ) {
     console.log('⬆️  ConversaGrupoService.constructor()');
     this.#conversaDAO = conversaDAO;
     this.#conversaGrupoDAO = conversaGrupoDAO;
     this.#matriculaDAO = matriculaDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
 
   /**
@@ -45,7 +49,9 @@ export default class ConversaGrupoService {
         MatriculaStatus: 'Ativa',
       });
       for (const m of matriculas) {
-        await this.#conversaGrupoDAO.addMembro(conversaGUID, m.UsuarioCPF);
+        const usuario = await this.#usuarioDAO.findByGUID(m.UsuarioGUID);
+        if (!usuario?.UsuarioCPF) continue;
+        await this.#conversaGrupoDAO.addMembro(conversaGUID, usuario.UsuarioCPF);
       }
       console.log(`✅ Grupo de turma criado: ${turmaNome} (${conversaGUID}) com ${matriculas.length} membros`);
     } catch (err) {

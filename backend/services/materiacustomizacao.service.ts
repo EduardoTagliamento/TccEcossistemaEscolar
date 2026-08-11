@@ -5,6 +5,7 @@ import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repo
 import { MateriaDAO } from "../repositories/materia.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import R2StorageService from "./r2storage.service";
 import { extrairCorDominante } from "../utils/helpers/cor-imagem.helper";
 import { getAuditoriaService } from "./auditoria.service";
@@ -22,23 +23,34 @@ export default class MateriaCustomizacaoService {
   #materiaDAO: MateriaDAO;
   #escolaDAO: EscolaDAO;
   #alocacaoDAO: MaterialProfessorTurmaDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     customizacaoDAO: MateriaCustomizacaoDAO,
     materiaDAO: MateriaDAO,
     escolaDAO: EscolaDAO,
-    alocacaoDAO: MaterialProfessorTurmaDAO
+    alocacaoDAO: MaterialProfessorTurmaDAO,
+    usuarioDAO: UsuarioDAO
   ) {
     console.log("⬆️  MateriaCustomizacaoService.constructor()");
     this.#customizacaoDAO = customizacaoDAO;
     this.#materiaDAO = materiaDAO;
     this.#escolaDAO = escolaDAO;
     this.#alocacaoDAO = alocacaoDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
+
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    return usuario.UsuarioCPF;
+  };
 
   salvarCustomizacao = async (
     materiaGUID: string,
-    usuarioCPF: string,
+    usuarioGUID: string,
     dados: { imagem?: { buffer: Buffer; mimetype: string }; cor?: string; mensagem?: string | null }
   ): Promise<MateriaCustomizacaoDTO> => {
     console.log("🟣 MateriaCustomizacaoService.salvarCustomizacao()");
@@ -49,6 +61,8 @@ export default class MateriaCustomizacaoService {
         message: `Não existe matéria com id ${materiaGUID}`,
       });
     }
+
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     const alocacoes = await this.#alocacaoDAO.findAll({
       MateriaGUID: materiaGUID,
@@ -92,7 +106,7 @@ export default class MateriaCustomizacaoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: materia.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: existente ? "Update" : "Create",
       EntidadeTipo: "materiacustomizacao",
       EntidadeGUID: customizacao.MateriaCustomizacaoGUID,
@@ -103,7 +117,7 @@ export default class MateriaCustomizacaoService {
     return this.toDTO(customizacao, materia.EscolaGUID);
   };
 
-  buscarCustomizacao = async (materiaGUID: string, usuarioCPF: string): Promise<MateriaCustomizacaoDTO> => {
+  buscarCustomizacao = async (materiaGUID: string, usuarioGUID: string): Promise<MateriaCustomizacaoDTO> => {
     console.log("🟣 MateriaCustomizacaoService.buscarCustomizacao()");
 
     const materia = await this.#materiaDAO.findById(materiaGUID);
@@ -113,6 +127,7 @@ export default class MateriaCustomizacaoService {
       });
     }
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const customizacao = await this.#customizacaoDAO.findByMateriaEProfessor(materiaGUID, usuarioCPF);
     if (!customizacao) {
       return this.dtoPadrao(materiaGUID, usuarioCPF, materia.EscolaGUID);

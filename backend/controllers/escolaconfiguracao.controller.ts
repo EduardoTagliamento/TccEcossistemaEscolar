@@ -50,9 +50,9 @@ export class EscolaConfiguracaoController {
     console.log("🔵 EscolaConfiguracaoController.update()");
 
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Usuário não autenticado",
@@ -64,7 +64,7 @@ export class EscolaConfiguracaoController {
       const { configuracao, avisos } = await this.#escolaConfiguracaoService.salvarConfiguracao(
         req.params.escolaGUID,
         req.body.configuracao,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.json({

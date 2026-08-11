@@ -161,7 +161,7 @@ export default class ProfessorController {
   criarAlocacao = async (req: Request, res: Response): Promise<void> => {
     try {
       const body = req.body;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUID = req.user?.UsuarioGUID || '';
 
       // Detectar se é batch ou individual
       if (Array.isArray(body.alocacoes)) {
@@ -171,7 +171,7 @@ export default class ProfessorController {
         const resultado = await this.#professorService.criarAlocacoesEmMassa(
           alocacoes,
           EscolaGUID,
-          usuarioCPF
+          usuarioGUID
         );
 
         res.status(201).json({
@@ -193,7 +193,7 @@ export default class ProfessorController {
 
         const alocacaoCriada = await this.#professorService.criarAlocacao(
           createData,
-          usuarioCPF
+          usuarioGUID
         );
 
         res.status(201).json({
@@ -312,7 +312,7 @@ export default class ProfessorController {
     try {
       const { guid } = req.params;
       const { alocacao } = req.body;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUID = req.user?.UsuarioGUID || '';
 
       const updateData: AlocacaoUpdateDTO = {
         AlocacaoStatus: alocacao.AlocacaoStatus,
@@ -322,7 +322,7 @@ export default class ProfessorController {
       const alocacaoAtualizada = await this.#professorService.atualizarAlocacao(
         guid,
         updateData,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(200).json({
@@ -354,9 +354,9 @@ export default class ProfessorController {
   excluirAlocacao = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUID = req.user?.UsuarioGUID || '';
 
-      await this.#professorService.excluirAlocacao(guid, usuarioCPF);
+      await this.#professorService.excluirAlocacao(guid, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -388,10 +388,10 @@ export default class ProfessorController {
     try {
       console.log("🔵 ProfessorController.buscarMateriasProfessor()");
       
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       const { EscolaGUID } = req.query;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -404,7 +404,7 @@ export default class ProfessorController {
       }
 
       const materias = await this.#professorService.buscarMateriasProfessor(
-        usuarioCPF,
+        usuarioGUID,
         EscolaGUID
       );
 
@@ -436,10 +436,10 @@ export default class ProfessorController {
    */
   buscarMateriasComCapa = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       const { EscolaGUID } = req.query;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Não autenticado" });
         return;
       }
@@ -447,7 +447,7 @@ export default class ProfessorController {
         throw new ErrorResponse(400, "EscolaGUID é obrigatório");
       }
 
-      const materias = await this.#professorService.buscarMateriasComCapaProfessor(usuarioCPF, EscolaGUID);
+      const materias = await this.#professorService.buscarMateriasComCapaProfessor(usuarioGUID, EscolaGUID);
 
       res.status(200).json({ success: true, data: materias, total: materias.length });
     } catch (error) {
@@ -466,10 +466,10 @@ export default class ProfessorController {
    */
   buscarTurmasComCapa = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
       const { MateriaGUID } = req.query;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: "Não autenticado" });
         return;
       }
@@ -477,7 +477,7 @@ export default class ProfessorController {
         throw new ErrorResponse(400, "MateriaGUID é obrigatório");
       }
 
-      const turmas = await this.#professorService.buscarTurmasComCapaProfessor(usuarioCPF, MateriaGUID);
+      const turmas = await this.#professorService.buscarTurmasComCapaProfessor(usuarioGUID, MateriaGUID);
 
       res.status(200).json({ success: true, data: turmas, total: turmas.length });
     } catch (error) {
@@ -500,9 +500,9 @@ export default class ProfessorController {
       console.log("🔵 ProfessorController.buscarTurmasAlunos()");
       
       const { MatProfTurGUID } = req.query;
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Não autenticado"
@@ -516,7 +516,7 @@ export default class ProfessorController {
 
       const estrutura = await this.#professorService.buscarTurmasAlunos(
         MatProfTurGUID,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(200).json({
