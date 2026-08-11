@@ -78,7 +78,7 @@ export default function SelecionarEscolaPage() {
     if (!usuario) return;
 
     try {
-      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioGUID}/escolas`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

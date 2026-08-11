@@ -11,14 +11,14 @@ export class MateriaController {
     this.#materiaService = materiaService;
   }
 
-  // GET /api/materia/aluno/:usuarioCPF?EscolaGUID=
+  // GET /api/materia/aluno/:usuarioGUID?EscolaGUID=
   listarDoAluno = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 MateriaController.listarDoAluno()");
     try {
-      const { usuarioCPF } = req.params;
+      const { usuarioGUID } = req.params;
       const escolaGUID = req.query.EscolaGUID as string;
 
-      const materias = await this.#materiaService.listarMateriasDoAluno(usuarioCPF, escolaGUID);
+      const materias = await this.#materiaService.listarMateriasDoAluno(usuarioGUID, escolaGUID);
 
       res.status(200).json({
         success: true,
@@ -40,9 +40,9 @@ export class MateriaController {
     console.log("🔵 MateriaController.store()");
 
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Usuário não autenticado",
@@ -56,7 +56,7 @@ export class MateriaController {
         // Cadastro em massa
         const resultado = await this.#materiaService.criarMateriasEmMassa(
           req.body.materias,
-          usuarioCPF
+          usuarioGUID
         );
 
         res.status(201).json({
@@ -70,7 +70,7 @@ export class MateriaController {
       // Cadastro individual
       const materia = await this.#materiaService.criarMateria(
         req.body.materia,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(201).json({
@@ -151,9 +151,9 @@ export class MateriaController {
     console.log("🔵 MateriaController.update()");
 
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Usuário não autenticado",
@@ -165,7 +165,7 @@ export class MateriaController {
       const materia = await this.#materiaService.atualizarMateria(
         req.params.guid,
         req.body.materia,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.json({
@@ -188,9 +188,9 @@ export class MateriaController {
     console.log("🔵 MateriaController.destroy()");
 
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Usuário não autenticado",
@@ -199,7 +199,7 @@ export class MateriaController {
         return;
       }
 
-      await this.#materiaService.excluirMateria(req.params.guid, usuarioCPF);
+      await this.#materiaService.excluirMateria(req.params.guid, usuarioGUID);
 
       res.json({
         success: true,

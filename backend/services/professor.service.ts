@@ -45,7 +45,8 @@ export interface AlocacaoUpdateDTO {
 }
 
 export interface ProfessorDTO {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
   UsuarioNome: string;
   UsuarioEmail: string | null;
   UsuarioId: string | null;
@@ -143,7 +144,7 @@ export default class ProfessorService {
   }
 
   /** Grid de seleção de matéria (professor) — matérias que ele leciona, já com a capa/cor. */
-  async buscarMateriasComCapaProfessor(usuarioCPF: string, escolaGUID: string): Promise<Array<{
+  async buscarMateriasComCapaProfessor(usuarioGUID: string, escolaGUID: string): Promise<Array<{
     MatProfTurGUID: string;
     MateriaGUID: string;
     MateriaNome: string;
@@ -156,14 +157,22 @@ export default class ProfessorService {
       throw new ErrorResponse(500, "Serviço mal configurado");
     }
 
-    const materias = await this.buscarMateriasProfessor(usuarioCPF, escolaGUID);
+    // materiaxprofessorxturma/materiacustomizacao ainda usam CPF — resolver
+    // a partir do UsuarioGUID do professor logado.
+    const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!professor?.UsuarioCPF) {
+      return [];
+    }
+    const professorCPF = professor.UsuarioCPF;
+
+    const materias = await this.buscarMateriasProfessor(usuarioGUID, escolaGUID);
     const materiasUnicas = Array.from(new Map(materias.map((m) => [m.MateriaGUID, m])).values());
     const escola = await this.#escolaDAO.findById(escolaGUID);
     const corPadrao = escola?.EscolaCorPriEs ? `#${escola.EscolaCorPriEs.replace(/^#/, "")}` : "#17C077";
 
     return Promise.all(
       materiasUnicas.map(async (materia) => {
-        const customizacao = await this.#customizacaoDAO!.findByMateriaEProfessor(materia.MateriaGUID, usuarioCPF);
+        const customizacao = await this.#customizacaoDAO!.findByMateriaEProfessor(materia.MateriaGUID, professorCPF);
         return {
           MatProfTurGUID: materia.MatProfTurGUID,
           MateriaGUID: materia.MateriaGUID,
@@ -176,7 +185,7 @@ export default class ProfessorService {
   }
 
   /** Grid de seleção de turma (professor), dado que já escolheu a matéria — já com a capa/cor da turma. */
-  async buscarTurmasComCapaProfessor(usuarioCPF: string, materiaGUID: string): Promise<Array<{
+  async buscarTurmasComCapaProfessor(usuarioGUID: string, materiaGUID: string): Promise<Array<{
     MatProfTurGUID: string;
     TurmaGUID: string;
     TurmaNome: string;
@@ -186,9 +195,16 @@ export default class ProfessorService {
   }>> {
     console.log("🟣 ProfessorService.buscarTurmasComCapaProfessor()");
 
+    // materiaxprofessorxturma ainda usa CPF — resolver a partir do
+    // UsuarioGUID do professor logado.
+    const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!professor?.UsuarioCPF) {
+      return [];
+    }
+
     const alocacoes = await this.#alocacaoDAO.findAll({
       MateriaGUID: materiaGUID,
-      UsuarioCPF: usuarioCPF,
+      UsuarioCPF: professor.UsuarioCPF,
       AlocacaoStatus: "Ativa",
     });
 
@@ -239,12 +255,16 @@ export default class ProfessorService {
     alocacoes: AlocacaoDTO[];
     total: number;
   }> {
-    // 1. Verificar se é professor na escola
-    const vinculo = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      cpf,
-      escolaGUID,
-      3 // FuncaoId Professor
-    );
+    // 1. Verificar se é professor na escola (materiaxprofessorxturma ainda
+    // usa CPF — escolaxusuarioxfuncao já exige UsuarioGUID, resolver antes)
+    const usuarioProfessor = await this.#usuarioDAO.findByCPF(cpf);
+    const vinculo = usuarioProfessor
+      ? await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
+          usuarioProfessor.UsuarioGUID,
+          escolaGUID,
+          3 // FuncaoId Professor
+        )
+      : null;
 
     if (!vinculo) {
       throw new ErrorResponse(404, 'Usuário não é professor nesta escola', {
@@ -288,7 +308,7 @@ export default class ProfessorService {
    * 5. Usuário é professor ativo na escola
    * 6. Não existe duplicidade (mesmo professor + matéria + turma)
    */
-  async criarAlocacao(data: AlocacaoCreateDTO, usuarioCPF: string): Promise<AlocacaoDTO> {
+  async criarAlocacao(data: AlocacaoCreateDTO, usuarioGUID: string): Promise<AlocacaoDTO> {
     // 1. Buscar turma
     if (!data.TurmaGUID) {
       throw new ErrorResponse(400, 'TurmaGUID é obrigatório', {
@@ -303,7 +323,7 @@ export default class ProfessorService {
     }
 
     // 2. Validar permissão de quem está alocando
-    await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, turma.EscolaGUID);
 
     // 3. Buscar matéria
     if (!data.MateriaGUID) {
@@ -328,11 +348,16 @@ export default class ProfessorService {
     }
 
     // 5. Validar que usuário é professor ativo na escola
-    const vinculo = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      data.UsuarioCPF,
-      turma.EscolaGUID,
-      3 // FuncaoId Professor
-    );
+    // (materiaxprofessorxturma ainda usa CPF — escolaxusuarioxfuncao já
+    // exige UsuarioGUID, resolver antes)
+    const usuarioProfessorAlocacao = await this.#usuarioDAO.findByCPF(data.UsuarioCPF);
+    const vinculo = usuarioProfessorAlocacao
+      ? await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
+          usuarioProfessorAlocacao.UsuarioGUID,
+          turma.EscolaGUID,
+          3 // FuncaoId Professor
+        )
+      : null;
 
     if (!vinculo) {
       throw new ErrorResponse(403, 'Usuário não é professor nesta escola', {
@@ -429,7 +454,7 @@ export default class ProfessorService {
   async atualizarAlocacao(
     guid: string,
     data: AlocacaoUpdateDTO,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<AlocacaoDTO> {
     // 1. Buscar alocação
     const alocacaoExistente = await this.#alocacaoDAO.findById(guid);
@@ -448,7 +473,7 @@ export default class ProfessorService {
     }
 
     // 3. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, turma.EscolaGUID);
 
     // 4. Atualizar
     const alocacaoAtualizada = await this.#alocacaoDAO.update(guid, data);
@@ -465,7 +490,7 @@ export default class ProfessorService {
   /**
    * Excluir alocação (soft delete -> status Inativa)
    */
-  async excluirAlocacao(guid: string, usuarioCPF: string): Promise<void> {
+  async excluirAlocacao(guid: string, usuarioGUID: string): Promise<void> {
     // 1. Buscar alocação
     const alocacao = await this.#alocacaoDAO.findById(guid);
     if (!alocacao) {
@@ -483,7 +508,7 @@ export default class ProfessorService {
     }
 
     // 3. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, turma.EscolaGUID);
 
     // 4. Excluir (soft delete)
     const deletado = await this.#alocacaoDAO.delete(guid);
@@ -552,7 +577,7 @@ export default class ProfessorService {
         }
 
         // Verificar se usuário já existe
-        const usuarioExistente = await this.#usuarioDAO.findById(cpf);
+        const usuarioExistente = await this.#usuarioDAO.findByCPF(cpf);
 
         let usuario: Usuario;
         let senhaTemporaria: string | undefined;
@@ -563,7 +588,7 @@ export default class ProfessorService {
 
           // Verificar se já é professor na escola
           const vinculoExistente = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-            cpf,
+            usuario.UsuarioGUID,
             escolaGUID,
             3 // FuncaoId Professor
           );
@@ -598,6 +623,7 @@ export default class ProfessorService {
           senhaTemporaria = gerarSenhaTemporaria(dados.UsuarioNome);
 
           const novoUsuario = new Usuario();
+          novoUsuario.UsuarioGUID = gerarGUID();
           novoUsuario.UsuarioCPF = cpf;
           novoUsuario.UsuarioNome = dados.UsuarioNome;
           novoUsuario.UsuarioEmail = dados.UsuarioEmail || null;
@@ -636,7 +662,7 @@ export default class ProfessorService {
         // Vincular como Professor na escola
         const vinculo = new EscolaxUsuarioxFuncao();
         vinculo.EscolaGUID = escolaGUID;
-        vinculo.UsuarioCPF = cpf;
+        vinculo.UsuarioGUID = usuario.UsuarioGUID;
         vinculo.FuncaoId = 3; // Professor
         vinculo.Status = 'Ativo';
 
@@ -701,13 +727,13 @@ export default class ProfessorService {
    * 
    * @param alocacoes Array de alocações
    * @param escolaGUID GUID da escola
-   * @param usuarioCPF CPF do usuário que está criando (para validação de permissão)
+   * @param usuarioGUID GUID do usuário que está criando (para validação de permissão)
    * @returns BatchAlocacaoCreateResponse com resultados detalhados
    */
   async criarAlocacoesEmMassa(
     alocacoes: AlocacaoCreateDTO[],
     escolaGUID: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<BatchAlocacaoCreateResponse> {
     const resultados: BatchAlocacaoItemResult[] = [];
     let criados = 0;
@@ -715,7 +741,7 @@ export default class ProfessorService {
     let erros = 0;
 
     // Validar permissão de escrita
-    await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, escolaGUID);
 
     // Buscar todas as matérias e turmas da escola para resolução
     const todasMaterias = await this.#materiaDAO.findAll({ EscolaGUID: escolaGUID });
@@ -815,11 +841,16 @@ export default class ProfessorService {
         }
 
         // Validar que professor existe e está ativo na escola
-        const vinculo = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-          dados.UsuarioCPF,
-          escolaGUID,
-          3 // FuncaoId Professor
-        );
+        // (materiaxprofessorxturma ainda usa CPF — escolaxusuarioxfuncao já
+        // exige UsuarioGUID, resolver antes)
+        const usuarioProfessorLote = await this.#usuarioDAO.findByCPF(dados.UsuarioCPF);
+        const vinculo = usuarioProfessorLote
+          ? await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
+              usuarioProfessorLote.UsuarioGUID,
+              escolaGUID,
+              3 // FuncaoId Professor
+            )
+          : null;
 
         if (!vinculo) {
           resultados.push({
@@ -941,12 +972,12 @@ export default class ProfessorService {
    * (FuncaoId 1 = Coordenação ou FuncaoId 6 = Direção)
    */
   private async validarPermissaoEscrita(
-    usuarioCPF: string,
+    usuarioGUID: string,
     escolaGUID: string
   ): Promise<void> {
     // Validar Coordenação (FuncaoId = 1)
     const coordenacao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      usuarioCPF,
+      usuarioGUID,
       escolaGUID,
       1
     );
@@ -957,7 +988,7 @@ export default class ProfessorService {
 
     // Validar Direção (FuncaoId = 6)
     const direcao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      usuarioCPF,
+      usuarioGUID,
       escolaGUID,
       6
     );
@@ -993,6 +1024,7 @@ export default class ProfessorService {
    */
   private toProfessorDTO(usuario: Usuario): ProfessorDTO {
     return {
+      UsuarioGUID: usuario.UsuarioGUID,
       UsuarioCPF: usuario.UsuarioCPF,
       UsuarioNome: usuario.UsuarioNome,
       UsuarioEmail: usuario.UsuarioEmail,
@@ -1009,7 +1041,7 @@ export default class ProfessorService {
    * Buscar matérias que o professor leciona em uma escola
    * Retorna lista com: MatProfTurGUID, MateriaGUID, MateriaNome, TurmaNome, TurmaSerie
    */
-  async buscarMateriasProfessor(usuarioCPF: string, escolaGUID: string): Promise<Array<{
+  async buscarMateriasProfessor(usuarioGUID: string, escolaGUID: string): Promise<Array<{
     MatProfTurGUID: string;
     MateriaGUID: string;
     MateriaNome: string;
@@ -1018,9 +1050,15 @@ export default class ProfessorService {
   }>> {
     console.log("🟣 ProfessorService.buscarMateriasProfessor()");
 
-    // CPFs são armazenados COM formatação no banco (XXX.XXX.XXX-XX)
+    // materiaxprofessorxturma ainda usa CPF — resolver a partir do
+    // UsuarioGUID do professor logado.
+    const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!professor?.UsuarioCPF) {
+      return [];
+    }
+
     const alocacoes = await this.#alocacaoDAO.findAll({
-      UsuarioCPF: usuarioCPF,
+      UsuarioCPF: professor.UsuarioCPF,
       AlocacaoStatus: 'Ativa'
     });
 
@@ -1063,7 +1101,7 @@ export default class ProfessorService {
    * Buscar estrutura hierárquica de turmas e alunos para uma alocação específica
    * Retorna: { series: [{ TurmaSerie, turmas: [{ TurmaGUID, TurmaNome, alunos: [...] }] }] }
    */
-  async buscarTurmasAlunos(matProfTurGUID: string, usuarioCPF: string): Promise<{
+  async buscarTurmasAlunos(matProfTurGUID: string, usuarioGUID: string): Promise<{
     series: Array<{
       TurmaSerie: string;
       turmas: Array<{
@@ -1083,7 +1121,13 @@ export default class ProfessorService {
   }> {
     console.log("🟣 ProfessorService.buscarTurmasAlunos()");
 
-    // CPFs são armazenados COM formatação no banco (XXX.XXX.XXX-XX)
+    // materiaxprofessorxturma ainda usa CPF — resolver a partir do
+    // UsuarioGUID do professor logado.
+    const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!professor?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
+    }
+
     // 1. Buscar alocação base
     const alocacaoBase = await this.#alocacaoDAO.findById(matProfTurGUID);
 
@@ -1092,8 +1136,7 @@ export default class ProfessorService {
     }
 
     // 2. Validar que o professor é dono da alocação
-
-    if (alocacaoBase.UsuarioCPF !== usuarioCPF) {
+    if (alocacaoBase.UsuarioCPF !== professor.UsuarioCPF) {
       throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
     }
 
@@ -1107,7 +1150,7 @@ export default class ProfessorService {
 
     // 4. Buscar TODAS as alocações do professor na mesma matéria e escola
     const todasAlocacoes = await this.#alocacaoDAO.findAll({
-      UsuarioCPF: usuarioCPF,
+      UsuarioCPF: professor.UsuarioCPF,
       MateriaGUID: alocacaoBase.MateriaGUID,
       AlocacaoStatus: 'Ativa'
     });
@@ -1141,8 +1184,7 @@ export default class ProfessorService {
       const alunosPromises = matriculas
         .filter(m => m.MatriculaStatus === 'Ativa')
         .map(async (matricula) => {
-          // CPF já vem formatado da entidade (XXX.XXX.XXX-XX)
-          const usuario = await this.#usuarioDAO.findByCPF(matricula.UsuarioCPF);
+          const usuario = await this.#usuarioDAO.findByGUID(matricula.UsuarioGUID);
           
           if (!usuario) {
             return null;

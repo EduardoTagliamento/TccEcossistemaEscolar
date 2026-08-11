@@ -97,7 +97,7 @@ export default function CoordenacaoPage() {
     if (!usuario) return;
     try {
       setVerificandoPermissao(true);
-      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioGUID}/escolas`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -185,7 +185,7 @@ export default function CoordenacaoPage() {
     try {
       setVinculando(true);
       await VinculoAPI.criarVinculo({
-        UsuarioCPF: usuarioEncontrado.UsuarioCPF,
+        UsuarioGUID: usuarioEncontrado.UsuarioGUID,
         EscolaGUID: escolaGUID,
         FuncaoId: FUNCAO_ID_COORDENACAO,
       });
@@ -293,9 +293,9 @@ export default function CoordenacaoPage() {
     try {
       setTransferindo(true);
       setErroTransferencia('');
-      await EscolaAPI.transferirDirecao(escolaGUID, candidatoDirecao.UsuarioCPF);
+      await EscolaAPI.transferirDirecao(escolaGUID, candidatoDirecao.UsuarioGUID);
       alert(
-        `Direção transferida para ${candidatoDirecao.UsuarioNome || candidatoDirecao.UsuarioCPF}! Você agora é Coordenação.`
+        `Direção transferida para ${candidatoDirecao.UsuarioNome || candidatoDirecao.UsuarioGUID}! Você agora é Coordenação.`
       );
       // Quem chamou perde acesso a esta tela no mesmo instante — navega pra
       // longe imediatamente, não espera o usuário perceber.
@@ -310,7 +310,7 @@ export default function CoordenacaoPage() {
 
   const colunas: Coluna<VinculoAPI.EscolaxUsuarioxFuncao>[] = [
     { id: 'UsuarioNome', label: 'Nome', width: '35%', render: (valor: any) => valor || '-' },
-    { id: 'UsuarioCPF', label: 'CPF', width: '20%', render: (valor: any) => formatarCPF(valor) },
+    { id: 'UsuarioCPF', label: 'CPF', width: '20%', render: (valor: any) => (valor ? formatarCPF(valor) : '—') },
     {
       id: 'Status',
       label: 'Status',
@@ -394,7 +394,7 @@ export default function CoordenacaoPage() {
         carregando={carregando}
         filtrarPor={(vinculo, termo) =>
           (vinculo.UsuarioNome || '').toLowerCase().includes(termo) ||
-          vinculo.UsuarioCPF.includes(termo.replace(/\D/g, ''))
+          (vinculo.UsuarioCPF || '').includes(termo.replace(/\D/g, ''))
         }
         buscaPlaceholder="Buscar por nome ou CPF..."
         acoes={(vinculo) => (

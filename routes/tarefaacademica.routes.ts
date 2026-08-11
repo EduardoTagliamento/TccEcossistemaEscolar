@@ -18,6 +18,7 @@ import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofe
 import { TarefaAcademicaQuestaoDAO } from "../backend/repositories/tarefaacademica-questao.repository";
 import { TarefaAcademicaAlternativaDAO } from "../backend/repositories/tarefaacademica-alternativa.repository";
 import { TarefaAcademicaRespostaDAO } from "../backend/repositories/tarefaacademica-resposta.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 
 export default class TarefaAcademicaRoteador {
   #router: Router;
@@ -289,6 +290,7 @@ const alocacaoDAO = new MaterialProfessorTurmaDAO(db);
 const questaoDAO = new TarefaAcademicaQuestaoDAO(db);
 const alternativaDAO = new TarefaAcademicaAlternativaDAO(db);
 const respostaDAO = new TarefaAcademicaRespostaDAO(db);
+const usuarioDAO = new UsuarioDAO(db);
 
 const tarefaService = new TarefaAcademicaService(
   tarefaDAO,
@@ -299,7 +301,8 @@ const tarefaService = new TarefaAcademicaService(
   alocacaoDAO,
   questaoDAO,
   alternativaDAO,
-  respostaDAO
+  respostaDAO,
+  usuarioDAO
 );
 const relacaoAnexosService = new RelacaoAnexosService(relacaoAnexosDAO, anexoDAO, tarefaDAO, eventoDAO, pendenciaDAO, escolaxUsuarioxFuncaoDAO);
 const tarefaControle = new TarefaAcademicaControl(tarefaService, relacaoAnexosService);

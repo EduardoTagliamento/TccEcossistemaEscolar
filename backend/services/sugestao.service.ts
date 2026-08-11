@@ -3,6 +3,7 @@ import { SugestaoDAO } from '../repositories/sugestao.repository';
 import { RelacaoAnexosDAO } from '../repositories/relacaoanexos.repository';
 import { AnexoDAO } from '../repositories/anexo.repository';
 import { Sugestao, SugestaoComAutor, SugestaoCreateDTO } from '../entities/sugestao.model';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import ErrorResponse from '../utils/ErrorResponse';
 
 const SUGESTAO_TEXTO_MAX = 2000;
@@ -11,7 +12,8 @@ export class SugestaoService {
   constructor(
     private sugestaoDAO: SugestaoDAO,
     private relacaoAnexosDAO: RelacaoAnexosDAO,
-    private anexoDAO: AnexoDAO
+    private anexoDAO: AnexoDAO,
+    private usuarioDAO: UsuarioDAO
   ) {}
 
   async criarSugestao(data: SugestaoCreateDTO): Promise<Sugestao> {
@@ -23,9 +25,15 @@ export class SugestaoService {
       throw new ErrorResponse(400, `Sugestão não pode exceder ${SUGESTAO_TEXTO_MAX} caracteres`);
     }
 
+    const usuario = await this.usuarioDAO.findByGUID(data.UsuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
+    }
+    const usuarioCPF = usuario.UsuarioCPF;
+
     const sugestao: Sugestao = {
       SugestaoGUID: gerarGUID(),
-      UsuarioCPF: data.UsuarioCPF,
+      UsuarioCPF: usuarioCPF,
       EscolaGUID: data.EscolaGUID ?? null,
       SugestaoTexto: texto,
       SugestaoPaginaUrl: data.SugestaoPaginaUrl?.slice(0, 255) ?? null,
@@ -45,7 +53,7 @@ export class SugestaoService {
         if (!anexo) {
           throw new ErrorResponse(404, `Anexo ${anexoGUID} não encontrado`);
         }
-        if (anexo.UsuarioCPF !== data.UsuarioCPF) {
+        if (anexo.UsuarioCPF !== usuarioCPF) {
           throw new ErrorResponse(403, 'Você só pode anexar arquivos que você mesmo enviou');
         }
         await this.relacaoAnexosDAO.vincularAnexoSugestao(anexoGUID, created.SugestaoGUID);

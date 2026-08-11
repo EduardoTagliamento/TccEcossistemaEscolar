@@ -1,6 +1,7 @@
 import { ConversaGrupoDAO } from '../repositories/conversa-grupo.repository';
 import { TurmaDAO } from '../repositories/turma.repository';
 import { EscolaxUsuarioxFuncaoDAO } from '../repositories/escolaxusuarioxfuncao.repository';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import ErrorResponse from '../utils/ErrorResponse';
 import { RowDataPacket } from 'mysql2';
 import { pool } from '../database/mysql';
@@ -10,19 +11,33 @@ export default class ConversaPermissaoService {
   #conversaGrupoDAO: ConversaGrupoDAO;
   #turmaDAO: TurmaDAO;
   #escolaFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     conversaGrupoDAO: ConversaGrupoDAO,
     turmaDAO: TurmaDAO,
-    escolaFuncaoDAO: EscolaxUsuarioxFuncaoDAO
+    escolaFuncaoDAO: EscolaxUsuarioxFuncaoDAO,
+    usuarioDAO: UsuarioDAO
   ) {
     console.log('⬆️  ConversaPermissaoService.constructor()');
     this.#conversaGrupoDAO = conversaGrupoDAO;
     this.#turmaDAO = turmaDAO;
     this.#escolaFuncaoDAO = escolaFuncaoDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
 
-  async #assertCoordOuDirecao(conversaGUID: string, solicitanteCPF: string): Promise<void> {
+  /** Resolve o CPF de um usuário a partir do UsuarioGUID — conversa_grupo_membro
+   * ainda usa CPF. */
+  async #resolverCPF(usuarioGUID: string): Promise<string> {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
+    }
+    return usuario.UsuarioCPF;
+  }
+
+  // escolaxusuarioxfuncao já usa UsuarioGUID.
+  async #assertCoordOuDirecao(conversaGUID: string, solicitanteGUID: string): Promise<void> {
     const grupo = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
     if (!grupo || grupo.ConversaGrupoTipo !== 'Turma') {
       throw new ErrorResponse(400, 'Esta operação é exclusiva para grupos de Turma');
@@ -30,7 +45,7 @@ export default class ConversaPermissaoService {
     const turma = await this.#turmaDAO.findById(grupo.ConversaGrupoRefGUID);
     if (!turma) throw new ErrorResponse(404, 'Turma não encontrada');
     const autorizado = await this.#escolaFuncaoDAO.isCoordOuDirecaoEmEscola(
-      solicitanteCPF,
+      solicitanteGUID,
       turma.EscolaGUID
     );
     if (!autorizado) {
@@ -38,6 +53,7 @@ export default class ConversaPermissaoService {
     }
   }
 
+  // conversa_grupo_membro ainda usa CPF.
   async #assertRepresentanteOuLider(conversaGUID: string, solicitanteCPF: string): Promise<void> {
     const grupo = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
     if (!grupo) throw new ErrorResponse(404, 'Conversa não encontrada');
@@ -55,9 +71,9 @@ export default class ConversaPermissaoService {
   }
 
   // Turma only: Coordenação/Direção define o Representante
-  async definirRepresentante(conversaGUID: string, alvoCPF: string, solicitanteCPF: string): Promise<void> {
+  async definirRepresentante(conversaGUID: string, alvoCPF: string, solicitanteGUID: string): Promise<void> {
     console.log('🟣 ConversaPermissaoService.definirRepresentante()');
-    await this.#assertCoordOuDirecao(conversaGUID, solicitanteCPF);
+    await this.#assertCoordOuDirecao(conversaGUID, solicitanteGUID);
 
     const isMembro = await this.#conversaGrupoDAO.isMembro(conversaGUID, alvoCPF);
     if (!isMembro) throw new ErrorResponse(400, 'Usuário não é membro desta conversa');
@@ -86,9 +102,9 @@ export default class ConversaPermissaoService {
   }
 
   // Turma only: Coordenação/Direção remove o Representante
-  async removerRepresentante(conversaGUID: string, solicitanteCPF: string): Promise<void> {
+  async removerRepresentante(conversaGUID: string, solicitanteGUID: string): Promise<void> {
     console.log('🟣 ConversaPermissaoService.removerRepresentante()');
-    await this.#assertCoordOuDirecao(conversaGUID, solicitanteCPF);
+    await this.#assertCoordOuDirecao(conversaGUID, solicitanteGUID);
 
     const representante = await this.#conversaGrupoDAO.findByFuncao(conversaGUID, 'Representante');
     if (!representante) throw new ErrorResponse(404, 'Não há Representante nesta conversa');
@@ -109,8 +125,9 @@ export default class ConversaPermissaoService {
   }
 
   // Turma: Representante delega; Tarefa: Lider delega
-  async definirViceRepresentante(conversaGUID: string, alvoCPF: string, solicitanteCPF: string): Promise<void> {
+  async definirViceRepresentante(conversaGUID: string, alvoCPF: string, solicitanteGUID: string): Promise<void> {
     console.log('🟣 ConversaPermissaoService.definirViceRepresentante()');
+    const solicitanteCPF = await this.#resolverCPF(solicitanteGUID);
     await this.#assertRepresentanteOuLider(conversaGUID, solicitanteCPF);
 
     const isMembro = await this.#conversaGrupoDAO.isMembro(conversaGUID, alvoCPF);
@@ -136,8 +153,9 @@ export default class ConversaPermissaoService {
   }
 
   // Turma: Representante remove; Tarefa: Lider remove
-  async removerViceRepresentante(conversaGUID: string, alvoCPF: string, solicitanteCPF: string): Promise<void> {
+  async removerViceRepresentante(conversaGUID: string, alvoCPF: string, solicitanteGUID: string): Promise<void> {
     console.log('🟣 ConversaPermissaoService.removerViceRepresentante()');
+    const solicitanteCPF = await this.#resolverCPF(solicitanteGUID);
     await this.#assertRepresentanteOuLider(conversaGUID, solicitanteCPF);
 
     const funcaoAtual = await this.#conversaGrupoDAO.getFuncao(conversaGUID, alvoCPF);
@@ -173,9 +191,12 @@ export default class ConversaPermissaoService {
     const escolaGUID = (rows[0] as any)?.EscolaGUID;
     if (!escolaGUID) return;
 
+    const alvo = await this.#usuarioDAO.findByCPF(alvoCPF);
+    if (!alvo) return;
+
     await getNotificacaoService().disparar({
       tipoSlug,
-      destinatarios: [alvoCPF],
+      destinatarios: [alvo.UsuarioGUID],
       escolaGUID,
       titulo,
       entidadeTipo: 'conversagrupo',

@@ -13,8 +13,8 @@ export class AssuntoController {
   store = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 AssuntoController.store()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
-      const assunto = await this.#assuntoService.criarAssunto(req.body.assunto, usuarioCPF);
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      const assunto = await this.#assuntoService.criarAssunto(req.body.assunto, usuarioGUID);
 
       res.status(201).json({ success: true, message: "Assunto criado com sucesso", data: { assunto } });
     } catch (error) {
@@ -39,8 +39,8 @@ export class AssuntoController {
   destroy = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 AssuntoController.destroy()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
-      await this.#assuntoService.excluirAssunto(req.params.guid, usuarioCPF);
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      await this.#assuntoService.excluirAssunto(req.params.guid, usuarioGUID);
 
       res.status(200).json({ success: true, message: "Assunto excluído com sucesso", data: null });
     } catch (error) {

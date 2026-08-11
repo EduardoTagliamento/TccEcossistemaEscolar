@@ -10,7 +10,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 // ===== INTERFACES =====
 
 export interface Usuario {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
   UsuarioEmail: string | null;
   UsuarioId: string | null;
   UsuarioTelefone: string | null;
@@ -25,7 +26,7 @@ export interface Usuario {
 
 export interface Matricula {
   MatriculaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   TurmaGUID: string;
   MatriculaDataEntrada: Date;
   MatriculaDataSaida: Date | null;
@@ -292,14 +293,14 @@ export async function listarAlunos(filtros: {
 
     // Buscar dados de usuários para cada matrícula
     const alunosPromises = matriculas.map(async (matricula) => {
-      const responseUsuario = await fetch(`${API_URL}/usuario/${matricula.UsuarioCPF}`, {
+      const responseUsuario = await fetch(`${API_URL}/usuario/${matricula.UsuarioGUID}`, {
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
         }
       });
 
       if (!responseUsuario.ok) {
-        console.error(`Erro ao buscar usuário ${matricula.UsuarioCPF}`);
+        console.error(`Erro ao buscar usuário ${matricula.UsuarioGUID}`);
         return null;
       }
 
@@ -386,7 +387,7 @@ export async function excluirAluno(matriculaGUID: string): Promise<void> {
  * Atualizar dados pessoais do aluno (usuário)
  */
 export async function atualizarAluno(
-  cpf: string,
+  usuarioGUID: string,
   updates: {
     UsuarioNome?: string;
     UsuarioEmail?: string;
@@ -394,7 +395,7 @@ export async function atualizarAluno(
     UsuarioDataNascimento?: string;
   }
 ): Promise<void> {
-  const response = await fetch(`${API_URL}/usuario/${cpf}`, {
+  const response = await fetch(`${API_URL}/usuario/${usuarioGUID}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',

@@ -29,8 +29,10 @@ export type FuncaoStatus = 'Ativo' | 'Inativo' | 'Finalizado';
 
 export interface EscolaxUsuarioxFuncao {
   EscolaxUsuarioxFuncaoId: number;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string | null;
+  /** Informativo (não é identificador — usar UsuarioGUID pra ações). Pode ser null (usuário sem CPF cadastrado). */
+  UsuarioCPF: string | null;
   EscolaGUID: string;
   FuncaoId: number;
   FuncaoNome: string | null;
@@ -54,12 +56,12 @@ async function extrairDados(response: Response, mensagemErroPadrao: string): Pro
 export async function listarVinculos(filtros: {
   EscolaGUID?: string;
   FuncaoId?: number;
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
 }): Promise<EscolaxUsuarioxFuncao[]> {
   const params = new URLSearchParams();
   if (filtros.EscolaGUID) params.set('EscolaGUID', filtros.EscolaGUID);
   if (filtros.FuncaoId !== undefined) params.set('FuncaoId', String(filtros.FuncaoId));
-  if (filtros.UsuarioCPF) params.set('UsuarioCPF', filtros.UsuarioCPF);
+  if (filtros.UsuarioGUID) params.set('UsuarioGUID', filtros.UsuarioGUID);
 
   const response = await fetch(`${API_URL}/escolaxusuarioxfuncao?${params.toString()}`, {
     headers: getHeaders(),
@@ -68,9 +70,9 @@ export async function listarVinculos(filtros: {
   return dados.escolaxusuarioxfuncaos;
 }
 
-/** Vincula um usuário já existente na plataforma (CPF) a uma função numa escola. */
+/** Vincula um usuário já existente na plataforma (encontrado via buscarUsuarioPorCPF) a uma função numa escola. */
 export async function criarVinculo(dados: {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   FuncaoId: number;
 }): Promise<EscolaxUsuarioxFuncao> {

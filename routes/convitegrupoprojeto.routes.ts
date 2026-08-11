@@ -19,6 +19,7 @@ import { GrupoProjetoDAO } from '../backend/repositories/grupoprojeto.repository
 import { UsuarioXGrupoProjetoDAO } from '../backend/repositories/usuarioxgrupoprojeto.repository';
 import { ProjetoDAO } from '../backend/repositories/projeto.repository';
 import { HistoricoGrupoProjetoDAO } from '../backend/repositories/historicogrupoprojeto.repository';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import HistoricoGrupoProjetoService from '../backend/services/historicogrupoprojeto.service';
 import GrupoProjetoService from '../backend/services/grupoprojeto.service';
 import ConviteGrupoProjetoService from '../backend/services/convitegrupoprojeto.service';
@@ -35,6 +36,7 @@ export function conviteGrupoProjetoRoutes(): Router {
   const usuarioXGrupoDAO = new UsuarioXGrupoProjetoDAO(database);
   const projetoDAO = new ProjetoDAO(database);
   const historicoDAO = new HistoricoGrupoProjetoDAO(database);
+  const usuarioDAO = new UsuarioDAO(database);
 
   const historicoService = new HistoricoGrupoProjetoService(historicoDAO);
   const grupoProjetoService = new GrupoProjetoService(
@@ -42,7 +44,8 @@ export function conviteGrupoProjetoRoutes(): Router {
     usuarioXGrupoDAO,
     projetoDAO,
     historicoService,
-    database
+    database,
+    usuarioDAO
   );
 
   const conviteService = new ConviteGrupoProjetoService(
@@ -52,7 +55,8 @@ export function conviteGrupoProjetoRoutes(): Router {
     projetoDAO,
     historicoService,
     grupoProjetoService,
-    database
+    database,
+    usuarioDAO
   );
 
   const conviteController = new ConviteGrupoProjetoController(conviteService);

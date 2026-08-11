@@ -5,6 +5,7 @@ import { SugestaoService } from '../backend/services/sugestao.service';
 import { SugestaoDAO } from '../backend/repositories/sugestao.repository';
 import { RelacaoAnexosDAO } from '../backend/repositories/relacaoanexos.repository';
 import { AnexoDAO } from '../backend/repositories/anexo.repository';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import { SugestaoMiddleware } from '../backend/middlewares/sugestao.middleware';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
 import { plataformaAdminGuard } from '../backend/guards/plataformaAdmin.guard';
@@ -42,7 +43,8 @@ export const sugestaoRouterFactory = () => {
   const sugestaoDAO = new SugestaoDAO(database);
   const relacaoAnexosDAO = new RelacaoAnexosDAO(database);
   const anexoDAO = new AnexoDAO(database);
-  const service = new SugestaoService(sugestaoDAO, relacaoAnexosDAO, anexoDAO);
+  const usuarioDAO = new UsuarioDAO(database);
+  const service = new SugestaoService(sugestaoDAO, relacaoAnexosDAO, anexoDAO, usuarioDAO);
   const controller = new SugestaoController(service);
   const roteador = new SugestaoRoteador(controller);
 

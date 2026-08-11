@@ -31,9 +31,9 @@ export class HorarioTurmaController {
     console.log("🔵 HorarioTurmaController.store()");
 
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Usuário não autenticado",
@@ -45,7 +45,7 @@ export class HorarioTurmaController {
       const slot = await this.#horarioTurmaService.alocarSlot(
         req.params.turmaGUID,
         req.body.slot,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(201).json({
@@ -63,9 +63,9 @@ export class HorarioTurmaController {
     console.log("🔵 HorarioTurmaController.destroy()");
 
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
+      const usuarioGUID = req.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: "Usuário não autenticado",
@@ -77,7 +77,7 @@ export class HorarioTurmaController {
       await this.#horarioTurmaService.removerSlot(
         req.params.turmaGUID,
         req.params.horarioTurmaGUID,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.json({

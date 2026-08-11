@@ -17,6 +17,7 @@ import { ConviteGrupoTarefaDAO } from '../backend/repositories/convitegrupotaref
 import { GrupoTarefaDAO } from '../backend/repositories/grupotarefa.repository';
 import { UsuarioXGrupoTarefaDAO } from '../backend/repositories/usuarioxgrupotarefa.repository';
 import { HistoricoGrupoTarefaDAO } from '../backend/repositories/historicogrupotarefa.repository';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import ConviteGrupoTarefaService from '../backend/services/convitegrupotarefa.service';
 import HistoricoGrupoTarefaService from '../backend/services/historicogrupotarefa.service';
 import ConviteGrupoTarefaController from '../backend/controllers/convitegrupotarefa.controller';
@@ -35,15 +36,17 @@ export function conviteGrupoTarefaRoutes(): Router {
   const grupoTarefaDAO = new GrupoTarefaDAO(database);
   const usuarioXGrupoDAO = new UsuarioXGrupoTarefaDAO(database);
   const historicoDAO = new HistoricoGrupoTarefaDAO(database);
+  const usuarioDAO = new UsuarioDAO(database);
 
   const historicoService = new HistoricoGrupoTarefaService(historicoDAO);
-  
+
   const conviteService = new ConviteGrupoTarefaService(
     conviteDAO,
     grupoTarefaDAO,
     usuarioXGrupoDAO,
     historicoService,
-    database
+    database,
+    usuarioDAO
   );
 
   const conviteController = new ConviteGrupoTarefaController(conviteService);

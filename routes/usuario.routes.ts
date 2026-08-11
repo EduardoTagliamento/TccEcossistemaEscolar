@@ -66,6 +66,14 @@ export default class UsuarioRoteador {
     // GET /api/usuario - Listar usuários (com filtro opcional por nome)
     this.#router.get("/", this.#usuarioControle.index);
 
+    // GET /api/usuario/busca-cpf?cpf= - Buscar usuário existente por CPF
+    // (DEVE vir antes de "/:UsuarioGUID" pra não colidir com ele)
+    this.#router.get(
+      "/busca-cpf",
+      AuthMiddleware.authenticate,
+      this.#usuarioControle.buscarPorCPF
+    );
+
     // GET /api/usuario/:UsuarioGUID/escolas - Buscar escolas do usuário
     this.#router.get(
       "/:UsuarioGUID/escolas",

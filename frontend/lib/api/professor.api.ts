@@ -13,7 +13,8 @@
 // ==================== INTERFACES ====================
 
 export interface Usuario {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
   UsuarioNome: string;
   UsuarioEmail: string | null;
   UsuarioTelefone: string | null;
@@ -483,12 +484,12 @@ export async function listarTurmas(escolaGUID: string): Promise<Turma[]> {
 
 /**
  * Atualizar dados básicos do professor (usuário)
- * 
- * @param cpf CPF do professor
+ *
+ * @param usuarioGUID GUID do professor
  * @param updates Dados a atualizar
  */
 export async function atualizarProfessor(
-  cpf: string,
+  usuarioGUID: string,
   updates: {
     UsuarioNome?: string;
     UsuarioEmail?: string;
@@ -496,7 +497,7 @@ export async function atualizarProfessor(
     UsuarioDataNascimento?: string;
   }
 ): Promise<Usuario> {
-  const response = await fetch(`${API_URL}/usuario/${cpf}`, {
+  const response = await fetch(`${API_URL}/usuario/${usuarioGUID}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ usuario: updates }),
@@ -533,11 +534,11 @@ export async function inativarProfessor(cpf: string, escolaGUID: string): Promis
 /**
  * Reativar professor
  * (Atualiza UsuarioStatus para 'Ativo')
- * 
- * @param cpf CPF do professor
+ *
+ * @param usuarioGUID GUID do professor
  */
-export async function reativarProfessor(cpf: string): Promise<void> {
-  const response = await fetch(`${API_URL}/usuario/${cpf}`, {
+export async function reativarProfessor(usuarioGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/usuario/${usuarioGUID}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ usuario: { UsuarioStatus: 'Ativo' } }),

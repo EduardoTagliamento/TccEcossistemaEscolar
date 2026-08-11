@@ -13,8 +13,8 @@ export class MaterialDidaticoController {
   store = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 MaterialDidaticoController.store()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
-      const material = await this.#service.cadastrarLivro(req.body.EscolaGUID, req.body.Titulo, usuarioCPF);
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      const material = await this.#service.cadastrarLivro(req.body.EscolaGUID, req.body.Titulo, usuarioGUID);
 
       res.status(201).json({ success: true, message: "Material didático cadastrado com sucesso", data: { material } });
     } catch (error) {
@@ -48,14 +48,14 @@ export class MaterialDidaticoController {
   uploadPaginas = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 MaterialDidaticoController.uploadPaginas()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
+      const usuarioGUID = req.user?.UsuarioGUID || "";
       const arquivos = ((req.files as Express.Multer.File[]) || []).map((f) => ({
         buffer: f.buffer,
         mimetype: f.mimetype,
         originalname: f.originalname,
       }));
 
-      const paginas = await this.#service.uploadPaginas(req.params.guid, arquivos, usuarioCPF);
+      const paginas = await this.#service.uploadPaginas(req.params.guid, arquivos, usuarioGUID);
       res.status(201).json({ success: true, message: "Páginas enviadas com sucesso, extração em andamento", data: { paginas } });
     } catch (error) {
       next(error);
@@ -77,8 +77,8 @@ export class MaterialDidaticoController {
   revisarPagina = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 MaterialDidaticoController.revisarPagina()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
-      await this.#service.revisarPagina(req.params.paginaGuid, usuarioCPF, req.body.TextoRevisado);
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      await this.#service.revisarPagina(req.params.paginaGuid, usuarioGUID, req.body.TextoRevisado);
       res.status(200).json({ success: true, message: "Página revisada com sucesso", data: null });
     } catch (error) {
       next(error);
@@ -100,8 +100,8 @@ export class MaterialDidaticoController {
   criarCapitulo = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 MaterialDidaticoController.criarCapitulo()");
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
-      const capitulo = await this.#service.criarCapitulo(req.body, usuarioCPF);
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      const capitulo = await this.#service.criarCapitulo(req.body, usuarioGUID);
       res.status(201).json({ success: true, message: "Capítulo criado com sucesso", data: { capitulo } });
     } catch (error) {
       next(error);

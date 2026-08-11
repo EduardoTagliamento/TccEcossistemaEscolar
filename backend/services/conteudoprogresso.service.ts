@@ -35,9 +35,9 @@ export default class ConteudoProgressoService {
     this.#matriculaDAO = matriculaDAO;
   }
 
-  /** Resolve a matrícula ATIVA do usuário autenticado — progresso é sempre por matrícula, não por CPF direto. */
-  #resolverMatriculaAtiva = async (usuarioCPF: string): Promise<string> => {
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF);
+  /** Resolve a matrícula ATIVA do usuário autenticado — progresso é sempre por matrícula, não pelo usuário direto. */
+  #resolverMatriculaAtiva = async (usuarioGUID: string): Promise<string> => {
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
     if (!matricula) {
       throw new ErrorResponse(404, "Matrícula não encontrada", {
         message: "Usuário não possui matrícula ativa.",
@@ -48,7 +48,7 @@ export default class ConteudoProgressoService {
 
   registrarProgressoVideo = async (
     conteudoGUID: string,
-    usuarioCPF: string,
+    usuarioGUID: string,
     segundosAssistidos: number,
     duracaoTotalSegundos: number
   ): Promise<ConteudoProgressoDTO> => {
@@ -59,7 +59,7 @@ export default class ConteudoProgressoService {
       throw new ErrorResponse(404, "Conteúdo não encontrado");
     }
 
-    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioCPF);
+    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID);
 
     let percentual = duracaoTotalSegundos > 0 ? Math.round((segundosAssistidos / duracaoTotalSegundos) * 100) : 0;
     percentual = Math.min(100, Math.max(0, percentual));
@@ -80,7 +80,7 @@ export default class ConteudoProgressoService {
 
   registrarVisualizacaoPagina = async (
     conteudoPaginadoArquivoGUID: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<ConteudoProgressoDTO> => {
     console.log("🟣 ConteudoProgressoService.registrarVisualizacaoPagina()");
 
@@ -89,7 +89,7 @@ export default class ConteudoProgressoService {
       throw new ErrorResponse(404, "Página não encontrada");
     }
 
-    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioCPF);
+    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID);
 
     await this.#progressoDAO.registrarPaginaVista(conteudoPaginadoArquivoGUID, matriculaGUID, gerarGUID());
 
@@ -109,7 +109,7 @@ export default class ConteudoProgressoService {
     return this.toDTO(progresso);
   };
 
-  registrarLeituraTexto = async (conteudoGUID: string, usuarioCPF: string): Promise<ConteudoProgressoDTO> => {
+  registrarLeituraTexto = async (conteudoGUID: string, usuarioGUID: string): Promise<ConteudoProgressoDTO> => {
     console.log("🟣 ConteudoProgressoService.registrarLeituraTexto()");
 
     const conteudo = await this.#conteudoDAO.findById(conteudoGUID);
@@ -117,7 +117,7 @@ export default class ConteudoProgressoService {
       throw new ErrorResponse(404, "Conteúdo não encontrado");
     }
 
-    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioCPF);
+    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID);
 
     const progresso = new ConteudoProgresso();
     progresso.ConteudoProgressoGUID = gerarGUID();
@@ -131,10 +131,10 @@ export default class ConteudoProgressoService {
     return this.toDTO(progresso);
   };
 
-  buscarProgresso = async (conteudoGUID: string, usuarioCPF: string): Promise<ConteudoProgressoDTO> => {
+  buscarProgresso = async (conteudoGUID: string, usuarioGUID: string): Promise<ConteudoProgressoDTO> => {
     console.log("🟣 ConteudoProgressoService.buscarProgresso()");
 
-    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioCPF);
+    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID);
     const progresso = await this.#progressoDAO.findByConteudoEMatricula(conteudoGUID, matriculaGUID);
 
     if (!progresso) {

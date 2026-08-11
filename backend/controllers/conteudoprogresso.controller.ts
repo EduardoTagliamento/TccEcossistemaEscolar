@@ -12,12 +12,12 @@ export class ConteudoProgressoController {
   /** POST /api/conteudo/:guid/progresso/video — body: { SegundosAssistidos, DuracaoTotalSegundos } */
   registrarVideo = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
+      const usuarioGUID = req.user?.UsuarioGUID || "";
       const { SegundosAssistidos, DuracaoTotalSegundos } = req.body;
 
       const progresso = await this.#service.registrarProgressoVideo(
         req.params.guid,
-        usuarioCPF,
+        usuarioGUID,
         Number(SegundosAssistidos),
         Number(DuracaoTotalSegundos)
       );
@@ -31,8 +31,8 @@ export class ConteudoProgressoController {
   /** POST /api/conteudo/pagina/:paginaGuid/progresso */
   registrarPagina = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
-      const progresso = await this.#service.registrarVisualizacaoPagina(req.params.paginaGuid, usuarioCPF);
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      const progresso = await this.#service.registrarVisualizacaoPagina(req.params.paginaGuid, usuarioGUID);
       res.status(200).json({ success: true, message: "Página registrada com sucesso", data: progresso });
     } catch (error) {
       this.tratarErro(error, res);
@@ -42,8 +42,8 @@ export class ConteudoProgressoController {
   /** POST /api/conteudo/:guid/progresso/texto */
   registrarTexto = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
-      const progresso = await this.#service.registrarLeituraTexto(req.params.guid, usuarioCPF);
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      const progresso = await this.#service.registrarLeituraTexto(req.params.guid, usuarioGUID);
       res.status(200).json({ success: true, message: "Leitura registrada com sucesso", data: progresso });
     } catch (error) {
       this.tratarErro(error, res);
@@ -53,8 +53,8 @@ export class ConteudoProgressoController {
   /** GET /api/conteudo/:guid/progresso */
   buscar = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || "";
-      const progresso = await this.#service.buscarProgresso(req.params.guid, usuarioCPF);
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      const progresso = await this.#service.buscarProgresso(req.params.guid, usuarioGUID);
       res.status(200).json({ success: true, message: "Progresso obtido com sucesso", data: progresso });
     } catch (error) {
       this.tratarErro(error, res);

@@ -15,6 +15,7 @@ import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofe
 import { ProvaAgendadaAssuntoDAO } from "../backend/repositories/provaagendadaassunto.repository";
 import { AssuntoDAO } from "../backend/repositories/assunto.repository";
 import { MaterialDidaticoCapituloDAO } from "../backend/repositories/materialdidaticocapitulo.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { provaRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
@@ -104,6 +105,7 @@ const alocacaoDAO = new MaterialProfessorTurmaDAO(db);
 const provaAssuntoDAO = new ProvaAgendadaAssuntoDAO(db);
 const assuntoDAO = new AssuntoDAO(db);
 const materialDidaticoCapituloDAO = new MaterialDidaticoCapituloDAO(db);
+const usuarioDAO = new UsuarioDAO(db);
 const provaService = new ProvaAgendadaService(
   provaDAO,
   provaTurmaDAO,
@@ -116,7 +118,8 @@ const provaService = new ProvaAgendadaService(
   alocacaoDAO,
   provaAssuntoDAO,
   assuntoDAO,
-  materialDidaticoCapituloDAO
+  materialDidaticoCapituloDAO,
+  usuarioDAO
 );
 const provaControle = new ProvaAgendadaControl(provaService);
 const provaMiddleware = new ProvaAgendadaMiddleware();

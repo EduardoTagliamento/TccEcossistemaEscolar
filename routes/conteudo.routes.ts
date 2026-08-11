@@ -21,6 +21,7 @@ import { ConteudoProgressoController } from "../backend/controllers/conteudoprog
 import ConteudoProgressoService from "../backend/services/conteudoprogresso.service";
 import { ConteudoProgressoDAO } from "../backend/repositories/conteudoprogresso.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 
 export default class ConteudoRoteador {
   #router: Router;
@@ -85,6 +86,7 @@ export const conteudoRouterFactory = () => {
   const turmaDAO = new TurmaDAO(database);
   const categoriaDAO = new CategoriaConteudoDAO(database);
   const matProfTurDAO = new MaterialProfessorTurmaDAO(database);
+  const usuarioDAO = new UsuarioDAO(database);
 
   const conteudoService = new ConteudoService(
     conteudoDAO,
@@ -95,7 +97,8 @@ export const conteudoRouterFactory = () => {
     materiaDAO,
     turmaDAO,
     categoriaDAO,
-    matProfTurDAO
+    matProfTurDAO,
+    usuarioDAO
   );
   const controller = new ConteudoController(conteudoService);
 

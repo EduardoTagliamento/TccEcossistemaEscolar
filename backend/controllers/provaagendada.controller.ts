@@ -32,7 +32,7 @@ export default class ProvaAgendadaControl {
     console.log("🔵 ProvaAgendadaControl.store()");
     try {
       const { prova } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
       const datasPorTurma: Record<string, Date> | undefined = prova.DatasPorTurma
         ? Object.fromEntries(
@@ -55,7 +55,7 @@ export default class ProvaAgendadaControl {
         MaterialDidaticoCapituloGUID: prova.MaterialDidaticoCapituloGUID,
       };
 
-      const provaCriada = await this.#provaService.criarProva(createData, usuarioCPF);
+      const provaCriada = await this.#provaService.criarProva(createData, usuarioGUID);
 
       response.status(201).json({
         success: true,
@@ -75,9 +75,9 @@ export default class ProvaAgendadaControl {
     console.log("🔵 ProvaAgendadaControl.registrarVisualizacao()");
     try {
       const { ProvaAgendadaTurmaGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF || "";
+      const usuarioGUID = request.user?.UsuarioGUID || "";
 
-      await this.#provaService.registrarVisualizacao(ProvaAgendadaTurmaGUID, usuarioCPF);
+      await this.#provaService.registrarVisualizacao(ProvaAgendadaTurmaGUID, usuarioGUID);
 
       response.status(200).json({ success: true, message: "Visualização registrada com sucesso", data: null });
     } catch (error) {
@@ -167,7 +167,7 @@ export default class ProvaAgendadaControl {
     try {
       const { ProvaAgendadaGUID } = request.params;
       const { prova } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
       const updateData: ProvaAgendadaUpdateDTO = {
         ProvaData: prova.ProvaData ? new Date(prova.ProvaData) : undefined, // Formato: "2026-05-20T15:00:00"
@@ -180,7 +180,7 @@ export default class ProvaAgendadaControl {
       const provaAtualizada = await this.#provaService.atualizarProva(
         ProvaAgendadaGUID,
         updateData,
-        usuarioCPF
+        usuarioGUID
       );
 
       response.status(200).json({
@@ -201,9 +201,9 @@ export default class ProvaAgendadaControl {
     console.log("🔵 ProvaAgendadaControl.destroy()");
     try {
       const { ProvaAgendadaGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
-      const excluida = await this.#provaService.excluirProva(ProvaAgendadaGUID, usuarioCPF);
+      const excluida = await this.#provaService.excluirProva(ProvaAgendadaGUID, usuarioGUID);
 
       if (!excluida) {
         response.status(404).json({
@@ -232,9 +232,9 @@ export default class ProvaAgendadaControl {
     console.log("🔵 ProvaAgendadaControl.destroyDeTurma()");
     try {
       const { ProvaAgendadaGUID, TurmaGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
-      const resultado = await this.#provaService.removerProvaDeTurma(ProvaAgendadaGUID, TurmaGUID, usuarioCPF);
+      const resultado = await this.#provaService.removerProvaDeTurma(ProvaAgendadaGUID, TurmaGUID, usuarioGUID);
 
       response.status(200).json({
         success: true,

@@ -2,6 +2,7 @@ import { ConversaDAO } from '../repositories/conversa.repository';
 import { ConversaGrupoDAO } from '../repositories/conversa-grupo.repository';
 import { ConversaIndividualDAO } from '../repositories/conversa-individual.repository';
 import { MensagemDAO, agruparReacoesPorMensagem, agruparLeitoresPorMensagem } from '../repositories/mensagem.repository';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import ErrorResponse from '../utils/ErrorResponse';
 
 export interface MensagemFixadaDTO {
@@ -66,22 +67,36 @@ export default class ConversaService {
   #conversaGrupoDAO: ConversaGrupoDAO;
   #conversaIndividualDAO: ConversaIndividualDAO;
   #mensagemDAO: MensagemDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     conversaDAO: ConversaDAO,
     conversaGrupoDAO: ConversaGrupoDAO,
     conversaIndividualDAO: ConversaIndividualDAO,
-    mensagemDAO: MensagemDAO
+    mensagemDAO: MensagemDAO,
+    usuarioDAO: UsuarioDAO
   ) {
     console.log('⬆️  ConversaService.constructor()');
     this.#conversaDAO = conversaDAO;
     this.#conversaGrupoDAO = conversaGrupoDAO;
     this.#conversaIndividualDAO = conversaIndividualDAO;
     this.#mensagemDAO = mensagemDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
 
-  async listarConversas(usuarioCPF: string): Promise<ConversaListItemDTO[]> {
+  /** Resolve o CPF de um ator a partir do UsuarioGUID — conversa/mensagem/
+   * conversa_individual/conversa_grupo_membro ainda usam CPF. */
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
+    }
+    return usuario.UsuarioCPF;
+  };
+
+  async listarConversas(usuarioGUID: string): Promise<ConversaListItemDTO[]> {
     console.log('🟣 ConversaService.listarConversas()');
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const conversas = await this.#conversaDAO.findAllByUsuarioCPF(usuarioCPF);
     const result: ConversaListItemDTO[] = [];
 
@@ -121,8 +136,9 @@ export default class ConversaService {
     return result;
   }
 
-  async buscarConversa(conversaGUID: string, usuarioCPF: string): Promise<ConversaDetalheDTO> {
+  async buscarConversa(conversaGUID: string, usuarioGUID: string): Promise<ConversaDetalheDTO> {
     console.log('🟣 ConversaService.buscarConversa()');
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const conversa = await this.#conversaDAO.findById(conversaGUID);
     if (!conversa || conversa.ConversaStatus === 'Inativa') {
       throw new ErrorResponse(404, 'Conversa não encontrada');

@@ -3,6 +3,7 @@ import Assunto, { AssuntoOrigem } from "../entities/assunto.model";
 import { AssuntoDAO } from "../repositories/assunto.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
 import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 
 export interface AssuntoDTO {
@@ -32,19 +33,31 @@ export default class AssuntoService {
   #assuntoDAO: AssuntoDAO;
   #materiaDAO: MateriaDAO;
   #alocacaoDAO: MaterialProfessorTurmaDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     assuntoDAODependency: AssuntoDAO,
     materiaDAODependency: MateriaDAO,
-    alocacaoDAODependency: MaterialProfessorTurmaDAO
+    alocacaoDAODependency: MaterialProfessorTurmaDAO,
+    usuarioDAODependency: UsuarioDAO
   ) {
     console.log("⬆️  AssuntoService.constructor()");
     this.#assuntoDAO = assuntoDAODependency;
     this.#materiaDAO = materiaDAODependency;
     this.#alocacaoDAO = alocacaoDAODependency;
+    this.#usuarioDAO = usuarioDAODependency;
   }
 
-  #validarProfessorResponsavel = async (materiaGUID: string, usuarioCPF: string): Promise<void> => {
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    return usuario.UsuarioCPF;
+  };
+
+  #validarProfessorResponsavel = async (materiaGUID: string, usuarioGUID: string): Promise<void> => {
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const alocacoes = await this.#alocacaoDAO.findByProfessor(usuarioCPF);
     const alocado = alocacoes.some((a) => a.MateriaGUID === materiaGUID && a.AlocacaoStatus === "Ativa");
     if (!alocado) {
@@ -54,7 +67,7 @@ export default class AssuntoService {
     }
   };
 
-  criarAssunto = async (data: AssuntoCreateDTO, usuarioCPF: string): Promise<AssuntoDTO> => {
+  criarAssunto = async (data: AssuntoCreateDTO, usuarioGUID: string): Promise<AssuntoDTO> => {
     console.log("🟣 AssuntoService.criarAssunto()");
 
     const materia = await this.#materiaDAO.findById(data.MateriaGUID);
@@ -64,7 +77,7 @@ export default class AssuntoService {
       });
     }
 
-    await this.#validarProfessorResponsavel(data.MateriaGUID, usuarioCPF);
+    await this.#validarProfessorResponsavel(data.MateriaGUID, usuarioGUID);
 
     const nome = data.Nome.trim();
     const existente = await this.#assuntoDAO.findByNomeExato(data.MateriaGUID, nome);
@@ -122,7 +135,7 @@ export default class AssuntoService {
     return assuntos.map((assunto) => this.toDTO(assunto));
   };
 
-  excluirAssunto = async (guid: string, usuarioCPF: string): Promise<boolean> => {
+  excluirAssunto = async (guid: string, usuarioGUID: string): Promise<boolean> => {
     console.log("🟣 AssuntoService.excluirAssunto()");
 
     const assunto = await this.#assuntoDAO.findById(guid);
@@ -132,7 +145,7 @@ export default class AssuntoService {
       });
     }
 
-    await this.#validarProfessorResponsavel(assunto.MateriaGUID, usuarioCPF);
+    await this.#validarProfessorResponsavel(assunto.MateriaGUID, usuarioGUID);
 
     return this.#assuntoDAO.delete(guid);
   };

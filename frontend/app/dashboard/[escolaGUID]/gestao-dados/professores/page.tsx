@@ -84,7 +84,7 @@ export default function ProfessoresPage() {
 
   const professoresQuery = useProfessores(escolaGUID);
   const professores = professoresQuery.data?.professores ?? [];
-  const alocacoesQuery = useAlocacoesProfessor(professorEditando?.UsuarioCPF, escolaGUID, !!professorEditando);
+  const alocacoesQuery = useAlocacoesProfessor(professorEditando?.UsuarioCPF ?? undefined, escolaGUID, !!professorEditando);
   const alocacoesProfessor = (alocacoesQuery.data?.alocacoes ?? []).filter((a) => a.AlocacaoStatus === 'Ativa');
   const carregandoAlocacoes = alocacoesQuery.isLoading;
   const carregando = professoresQuery.isLoading || carregandoAuxiliares;
@@ -291,7 +291,7 @@ export default function ProfessoresPage() {
       if (professorEditando) {
         // Editar professor existente
         await atualizarProfessorMutation.mutateAsync({
-          cpf: professorEditando.UsuarioCPF,
+          usuarioGUID: professorEditando.UsuarioGUID,
           updates: {
             UsuarioNome: valoresFormulario.UsuarioNome,
             UsuarioEmail: valoresFormulario.UsuarioEmail,
@@ -379,7 +379,7 @@ export default function ProfessoresPage() {
       setErroAlocacao('');
       await criarAlocacaoMutation.mutateAsync({
         alocacao: {
-          UsuarioCPF: professorEditando!.UsuarioCPF,
+          UsuarioCPF: professorEditando!.UsuarioCPF!,
           MateriaGUID: novaAlocacaoMateria,
           TurmaGUID: novaAlocacaoTurma,
           AlocacaoStatus: 'Ativa',
@@ -456,7 +456,7 @@ export default function ProfessoresPage() {
     }
 
     try {
-      await inativarProfessorMutation.mutateAsync({ cpf: professor.UsuarioCPF, escolaGUID });
+      await inativarProfessorMutation.mutateAsync({ cpf: professor.UsuarioCPF ?? '', escolaGUID });
       alert('Professor inativado com sucesso!');
     } catch (erro: any) {
       console.error('Erro ao inativar professor:', erro);
@@ -470,7 +470,7 @@ export default function ProfessoresPage() {
     }
 
     try {
-      await reativarProfessorMutation.mutateAsync(professor.UsuarioCPF);
+      await reativarProfessorMutation.mutateAsync(professor.UsuarioGUID);
       alert('Professor reativado com sucesso!');
     } catch (erro: any) {
       console.error('Erro ao reativar professor:', erro);
@@ -585,7 +585,7 @@ export default function ProfessoresPage() {
           const termoLimpo = termo.replace(/\D/g, '');
           return (
             professor.UsuarioNome.toLowerCase().includes(termo) ||
-            (termoLimpo.length > 0 && professor.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
+            (termoLimpo.length > 0 && !!professor.UsuarioCPF && professor.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
             (professor.UsuarioId?.toLowerCase().includes(termo) ?? false)
           );
         }}

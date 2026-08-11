@@ -41,8 +41,13 @@ const uploadRoutes = Router();
 async function verificarParticipanteConversa(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const conversaGUID = req.params.conversaGUID;
-    const usuarioCPF = req.user!.UsuarioCPF;
-    const participante = await conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const usuarioGUID = req.user!.UsuarioGUID;
+    const usuario = await usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      next(new ErrorResponse(403, 'Usuário sem CPF cadastrado'));
+      return;
+    }
+    const participante = await conversaDAO.isParticipante(conversaGUID, usuario.UsuarioCPF);
     if (!participante) {
       next(new ErrorResponse(403, 'Você não faz parte desta conversa'));
       return;

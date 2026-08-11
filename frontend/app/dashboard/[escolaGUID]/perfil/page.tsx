@@ -82,7 +82,7 @@ export default function PerfilPage() {
     setErroDados('');
     setSucessoDados('');
     try {
-      await UsuarioAPI.atualizarUsuario(usuario.UsuarioCPF, {
+      await UsuarioAPI.atualizarUsuario(usuario.UsuarioGUID, {
         UsuarioNome: nome.trim(),
         UsuarioEmail: email.trim(),
         UsuarioTelefone: telefone.trim() || undefined,
@@ -112,7 +112,7 @@ export default function PerfilPage() {
 
     setEnviandoFoto(true);
     try {
-      await UploadAPI.uploadFotoUsuario(usuario.UsuarioCPF, arquivo);
+      await UploadAPI.uploadFotoUsuario(usuario.UsuarioGUID, arquivo);
       await refreshUser();
     } catch (erro: any) {
       setErroFoto(erro?.message || 'Erro ao enviar foto');
@@ -127,7 +127,7 @@ export default function PerfilPage() {
     setErroFoto('');
     setEnviandoFoto(true);
     try {
-      await UploadAPI.removerFotoUsuario(usuario.UsuarioCPF);
+      await UploadAPI.removerFotoUsuario(usuario.UsuarioGUID);
       await refreshUser();
     } catch (erro: any) {
       setErroFoto(erro?.message || 'Erro ao remover foto');
@@ -157,7 +157,7 @@ export default function PerfilPage() {
 
     setTrocandoSenha(true);
     try {
-      await UsuarioAPI.trocarSenha(usuario.UsuarioCPF, senhaAtual, novaSenha);
+      await UsuarioAPI.trocarSenha(usuario.UsuarioGUID, senhaAtual, novaSenha);
       setSucessoSenha('Senha alterada com sucesso.');
       setSenhaAtual('');
       setNovaSenha('');
@@ -186,7 +186,7 @@ export default function PerfilPage() {
     setSalvandoPreferencia(chave);
     aplicarOtimista();
     try {
-      await UsuarioAPI.atualizarUsuario(usuario.UsuarioCPF, dados);
+      await UsuarioAPI.atualizarUsuario(usuario.UsuarioGUID, dados);
       await refreshUser();
     } catch (erro: any) {
       setErroPreferencias(erro?.message || 'Erro ao salvar preferência');

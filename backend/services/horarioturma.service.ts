@@ -133,7 +133,7 @@ export default class HorarioTurmaService {
     const banco: BancoItemDTO[] = [];
     for (const alocacao of alocacoes) {
       const materia = await this.#materiaDAO.findById(alocacao.MateriaGUID);
-      const usuario = await this.#usuarioDAO.findById(alocacao.UsuarioCPF);
+      const usuario = await this.#usuarioDAO.findByCPF(alocacao.UsuarioCPF);
 
       const aulasPorSemana = alocacao.AulasPorSemana ?? materia?.MateriaAulasPorSemanaPadrao ?? null;
       const aulasAlocadas = slots.filter((s) => s.MatProfTurGUID === alocacao.MatProfTurGUID).length;
@@ -250,7 +250,7 @@ export default class HorarioTurmaService {
   alocarSlot = async (
     turmaGUID: string,
     data: AlocarSlotDTO,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<HorarioTurmaDTO> => {
     console.log("🟣 HorarioTurmaService.alocarSlot()");
 
@@ -261,7 +261,7 @@ export default class HorarioTurmaService {
       });
     }
 
-    await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, turma.EscolaGUID);
 
     const alocacao = await this.#matProfTurDAO.findById(data.MatProfTurGUID);
     if (!alocacao || alocacao.TurmaGUID !== turmaGUID || alocacao.AlocacaoStatus !== "Ativa") {
@@ -309,7 +309,7 @@ export default class HorarioTurmaService {
       });
     }
 
-    const professor = await this.#usuarioDAO.findById(alocacao.UsuarioCPF);
+    const professor = await this.#usuarioDAO.findByCPF(alocacao.UsuarioCPF);
 
     const conflito = await this.#horarioTurmaDAO.findConflitoProfessor(
       alocacao.UsuarioCPF,
@@ -338,7 +338,7 @@ export default class HorarioTurmaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: turma.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Create",
       EntidadeTipo: "horarioturma",
       EntidadeGUID: horario.HorarioTurmaGUID,
@@ -363,7 +363,7 @@ export default class HorarioTurmaService {
   removerSlot = async (
     turmaGUID: string,
     horarioTurmaGUID: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<void> => {
     console.log("🟣 HorarioTurmaService.removerSlot()");
 
@@ -374,7 +374,7 @@ export default class HorarioTurmaService {
       });
     }
 
-    await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, turma.EscolaGUID);
 
     const horario = await this.#horarioTurmaDAO.findById(horarioTurmaGUID);
     if (!horario || horario.TurmaGUID !== turmaGUID) {
@@ -387,7 +387,7 @@ export default class HorarioTurmaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: turma.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Delete",
       EntidadeTipo: "horarioturma",
       EntidadeGUID: horarioTurmaGUID,
@@ -396,15 +396,15 @@ export default class HorarioTurmaService {
     });
   };
 
-  private async validarPermissaoEscrita(cpf: string, escolaGUID: string): Promise<void> {
+  private async validarPermissaoEscrita(usuarioGUID: string, escolaGUID: string): Promise<void> {
     console.log("🔒 HorarioTurmaService.validarPermissaoEscrita()");
 
-    const coordenacao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(cpf, escolaGUID, 1);
+    const coordenacao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(usuarioGUID, escolaGUID, 1);
     if (coordenacao && coordenacao.Status === "Ativo") {
       return;
     }
 
-    const direcao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(cpf, escolaGUID, 6);
+    const direcao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(usuarioGUID, escolaGUID, 6);
     if (direcao && direcao.Status === "Ativo") {
       return;
     }

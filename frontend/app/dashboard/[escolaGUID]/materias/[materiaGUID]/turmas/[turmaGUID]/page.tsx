@@ -83,7 +83,7 @@ function CategoriaPageConteudo() {
     if (!usuario) return;
     try {
       setCarregando(true);
-      const response = await fetch(`/api/usuario/${usuario.UsuarioCPF}/escolas`, {
+      const response = await fetch(`/api/usuario/${usuario.UsuarioGUID}/escolas`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -101,7 +101,7 @@ function CategoriaPageConteudo() {
         setImagemFundo(turma.TurmaImagemUrl || null);
         setCorFundo(turma.TurmaCorFundo || '#17C077');
       } else {
-        const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioCPF, escolaGUID);
+        const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioGUID, escolaGUID);
         const materiaAtual = materias.find((m) => m.MateriaGUID === materiaGUID);
         setNomeTitulo(materiaAtual?.MateriaNome || 'Matéria');
         setImagemFundo(materiaAtual?.ImagemUrl || null);

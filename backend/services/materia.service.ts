@@ -109,7 +109,7 @@ export default class MateriaService {
    * Grid de matérias do aluno (tela inicial de Matérias) — uma linha por
    * (matéria, professor responsável) na turma onde ele está matriculado.
    */
-  listarMateriasDoAluno = async (usuarioCPF: string, escolaGUID: string): Promise<MateriaDoAlunoDTO[]> => {
+  listarMateriasDoAluno = async (usuarioGUID: string, escolaGUID: string): Promise<MateriaDoAlunoDTO[]> => {
     console.log("🟣 MateriaService.listarMateriasDoAluno()");
 
     if (!this.#matriculaDAO || !this.#alocacaoDAO || !this.#customizacaoDAO || !this.#usuarioDAO) {
@@ -118,7 +118,7 @@ export default class MateriaService {
       });
     }
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF);
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
     if (!matricula) return [];
 
     const alocacoes = await this.#alocacaoDAO.findByTurma(matricula.TurmaGUID);
@@ -129,7 +129,7 @@ export default class MateriaService {
       const materia = await this.#materiaDAO.findById(alocacao.MateriaGUID);
       if (!materia || materia.EscolaGUID !== escolaGUID || materia.MateriaStatus !== "Ativa") continue;
 
-      const professor = await this.#usuarioDAO.findById(alocacao.UsuarioCPF);
+      const professor = await this.#usuarioDAO.findByCPF(alocacao.UsuarioCPF);
       const customizacao = await this.#customizacaoDAO.findByMateriaEProfessor(alocacao.MateriaGUID, alocacao.UsuarioCPF);
       const escola = customizacao?.CorFundo ? null : await this.#escolaDAO.findById(escolaGUID);
 
@@ -151,7 +151,7 @@ export default class MateriaService {
 
   criarMateria = async (
     data: MateriaCreateDTO,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<MateriaDTO> => {
     console.log("🟣 MateriaService.criarMateria()");
 
@@ -164,7 +164,7 @@ export default class MateriaService {
     }
 
     // 2. Validar permissão (Coordenação ou Direção)
-    await this.validarPermissaoEscrita(usuarioCPF, data.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, data.EscolaGUID);
 
     // 3. Resolver CursoNome → CursoGUID se fornecido
     let cursoGUID = data.CursoGUID || null;
@@ -210,7 +210,7 @@ export default class MateriaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: materia.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Create",
       EntidadeTipo: "materia",
       EntidadeGUID: materia.MateriaGUID,
@@ -253,7 +253,7 @@ export default class MateriaService {
    */
   criarMateriasEmMassa = async (
     materias: MateriaCreateDTO[],
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<BatchCreateResponse> => {
     const resultados: BatchItemResult[] = [];
     let criados = 0;
@@ -270,7 +270,7 @@ export default class MateriaService {
 
     // Validar permissão uma única vez
     try {
-      await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+      await this.validarPermissaoEscrita(usuarioGUID, escolaGUID);
     } catch (error) {
       if (error instanceof ErrorResponse) {
         throw error;
@@ -364,7 +364,7 @@ export default class MateriaService {
 
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
-          UsuarioCPFAtor: usuarioCPF,
+          UsuarioGUIDAtor: usuarioGUID,
           AcaoTipo: "Create",
           EntidadeTipo: "materia",
           EntidadeGUID: materia.MateriaGUID,
@@ -428,7 +428,7 @@ export default class MateriaService {
   atualizarMateria = async (
     guid: string,
     data: MateriaUpdateDTO,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<MateriaDTO> => {
     console.log("🟣 MateriaService.atualizarMateria()");
 
@@ -441,7 +441,7 @@ export default class MateriaService {
     }
 
     // 2. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, materiaExistente.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, materiaExistente.EscolaGUID);
 
     // 3. Se mudou nome, validar duplicidade
     if (data.MateriaNome && data.MateriaNome !== materiaExistente.MateriaNome) {
@@ -495,7 +495,7 @@ export default class MateriaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: resultado.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Update",
       EntidadeTipo: "materia",
       EntidadeGUID: guid,
@@ -513,7 +513,7 @@ export default class MateriaService {
     return this.toDTO(resultado);
   };
 
-  excluirMateria = async (guid: string, usuarioCPF: string): Promise<boolean> => {
+  excluirMateria = async (guid: string, usuarioGUID: string): Promise<boolean> => {
     console.log("🟣 MateriaService.excluirMateria()");
 
     // 1. Buscar matéria
@@ -525,7 +525,7 @@ export default class MateriaService {
     }
 
     // 2. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, materia.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, materia.EscolaGUID);
 
     // 3. Soft delete
     const deletado = await this.#materiaDAO.delete(guid);
@@ -533,7 +533,7 @@ export default class MateriaService {
     if (deletado) {
       void getAuditoriaService().registrar({
         EscolaGUID: materia.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: "Delete",
         EntidadeTipo: "materia",
         EntidadeGUID: guid,
@@ -547,14 +547,14 @@ export default class MateriaService {
 
   // Helper: validar permissão de escrita (Coordenação ou Direção)
   private validarPermissaoEscrita = async (
-    cpf: string,
+    usuarioGUID: string,
     escolaGUID: string
   ): Promise<void> => {
     console.log("🔒 MateriaService.validarPermissaoEscrita()");
 
     // Validar Coordenação (FuncaoId = 1)
     const coordenacao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(
-      cpf,
+      usuarioGUID,
       escolaGUID,
       1
     );
@@ -565,7 +565,7 @@ export default class MateriaService {
 
     // Validar Direção (FuncaoId = 6)
     const direcao = await this.#escolaxusuarioxfuncaoDAO.findByTripla(
-      cpf,
+      usuarioGUID,
       escolaGUID,
       6
     );
