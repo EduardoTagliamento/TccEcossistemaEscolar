@@ -4,6 +4,7 @@ import { UsuarioXGrupoTarefaDAO } from '../repositories/usuarioxgrupotarefa.repo
 import { TarefaAcademicaDAO } from '../repositories/tarefaacademica.repository';
 import { MatriculaDAO } from '../repositories/matricula.repository';
 import { TarefaAcademicaMatriculaDAO } from '../repositories/tarefaacademica-matricula.repository';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import HistoricoGrupoTarefaService from './historicogrupotarefa.service';
 import ConversaGrupoService from './conversa-grupo.service';
 import ErrorResponse from '../utils/ErrorResponse';
@@ -23,6 +24,7 @@ export default class GrupoTarefaService {
   #tarefaDAO: TarefaAcademicaDAO;
   #matriculaDAO: MatriculaDAO;
   #tarefaMatriculaDAO: TarefaAcademicaMatriculaDAO;
+  #usuarioDAO: UsuarioDAO;
   #historicoService: HistoricoGrupoTarefaService;
   #database: MysqlDatabase;
   #conversaGrupoService?: ConversaGrupoService;
@@ -33,6 +35,7 @@ export default class GrupoTarefaService {
     tarefaDAO: TarefaAcademicaDAO,
     matriculaDAO: MatriculaDAO,
     tarefaMatriculaDAO: TarefaAcademicaMatriculaDAO,
+    usuarioDAO: UsuarioDAO,
     historicoService: HistoricoGrupoTarefaService,
     database: MysqlDatabase,
     conversaGrupoService?: ConversaGrupoService
@@ -43,6 +46,7 @@ export default class GrupoTarefaService {
     this.#tarefaDAO = tarefaDAO;
     this.#matriculaDAO = matriculaDAO;
     this.#tarefaMatriculaDAO = tarefaMatriculaDAO;
+    this.#usuarioDAO = usuarioDAO;
     this.#historicoService = historicoService;
     this.#database = database;
     this.#conversaGrupoService = conversaGrupoService;
@@ -75,11 +79,19 @@ export default class GrupoTarefaService {
 
       for (const matricula of matriculas) {
         try {
+          // grupotarefa ainda não migrada — precisa do CPF real do aluno,
+          // não do UsuarioGUID (mesmo padrão de matricula.service.ts).
+          const aluno = await this.#usuarioDAO.findByGUID(matricula.UsuarioGUID);
+          if (!aluno?.UsuarioCPF) {
+            throw new Error('Usuário sem CPF cadastrado — grupotarefa ainda exige CPF até ser migrada para GUID');
+          }
+          const alunoCPF = aluno.UsuarioCPF;
+
           // Criar grupo com aluno como líder
           const grupoData: GrupoTarefaCreateDTO = {
             TarefaGUID: tarefaGUID,
             TurmaGUID: turmaGUID,
-            UsuarioCPFLider: matricula.UsuarioCPF,
+            UsuarioCPFLider: alunoCPF,
             GrupoNome: undefined  // Será gerado automaticamente no frontend
           };
 
@@ -89,11 +101,11 @@ export default class GrupoTarefaService {
             await this.#conversaGrupoService.criarConversaParaGrupoTarefa(
               novoGrupo.GrupoTarefaGUID,
               tarefa.TarefaTitulo,
-              matricula.UsuarioCPF
+              alunoCPF
             );
           }
         } catch (error: any) {
-          console.error(`Erro ao criar grupo para ${matricula.UsuarioCPF}:`, error.message);
+          console.error(`Erro ao criar grupo para matrícula ${matricula.UsuarioGUID}:`, error.message);
           // Continuar criando outros grupos mesmo se um falhar
         }
       }
@@ -105,7 +117,7 @@ export default class GrupoTarefaService {
   /**
    * LISTAR GRUPOS de uma tarefa
    */
-  async listarGruposDaTarefa(tarefaGUID: string, usuarioCPF: string): Promise<GrupoTarefaComMembrosDTO[]> {
+  async listarGruposDaTarefa(tarefaGUID: string, usuarioGUID: string): Promise<GrupoTarefaComMembrosDTO[]> {
     console.log('🟣 GrupoTarefaService.listarGruposDaTarefa()');
 
     // 1. Validar acesso do usuário à tarefa
@@ -133,7 +145,7 @@ export default class GrupoTarefaService {
   /**
    * BUSCAR GRUPO ESPECÍFICO (com membros)
    */
-  async buscarGrupo(grupoGUID: string, usuarioCPF: string): Promise<GrupoTarefaComMembrosDTO> {
+  async buscarGrupo(grupoGUID: string, usuarioGUID: string): Promise<GrupoTarefaComMembrosDTO> {
     console.log('🟣 GrupoTarefaService.buscarGrupo()');
 
     const grupo = await this.#grupoTarefaDAO.findByIdComMembros(grupoGUID);
@@ -141,8 +153,14 @@ export default class GrupoTarefaService {
       throw new ErrorResponse(404, 'Grupo não encontrado');
     }
 
+    // usuarioxgrupotarefa ainda usa CPF — resolver a partir do UsuarioGUID
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Você não tem acesso a este grupo');
+    }
+
     // Validar se usuário tem acesso ao grupo (é membro ou líder)
-    const temAcesso = await this.#grupoTarefaDAO.usuarioPertenceAoGrupo(usuarioCPF, grupoGUID);
+    const temAcesso = await this.#grupoTarefaDAO.usuarioPertenceAoGrupo(usuario.UsuarioCPF, grupoGUID);
     if (!temAcesso) {
       throw new ErrorResponse(403, 'Você não tem acesso a este grupo');
     }
@@ -158,13 +176,21 @@ export default class GrupoTarefaService {
   async expulsarMembro(
     grupoGUID: string,
     membroCPF: string,
-    liderCPF: string
+    liderGUID: string
   ): Promise<{ mensagem: string; novoGrupoGUID: string }> {
     console.log('🟣 GrupoTarefaService.expulsarMembro()');
 
+    // grupotarefa/usuarioxgrupotarefa/historicogrupotarefa ainda usam CPF —
+    // resolver o líder (ator) a partir do UsuarioGUID.
+    const liderUsuario = await this.#usuarioDAO.findByGUID(liderGUID);
+    if (!liderUsuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Apenas o líder pode expulsar membros');
+    }
+    const liderCPF = liderUsuario.UsuarioCPF;
+
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
-    
+
     try {
       await connection.beginTransaction();
 
@@ -272,9 +298,11 @@ export default class GrupoTarefaService {
   ): Promise<void> => {
     const escolaGUID = await this.#resolverEscolaGUID(turmaGUID);
     if (!escolaGUID) return;
+    const ator = await this.#usuarioDAO.findByCPF(usuarioCPFAtor);
+    if (!ator) return;
     void getAuditoriaService().registrar({
       EscolaGUID: escolaGUID,
-      UsuarioCPFAtor: usuarioCPFAtor,
+      UsuarioGUIDAtor: ator.UsuarioGUID,
       AcaoTipo: acaoTipo,
       EntidadeTipo: 'grupotarefa',
       EntidadeGUID: grupoGUID,
@@ -296,9 +324,12 @@ export default class GrupoTarefaService {
     const info = rows[0] as any;
     if (!info?.EscolaGUID) return;
 
+    const membro = await this.#usuarioDAO.findByCPF(membroCPF);
+    if (!membro) return;
+
     await getNotificacaoService().disparar({
       tipoSlug: 'removido_grupo',
-      destinatarios: [membroCPF],
+      destinatarios: [membro.UsuarioGUID],
       escolaGUID: info.EscolaGUID,
       titulo: `Você foi removido do grupo da tarefa "${info.TarefaTitulo}"`,
       entidadeTipo: 'tarefa',
@@ -314,9 +345,17 @@ export default class GrupoTarefaService {
   async transferirLideranca(
     grupoGUID: string,
     novoLiderCPF: string,
-    liderAtualCPF: string
+    liderAtualGUID: string
   ): Promise<{ mensagem: string }> {
     console.log('🟣 GrupoTarefaService.transferirLideranca()');
+
+    // grupotarefa/usuarioxgrupotarefa ainda usam CPF — resolver o líder
+    // atual (ator) a partir do UsuarioGUID.
+    const liderAtualUsuario = await this.#usuarioDAO.findByGUID(liderAtualGUID);
+    if (!liderAtualUsuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Apenas o líder pode transferir a liderança');
+    }
+    const liderAtualCPF = liderAtualUsuario.UsuarioCPF;
 
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
@@ -394,9 +433,16 @@ export default class GrupoTarefaService {
   async atualizarNomeGrupo(
     grupoGUID: string,
     novoNome: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<{ mensagem: string }> {
     console.log('🟣 GrupoTarefaService.atualizarNomeGrupo()');
+
+    // grupotarefa ainda usa CPF — resolver a partir do UsuarioGUID
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Apenas o líder pode alterar o nome do grupo');
+    }
+    const usuarioCPF = usuario.UsuarioCPF;
 
     // 1. Validar grupo
     const grupo = await this.#grupoTarefaDAO.findById(grupoGUID);

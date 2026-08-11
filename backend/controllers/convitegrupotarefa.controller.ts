@@ -28,8 +28,8 @@ export default class ConviteGrupoTarefaController {
     try {
       console.log('🔵 ConviteGrupoTarefaController.enviarConvite()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -43,7 +43,7 @@ export default class ConviteGrupoTarefaController {
       const convite = await this.#conviteService.enviarConvite(
         grupoGUID,
         UsuarioCPFConvidado,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(201).json({
@@ -66,8 +66,8 @@ export default class ConviteGrupoTarefaController {
     try {
       console.log('🔵 ConviteGrupoTarefaController.solicitarEntrada()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -79,7 +79,7 @@ export default class ConviteGrupoTarefaController {
 
       const solicitacao = await this.#conviteService.solicitarEntrada(
         grupoGUID,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(201).json({
@@ -102,8 +102,8 @@ export default class ConviteGrupoTarefaController {
     try {
       console.log('🔵 ConviteGrupoTarefaController.listarPendentes()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -111,7 +111,7 @@ export default class ConviteGrupoTarefaController {
         return;
       }
 
-      const convites = await this.#conviteService.listarPendentes(usuarioCPF);
+      const convites = await this.#conviteService.listarPendentes(usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -134,8 +134,8 @@ export default class ConviteGrupoTarefaController {
     try {
       console.log('🔵 ConviteGrupoTarefaController.aceitarConvite()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -145,7 +145,7 @@ export default class ConviteGrupoTarefaController {
 
       const { conviteGUID } = req.params;
 
-      const resultado = await this.#conviteService.aceitar(conviteGUID, usuarioCPF);
+      const resultado = await this.#conviteService.aceitar(conviteGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -165,8 +165,8 @@ export default class ConviteGrupoTarefaController {
     try {
       console.log('🔵 ConviteGrupoTarefaController.recusarConvite()');
 
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({
           success: false,
           message: 'Não autenticado'
@@ -176,7 +176,7 @@ export default class ConviteGrupoTarefaController {
 
       const { conviteGUID } = req.params;
 
-      const resultado = await this.#conviteService.recusar(conviteGUID, usuarioCPF);
+      const resultado = await this.#conviteService.recusar(conviteGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,

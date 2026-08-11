@@ -6,6 +6,7 @@ import AnexoService from "../backend/services/anexo.service";
 import { AnexoDAO } from "../backend/repositories/anexo.repository";
 import { EscolaDAO } from "../backend/repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { anexoUploadMiddleware } from "../backend/middlewares/anexo-upload.middleware";
 
@@ -74,7 +75,8 @@ const db = MysqlDatabase.getInstance();
 const anexoDAO = new AnexoDAO(db);
 const escolaDAO = new EscolaDAO(db);
 const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(db);
-const anexoService = new AnexoService(anexoDAO, escolaDAO, escolaxUsuarioxFuncaoDAO);
+const usuarioDAO = new UsuarioDAO(db);
+const anexoService = new AnexoService(anexoDAO, escolaDAO, escolaxUsuarioxFuncaoDAO, usuarioDAO);
 const anexoControle = new AnexoControl(anexoService);
 const anexoMiddleware = new AnexoMiddleware();
 

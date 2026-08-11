@@ -77,6 +77,32 @@ export default class UsuarioControl {
     }
   };
 
+  // GET /api/usuario/busca-cpf?cpf=
+  buscarPorCPF = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("🔵 UsuarioControl.buscarPorCPF()");
+    try {
+      const cpf = request.query.cpf as string | undefined;
+      if (!cpf) {
+        response.status(400).json({
+          success: false,
+          message: "CPF é obrigatório",
+          data: null,
+        });
+        return;
+      }
+
+      const usuario = await this.#usuarioService.findByCPF(cpf);
+
+      response.status(200).json({
+        success: true,
+        message: "Executado com sucesso",
+        data: { usuario },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   update = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 UsuarioControl.update()");
     try {

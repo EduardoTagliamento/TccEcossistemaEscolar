@@ -106,7 +106,7 @@ export default function SecretariaPage() {
     try {
       setVinculando(true);
       await VinculoAPI.criarVinculo({
-        UsuarioCPF: usuarioEncontrado.UsuarioCPF,
+        UsuarioGUID: usuarioEncontrado.UsuarioGUID,
         EscolaGUID: escolaGUID,
         FuncaoId: FUNCAO_ID_SECRETARIA,
       });
@@ -194,7 +194,7 @@ export default function SecretariaPage() {
 
   const colunas: Coluna<VinculoAPI.EscolaxUsuarioxFuncao>[] = [
     { id: 'UsuarioNome', label: 'Nome', width: '40%', render: (valor: any) => valor || '-' },
-    { id: 'UsuarioCPF', label: 'CPF', width: '25%', render: (valor: any) => formatarCPF(valor) },
+    { id: 'UsuarioCPF', label: 'CPF', width: '25%', render: (valor: any) => (valor ? formatarCPF(valor) : '—') },
     {
       id: 'Status',
       label: 'Status',
@@ -246,7 +246,7 @@ export default function SecretariaPage() {
         carregando={carregando}
         filtrarPor={(vinculo, termo) =>
           (vinculo.UsuarioNome || '').toLowerCase().includes(termo) ||
-          vinculo.UsuarioCPF.includes(termo.replace(/\D/g, ''))
+          (vinculo.UsuarioCPF || '').includes(termo.replace(/\D/g, ''))
         }
         buscaPlaceholder="Buscar por nome ou CPF..."
         acoes={(vinculo) =>

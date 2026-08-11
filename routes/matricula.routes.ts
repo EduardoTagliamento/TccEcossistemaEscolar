@@ -36,7 +36,8 @@ export function matriculaRouterFactory(): Router {
   const conversaGrupoService = new ConversaGrupoService(
     new ConversaDAO(database),
     new ConversaGrupoDAO(database),
-    matriculaDAO
+    matriculaDAO,
+    usuarioDAO
   );
   const matriculaService = new MatriculaService(
     matriculaDAO,

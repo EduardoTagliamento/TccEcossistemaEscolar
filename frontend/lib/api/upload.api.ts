@@ -57,12 +57,12 @@ export interface FotoUsuarioResultado {
   mimeType: string;
 }
 
-/** POST /api/upload/foto-usuario/:UsuarioCPF — max 1MB, PNG/JPG/JPEG (mesmo limite do logo de escola). */
-export async function uploadFotoUsuario(usuarioCPF: string, arquivo: File): Promise<FotoUsuarioResultado> {
+/** POST /api/upload/foto-usuario/:UsuarioGUID — max 1MB, PNG/JPG/JPEG (mesmo limite do logo de escola). */
+export async function uploadFotoUsuario(usuarioGUID: string, arquivo: File): Promise<FotoUsuarioResultado> {
   const formData = new FormData();
   formData.append('foto', arquivo);
 
-  const response = await fetch(`${API_URL}/upload/foto-usuario/${usuarioCPF}`, {
+  const response = await fetch(`${API_URL}/upload/foto-usuario/${usuarioGUID}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${getToken()}`,
@@ -77,9 +77,9 @@ export async function uploadFotoUsuario(usuarioCPF: string, arquivo: File): Prom
   return resultado.data.foto as FotoUsuarioResultado;
 }
 
-/** DELETE /api/upload/foto-usuario/:UsuarioCPF */
-export async function removerFotoUsuario(usuarioCPF: string): Promise<void> {
-  const response = await fetch(`${API_URL}/upload/foto-usuario/${usuarioCPF}`, {
+/** DELETE /api/upload/foto-usuario/:UsuarioGUID */
+export async function removerFotoUsuario(usuarioGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/upload/foto-usuario/${usuarioGUID}`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${getToken()}`,

@@ -187,7 +187,7 @@ export default function ConteudoForm({
 
   const carregarConteudos = async (materiaGUID: string) => {
     try {
-      const lista = await ConteudoAPI.listarConteudos({ MateriaGUID: materiaGUID, UsuarioCPF: usuario?.UsuarioCPF });
+      const lista = await ConteudoAPI.listarConteudos({ MateriaGUID: materiaGUID, UsuarioCPF: usuario?.UsuarioCPF ?? undefined });
       setConteudos(lista);
     } catch (err: any) {
       setErro(err?.message || 'Falha ao carregar conteúdos');

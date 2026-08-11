@@ -103,16 +103,22 @@ export default function CadastroPendenciaPage() {
         AlunoAPI.listarAlunos({ EscolaGUID: escolaGUID }),
         ProfessorAPI.listarProfessores({ EscolaGUID: escolaGUID }),
       ]);
-      const alunos: MembroEscola[] = resultadoAlunos.alunos.map((a) => ({
-        UsuarioCPF: a.usuario.UsuarioCPF,
-        UsuarioNome: a.usuario.UsuarioNome,
-        papel: 'Aluno',
-      }));
-      const professores: MembroEscola[] = resultadoProfessores.professores.map((p) => ({
-        UsuarioCPF: p.UsuarioCPF,
-        UsuarioNome: p.UsuarioNome,
-        papel: 'Professor',
-      }));
+      // Só entram na lista quem tem CPF cadastrado — pendência ainda é
+      // endereçada por CPF (tabela não migrada pra GUID).
+      const alunos: MembroEscola[] = resultadoAlunos.alunos
+        .filter((a) => !!a.usuario.UsuarioCPF)
+        .map((a) => ({
+          UsuarioCPF: a.usuario.UsuarioCPF as string,
+          UsuarioNome: a.usuario.UsuarioNome,
+          papel: 'Aluno',
+        }));
+      const professores: MembroEscola[] = resultadoProfessores.professores
+        .filter((p) => !!p.UsuarioCPF)
+        .map((p) => ({
+          UsuarioCPF: p.UsuarioCPF as string,
+          UsuarioNome: p.UsuarioNome,
+          papel: 'Professor',
+        }));
       setMembrosEscola([...alunos, ...professores]);
     } catch (err) {
       console.error('Erro ao carregar membros da escola:', err);

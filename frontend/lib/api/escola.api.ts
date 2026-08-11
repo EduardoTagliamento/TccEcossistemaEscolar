@@ -103,12 +103,12 @@ export interface TransferirDirecaoResultado {
  */
 export async function transferirDirecao(
   escolaGUID: string,
-  novoDirecaoCPF: string
+  novoDirecaoGUID: string
 ): Promise<TransferirDirecaoResultado> {
   const response = await fetch(`${API_URL}/escola/${escolaGUID}/transferir-direcao`, {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify({ NovoDirecaoCPF: novoDirecaoCPF }),
+    body: JSON.stringify({ NovoDirecaoGUID: novoDirecaoGUID }),
   });
 
   if (!response.ok) {

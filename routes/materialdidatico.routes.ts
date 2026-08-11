@@ -7,6 +7,7 @@ import { MaterialDidaticoPaginaDAO } from "../backend/repositories/materialdidat
 import { MaterialDidaticoCapituloDAO } from "../backend/repositories/materialdidaticocapitulo.repository";
 import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import {
   materialDidaticoUploadMiddleware,
@@ -57,7 +58,8 @@ export const materialDidaticoRouterFactory = () => {
   const capituloDAO = new MaterialDidaticoCapituloDAO(database);
   const materiaDAO = new MateriaDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
-  const service = new MaterialDidaticoService(materialDAO, paginaDAO, capituloDAO, materiaDAO, escolaxUsuarioxFuncaoDAO);
+  const usuarioDAO = new UsuarioDAO(database);
+  const service = new MaterialDidaticoService(materialDAO, paginaDAO, capituloDAO, materiaDAO, escolaxUsuarioxFuncaoDAO, usuarioDAO);
   const controller = new MaterialDidaticoController(service);
   const roteador = new MaterialDidaticoRoteador(controller);
 

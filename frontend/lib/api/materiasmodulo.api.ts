@@ -40,8 +40,8 @@ export interface MateriaDoAluno {
   MensagemBoasVindas: string | null;
 }
 
-export async function listarMateriasDoAluno(usuarioCPF: string, escolaGUID: string): Promise<MateriaDoAluno[]> {
-  const response = await fetch(`${API_URL}/materia/aluno/${usuarioCPF}?EscolaGUID=${escolaGUID}`, {
+export async function listarMateriasDoAluno(usuarioGUID: string, escolaGUID: string): Promise<MateriaDoAluno[]> {
+  const response = await fetch(`${API_URL}/materia/aluno/${usuarioGUID}?EscolaGUID=${escolaGUID}`, {
     headers: getHeaders(),
   });
   const dados = await extrairDados(response, 'Erro ao listar matérias');

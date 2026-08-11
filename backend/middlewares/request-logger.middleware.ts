@@ -34,7 +34,7 @@ export function requestLoggerMiddleware(request: Request, response: Response, ne
       path: request.originalUrl,
       statusCode: response.statusCode,
       durationMs: Math.round(duracaoMs * 100) / 100,
-      usuarioCPF: request.user?.UsuarioCPF,
+      usuarioGUID: request.user?.UsuarioGUID,
     });
   });
 

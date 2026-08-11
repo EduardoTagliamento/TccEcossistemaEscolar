@@ -7,8 +7,8 @@ export class SugestaoController {
   // POST /api/sugestao - Qualquer usuário autenticado pode enviar
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF;
-      if (!usuarioCPF) {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });
         return;
       }
@@ -16,7 +16,7 @@ export class SugestaoController {
       const { SugestaoTexto, EscolaGUID, SugestaoPaginaUrl, AnexoGUIDs } = req.body;
 
       const sugestao = await this.sugestaoService.criarSugestao({
-        UsuarioCPF: usuarioCPF,
+        UsuarioGUID: usuarioGUID,
         EscolaGUID,
         SugestaoTexto,
         SugestaoPaginaUrl,

@@ -21,7 +21,7 @@ export interface SugestaoComAutor extends Sugestao {
 }
 
 export interface SugestaoCreateDTO {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID?: string | null;
   SugestaoTexto: string;
   SugestaoPaginaUrl?: string | null;

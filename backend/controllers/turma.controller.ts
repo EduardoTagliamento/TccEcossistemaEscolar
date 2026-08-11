@@ -26,14 +26,14 @@ export class TurmaController {
    */
   store = async (req: Request, res: Response): Promise<void> => {
     try {
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUID = req.user?.UsuarioGUID || '';
 
       // Verificar se é batch (múltiplas turmas) ou individual
       if (req.body.turmas && Array.isArray(req.body.turmas)) {
         // Cadastro em massa
         const resultado = await this.#turmaService.criarTurmasEmMassa(
           req.body.turmas,
-          usuarioCPF
+          usuarioGUID
         );
 
         res.status(201).json({
@@ -59,7 +59,7 @@ export class TurmaController {
 
       const turmaCriada = await this.#turmaService.criarTurma(
         turmaDTO,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(201).json({
@@ -171,7 +171,7 @@ export class TurmaController {
     try {
       const { guid } = req.params;
       const { turma } = req.body;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUID = req.user?.UsuarioGUID || '';
 
       const turmaDTO: TurmaUpdateDTO = {
         TurmaSerie: turma.TurmaSerie,
@@ -184,7 +184,7 @@ export class TurmaController {
       const turmaAtualizada = await this.#turmaService.atualizarTurma(
         guid,
         turmaDTO,
-        usuarioCPF
+        usuarioGUID
       );
 
       res.status(200).json({
@@ -216,7 +216,7 @@ export class TurmaController {
   atualizarCapa = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUID = req.user?.UsuarioGUID || '';
       const arquivo = (req as any).file as Express.Multer.File | undefined;
       const cor = req.body.cor as string | undefined;
 
@@ -225,7 +225,7 @@ export class TurmaController {
         return;
       }
 
-      const turmaAtualizada = await this.#turmaService.atualizarCapa(guid, usuarioCPF, {
+      const turmaAtualizada = await this.#turmaService.atualizarCapa(guid, usuarioGUID, {
         imagem: arquivo ? { buffer: arquivo.buffer, mimetype: arquivo.mimetype } : undefined,
         cor,
       });
@@ -258,9 +258,9 @@ export class TurmaController {
   destroy = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;
-      const usuarioCPF = req.user?.UsuarioCPF || '';
+      const usuarioGUID = req.user?.UsuarioGUID || '';
 
-      await this.#turmaService.excluirTurma(guid, usuarioCPF);
+      await this.#turmaService.excluirTurma(guid, usuarioGUID);
 
       res.status(200).json({
         success: true,

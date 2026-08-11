@@ -22,6 +22,7 @@ import { GrupoProjetoDAO } from '../backend/repositories/grupoprojeto.repository
 import { UsuarioXGrupoProjetoDAO } from '../backend/repositories/usuarioxgrupoprojeto.repository';
 import { ProjetoDAO } from '../backend/repositories/projeto.repository';
 import { HistoricoGrupoProjetoDAO } from '../backend/repositories/historicogrupoprojeto.repository';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import GrupoProjetoService from '../backend/services/grupoprojeto.service';
 import HistoricoGrupoProjetoService from '../backend/services/historicogrupoprojeto.service';
 import GrupoProjetoController from '../backend/controllers/grupoprojeto.controller';
@@ -36,6 +37,7 @@ export function grupoProjetoRoutes(): Router {
   const usuarioXGrupoDAO = new UsuarioXGrupoProjetoDAO(database);
   const projetoDAO = new ProjetoDAO(database);
   const historicoDAO = new HistoricoGrupoProjetoDAO(database);
+  const usuarioDAO = new UsuarioDAO(database);
 
   const historicoService = new HistoricoGrupoProjetoService(historicoDAO);
   const grupoProjetoService = new GrupoProjetoService(
@@ -43,7 +45,8 @@ export function grupoProjetoRoutes(): Router {
     usuarioXGrupoDAO,
     projetoDAO,
     historicoService,
-    database
+    database,
+    usuarioDAO
   );
 
   const grupoProjetoController = new GrupoProjetoController(grupoProjetoService);

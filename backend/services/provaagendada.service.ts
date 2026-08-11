@@ -15,6 +15,7 @@ import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxtur
 import { ProvaAgendadaAssuntoDAO } from "../repositories/provaagendadaassunto.repository";
 import { AssuntoDAO } from "../repositories/assunto.repository";
 import { MaterialDidaticoCapituloDAO } from "../repositories/materialdidaticocapitulo.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
@@ -103,6 +104,7 @@ export default class ProvaAgendadaService {
   #provaAssuntoDAO: ProvaAgendadaAssuntoDAO;
   #assuntoDAO: AssuntoDAO;
   #materialDidaticoCapituloDAO: MaterialDidaticoCapituloDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     provaDAODependency: ProvaAgendadaDAO,
@@ -116,7 +118,8 @@ export default class ProvaAgendadaService {
     alocacaoDAODependency: MaterialProfessorTurmaDAO,
     provaAssuntoDAODependency: ProvaAgendadaAssuntoDAO,
     assuntoDAODependency: AssuntoDAO,
-    materialDidaticoCapituloDAODependency: MaterialDidaticoCapituloDAO
+    materialDidaticoCapituloDAODependency: MaterialDidaticoCapituloDAO,
+    usuarioDAODependency: UsuarioDAO
   ) {
     console.log("⬆️  ProvaAgendadaService.constructor()");
     this.#provaDAO = provaDAODependency;
@@ -131,7 +134,16 @@ export default class ProvaAgendadaService {
     this.#provaAssuntoDAO = provaAssuntoDAODependency;
     this.#assuntoDAO = assuntoDAODependency;
     this.#materialDidaticoCapituloDAO = materialDidaticoCapituloDAODependency;
+    this.#usuarioDAO = usuarioDAODependency;
   }
+
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    return usuario.UsuarioCPF;
+  };
 
   /** Valida que o capítulo existe e pertence à MESMA matéria da prova (guardrail §7: nunca texto livre de página). */
   #validarCapitulo = async (materiaGUID: string, materialDidaticoCapituloGUID: string): Promise<void> => {
@@ -176,10 +188,10 @@ export default class ProvaAgendadaService {
    * Aluno abre/visualiza uma prova — marca 100% instantâneo, igual conteúdo
    * tipo texto. Sem relação nenhuma com nota (fora de escopo desta fase).
    */
-  registrarVisualizacao = async (provaAgendadaTurmaGUID: string, usuarioCPF: string): Promise<void> => {
+  registrarVisualizacao = async (provaAgendadaTurmaGUID: string, usuarioGUID: string): Promise<void> => {
     console.log("🟣 ProvaAgendadaService.registrarVisualizacao()");
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioCPF);
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
     if (!matricula) {
       throw new ErrorResponse(404, "Matrícula não encontrada", {
         message: "Usuário não possui matrícula ativa.",
@@ -199,11 +211,11 @@ export default class ProvaAgendadaService {
    */
   criarProva = async (
     data: ProvaAgendadaCreateDTO,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<ProvaAgendadaDTO> => {
     console.log("🟣 ProvaAgendadaService.criarProva()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para criar uma prova.",
       });
@@ -239,6 +251,7 @@ export default class ProvaAgendadaService {
     // Validar categorias por turma (se fornecidas) — cada uma deve pertencer
     // a este professor + matéria + à MESMA turma daquela linha de distribuição
     if (data.CategoriasPorTurma) {
+      const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
       for (const [turmaGUID, categoriaGUID] of Object.entries(data.CategoriasPorTurma)) {
         const categoria = await this.#categoriaDAO.findById(categoriaGUID);
         if (
@@ -338,7 +351,7 @@ export default class ProvaAgendadaService {
 
       void getAuditoriaService().registrar({
         EscolaGUID: escolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: "Create",
         EntidadeTipo: "provaagendada",
         EntidadeGUID: provaCriada.ProvaAgendadaGUID,
@@ -363,10 +376,10 @@ export default class ProvaAgendadaService {
   #notificarProvaPostada = async (prova: ProvaAgendada, turmasGUID: string[], escolaGUID: string): Promise<void> => {
     const placeholders = turmasGUID.map(() => "?").join(", ");
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT DISTINCT UsuarioCPF FROM matricula WHERE TurmaGUID IN (${placeholders}) AND MatriculaStatus = 'Ativa'`,
+      `SELECT DISTINCT UsuarioGUID FROM matricula WHERE TurmaGUID IN (${placeholders}) AND MatriculaStatus = 'Ativa'`,
       turmasGUID
     );
-    const destinatarios = (rows as any[]).map((r) => r.UsuarioCPF);
+    const destinatarios = (rows as any[]).map((r) => r.UsuarioGUID);
     if (destinatarios.length === 0) return;
 
     await getNotificacaoService().disparar({
@@ -425,11 +438,11 @@ export default class ProvaAgendadaService {
   atualizarProva = async (
     ProvaAgendadaGUID: string,
     data: ProvaAgendadaUpdateDTO,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<ProvaAgendadaDTO> => {
     console.log("🟣 ProvaAgendadaService.atualizarProva()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para atualizar uma prova.",
       });
@@ -442,6 +455,7 @@ export default class ProvaAgendadaService {
       });
     }
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
 
     const updates: Partial<
@@ -503,7 +517,7 @@ export default class ProvaAgendadaService {
       if (turmaRef) {
         void getAuditoriaService().registrar({
           EscolaGUID: turmaRef.EscolaGUID,
-          UsuarioCPFAtor: usuarioCPF,
+          UsuarioGUIDAtor: usuarioGUID,
           AcaoTipo: "Update",
           EntidadeTipo: "provaagendada",
           EntidadeGUID: provaAtualizada.ProvaAgendadaGUID,
@@ -532,10 +546,10 @@ export default class ProvaAgendadaService {
   /**
    * Exclui prova (cascata: deleta atribuições automaticamente)
    */
-  excluirProva = async (ProvaAgendadaGUID: string, usuarioCPF?: string): Promise<boolean> => {
+  excluirProva = async (ProvaAgendadaGUID: string, usuarioGUID?: string): Promise<boolean> => {
     console.log("🟣 ProvaAgendadaService.excluirProva()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para excluir uma prova.",
       });
@@ -548,6 +562,7 @@ export default class ProvaAgendadaService {
       });
     }
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
 
     // Resolver EscolaGUID antes de excluir (CASCADE apaga as atribuições junto)
@@ -564,7 +579,7 @@ export default class ProvaAgendadaService {
     if (excluida && escolaGUIDParaAuditoria) {
       void getAuditoriaService().registrar({
         EscolaGUID: escolaGUIDParaAuditoria,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: "Delete",
         EntidadeTipo: "provaagendada",
         EntidadeGUID: prova.ProvaAgendadaGUID,
@@ -584,11 +599,11 @@ export default class ProvaAgendadaService {
   removerProvaDeTurma = async (
     ProvaAgendadaGUID: string,
     turmaGUID: string,
-    usuarioCPF?: string
+    usuarioGUID?: string
   ): Promise<{ provaExcluidaPorCompleto: boolean }> => {
     console.log("🟣 ProvaAgendadaService.removerProvaDeTurma()");
 
-    if (!usuarioCPF) {
+    if (!usuarioGUID) {
       throw new ErrorResponse(401, "Usuário não autenticado", {
         message: "É necessário estar autenticado para excluir uma prova.",
       });
@@ -601,6 +616,7 @@ export default class ProvaAgendadaService {
       });
     }
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
 
     const atribuicoes = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
@@ -612,7 +628,7 @@ export default class ProvaAgendadaService {
     }
 
     if (atribuicoes.length === 1) {
-      await this.excluirProva(ProvaAgendadaGUID, usuarioCPF);
+      await this.excluirProva(ProvaAgendadaGUID, usuarioGUID);
       return { provaExcluidaPorCompleto: true };
     }
 
@@ -622,7 +638,7 @@ export default class ProvaAgendadaService {
     if (turma) {
       void getAuditoriaService().registrar({
         EscolaGUID: turma.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: "Delete",
         EntidadeTipo: "provaagendada",
         EntidadeGUID: ProvaAgendadaGUID,

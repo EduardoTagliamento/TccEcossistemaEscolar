@@ -46,7 +46,7 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.store()");
     try {
       const { tarefa } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
       const datasPorMatricula: Record<string, Date> | undefined = tarefa.DatasPorMatricula
         ? Object.fromEntries(
@@ -71,7 +71,7 @@ export default class TarefaAcademicaControl {
         DatasPorMatricula: datasPorMatricula,
       };
 
-      const tarefaCriada = await this.#tarefaService.criarTarefa(createData, usuarioCPF);
+      const tarefaCriada = await this.#tarefaService.criarTarefa(createData, usuarioGUID);
 
       response.status(201).json({
         success: true,
@@ -94,7 +94,7 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.storeBatch()");
     try {
       const { tarefa } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
       const batchCreateData: TarefaAcademicaBatchCreateDTO = {
         MatriculasGUID: tarefa.MatriculasGUID,
@@ -110,7 +110,7 @@ export default class TarefaAcademicaControl {
         TarefaMaxPessoas: tarefa.TarefaMaxPessoas,
       };
 
-      const resultado = await this.#tarefaService.criarTarefasBatch(batchCreateData, usuarioCPF);
+      const resultado = await this.#tarefaService.criarTarefasBatch(batchCreateData, usuarioGUID);
 
       response.status(201).json({
         success: true,
@@ -164,10 +164,10 @@ export default class TarefaAcademicaControl {
       // ?minhaMatricula=true — usado pela tela do aluno (VisualizadorItemModal),
       // que não deve ver a lista de atribuições dos colegas de turma.
       const somenteMinhaMatricula = request.query.minhaMatricula === "true";
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
       const tarefa = await this.#tarefaService.buscarTarefa(
         TarefaGUID,
-        somenteMinhaMatricula ? usuarioCPF : undefined
+        somenteMinhaMatricula ? usuarioGUID : undefined
       );
 
       response.status(200).json({
@@ -191,7 +191,7 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID } = request.params;
       const { tarefa } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
       const updateData: TarefaAcademicaUpdateDTO = {
         TarefaTitulo: tarefa.TarefaTitulo,
@@ -206,7 +206,7 @@ export default class TarefaAcademicaControl {
       const tarefaAtualizada = await this.#tarefaService.atualizarTarefa(
         TarefaGUID,
         updateData,
-        usuarioCPF
+        usuarioGUID
       );
 
       response.status(200).json({
@@ -230,13 +230,13 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID } = request.params;
       const { MatriculaGUID, TarefaFeito } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
       const atribuicaoAtualizada = await this.#tarefaService.marcarComoFeito(
         TarefaGUID,
         MatriculaGUID,
         TarefaFeito,
-        usuarioCPF
+        usuarioGUID
       );
 
       response.status(200).json({
@@ -259,14 +259,14 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaMatriculaGUID } = request.params;
       const { Nota } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      const atribuicaoAvaliada = await this.#tarefaService.avaliarTarefa(TarefaMatriculaGUID, Number(Nota), usuarioCPF);
+      const atribuicaoAvaliada = await this.#tarefaService.avaliarTarefa(TarefaMatriculaGUID, Number(Nota), usuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -279,13 +279,13 @@ export default class TarefaAcademicaControl {
   };
 
   /**
-   * GET /api/tarefa/pendentes-aluno?UsuarioCPF=
+   * GET /api/tarefa/pendentes-aluno?UsuarioGUID=
    */
   pendentesAluno = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 TarefaAcademicaControl.pendentesAluno()");
     try {
-      const usuarioCPF = (request.query.UsuarioCPF as string) || request.user?.UsuarioCPF || "";
-      const pendentes = await this.#tarefaService.listarPendentesAluno(usuarioCPF);
+      const usuarioGUID = (request.query.UsuarioGUID as string) || request.user?.UsuarioGUID || "";
+      const pendentes = await this.#tarefaService.listarPendentesAluno(usuarioGUID);
       response.status(200).json({ success: true, message: "Pendentes listadas com sucesso", data: { pendentes } });
     } catch (error) {
       next(error);
@@ -293,13 +293,13 @@ export default class TarefaAcademicaControl {
   };
 
   /**
-   * GET /api/tarefa/pendentes-avaliacao-professor?UsuarioCPF=
+   * GET /api/tarefa/pendentes-avaliacao-professor?UsuarioGUID=
    */
   pendentesAvaliacaoProfessor = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 TarefaAcademicaControl.pendentesAvaliacaoProfessor()");
     try {
-      const usuarioCPF = (request.query.UsuarioCPF as string) || request.user?.UsuarioCPF || "";
-      const pendentes = await this.#tarefaService.listarPendentesAvaliacaoProfessor(usuarioCPF);
+      const usuarioGUID = (request.query.UsuarioGUID as string) || request.user?.UsuarioGUID || "";
+      const pendentes = await this.#tarefaService.listarPendentesAvaliacaoProfessor(usuarioGUID);
       response.status(200).json({ success: true, message: "Pendentes listadas com sucesso", data: { pendentes } });
     } catch (error) {
       next(error);
@@ -314,9 +314,9 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.destroy()");
     try {
       const { TarefaGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
-      const excluida = await this.#tarefaService.excluirTarefa(TarefaGUID, usuarioCPF);
+      const excluida = await this.#tarefaService.excluirTarefa(TarefaGUID, usuarioGUID);
 
       if (!excluida) {
         response.status(404).json({
@@ -352,9 +352,9 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID } = request.params;
       const { AnexoGUID } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
-      await this.#tarefaService.enviarAnexoEntrega(TarefaGUID, AnexoGUID, usuarioCPF);
+      await this.#tarefaService.enviarAnexoEntrega(TarefaGUID, AnexoGUID, usuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -378,9 +378,9 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.removerAnexo()");
     try {
       const { TarefaGUID, AnexoGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
-      await this.#tarefaService.removerAnexo(TarefaGUID, AnexoGUID, usuarioCPF);
+      await this.#tarefaService.removerAnexo(TarefaGUID, AnexoGUID, usuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -408,13 +408,13 @@ export default class TarefaAcademicaControl {
       }
 
       const { TarefaGUID } = request.params;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
-      const anexos = await this.#relacaoAnexosService.listarAnexosTarefa(TarefaGUID, usuarioCPF);
+      const anexos = await this.#relacaoAnexosService.listarAnexosTarefa(TarefaGUID, usuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -446,9 +446,9 @@ export default class TarefaAcademicaControl {
 
       const { TarefaGUID } = request.params;
       const { AnexoGUID } = request.body;
-      const usuarioCPF = request.user?.UsuarioCPF;
+      const usuarioGUID = request.user?.UsuarioGUID;
 
-      if (!usuarioCPF) {
+      if (!usuarioGUID) {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
@@ -460,7 +460,7 @@ export default class TarefaAcademicaControl {
         AnexoGUID,
         "tarefa",
         TarefaGUID,
-        usuarioCPF
+        usuarioGUID
       );
 
       response.status(201).json({
@@ -484,9 +484,9 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID } = request.params;
       const { questao } = request.body;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
@@ -500,7 +500,7 @@ export default class TarefaAcademicaControl {
         AnexosGUID: questao.AnexosGUID,
       };
 
-      const criada = await this.#tarefaService.criarQuestao(TarefaGUID, data, professorCPF);
+      const criada = await this.#tarefaService.criarQuestao(TarefaGUID, data, professorGUID);
 
       response.status(201).json({
         success: true,
@@ -521,9 +521,9 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID } = request.params;
       const { questoes } = request.body;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
@@ -537,7 +537,7 @@ export default class TarefaAcademicaControl {
         AnexosGUID: q.AnexosGUID,
       }));
 
-      const resultado = await this.#tarefaService.criarQuestoesBatch(TarefaGUID, data, professorCPF);
+      const resultado = await this.#tarefaService.criarQuestoesBatch(TarefaGUID, data, professorGUID);
 
       response.status(201).json({
         success: true,
@@ -556,14 +556,14 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.listarQuestoes()");
     try {
       const { TarefaGUID } = request.params;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      const questoes = await this.#tarefaService.listarQuestoes(TarefaGUID, professorCPF);
+      const questoes = await this.#tarefaService.listarQuestoes(TarefaGUID, professorGUID);
 
       response.status(200).json({
         success: true,
@@ -584,9 +584,9 @@ export default class TarefaAcademicaControl {
     try {
       const { QuestaoGUID } = request.params;
       const { questao } = request.body;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
@@ -599,7 +599,7 @@ export default class TarefaAcademicaControl {
         Alternativas: questao.Alternativas,
       };
 
-      const atualizada = await this.#tarefaService.atualizarQuestao(QuestaoGUID, data, professorCPF);
+      const atualizada = await this.#tarefaService.atualizarQuestao(QuestaoGUID, data, professorGUID);
 
       response.status(200).json({
         success: true,
@@ -618,14 +618,14 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.excluirQuestao()");
     try {
       const { QuestaoGUID } = request.params;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      await this.#tarefaService.excluirQuestao(QuestaoGUID, professorCPF);
+      await this.#tarefaService.excluirQuestao(QuestaoGUID, professorGUID);
 
       response.status(200).json({
         success: true,
@@ -646,14 +646,14 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID } = request.params;
       const { ordens } = request.body;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      await this.#tarefaService.reordenarQuestoes(TarefaGUID, ordens, professorCPF);
+      await this.#tarefaService.reordenarQuestoes(TarefaGUID, ordens, professorGUID);
 
       response.status(200).json({
         success: true,
@@ -674,14 +674,14 @@ export default class TarefaAcademicaControl {
     try {
       const { QuestaoGUID } = request.params;
       const { AnexoGUID } = request.body;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      await this.#tarefaService.vincularAnexoQuestao(QuestaoGUID, AnexoGUID, professorCPF);
+      await this.#tarefaService.vincularAnexoQuestao(QuestaoGUID, AnexoGUID, professorGUID);
 
       response.status(201).json({
         success: true,
@@ -700,14 +700,14 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.desvincularAnexoQuestao()");
     try {
       const { QuestaoGUID, AnexoGUID } = request.params;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      await this.#tarefaService.desvincularAnexoQuestao(QuestaoGUID, AnexoGUID, professorCPF);
+      await this.#tarefaService.desvincularAnexoQuestao(QuestaoGUID, AnexoGUID, professorGUID);
 
       response.status(200).json({
         success: true,
@@ -728,9 +728,9 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID } = request.params;
       const { linhas } = request.body;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
@@ -744,7 +744,7 @@ export default class TarefaAcademicaControl {
         Alternativas: l.Alternativas,
       }));
 
-      const resultado = await this.#tarefaService.importarQuestoesPlanilha(TarefaGUID, data, professorCPF);
+      const resultado = await this.#tarefaService.importarQuestoesPlanilha(TarefaGUID, data, professorGUID);
 
       response.status(201).json({
         success: true,
@@ -766,14 +766,14 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.buscarQuestoesComRespostas()");
     try {
       const { TarefaGUID } = request.params;
-      const alunoCPF = request.user?.UsuarioCPF;
+      const alunoGUID = request.user?.UsuarioGUID;
 
-      if (!alunoCPF) {
+      if (!alunoGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      const questoes = await this.#tarefaService.buscarQuestoesComRespostas(TarefaGUID, alunoCPF);
+      const questoes = await this.#tarefaService.buscarQuestoesComRespostas(TarefaGUID, alunoGUID);
 
       response.status(200).json({
         success: true,
@@ -794,14 +794,14 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID, QuestaoGUID } = request.params;
       const { AlternativaGUID } = request.body;
-      const alunoCPF = request.user?.UsuarioCPF;
+      const alunoGUID = request.user?.UsuarioGUID;
 
-      if (!alunoCPF) {
+      if (!alunoGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      const resposta = await this.#tarefaService.responderObjetiva(TarefaGUID, QuestaoGUID, AlternativaGUID, alunoCPF);
+      const resposta = await this.#tarefaService.responderObjetiva(TarefaGUID, QuestaoGUID, AlternativaGUID, alunoGUID);
 
       response.status(200).json({
         success: true,
@@ -822,14 +822,14 @@ export default class TarefaAcademicaControl {
     try {
       const { TarefaGUID, QuestaoGUID } = request.params;
       const { Texto } = request.body;
-      const alunoCPF = request.user?.UsuarioCPF;
+      const alunoGUID = request.user?.UsuarioGUID;
 
-      if (!alunoCPF) {
+      if (!alunoGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      const resposta = await this.#tarefaService.responderDiscursiva(TarefaGUID, QuestaoGUID, Texto, alunoCPF);
+      const resposta = await this.#tarefaService.responderDiscursiva(TarefaGUID, QuestaoGUID, Texto, alunoGUID);
 
       response.status(200).json({
         success: true,
@@ -851,14 +851,14 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.buscarRespostasAluno()");
     try {
       const { TarefaGUID, TarefaMatriculaGUID } = request.params;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      const questoes = await this.#tarefaService.buscarRespostasAluno(TarefaGUID, TarefaMatriculaGUID, professorCPF);
+      const questoes = await this.#tarefaService.buscarRespostasAluno(TarefaGUID, TarefaMatriculaGUID, professorGUID);
 
       response.status(200).json({
         success: true,
@@ -879,14 +879,14 @@ export default class TarefaAcademicaControl {
     try {
       const { RespostaGUID } = request.params;
       const { Pontos } = request.body;
-      const professorCPF = request.user?.UsuarioCPF;
+      const professorGUID = request.user?.UsuarioGUID;
 
-      if (!professorCPF) {
+      if (!professorGUID) {
         response.status(401).json({ success: false, message: "Usuário não autenticado" });
         return;
       }
 
-      const resposta = await this.#tarefaService.avaliarQuestaoDiscursiva(RespostaGUID, Number(Pontos), professorCPF);
+      const resposta = await this.#tarefaService.avaliarQuestaoDiscursiva(RespostaGUID, Number(Pontos), professorGUID);
 
       response.status(200).json({
         success: true,

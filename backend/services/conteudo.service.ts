@@ -16,6 +16,7 @@ import { MateriaDAO } from "../repositories/materia.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { CategoriaConteudoDAO } from "../repositories/categoriaconteudo.repository";
 import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import R2StorageService from "./r2storage.service";
 import { RowDataPacket } from "mysql2";
 import { pool } from "../database/mysql";
@@ -115,6 +116,7 @@ export default class ConteudoService {
   #turmaDAO: TurmaDAO;
   #categoriaDAO: CategoriaConteudoDAO;
   #matProfTurDAO: MaterialProfessorTurmaDAO;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     conteudoDAO: ConteudoDAO,
@@ -125,7 +127,8 @@ export default class ConteudoService {
     materiaDAO: MateriaDAO,
     turmaDAO: TurmaDAO,
     categoriaDAO: CategoriaConteudoDAO,
-    matProfTurDAO: MaterialProfessorTurmaDAO
+    matProfTurDAO: MaterialProfessorTurmaDAO,
+    usuarioDAO: UsuarioDAO
   ) {
     console.log("⬆️  ConteudoService.constructor()");
     this.#conteudoDAO = conteudoDAO;
@@ -137,14 +140,25 @@ export default class ConteudoService {
     this.#turmaDAO = turmaDAO;
     this.#categoriaDAO = categoriaDAO;
     this.#matProfTurDAO = matProfTurDAO;
+    this.#usuarioDAO = usuarioDAO;
   }
+
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    return usuario.UsuarioCPF;
+  };
 
   criarConteudo = async (
     data: ConteudoCreateDTO,
     arquivos: ConteudoArquivos,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<ConteudoDTO> => {
     console.log("🟣 ConteudoService.criarConteudo()");
+
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     if (!data.TurmasGUID || data.TurmasGUID.length === 0) {
       throw new ErrorResponse(400, "Nenhuma turma selecionada", {
@@ -256,7 +270,7 @@ export default class ConteudoService {
 
       void getAuditoriaService().registrar({
         EscolaGUID: escolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: "Create",
         EntidadeTipo: "conteudo",
         EntidadeGUID: conteudo.ConteudoGUID,
@@ -272,10 +286,10 @@ export default class ConteudoService {
   #notificarMateriaPostada = async (conteudo: Conteudo, turmasGUID: string[], escolaGUID: string): Promise<void> => {
     const placeholders = turmasGUID.map(() => "?").join(", ");
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT DISTINCT UsuarioCPF FROM matricula WHERE TurmaGUID IN (${placeholders}) AND MatriculaStatus = 'Ativa'`,
+      `SELECT DISTINCT UsuarioGUID FROM matricula WHERE TurmaGUID IN (${placeholders}) AND MatriculaStatus = 'Ativa'`,
       turmasGUID
     );
-    const destinatarios = (rows as any[]).map((r) => r.UsuarioCPF);
+    const destinatarios = (rows as any[]).map((r) => r.UsuarioGUID);
     if (destinatarios.length === 0) return;
 
     await getNotificacaoService().disparar({
@@ -409,7 +423,7 @@ export default class ConteudoService {
   atualizarConteudo = async (
     guid: string,
     data: ConteudoUpdateDTO,
-    usuarioCPF: string,
+    usuarioGUID: string,
     arquivos: ConteudoArquivos = {}
   ): Promise<ConteudoDTO> => {
     console.log("🟣 ConteudoService.atualizarConteudo()");
@@ -421,6 +435,7 @@ export default class ConteudoService {
       });
     }
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     if (conteudo.UsuarioCPF !== usuarioCPF) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode editar conteúdos que você mesmo criou.",
@@ -448,7 +463,7 @@ export default class ConteudoService {
       if (turma) {
         void getAuditoriaService().registrar({
           EscolaGUID: turma.EscolaGUID,
-          UsuarioCPFAtor: usuarioCPF,
+          UsuarioGUIDAtor: usuarioGUID,
           AcaoTipo: "Update",
           EntidadeTipo: "conteudo",
           EntidadeGUID: guid,
@@ -529,7 +544,7 @@ export default class ConteudoService {
     }
   };
 
-  excluirConteudo = async (guid: string, usuarioCPF: string): Promise<void> => {
+  excluirConteudo = async (guid: string, usuarioGUID: string): Promise<void> => {
     console.log("🟣 ConteudoService.excluirConteudo()");
 
     const conteudo = await this.#conteudoDAO.findById(guid);
@@ -539,6 +554,7 @@ export default class ConteudoService {
       });
     }
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     if (conteudo.UsuarioCPF !== usuarioCPF) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode excluir conteúdos que você mesmo criou.",
@@ -573,7 +589,7 @@ export default class ConteudoService {
     if (escolaGUIDParaAuditoria) {
       void getAuditoriaService().registrar({
         EscolaGUID: escolaGUIDParaAuditoria,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: "Delete",
         EntidadeTipo: "conteudo",
         EntidadeGUID: conteudo.ConteudoGUID,
@@ -598,7 +614,7 @@ export default class ConteudoService {
   removerConteudoDeTurma = async (
     guid: string,
     turmaGUID: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<{ conteudoExcluidoPorCompleto: boolean }> => {
     console.log("🟣 ConteudoService.removerConteudoDeTurma()");
 
@@ -609,6 +625,7 @@ export default class ConteudoService {
       });
     }
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     if (conteudo.UsuarioCPF !== usuarioCPF) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode excluir conteúdos que você mesmo criou.",
@@ -624,7 +641,7 @@ export default class ConteudoService {
     }
 
     if (atribuicoes.length === 1) {
-      await this.excluirConteudo(guid, usuarioCPF);
+      await this.excluirConteudo(guid, usuarioGUID);
       return { conteudoExcluidoPorCompleto: true };
     }
 
@@ -634,7 +651,7 @@ export default class ConteudoService {
     if (turma) {
       void getAuditoriaService().registrar({
         EscolaGUID: turma.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: "Delete",
         EntidadeTipo: "conteudo",
         EntidadeGUID: guid,

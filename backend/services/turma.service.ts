@@ -3,6 +3,7 @@ import { TurmaDAO, TurmaFilters } from "../repositories/turma.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { CursoDAO } from "../repositories/curso.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { gerarGUID } from "../utils/helpers/guid.helper";
 import ConversaGrupoService from "./conversa-grupo.service";
@@ -78,6 +79,7 @@ export default class TurmaService {
   #escolaDAO: EscolaDAO;
   #cursoDAO: CursoDAO;
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #usuarioDAO: UsuarioDAO;
   #conversaGrupoService?: ConversaGrupoService;
 
   constructor(
@@ -85,14 +87,26 @@ export default class TurmaService {
     escolaDAO: EscolaDAO,
     cursoDAO: CursoDAO,
     escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO,
+    usuarioDAO: UsuarioDAO,
     conversaGrupoService?: ConversaGrupoService
   ) {
     this.#turmaDAO = turmaDAO;
     this.#escolaDAO = escolaDAO;
     this.#cursoDAO = cursoDAO;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAO;
+    this.#usuarioDAO = usuarioDAO;
     this.#conversaGrupoService = conversaGrupoService;
   }
+
+  /** Resolve o CPF de um usuário a partir do UsuarioGUID — conversa_grupo_membro
+   * (via ConversaGrupoService) ainda usa CPF. */
+  #resolverCPF = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
+    }
+    return usuario.UsuarioCPF;
+  };
 
   /**
    * Criar nova turma
@@ -106,9 +120,9 @@ export default class TurmaService {
    * 6. Resolução CursoNome → CursoGUID (se fornecido)
    * 7. Validar duplicidade: série + nome único por escola
    */
-  async criarTurma(data: TurmaCreateDTO, usuarioCPF: string): Promise<TurmaDTO> {
+  async criarTurma(data: TurmaCreateDTO, usuarioGUID: string): Promise<TurmaDTO> {
     // 1. Validar permissão de escrita
-    await this.validarPermissaoEscrita(usuarioCPF, data.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, data.EscolaGUID);
 
     // 2. Validar que escola existe
     const escola = await this.#escolaDAO.findById(data.EscolaGUID);
@@ -198,7 +212,7 @@ export default class TurmaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: turmaCriada.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Create",
       EntidadeTipo: "turma",
       EntidadeGUID: turmaCriada.TurmaGUID,
@@ -217,7 +231,7 @@ export default class TurmaService {
    */
   async criarTurmasEmMassa(
     turmas: TurmaCreateDTO[],
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<BatchCreateResponse> {
     const resultados: BatchItemResult[] = [];
     let criados = 0;
@@ -234,7 +248,7 @@ export default class TurmaService {
 
     // Validar permissão uma única vez
     try {
-      await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+      await this.validarPermissaoEscrita(usuarioGUID, escolaGUID);
     } catch (error) {
       if (error instanceof ErrorResponse) {
         throw error;
@@ -338,7 +352,7 @@ export default class TurmaService {
 
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
-          UsuarioCPFAtor: usuarioCPF,
+          UsuarioGUIDAtor: usuarioGUID,
           AcaoTipo: "Create",
           EntidadeTipo: "turma",
           EntidadeGUID: turma.TurmaGUID,
@@ -422,7 +436,7 @@ export default class TurmaService {
   async atualizarTurma(
     turmaGUID: string,
     data: TurmaUpdateDTO,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<TurmaDTO> {
     // 1. Buscar turma
     const turmaExistente = await this.#turmaDAO.findById(turmaGUID);
@@ -433,7 +447,7 @@ export default class TurmaService {
     }
 
     // 2. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, turmaExistente.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, turmaExistente.EscolaGUID);
 
     // 3. Buscar escola para validações
     const escola = await this.#escolaDAO.findById(turmaExistente.EscolaGUID);
@@ -517,7 +531,7 @@ export default class TurmaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: turmaExistente.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Update",
       EntidadeTipo: "turma",
       EntidadeGUID: turmaGUID,
@@ -531,7 +545,7 @@ export default class TurmaService {
   /**
    * Excluir turma (soft delete)
    */
-  async excluirTurma(turmaGUID: string, usuarioCPF: string): Promise<void> {
+  async excluirTurma(turmaGUID: string, usuarioGUID: string): Promise<void> {
     // 1. Buscar turma
     const turma = await this.#turmaDAO.findById(turmaGUID);
     if (!turma) {
@@ -541,7 +555,7 @@ export default class TurmaService {
     }
 
     // 2. Validar permissão
-    await this.validarPermissaoEscrita(usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, turma.EscolaGUID);
 
     // 3. Soft delete
     const deletado = await this.#turmaDAO.delete(turmaGUID);
@@ -554,7 +568,7 @@ export default class TurmaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: turma.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Delete",
       EntidadeTipo: "turma",
       EntidadeGUID: turmaGUID,
@@ -579,7 +593,7 @@ export default class TurmaService {
    */
   async atualizarCapa(
     turmaGUID: string,
-    usuarioCPF: string,
+    usuarioGUID: string,
     dados: { imagem?: { buffer: Buffer; mimetype: string }; cor?: string }
   ): Promise<TurmaDTO> {
     const turma = await this.#turmaDAO.findById(turmaGUID);
@@ -589,7 +603,7 @@ export default class TurmaService {
       });
     }
 
-    await this.validarPermissaoCapaTurma(turmaGUID, usuarioCPF, turma.EscolaGUID);
+    await this.validarPermissaoCapaTurma(turmaGUID, usuarioGUID, turma.EscolaGUID);
 
     const updates: { TurmaImagemUrl?: string; TurmaCorFundo?: string } = {};
 
@@ -617,7 +631,7 @@ export default class TurmaService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: turma.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: "Update",
       EntidadeTipo: "turma",
       EntidadeGUID: turmaGUID,
@@ -632,8 +646,10 @@ export default class TurmaService {
    * Permissão pra trocar capa/cor da turma: Representante/Vice-Representante
    * do grupo de chat dela, OU Coordenação/Direção ativa na escola.
    */
-  private async validarPermissaoCapaTurma(turmaGUID: string, usuarioCPF: string, escolaGUID: string): Promise<void> {
+  private async validarPermissaoCapaTurma(turmaGUID: string, usuarioGUID: string, escolaGUID: string): Promise<void> {
     if (this.#conversaGrupoService) {
+      // conversa_grupo_membro ainda usa CPF — resolver o usuário logado.
+      const usuarioCPF = await this.#resolverCPF(usuarioGUID);
       const funcao = await this.#conversaGrupoService.getFuncaoNaTurma(turmaGUID, usuarioCPF);
       if (funcao === 'Representante' || funcao === 'Vice-Representante') {
         return;
@@ -641,7 +657,7 @@ export default class TurmaService {
     }
 
     try {
-      await this.validarPermissaoEscrita(usuarioCPF, escolaGUID);
+      await this.validarPermissaoEscrita(usuarioGUID, escolaGUID);
     } catch {
       throw new ErrorResponse(403, 'Sem permissão', {
         message: 'Só o representante/vice-representante da turma ou Coordenação/Direção podem alterar a capa da turma.',
@@ -654,12 +670,12 @@ export default class TurmaService {
    * (FuncaoId 1 = Coordenação ou FuncaoId 6 = Direção)
    */
   private async validarPermissaoEscrita(
-    usuarioCPF: string,
+    usuarioGUID: string,
     escolaGUID: string
   ): Promise<void> {
     // Validar Coordenação (FuncaoId = 1)
     const coordenacao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      usuarioCPF,
+      usuarioGUID,
       escolaGUID,
       1
     );
@@ -670,7 +686,7 @@ export default class TurmaService {
 
     // Validar Direção (FuncaoId = 6)
     const direcao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      usuarioCPF,
+      usuarioGUID,
       escolaGUID,
       6
     );

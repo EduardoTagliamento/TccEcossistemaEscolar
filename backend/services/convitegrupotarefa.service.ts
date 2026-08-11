@@ -8,6 +8,7 @@ import { RowDataPacket } from 'mysql2';
 import { pool } from '../database/mysql';
 import { getNotificacaoService } from './notificacao.service';
 import { getAuditoriaService } from './auditoria.service';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import {
   ConviteGrupoTarefa,
   ConviteGrupoTarefaCreateDTO,
@@ -21,13 +22,15 @@ export default class ConviteGrupoTarefaService {
   #usuarioXGrupoDAO: UsuarioXGrupoTarefaDAO;
   #historicoService: HistoricoGrupoTarefaService;
   #database: MysqlDatabase;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     conviteDAO: ConviteGrupoTarefaDAO,
     grupoTarefaDAO: GrupoTarefaDAO,
     usuarioXGrupoDAO: UsuarioXGrupoTarefaDAO,
     historicoService: HistoricoGrupoTarefaService,
-    database: MysqlDatabase
+    database: MysqlDatabase,
+    usuarioDAO: UsuarioDAO
   ) {
     console.log('⬆️  ConviteGrupoTarefaService.constructor()');
     this.#conviteDAO = conviteDAO;
@@ -35,6 +38,7 @@ export default class ConviteGrupoTarefaService {
     this.#usuarioXGrupoDAO = usuarioXGrupoDAO;
     this.#historicoService = historicoService;
     this.#database = database;
+    this.#usuarioDAO = usuarioDAO;
   }
 
   /**
@@ -44,9 +48,17 @@ export default class ConviteGrupoTarefaService {
   async enviarConvite(
     grupoGUID: string,
     convidadoCPF: string,
-    liderCPF: string
+    liderGUID: string
   ): Promise<ConviteGrupoTarefa> {
     console.log('🟣 ConviteGrupoTarefaService.enviarConvite()');
+
+    // grupotarefa ainda usa CPF — resolver o líder (ator) a partir do
+    // UsuarioGUID.
+    const liderUsuario = await this.#usuarioDAO.findByGUID(liderGUID);
+    if (!liderUsuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Apenas o líder pode enviar convites');
+    }
+    const liderCPF = liderUsuario.UsuarioCPF;
 
     // 1. Validar grupo
     const grupo = await this.#grupoTarefaDAO.findById(grupoGUID);
@@ -118,9 +130,11 @@ export default class ConviteGrupoTarefaService {
   ): Promise<void> => {
     const escolaGUID = await this.#resolverEscolaGUID(turmaGUID);
     if (!escolaGUID) return;
+    const ator = await this.#usuarioDAO.findByCPF(usuarioCPFAtor);
+    if (!ator) return;
     void getAuditoriaService().registrar({
       EscolaGUID: escolaGUID,
-      UsuarioCPFAtor: usuarioCPFAtor,
+      UsuarioGUIDAtor: ator.UsuarioGUID,
       AcaoTipo: acaoTipo,
       EntidadeTipo: 'convitegrupotarefa',
       EntidadeGUID: conviteGUID,
@@ -148,9 +162,12 @@ export default class ConviteGrupoTarefaService {
     const info = rows[0] as any;
     if (!info?.EscolaGUID) return;
 
+    const convidado = await this.#usuarioDAO.findByCPF(convidadoCPF);
+    if (!convidado) return;
+
     await getNotificacaoService().disparar({
       tipoSlug: 'convite_grupo',
-      destinatarios: [convidadoCPF],
+      destinatarios: [convidado.UsuarioGUID],
       escolaGUID: info.EscolaGUID,
       titulo: `${info.LiderNome} te convidou para o grupo da tarefa "${info.TarefaTitulo}"`,
       entidadeTipo: 'tarefa',
@@ -164,9 +181,17 @@ export default class ConviteGrupoTarefaService {
    */
   async solicitarEntrada(
     grupoGUID: string,
-    solicitanteCPF: string
+    solicitanteGUID: string
   ): Promise<ConviteGrupoTarefa> {
     console.log('🟣 ConviteGrupoTarefaService.solicitarEntrada()');
+
+    // convitegrupotarefa ainda usa CPF — resolver o solicitante a partir do
+    // UsuarioGUID.
+    const solicitanteUsuario = await this.#usuarioDAO.findByGUID(solicitanteGUID);
+    if (!solicitanteUsuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
+    }
+    const solicitanteCPF = solicitanteUsuario.UsuarioCPF;
 
     // 1. Validar grupo
     const grupo = await this.#grupoTarefaDAO.findById(grupoGUID);
@@ -205,9 +230,17 @@ export default class ConviteGrupoTarefaService {
    */
   async aceitar(
     conviteGUID: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<{ mensagem: string }> {
     console.log('🟣 ConviteGrupoTarefaService.aceitar()');
+
+    // convitegrupotarefa/grupotarefa/usuarioxgrupotarefa/historicogrupotarefa
+    // ainda usam CPF — resolver a partir do UsuarioGUID.
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
+    }
+    const usuarioCPF = usuario.UsuarioCPF;
 
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
@@ -284,9 +317,16 @@ export default class ConviteGrupoTarefaService {
    */
   async recusar(
     conviteGUID: string,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<{ mensagem: string }> {
     console.log('🟣 ConviteGrupoTarefaService.recusar()');
+
+    // convitegrupotarefa ainda usa CPF — resolver a partir do UsuarioGUID.
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
+    }
+    const usuarioCPF = usuario.UsuarioCPF;
 
     // 1. Buscar convite
     const convite = await this.#conviteDAO.findById(conviteGUID);
@@ -327,10 +367,16 @@ export default class ConviteGrupoTarefaService {
   /**
    * LISTAR CONVITES/SOLICITAÇÕES PENDENTES
    */
-  async listarPendentes(usuarioCPF: string): Promise<ConviteGrupoTarefaDTO[]> {
+  async listarPendentes(usuarioGUID: string): Promise<ConviteGrupoTarefaDTO[]> {
     console.log('🟣 ConviteGrupoTarefaService.listarPendentes()');
 
-    const convites = await this.#conviteDAO.findAllComDetalhes(usuarioCPF);
+    // convitegrupotarefa ainda usa CPF — resolver a partir do UsuarioGUID.
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      return [];
+    }
+
+    const convites = await this.#conviteDAO.findAllComDetalhes(usuario.UsuarioCPF);
 
     return convites;
   }

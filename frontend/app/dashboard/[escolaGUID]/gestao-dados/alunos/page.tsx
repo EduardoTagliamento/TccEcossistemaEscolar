@@ -250,7 +250,7 @@ export default function AlunosPage() {
 
       if (alunoEditando) {
         // Atualizar dados pessoais do usuário
-        await AlunoAPI.atualizarAluno(alunoEditando.usuario.UsuarioCPF, {
+        await AlunoAPI.atualizarAluno(alunoEditando.usuario.UsuarioGUID, {
           UsuarioNome: valoresFormulario.UsuarioNome,
           UsuarioEmail: valoresFormulario.UsuarioEmail || undefined,
           UsuarioTelefone: valoresFormulario.UsuarioTelefone || undefined,
@@ -446,7 +446,7 @@ export default function AlunosPage() {
           const termoLimpo = termo.replace(/\D/g, '');
           return (
             aluno.usuario.UsuarioNome.toLowerCase().includes(termo) ||
-            (termoLimpo.length > 0 && aluno.usuario.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
+            (termoLimpo.length > 0 && !!aluno.usuario.UsuarioCPF && aluno.usuario.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
             (aluno.usuario.UsuarioId?.toLowerCase().includes(termo) ?? false)
           );
         }}

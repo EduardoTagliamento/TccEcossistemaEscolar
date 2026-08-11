@@ -7,6 +7,7 @@ import MysqlDatabase from '../database/MysqlDatabase';
 import { Pool, PoolConnection } from 'mysql2/promise';
 import { getNotificacaoService } from './notificacao.service';
 import { getAuditoriaService } from './auditoria.service';
+import { UsuarioDAO } from '../repositories/usuario.repository';
 import {
   GrupoProjetoComMembrosDTO,
   GrupoProjetoCreateDTO,
@@ -28,13 +29,15 @@ export default class GrupoProjetoService {
   #projetoDAO: ProjetoDAO;
   #historicoService: HistoricoGrupoProjetoService;
   #database: MysqlDatabase;
+  #usuarioDAO: UsuarioDAO;
 
   constructor(
     grupoProjetoDAO: GrupoProjetoDAO,
     usuarioXGrupoDAO: UsuarioXGrupoProjetoDAO,
     projetoDAO: ProjetoDAO,
     historicoService: HistoricoGrupoProjetoService,
-    database: MysqlDatabase
+    database: MysqlDatabase,
+    usuarioDAO: UsuarioDAO
   ) {
     console.log('⬆️  GrupoProjetoService.constructor()');
     this.#grupoProjetoDAO = grupoProjetoDAO;
@@ -42,16 +45,28 @@ export default class GrupoProjetoService {
     this.#projetoDAO = projetoDAO;
     this.#historicoService = historicoService;
     this.#database = database;
+    this.#usuarioDAO = usuarioDAO;
   }
+
+  /** Resolve o CPF de um ator a partir do UsuarioGUID — grupoprojeto,
+   * usuarioxgrupoprojeto, historicogrupoprojeto e projeto ainda usam CPF. */
+  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario?.UsuarioCPF) {
+      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
+    }
+    return usuario.UsuarioCPF;
+  };
 
   /**
    * CRIAR GRUPO — o próprio aluno cria seu grupo (líder = ele mesmo).
    * Diferente de Tarefa Compartilhada, não há criação automática — ver
    * docs/PLANO_IMPLEMENTACAO_PROJETOS.md, Seção 4 regra 2.
    */
-  criarGrupo = async (data: GrupoProjetoCreateDTO, usuarioCPF: string): Promise<GrupoProjetoComMembrosDTO> => {
+  criarGrupo = async (data: GrupoProjetoCreateDTO, usuarioGUID: string): Promise<GrupoProjetoComMembrosDTO> => {
     console.log('🟣 GrupoProjetoService.criarGrupo()');
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const projeto = await this.#validarProjetoAbertoParaInscricao(data.ProjetoGUID);
 
     const elegivel = await this.#projetoDAO.usuarioElegivel(data.ProjetoGUID, usuarioCPF);
@@ -76,7 +91,7 @@ export default class GrupoProjetoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: projeto.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: 'Create',
       EntidadeTipo: 'grupoprojeto',
       EntidadeGUID: grupoCriado.GrupoProjetoGUID,
@@ -140,10 +155,11 @@ export default class GrupoProjetoService {
   atualizarGrupo = async (
     grupoGUID: string,
     data: GrupoProjetoUpdateDTO,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.atualizarGrupo()');
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -176,7 +192,7 @@ export default class GrupoProjetoService {
     if (projetoDoGrupo) {
       void getAuditoriaService().registrar({
         EscolaGUID: projetoDoGrupo.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: 'Update',
         EntidadeTipo: 'grupoprojeto',
         EntidadeGUID: grupoGUID,
@@ -191,9 +207,10 @@ export default class GrupoProjetoService {
   /**
    * ENTRAR DIRETAMENTE no grupo — apenas se GrupoProjetoVisibilidade='Aberto'
    */
-  entrarGrupo = async (grupoGUID: string, usuarioCPF: string): Promise<{ mensagem: string }> => {
+  entrarGrupo = async (grupoGUID: string, usuarioGUID: string): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.entrarGrupo()');
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -284,9 +301,10 @@ export default class GrupoProjetoService {
     // executa a ação (atorCPF) é diferente de quem entra no grupo
     // (usuarioCPF) — sem isso a auditoria atribuiria erroneamente a ação ao
     // membro adicionado em vez de a quem adicionou.
-    void getAuditoriaService().registrar({
+    const atorDaEntrada = await this.#usuarioDAO.findByCPF(atorCPFOverride ?? usuarioCPF);
+    if (atorDaEntrada) void getAuditoriaService().registrar({
       EscolaGUID: projeto.EscolaGUID,
-      UsuarioCPFAtor: atorCPFOverride ?? usuarioCPF,
+      UsuarioGUIDAtor: atorDaEntrada.UsuarioGUID,
       AcaoTipo: 'Create',
       EntidadeTipo: 'grupoprojeto',
       EntidadeGUID: grupoGUID,
@@ -300,9 +318,10 @@ export default class GrupoProjetoService {
    * Se for o líder e houver outros membros, exige transferência de
    * liderança antes. Se for o líder sozinho, o grupo é dissolvido.
    */
-  sairGrupo = async (grupoGUID: string, usuarioCPF: string): Promise<{ mensagem: string }> => {
+  sairGrupo = async (grupoGUID: string, usuarioGUID: string): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.sairGrupo()');
 
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -321,7 +340,7 @@ export default class GrupoProjetoService {
       if (projeto) {
         void getAuditoriaService().registrar({
           EscolaGUID: projeto.EscolaGUID,
-          UsuarioCPFAtor: usuarioCPF,
+          UsuarioGUIDAtor: usuarioGUID,
           AcaoTipo: 'Delete',
           EntidadeTipo: 'grupoprojeto',
           EntidadeGUID: grupoGUID,
@@ -350,7 +369,7 @@ export default class GrupoProjetoService {
     if (projeto) {
       void getAuditoriaService().registrar({
         EscolaGUID: projeto.EscolaGUID,
-        UsuarioCPFAtor: usuarioCPF,
+        UsuarioGUIDAtor: usuarioGUID,
         AcaoTipo: 'Update',
         EntidadeTipo: 'grupoprojeto',
         EntidadeGUID: grupoGUID,
@@ -369,10 +388,11 @@ export default class GrupoProjetoService {
   adicionarMembro = async (
     grupoGUID: string,
     membroCPF: string,
-    atorCPF: string
+    atorGUID: string
   ): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.adicionarMembro()');
 
+    const atorCPF = await this.#resolverCPFAtor(atorGUID);
     const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
     if (!grupo) {
       throw new ErrorResponse(404, 'Grupo não encontrado');
@@ -415,9 +435,11 @@ export default class GrupoProjetoService {
   expulsarMembro = async (
     grupoGUID: string,
     membroCPF: string,
-    atorCPF: string
+    atorGUID: string
   ): Promise<{ mensagem: string; novoLiderCPF?: string; grupoDissolvido?: boolean }> => {
     console.log('🟣 GrupoProjetoService.expulsarMembro()');
+
+    const atorCPF = await this.#resolverCPFAtor(atorGUID);
 
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
@@ -464,7 +486,7 @@ export default class GrupoProjetoService {
 
           void getAuditoriaService().registrar({
             EscolaGUID: projeto.EscolaGUID,
-            UsuarioCPFAtor: atorCPF,
+            UsuarioGUIDAtor: atorGUID,
             AcaoTipo: 'Delete',
             EntidadeTipo: 'grupoprojeto',
             EntidadeGUID: grupoGUID,
@@ -494,7 +516,7 @@ export default class GrupoProjetoService {
 
         void getAuditoriaService().registrar({
           EscolaGUID: projeto.EscolaGUID,
-          UsuarioCPFAtor: atorCPF,
+          UsuarioGUIDAtor: atorGUID,
           AcaoTipo: 'Delete',
           EntidadeTipo: 'grupoprojeto',
           EntidadeGUID: grupoGUID,
@@ -528,7 +550,7 @@ export default class GrupoProjetoService {
 
       void getAuditoriaService().registrar({
         EscolaGUID: projeto.EscolaGUID,
-        UsuarioCPFAtor: atorCPF,
+        UsuarioGUIDAtor: atorGUID,
         AcaoTipo: 'Delete',
         EntidadeTipo: 'grupoprojeto',
         EntidadeGUID: grupoGUID,
@@ -552,9 +574,12 @@ export default class GrupoProjetoService {
     membroCPF: string,
     grupoGUID: string
   ): Promise<void> => {
+    const membro = await this.#usuarioDAO.findByCPF(membroCPF);
+    if (!membro) return;
+
     await getNotificacaoService().disparar({
       tipoSlug: 'removido_grupo_projeto',
-      destinatarios: [membroCPF],
+      destinatarios: [membro.UsuarioGUID],
       escolaGUID,
       titulo: `Você foi removido do grupo do projeto "${projetoTitulo}"`,
       entidadeTipo: 'grupoprojeto',
@@ -568,9 +593,11 @@ export default class GrupoProjetoService {
   transferirLideranca = async (
     grupoGUID: string,
     novoLiderCPF: string,
-    liderAtualCPF: string
+    liderAtualGUID: string
   ): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.transferirLideranca()');
+
+    const liderAtualCPF = await this.#resolverCPFAtor(liderAtualGUID);
 
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
@@ -609,7 +636,7 @@ export default class GrupoProjetoService {
       if (projetoDoGrupo) {
         void getAuditoriaService().registrar({
           EscolaGUID: projetoDoGrupo.EscolaGUID,
-          UsuarioCPFAtor: liderAtualCPF,
+          UsuarioGUIDAtor: liderAtualGUID,
           AcaoTipo: 'Update',
           EntidadeTipo: 'grupoprojeto',
           EntidadeGUID: grupoGUID,
@@ -633,9 +660,11 @@ export default class GrupoProjetoService {
   atualizarPontuacao = async (
     grupoGUID: string,
     pontuacao: number,
-    usuarioCPF: string
+    usuarioGUID: string
   ): Promise<{ mensagem: string }> => {
     console.log('🟣 GrupoProjetoService.atualizarPontuacao()');
+
+    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     if (isNaN(pontuacao) || pontuacao < 0) {
       throw new ErrorResponse(400, 'GrupoProjetoPontuacao deve ser um número >= 0');
@@ -666,7 +695,7 @@ export default class GrupoProjetoService {
 
     void getAuditoriaService().registrar({
       EscolaGUID: projeto.EscolaGUID,
-      UsuarioCPFAtor: usuarioCPF,
+      UsuarioGUIDAtor: usuarioGUID,
       AcaoTipo: 'Update',
       EntidadeTipo: 'grupoprojeto',
       EntidadeGUID: grupoGUID,
@@ -674,7 +703,12 @@ export default class GrupoProjetoService {
       CategoriaAuditoriaId: 1,
     });
 
-    const destinatarios = grupo.Membros.map((m) => m.UsuarioCPF);
+    const membrosUsuarios = await Promise.all(
+      grupo.Membros.map((m) => this.#usuarioDAO.findByCPF(m.UsuarioCPF))
+    );
+    const destinatarios = membrosUsuarios
+      .filter((u): u is NonNullable<typeof u> => u !== null)
+      .map((u) => u.UsuarioGUID);
     getNotificacaoService().disparar({
       tipoSlug: 'projeto_pontuacao_atribuida',
       destinatarios,

@@ -229,6 +229,25 @@ export class UsuarioDAO {
     return new Map((linhas as Array<{ UsuarioGUID: string; UsuarioNome: string }>).map((r) => [r.UsuarioGUID, r.UsuarioNome]));
   };
 
+  /** Nome + CPF em lote — usado por DTOs que exibem CPF como dado informativo (não identificador). */
+  findNomesECPFsByGUIDs = async (guids: string[]): Promise<Map<string, { UsuarioNome: string; UsuarioCPF: string | null }>> => {
+    console.log("🟢 UsuarioDAO.findNomesECPFsByGUIDs()");
+    if (guids.length === 0) return new Map();
+
+    const pool = await this.#database.getPool();
+    const placeholders = guids.map(() => "?").join(",");
+    const [linhas] = await pool.execute(
+      `SELECT UsuarioGUID, UsuarioNome, UsuarioCPF FROM usuario WHERE UsuarioGUID IN (${placeholders})`,
+      guids
+    );
+    return new Map(
+      (linhas as Array<{ UsuarioGUID: string; UsuarioNome: string; UsuarioCPF: string | null }>).map((r) => [
+        r.UsuarioGUID,
+        { UsuarioNome: r.UsuarioNome, UsuarioCPF: r.UsuarioCPF },
+      ])
+    );
+  };
+
   findByField = async (field: string, value: string): Promise<Usuario[]> => {
     console.log("🟢 UsuarioDAO.findByField()");
 

@@ -6,6 +6,7 @@ import { ConversaIndividualDAO } from '../backend/repositories/conversa-individu
 import { MensagemDAO } from '../backend/repositories/mensagem.repository';
 import { TurmaDAO } from '../backend/repositories/turma.repository';
 import { EscolaxUsuarioxFuncaoDAO } from '../backend/repositories/escolaxusuarioxfuncao.repository';
+import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import ConversaService from '../backend/services/conversa.service';
 import MensagemService from '../backend/services/mensagem.service';
 import ConversaIndividualService from '../backend/services/conversa-individual.service';
@@ -24,16 +25,18 @@ export function conversaRouterFactory(): Router {
   const mensagemDAO = new MensagemDAO(db);
   const turmaDAO = new TurmaDAO(db);
   const escolaFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(db);
+  const usuarioDAO = new UsuarioDAO(db);
 
   const conversaService = new ConversaService(
     conversaDAO,
     conversaGrupoDAO,
     conversaIndividualDAO,
-    mensagemDAO
+    mensagemDAO,
+    usuarioDAO
   );
-  const mensagemService = new MensagemService(mensagemDAO, conversaGrupoDAO, conversaDAO);
-  const conversaIndividualService = new ConversaIndividualService(conversaDAO, conversaIndividualDAO);
-  const conversaPermissaoService = new ConversaPermissaoService(conversaGrupoDAO, turmaDAO, escolaFuncaoDAO);
+  const mensagemService = new MensagemService(mensagemDAO, conversaGrupoDAO, conversaDAO, usuarioDAO);
+  const conversaIndividualService = new ConversaIndividualService(conversaDAO, conversaIndividualDAO, usuarioDAO);
+  const conversaPermissaoService = new ConversaPermissaoService(conversaGrupoDAO, turmaDAO, escolaFuncaoDAO, usuarioDAO);
 
   const controller = new ConversaController(
     conversaService,
