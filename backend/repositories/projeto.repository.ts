@@ -12,7 +12,7 @@ import {
 interface ProjetoRow extends RowDataPacket {
   ProjetoGUID: string;
   EscolaGUID: string;
-  UsuarioCPFCriador: string;
+  UsuarioGUIDCriador: string;
   ProjetoTitulo: string;
   ProjetoDescricao: string;
   ProjetoMecanicaPontuacao: string | null;
@@ -28,7 +28,7 @@ interface ProjetoRow extends RowDataPacket {
 
 export interface ProjetoFilters {
   EscolaGUID?: string;
-  UsuarioCPFCriador?: string;
+  UsuarioGUIDCriador?: string;
   ProjetoStatus?: ProjetoStatus;
 }
 
@@ -41,7 +41,7 @@ export class ProjetoDAO {
   }
 
   // CREATE
-  async create(data: ProjetoCreateDTO, usuarioCPFCriador: string): Promise<Projeto> {
+  async create(data: ProjetoCreateDTO, usuarioGUIDCriador: string): Promise<Projeto> {
     console.log('🟢 ProjetoDAO.create()');
 
     const projetoGUID = gerarGUID();
@@ -50,7 +50,7 @@ export class ProjetoDAO {
       INSERT INTO projeto (
         ProjetoGUID,
         EscolaGUID,
-        UsuarioCPFCriador,
+        UsuarioGUIDCriador,
         ProjetoTitulo,
         ProjetoDescricao,
         ProjetoMecanicaPontuacao,
@@ -66,7 +66,7 @@ export class ProjetoDAO {
     await pool.execute(query, [
       projetoGUID,
       data.EscolaGUID,
-      usuarioCPFCriador,
+      usuarioGUIDCriador,
       data.ProjetoTitulo.trim(),
       data.ProjetoDescricao.trim(),
       data.ProjetoMecanicaPontuacao?.trim() || null,
@@ -132,7 +132,7 @@ export class ProjetoDAO {
         u.UsuarioNome AS NomeCriador,
         (SELECT COUNT(*) FROM grupoprojeto gp WHERE gp.ProjetoGUID = p.ProjetoGUID) AS TotalGrupos
       FROM projeto p
-      INNER JOIN usuario u ON u.UsuarioCPF = p.UsuarioCPFCriador
+      INNER JOIN usuario u ON u.UsuarioGUID = p.UsuarioGUIDCriador
       WHERE p.ProjetoGUID = ?
     `;
 
@@ -164,9 +164,9 @@ export class ProjetoDAO {
       params.push(filters.EscolaGUID);
     }
 
-    if (filters.UsuarioCPFCriador) {
-      query += ` AND UsuarioCPFCriador = ?`;
-      params.push(filters.UsuarioCPFCriador);
+    if (filters.UsuarioGUIDCriador) {
+      query += ` AND UsuarioGUIDCriador = ?`;
+      params.push(filters.UsuarioGUIDCriador);
     }
 
     if (filters.ProjetoStatus) {
@@ -187,7 +187,7 @@ export class ProjetoDAO {
    * ou público-alvo 'Turmas' onde o aluno tem matrícula ativa em alguma das
    * turmas vinculadas (ver docs/PLANO_IMPLEMENTACAO_PROJETOS.md, Seção 4 regra 3).
    */
-  async findElegiveisParaAluno(escolaGUID: string, usuarioCPF: string): Promise<Projeto[]> {
+  async findElegiveisParaAluno(escolaGUID: string, usuarioGUID: string): Promise<Projeto[]> {
     console.log('🟢 ProjetoDAO.findElegiveisParaAluno()');
 
     const query = `
@@ -195,7 +195,7 @@ export class ProjetoDAO {
       FROM projeto p
       LEFT JOIN projetoturma pt ON pt.ProjetoGUID = p.ProjetoGUID
       LEFT JOIN matricula m ON m.TurmaGUID = pt.TurmaGUID
-        AND m.UsuarioCPF = ? AND m.MatriculaStatus = 'Ativa'
+        AND m.UsuarioGUID = ? AND m.MatriculaStatus = 'Ativa'
       WHERE p.EscolaGUID = ?
         AND (
           p.ProjetoPublicoAlvo = 'Escola'
@@ -205,7 +205,7 @@ export class ProjetoDAO {
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<ProjetoRow[]>(query, [usuarioCPF, escolaGUID]);
+    const [rows] = await pool.execute<ProjetoRow[]>(query, [usuarioGUID, escolaGUID]);
 
     return rows.map((row) => this.mapRow(row));
   }
@@ -215,13 +215,13 @@ export class ProjetoDAO {
    * matrícula ativa em turma elegível (ou qualquer turma da escola, se
    * ProjetoPublicoAlvo='Escola').
    */
-  async usuarioElegivel(projetoGUID: string, usuarioCPF: string): Promise<boolean> {
+  async usuarioElegivel(projetoGUID: string, usuarioGUID: string): Promise<boolean> {
     console.log('🟢 ProjetoDAO.usuarioElegivel()');
 
     const query = `
       SELECT 1
       FROM projeto p
-      INNER JOIN matricula m ON m.UsuarioCPF = ? AND m.MatriculaStatus = 'Ativa'
+      INNER JOIN matricula m ON m.UsuarioGUID = ? AND m.MatriculaStatus = 'Ativa'
       INNER JOIN turma t ON t.TurmaGUID = m.TurmaGUID AND t.EscolaGUID = p.EscolaGUID
       LEFT JOIN projetoturma pt ON pt.ProjetoGUID = p.ProjetoGUID AND pt.TurmaGUID = m.TurmaGUID
       WHERE p.ProjetoGUID = ?
@@ -230,7 +230,7 @@ export class ProjetoDAO {
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioCPF, projetoGUID]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioGUID, projetoGUID]);
 
     return rows.length > 0;
   }
@@ -306,7 +306,7 @@ export class ProjetoDAO {
     return {
       ProjetoGUID: row.ProjetoGUID,
       EscolaGUID: row.EscolaGUID,
-      UsuarioCPFCriador: row.UsuarioCPFCriador,
+      UsuarioGUIDCriador: row.UsuarioGUIDCriador,
       ProjetoTitulo: row.ProjetoTitulo,
       ProjetoDescricao: row.ProjetoDescricao,
       ProjetoMecanicaPontuacao: row.ProjetoMecanicaPontuacao,

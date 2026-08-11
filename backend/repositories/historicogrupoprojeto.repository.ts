@@ -15,7 +15,7 @@ interface HistoricoGrupoProjetoRow extends RowDataPacket {
   HistoricoGUID: string;
   GrupoProjetoGUID: string;
   HistoricoTipo: HistoricoTipo;
-  UsuarioCPFAtor: string;
+  UsuarioGUIDAtor: string;
   UsuarioCPFAlvo: string | null;
   HistoricoDetalhes: string | null;
   CreatedAt: Date;
@@ -24,7 +24,7 @@ interface HistoricoGrupoProjetoRow extends RowDataPacket {
 export interface HistoricoFilters {
   GrupoProjetoGUID?: string;
   HistoricoTipo?: HistoricoTipo;
-  UsuarioCPFAtor?: string;
+  UsuarioGUIDAtor?: string;
 }
 
 export class HistoricoGrupoProjetoDAO {
@@ -47,7 +47,7 @@ export class HistoricoGrupoProjetoDAO {
         HistoricoGUID,
         GrupoProjetoGUID,
         HistoricoTipo,
-        UsuarioCPFAtor,
+        UsuarioGUIDAtor,
         UsuarioCPFAlvo,
         HistoricoDetalhes
       ) VALUES (?, ?, ?, ?, ?, ?)
@@ -58,7 +58,7 @@ export class HistoricoGrupoProjetoDAO {
       historicoGUID,
       data.GrupoProjetoGUID,
       data.HistoricoTipo,
-      data.UsuarioCPFAtor,
+      data.UsuarioGUIDAtor,
       data.UsuarioCPFAlvo || null,
       detalhesJSON
     ]);
@@ -104,7 +104,7 @@ export class HistoricoGrupoProjetoDAO {
       HistoricoGUID: row.HistoricoGUID,
       GrupoProjetoGUID: row.GrupoProjetoGUID,
       HistoricoTipo: row.HistoricoTipo,
-      UsuarioCPFAtor: row.UsuarioCPFAtor,
+      UsuarioGUIDAtor: row.UsuarioGUIDAtor,
       UsuarioCPFAlvo: row.UsuarioCPFAlvo,
       HistoricoDetalhes: row.HistoricoDetalhes,
       CreatedAt: row.CreatedAt

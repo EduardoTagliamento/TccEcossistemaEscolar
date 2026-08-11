@@ -39,28 +39,28 @@ export class ConversaDAO {
     return this.#mapRow(list[0]);
   }
 
-  async findAllByUsuarioCPF(usuarioCPF: string): Promise<Conversa[]> {
-    console.log('🟢 ConversaDAO.findAllByUsuarioCPF()');
+  async findAllByUsuarioGUID(usuarioGUID: string): Promise<Conversa[]> {
+    console.log('🟢 ConversaDAO.findAllByUsuarioGUID()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
       `SELECT c.* FROM conversa c
        INNER JOIN conversa_grupo_membro cgm ON cgm.ConversaGUID = c.ConversaGUID
-       WHERE cgm.MembroUsuarioCPF = ?
+       WHERE cgm.MembroUsuarioGUID = ?
          AND cgm.MembroStatus = 'Ativo'
          AND c.ConversaStatus = 'Ativa'
        UNION
        SELECT c.* FROM conversa c
        INNER JOIN conversa_individual ci ON ci.ConversaGUID = c.ConversaGUID
-       WHERE (ci.ConversaIndUsr1CPF = ? OR ci.ConversaIndUsr2CPF = ?)
+       WHERE (ci.ConversaIndUsr1GUID = ? OR ci.ConversaIndUsr2GUID = ?)
          AND c.ConversaStatus = 'Ativa'
        ORDER BY ConversaUpdatedAt DESC`,
-      [usuarioCPF, usuarioCPF, usuarioCPF]
+      [usuarioGUID, usuarioGUID, usuarioGUID]
     );
     return (rows as ConversaRow[]).map((r) => this.#mapRow(r));
   }
 
   // Verificação unificada de participação — cobre grupos e conversas individuais
-  async isParticipante(conversaGUID: string, usuarioCPF: string): Promise<boolean> {
+  async isParticipante(conversaGUID: string, usuarioGUID: string): Promise<boolean> {
     console.log('🟢 ConversaDAO.isParticipante()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
@@ -71,18 +71,18 @@ export class ConversaDAO {
            (c.ConversaTipo = 'Grupo' AND EXISTS (
              SELECT 1 FROM conversa_grupo_membro cgm
              WHERE cgm.ConversaGUID = c.ConversaGUID
-               AND cgm.MembroUsuarioCPF = ?
+               AND cgm.MembroUsuarioGUID = ?
                AND cgm.MembroStatus = 'Ativo'
            ))
            OR
            (c.ConversaTipo = 'Individual' AND EXISTS (
              SELECT 1 FROM conversa_individual ci
              WHERE ci.ConversaGUID = c.ConversaGUID
-               AND (ci.ConversaIndUsr1CPF = ? OR ci.ConversaIndUsr2CPF = ?)
+               AND (ci.ConversaIndUsr1GUID = ? OR ci.ConversaIndUsr2GUID = ?)
            ))
          )
        LIMIT 1`,
-      [conversaGUID, usuarioCPF, usuarioCPF, usuarioCPF]
+      [conversaGUID, usuarioGUID, usuarioGUID, usuarioGUID]
     );
     return (rows as RowDataPacket[]).length > 0;
   }

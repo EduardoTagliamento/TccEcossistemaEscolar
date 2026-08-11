@@ -75,14 +75,14 @@ export default class TarefaAcademicaRoteador {
       this.#controle.avaliarQuestaoDiscursiva
     );
 
-    // GET /api/tarefa/pendentes-aluno?UsuarioCPF= (DEVE vir antes de "/:TarefaGUID")
+    // GET /api/tarefa/pendentes-aluno?UsuarioGUID= (DEVE vir antes de "/:TarefaGUID")
     this.#router.get(
       "/pendentes-aluno",
       AuthMiddleware.authenticate,
       this.#controle.pendentesAluno
     );
 
-    // GET /api/tarefa/pendentes-avaliacao-professor?UsuarioCPF= (DEVE vir antes de "/:TarefaGUID")
+    // GET /api/tarefa/pendentes-avaliacao-professor?UsuarioGUID= (DEVE vir antes de "/:TarefaGUID")
     this.#router.get(
       "/pendentes-avaliacao-professor",
       AuthMiddleware.authenticate,

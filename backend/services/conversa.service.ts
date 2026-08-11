@@ -9,10 +9,10 @@ export interface MensagemFixadaDTO {
   MensagemGUID: string;
   ConversaGUID: string;
   MensagemConteudo: string;
-  MensagemRemetenteCPF: string;
+  MensagemRemetenteGUID: string;
   MensagemCreatedAt: string;
   MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
-  FixadaPorCPF: string;
+  FixadaPorGUID: string;
   FixadaAt: string;
 }
 
@@ -23,13 +23,13 @@ export interface ConversaListItemDTO {
   ConversaGrupoNome: string | null;
   ConversaGrupoTipo: 'Turma' | 'Tarefa' | null;
   // Individual
-  ParceiroCPF: string | null;
+  ParceiroGUID: string | null;
   ParceiroNome: string | null;
   TagContextual: string | null;
   // Comum
   UltimaMensagem: {
     MensagemConteudo: string;
-    MensagemRemetenteCPF: string;
+    MensagemRemetenteGUID: string;
     RemetenteNome: string;
     MensagemCreatedAt: string;
     MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
@@ -38,7 +38,7 @@ export interface ConversaListItemDTO {
 }
 
 export interface MembroDTO {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   MembroFuncao: 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante';
   MembroEntradaAt: string;
@@ -53,7 +53,7 @@ export interface ConversaDetalheDTO {
   ConversaGrupoRefGUID: string | null;
   Membros: MembroDTO[];
   // Individual
-  ParceiroCPF: string | null;
+  ParceiroGUID: string | null;
   ParceiroNome: string | null;
   TagContextual: string | null;
   // Comum
@@ -84,25 +84,14 @@ export default class ConversaService {
     this.#usuarioDAO = usuarioDAO;
   }
 
-  /** Resolve o CPF de um ator a partir do UsuarioGUID — conversa/mensagem/
-   * conversa_individual/conversa_grupo_membro ainda usam CPF. */
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
-    }
-    return usuario.UsuarioCPF;
-  };
-
   async listarConversas(usuarioGUID: string): Promise<ConversaListItemDTO[]> {
     console.log('🟣 ConversaService.listarConversas()');
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const conversas = await this.#conversaDAO.findAllByUsuarioCPF(usuarioCPF);
+    const conversas = await this.#conversaDAO.findAllByUsuarioGUID(usuarioGUID);
     const result: ConversaListItemDTO[] = [];
 
     for (const c of conversas) {
       const ultimaMensagem = await this.#mensagemDAO.findUltimaMensagem(c.ConversaGUID);
-      const naoLidas = await this.#mensagemDAO.countNaoLidas(c.ConversaGUID, usuarioCPF);
+      const naoLidas = await this.#mensagemDAO.countNaoLidas(c.ConversaGUID, usuarioGUID);
 
       if (c.ConversaTipo === 'Grupo') {
         const grupo = await this.#conversaGrupoDAO.findByConversaGUID(c.ConversaGUID);
@@ -111,20 +100,20 @@ export default class ConversaService {
           ConversaTipo: 'Grupo',
           ConversaGrupoNome: grupo?.ConversaGrupoNome ?? null,
           ConversaGrupoTipo: grupo?.ConversaGrupoTipo ?? null,
-          ParceiroCPF: null,
+          ParceiroGUID: null,
           ParceiroNome: null,
           TagContextual: null,
           UltimaMensagem: ultimaMensagem,
           NaoLidas: naoLidas,
         });
       } else {
-        const parceiro = await this.#conversaIndividualDAO.getParceiroInfo(c.ConversaGUID, usuarioCPF);
+        const parceiro = await this.#conversaIndividualDAO.getParceiroInfo(c.ConversaGUID, usuarioGUID);
         result.push({
           ConversaGUID: c.ConversaGUID,
           ConversaTipo: 'Individual',
           ConversaGrupoNome: null,
           ConversaGrupoTipo: null,
-          ParceiroCPF: parceiro?.ParceiroCPF ?? null,
+          ParceiroGUID: parceiro?.ParceiroGUID ?? null,
           ParceiroNome: parceiro?.ParceiroNome ?? null,
           TagContextual: null,
           UltimaMensagem: ultimaMensagem,
@@ -138,13 +127,12 @@ export default class ConversaService {
 
   async buscarConversa(conversaGUID: string, usuarioGUID: string): Promise<ConversaDetalheDTO> {
     console.log('🟣 ConversaService.buscarConversa()');
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const conversa = await this.#conversaDAO.findById(conversaGUID);
     if (!conversa || conversa.ConversaStatus === 'Inativa') {
       throw new ErrorResponse(404, 'Conversa não encontrada');
     }
 
-    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioCPF);
+    const isParticipante = await this.#conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!isParticipante) {
       throw new ErrorResponse(403, 'Você não faz parte desta conversa');
     }
@@ -166,10 +154,10 @@ export default class ConversaService {
       MensagemGUID: f.MensagemGUID,
       ConversaGUID: f.ConversaGUID,
       MensagemConteudo: f.MensagemConteudo,
-      MensagemRemetenteCPF: f.MensagemRemetenteCPF,
+      MensagemRemetenteGUID: f.MensagemRemetenteGUID,
       MensagemCreatedAt: (f.MensagemCreatedAt as Date).toISOString(),
       MensagemTipo: f.MensagemTipo,
-      FixadaPorCPF: f.FixadaPorCPF,
+      FixadaPorGUID: f.FixadaPorGUID,
       FixadaAt: (f.FixadaAt as Date).toISOString(),
     }));
 
@@ -184,12 +172,12 @@ export default class ConversaService {
         ConversaGrupoTipo: grupo?.ConversaGrupoTipo ?? null,
         ConversaGrupoRefGUID: grupo?.ConversaGrupoRefGUID ?? null,
         Membros: membros.map((m) => ({
-          UsuarioCPF: m.MembroUsuarioCPF,
+          UsuarioGUID: m.MembroUsuarioGUID,
           UsuarioNome: m.UsuarioNome,
           MembroFuncao: m.MembroFuncao,
           MembroEntradaAt: m.MembroEntradaAt.toISOString(),
         })),
-        ParceiroCPF: null,
+        ParceiroGUID: null,
         ParceiroNome: null,
         TagContextual: null,
         MensagensFixadas: mensagensFixadasDTO,
@@ -197,7 +185,7 @@ export default class ConversaService {
         HasMore: hasMore,
       };
     } else {
-      const parceiro = await this.#conversaIndividualDAO.getParceiroInfo(conversaGUID, usuarioCPF);
+      const parceiro = await this.#conversaIndividualDAO.getParceiroInfo(conversaGUID, usuarioGUID);
 
       return {
         ConversaGUID: conversa.ConversaGUID,
@@ -206,7 +194,7 @@ export default class ConversaService {
         ConversaGrupoTipo: null,
         ConversaGrupoRefGUID: null,
         Membros: [],
-        ParceiroCPF: parceiro?.ParceiroCPF ?? null,
+        ParceiroGUID: parceiro?.ParceiroGUID ?? null,
         ParceiroNome: parceiro?.ParceiroNome ?? null,
         TagContextual: null,
         MensagensFixadas: mensagensFixadasDTO,

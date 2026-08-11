@@ -42,12 +42,7 @@ async function verificarParticipanteConversa(req: Request, res: Response, next: 
   try {
     const conversaGUID = req.params.conversaGUID;
     const usuarioGUID = req.user!.UsuarioGUID;
-    const usuario = await usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      next(new ErrorResponse(403, 'Usuário sem CPF cadastrado'));
-      return;
-    }
-    const participante = await conversaDAO.isParticipante(conversaGUID, usuario.UsuarioCPF);
+    const participante = await conversaDAO.isParticipante(conversaGUID, usuarioGUID);
     if (!participante) {
       next(new ErrorResponse(403, 'Você não faz parte desta conversa'));
       return;

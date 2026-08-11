@@ -3,7 +3,7 @@ export type GrupoProjetoVisibilidade = 'Aberto' | 'Fechado';
 export interface GrupoProjeto {
   GrupoProjetoGUID: string;
   ProjetoGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   GrupoProjetoNome: string | null;
   GrupoProjetoProposta: string;
   GrupoProjetoVisibilidade: GrupoProjetoVisibilidade;
@@ -14,7 +14,7 @@ export interface GrupoProjeto {
 
 export interface GrupoProjetoCreateDTO {
   ProjetoGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   GrupoProjetoNome?: string;
   GrupoProjetoProposta: string;
   GrupoProjetoVisibilidade: GrupoProjetoVisibilidade;
@@ -24,11 +24,11 @@ export interface GrupoProjetoUpdateDTO {
   GrupoProjetoNome?: string | null;
   GrupoProjetoProposta?: string;
   GrupoProjetoVisibilidade?: GrupoProjetoVisibilidade;
-  UsuarioCPFLider?: string; // Para transferência de liderança
+  UsuarioGUIDLider?: string; // Para transferência de liderança
 }
 
 export interface MembroGrupoProjetoDTO {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   DataEntrada: Date;
   IsLider: boolean;
@@ -37,7 +37,7 @@ export interface MembroGrupoProjetoDTO {
 export interface GrupoProjetoComMembrosDTO {
   GrupoProjetoGUID: string;
   ProjetoGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   NomeLider: string;
   GrupoProjetoNome: string | null;
   GrupoProjetoProposta: string;
@@ -56,7 +56,7 @@ export interface GrupoProjetoComMembrosDTO {
 export class GrupoProjetoEntity {
   #grupoProjetoGUID: string;
   #projetoGUID: string;
-  #usuarioCPFLider: string;
+  #usuarioGUIDLider: string;
   #grupoProjetoNome: string | null;
   #grupoProjetoProposta: string;
   #grupoProjetoVisibilidade: GrupoProjetoVisibilidade;
@@ -67,7 +67,7 @@ export class GrupoProjetoEntity {
   constructor(data: GrupoProjeto) {
     this.#grupoProjetoGUID = data.GrupoProjetoGUID;
     this.#projetoGUID = data.ProjetoGUID;
-    this.#usuarioCPFLider = data.UsuarioCPFLider;
+    this.#usuarioGUIDLider = data.UsuarioGUIDLider;
     this.#grupoProjetoNome = data.GrupoProjetoNome;
     this.#grupoProjetoProposta = data.GrupoProjetoProposta;
     this.#grupoProjetoVisibilidade = data.GrupoProjetoVisibilidade;
@@ -78,7 +78,7 @@ export class GrupoProjetoEntity {
 
   get grupoProjetoGUID(): string { return this.#grupoProjetoGUID; }
   get projetoGUID(): string { return this.#projetoGUID; }
-  get usuarioCPFLider(): string { return this.#usuarioCPFLider; }
+  get usuarioGUIDLider(): string { return this.#usuarioGUIDLider; }
   get grupoProjetoNome(): string | null { return this.#grupoProjetoNome; }
   get grupoProjetoProposta(): string { return this.#grupoProjetoProposta; }
   get grupoProjetoVisibilidade(): GrupoProjetoVisibilidade { return this.#grupoProjetoVisibilidade; }
@@ -108,12 +108,11 @@ export class GrupoProjetoEntity {
     this.#grupoProjetoVisibilidade = value;
   }
 
-  set usuarioCPFLider(value: string) {
-    const cpfLimpo = value.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPFLider deve ter 11 dígitos');
+  set usuarioGUIDLider(value: string) {
+    if (!value || value.trim() === '') {
+      throw new Error('UsuarioGUIDLider deve ser uma string não vazia');
     }
-    this.#usuarioCPFLider = value;
+    this.#usuarioGUIDLider = value;
   }
 
   set grupoProjetoPontuacao(value: number | null) {
@@ -133,9 +132,8 @@ export class GrupoProjetoEntity {
       throw new Error('ProjetoGUID inválido');
     }
 
-    const cpfLimpo = this.#usuarioCPFLider.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPFLider deve ter 11 dígitos');
+    if (!this.#usuarioGUIDLider || this.#usuarioGUIDLider.trim() === '') {
+      throw new Error('UsuarioGUIDLider deve ser uma string não vazia');
     }
 
     if (this.#grupoProjetoNome && this.#grupoProjetoNome.length > 128) {
@@ -156,7 +154,7 @@ export class GrupoProjetoEntity {
     return {
       GrupoProjetoGUID: this.#grupoProjetoGUID,
       ProjetoGUID: this.#projetoGUID,
-      UsuarioCPFLider: this.#usuarioCPFLider,
+      UsuarioGUIDLider: this.#usuarioGUIDLider,
       GrupoProjetoNome: this.#grupoProjetoNome,
       GrupoProjetoProposta: this.#grupoProjetoProposta,
       GrupoProjetoVisibilidade: this.#grupoProjetoVisibilidade,

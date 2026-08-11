@@ -16,7 +16,7 @@ export type Executor = Pool | PoolConnection;
 interface ConviteGrupoProjetoRow extends RowDataPacket {
   ConviteGUID: string;
   GrupoProjetoGUID: string;
-  UsuarioCPFConvidado: string;
+  UsuarioGUIDConvidado: string;
   ConviteTipo: ConviteTipo;
   ConviteStatus: ConviteStatus;
   CreatedAt: Date;
@@ -25,7 +25,7 @@ interface ConviteGrupoProjetoRow extends RowDataPacket {
 
 export interface ConviteFilters {
   GrupoProjetoGUID?: string;
-  UsuarioCPFConvidado?: string;
+  UsuarioGUIDConvidado?: string;
   ConviteTipo?: ConviteTipo;
   ConviteStatus?: ConviteStatus;
 }
@@ -48,13 +48,13 @@ export class ConviteGrupoProjetoDAO {
       INSERT INTO convitegrupoprojeto (
         ConviteGUID,
         GrupoProjetoGUID,
-        UsuarioCPFConvidado,
+        UsuarioGUIDConvidado,
         ConviteTipo
       ) VALUES (?, ?, ?, ?)
     `;
 
     const pool = await this.#database.getPool();
-    await pool.execute(query, [conviteGUID, data.GrupoProjetoGUID, data.UsuarioCPFConvidado, data.ConviteTipo]);
+    await pool.execute(query, [conviteGUID, data.GrupoProjetoGUID, data.UsuarioGUIDConvidado, data.ConviteTipo]);
 
     const conviteCriado = await this.findById(conviteGUID);
     if (!conviteCriado) {
@@ -84,23 +84,23 @@ export class ConviteGrupoProjetoDAO {
       SELECT
         c.ConviteGUID,
         c.GrupoProjetoGUID,
-        c.UsuarioCPFConvidado,
+        c.UsuarioGUIDConvidado,
         c.ConviteTipo,
         c.ConviteStatus,
         c.CreatedAt,
         gp.GrupoProjetoNome,
-        gp.UsuarioCPFLider AS LiderCPF,
+        gp.UsuarioGUIDLider AS LiderGUID,
         u_lider.UsuarioNome AS LiderNome,
         u_convidado.UsuarioNome AS NomeConvidado,
         p.ProjetoTitulo,
         p.ProjetoInscricaoPrazoData,
         p.ProjetoGrupoMaxPessoas AS MaxPessoas,
-        (1 + COUNT(uxgp.UsuarioCPF)) AS TotalMembros
+        (1 + COUNT(uxgp.UsuarioGUID)) AS TotalMembros
       FROM convitegrupoprojeto c
       INNER JOIN grupoprojeto gp ON gp.GrupoProjetoGUID = c.GrupoProjetoGUID
       INNER JOIN projeto p ON p.ProjetoGUID = gp.ProjetoGUID
-      INNER JOIN usuario u_lider ON u_lider.UsuarioCPF = gp.UsuarioCPFLider
-      INNER JOIN usuario u_convidado ON u_convidado.UsuarioCPF = c.UsuarioCPFConvidado
+      INNER JOIN usuario u_lider ON u_lider.UsuarioGUID = gp.UsuarioGUIDLider
+      INNER JOIN usuario u_convidado ON u_convidado.UsuarioGUID = c.UsuarioGUIDConvidado
       LEFT JOIN usuarioxgrupoprojeto uxgp ON uxgp.GrupoProjetoGUID = gp.GrupoProjetoGUID
       WHERE c.ConviteGUID = ?
       GROUP BY c.ConviteGUID
@@ -115,42 +115,42 @@ export class ConviteGrupoProjetoDAO {
   }
 
   // READ - FIND ALL COM DETALHES (pendentes relevantes ao usuário)
-  async findAllComDetalhes(usuarioCPF: string): Promise<ConviteGrupoProjetoDTO[]> {
+  async findAllComDetalhes(usuarioGUID: string): Promise<ConviteGrupoProjetoDTO[]> {
     console.log('🟢 ConviteGrupoProjetoDAO.findAllComDetalhes()');
 
     const query = `
       SELECT
         c.ConviteGUID,
         c.GrupoProjetoGUID,
-        c.UsuarioCPFConvidado,
+        c.UsuarioGUIDConvidado,
         c.ConviteTipo,
         c.ConviteStatus,
         c.CreatedAt,
         gp.GrupoProjetoNome,
-        gp.UsuarioCPFLider AS LiderCPF,
+        gp.UsuarioGUIDLider AS LiderGUID,
         u_lider.UsuarioNome AS LiderNome,
         u_convidado.UsuarioNome AS NomeConvidado,
         p.ProjetoTitulo,
         p.ProjetoInscricaoPrazoData,
         p.ProjetoGrupoMaxPessoas AS MaxPessoas,
-        (1 + COUNT(uxgp.UsuarioCPF)) AS TotalMembros
+        (1 + COUNT(uxgp.UsuarioGUID)) AS TotalMembros
       FROM convitegrupoprojeto c
       INNER JOIN grupoprojeto gp ON gp.GrupoProjetoGUID = c.GrupoProjetoGUID
       INNER JOIN projeto p ON p.ProjetoGUID = gp.ProjetoGUID
-      INNER JOIN usuario u_lider ON u_lider.UsuarioCPF = gp.UsuarioCPFLider
-      INNER JOIN usuario u_convidado ON u_convidado.UsuarioCPF = c.UsuarioCPFConvidado
+      INNER JOIN usuario u_lider ON u_lider.UsuarioGUID = gp.UsuarioGUIDLider
+      INNER JOIN usuario u_convidado ON u_convidado.UsuarioGUID = c.UsuarioGUIDConvidado
       LEFT JOIN usuarioxgrupoprojeto uxgp ON uxgp.GrupoProjetoGUID = gp.GrupoProjetoGUID
       WHERE c.ConviteStatus = 'Pendente'
         AND (
-          (c.ConviteTipo = 'Convite' AND c.UsuarioCPFConvidado = ?)
-          OR (c.ConviteTipo = 'Solicitacao' AND gp.UsuarioCPFLider = ?)
+          (c.ConviteTipo = 'Convite' AND c.UsuarioGUIDConvidado = ?)
+          OR (c.ConviteTipo = 'Solicitacao' AND gp.UsuarioGUIDLider = ?)
         )
       GROUP BY c.ConviteGUID
       ORDER BY c.CreatedAt DESC
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioCPF, usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioGUID, usuarioGUID]);
 
     return rows.map((row) => this.mapDetalhes(row));
   }
@@ -168,17 +168,17 @@ export class ConviteGrupoProjetoDAO {
   }
 
   // AUXILIAR - Verificar se convite/solicitação já existe (pendente)
-  async existeConvitePendente(grupoGUID: string, usuarioCPF: string): Promise<boolean> {
+  async existeConvitePendente(grupoGUID: string, usuarioGUID: string): Promise<boolean> {
     console.log('🟢 ConviteGrupoProjetoDAO.existeConvitePendente()');
 
     const query = `
       SELECT 1 FROM convitegrupoprojeto
-      WHERE GrupoProjetoGUID = ? AND UsuarioCPFConvidado = ? AND ConviteStatus = 'Pendente'
+      WHERE GrupoProjetoGUID = ? AND UsuarioGUIDConvidado = ? AND ConviteStatus = 'Pendente'
       LIMIT 1
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioGUID]);
 
     return rows.length > 0;
   }
@@ -188,9 +188,9 @@ export class ConviteGrupoProjetoDAO {
       ConviteGUID: row.ConviteGUID,
       GrupoProjetoGUID: row.GrupoProjetoGUID,
       GrupoProjetoNome: row.GrupoProjetoNome,
-      LiderCPF: row.LiderCPF,
+      LiderGUID: row.LiderGUID,
       LiderNome: row.LiderNome,
-      UsuarioCPFConvidado: row.UsuarioCPFConvidado,
+      UsuarioGUIDConvidado: row.UsuarioGUIDConvidado,
       NomeConvidado: row.NomeConvidado,
       ConviteTipo: row.ConviteTipo,
       ConviteStatus: row.ConviteStatus,
@@ -206,7 +206,7 @@ export class ConviteGrupoProjetoDAO {
     return {
       ConviteGUID: row.ConviteGUID,
       GrupoProjetoGUID: row.GrupoProjetoGUID,
-      UsuarioCPFConvidado: row.UsuarioCPFConvidado,
+      UsuarioGUIDConvidado: row.UsuarioGUIDConvidado,
       ConviteTipo: row.ConviteTipo,
       ConviteStatus: row.ConviteStatus,
       CreatedAt: row.CreatedAt,

@@ -285,7 +285,7 @@ export default function MinimizedChatBubble() {
           <p className={styles.estadoVazio}>Nenhuma mensagem ainda.</p>
         ) : (
           mensagens.map((mensagem) => {
-            const mine = mensagem.MensagemRemetenteCPF === usuario?.UsuarioCPF;
+            const mine = mensagem.MensagemRemetenteGUID === usuario?.UsuarioGUID;
             const apagada = !!mensagem.MensagemDeletedAt;
             return (
               <div key={mensagem.MensagemGUID} className={`${styles.bolhaLinha} ${mine ? styles.bolhaLinhaMinha : ''}`}>

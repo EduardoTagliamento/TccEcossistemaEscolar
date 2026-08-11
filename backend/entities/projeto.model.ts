@@ -4,7 +4,7 @@ export type ProjetoStatus = 'Aberto' | 'Encerrado';
 export interface Projeto {
   ProjetoGUID: string;
   EscolaGUID: string;
-  UsuarioCPFCriador: string;
+  UsuarioGUIDCriador: string;
   ProjetoTitulo: string;
   ProjetoDescricao: string;
   ProjetoMecanicaPontuacao: string | null;
@@ -53,7 +53,7 @@ export interface ProjetoDTO extends Projeto {
 export class ProjetoEntity {
   #projetoGUID: string;
   #escolaGUID: string;
-  #usuarioCPFCriador: string;
+  #usuarioGUIDCriador: string;
   #projetoTitulo: string;
   #projetoDescricao: string;
   #projetoMecanicaPontuacao: string | null;
@@ -69,7 +69,7 @@ export class ProjetoEntity {
   constructor(data: Projeto) {
     this.#projetoGUID = data.ProjetoGUID;
     this.#escolaGUID = data.EscolaGUID;
-    this.#usuarioCPFCriador = data.UsuarioCPFCriador;
+    this.#usuarioGUIDCriador = data.UsuarioGUIDCriador;
     this.#projetoTitulo = data.ProjetoTitulo;
     this.#projetoDescricao = data.ProjetoDescricao;
     this.#projetoMecanicaPontuacao = data.ProjetoMecanicaPontuacao;
@@ -85,7 +85,7 @@ export class ProjetoEntity {
 
   get projetoGUID(): string { return this.#projetoGUID; }
   get escolaGUID(): string { return this.#escolaGUID; }
-  get usuarioCPFCriador(): string { return this.#usuarioCPFCriador; }
+  get usuarioGUIDCriador(): string { return this.#usuarioGUIDCriador; }
   get projetoTitulo(): string { return this.#projetoTitulo; }
   get projetoDescricao(): string { return this.#projetoDescricao; }
   get projetoMecanicaPontuacao(): string | null { return this.#projetoMecanicaPontuacao; }
@@ -119,9 +119,8 @@ export class ProjetoEntity {
       throw new Error('ProjetoGUID inválido (deve ser UUID v4)');
     }
 
-    const cpfLimpo = this.#usuarioCPFCriador.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPFCriador deve ter 11 dígitos');
+    if (!this.#usuarioGUIDCriador || this.#usuarioGUIDCriador.trim() === '') {
+      throw new Error('UsuarioGUIDCriador deve ser uma string não vazia');
     }
 
     if (!this.#projetoTitulo || this.#projetoTitulo.length < 1 || this.#projetoTitulo.length > 128) {
@@ -155,7 +154,7 @@ export class ProjetoEntity {
     return {
       ProjetoGUID: this.#projetoGUID,
       EscolaGUID: this.#escolaGUID,
-      UsuarioCPFCriador: this.#usuarioCPFCriador,
+      UsuarioGUIDCriador: this.#usuarioGUIDCriador,
       ProjetoTitulo: this.#projetoTitulo,
       ProjetoDescricao: this.#projetoDescricao,
       ProjetoMecanicaPontuacao: this.#projetoMecanicaPontuacao,

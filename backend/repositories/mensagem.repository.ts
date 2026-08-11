@@ -5,7 +5,7 @@ import { RowDataPacket } from 'mysql2';
 interface MensagemRow extends RowDataPacket {
   MensagemGUID: string;
   ConversaGUID: string;
-  MensagemRemetenteCPF: string;
+  MensagemRemetenteGUID: string;
   MensagemConteudo: string;
   MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
   MensagemCreatedAt: Date;
@@ -20,10 +20,10 @@ interface UltimaMensagemRow extends MensagemRow {
 export interface MensagemFixadaRow extends RowDataPacket {
   MensagemGUID: string;
   ConversaGUID: string;
-  FixadaPorCPF: string;
+  FixadaPorGUID: string;
   FixadaAt: Date;
   MensagemConteudo: string;
-  MensagemRemetenteCPF: string;
+  MensagemRemetenteGUID: string;
   MensagemCreatedAt: Date;
   MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
 }
@@ -34,45 +34,45 @@ export type ReacaoEmoji = (typeof EMOJIS_REACAO_PERMITIDOS)[number];
 export interface ReacaoResumo {
   Emoji: string;
   Quantidade: number;
-  UsuariosCPF: string[];
+  UsuariosGUID: string[];
 }
 
 interface MensagemReacaoRow extends RowDataPacket {
   MensagemGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   ReacaoEmoji: string;
 }
 
 interface MensagemLeituraRow extends RowDataPacket {
   MensagemGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
 }
 
-/** Agrupa linhas cruas de `mensagem_reacao` em `{Emoji, Quantidade, UsuariosCPF}[]` por MensagemGUID. */
+/** Agrupa linhas cruas de `mensagem_reacao` em `{Emoji, Quantidade, UsuariosGUID}[]` por MensagemGUID. */
 export function agruparReacoesPorMensagem(rows: MensagemReacaoRow[]): Record<string, ReacaoResumo[]> {
   const porMensagem: Record<string, Record<string, string[]>> = {};
   for (const r of rows) {
     if (!porMensagem[r.MensagemGUID]) porMensagem[r.MensagemGUID] = {};
     if (!porMensagem[r.MensagemGUID][r.ReacaoEmoji]) porMensagem[r.MensagemGUID][r.ReacaoEmoji] = [];
-    porMensagem[r.MensagemGUID][r.ReacaoEmoji].push(r.UsuarioCPF);
+    porMensagem[r.MensagemGUID][r.ReacaoEmoji].push(r.UsuarioGUID);
   }
   const resultado: Record<string, ReacaoResumo[]> = {};
   for (const [mensagemGUID, porEmoji] of Object.entries(porMensagem)) {
-    resultado[mensagemGUID] = Object.entries(porEmoji).map(([Emoji, UsuariosCPF]) => ({
+    resultado[mensagemGUID] = Object.entries(porEmoji).map(([Emoji, UsuariosGUID]) => ({
       Emoji,
-      Quantidade: UsuariosCPF.length,
-      UsuariosCPF,
+      Quantidade: UsuariosGUID.length,
+      UsuariosGUID,
     }));
   }
   return resultado;
 }
 
-/** Agrupa linhas cruas de `mensagem_leitura` (já excluindo o remetente) em CPFs por MensagemGUID. */
+/** Agrupa linhas cruas de `mensagem_leitura` (já excluindo o remetente) em GUIDs por MensagemGUID. */
 export function agruparLeitoresPorMensagem(rows: MensagemLeituraRow[]): Record<string, string[]> {
   const resultado: Record<string, string[]> = {};
   for (const r of rows) {
     if (!resultado[r.MensagemGUID]) resultado[r.MensagemGUID] = [];
-    resultado[r.MensagemGUID].push(r.UsuarioCPF);
+    resultado[r.MensagemGUID].push(r.UsuarioGUID);
   }
   return resultado;
 }
@@ -102,12 +102,12 @@ export class MensagemDAO {
     const pool = await this.#database.getPool();
     await pool.execute(
       `INSERT INTO mensagem
-         (MensagemGUID, ConversaGUID, MensagemRemetenteCPF, MensagemConteudo, MensagemTipo, MensagemCreatedAt)
+         (MensagemGUID, ConversaGUID, MensagemRemetenteGUID, MensagemConteudo, MensagemTipo, MensagemCreatedAt)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
         mensagem.MensagemGUID,
         mensagem.ConversaGUID,
-        mensagem.MensagemRemetenteCPF,
+        mensagem.MensagemRemetenteGUID,
         mensagem.MensagemConteudo,
         mensagem.MensagemTipo,
         mensagem.MensagemCreatedAt,
@@ -158,7 +158,7 @@ export class MensagemDAO {
 
   async findUltimaMensagem(conversaGUID: string): Promise<{
     MensagemConteudo: string;
-    MensagemRemetenteCPF: string;
+    MensagemRemetenteGUID: string;
     RemetenteNome: string;
     MensagemCreatedAt: string;
     MensagemTipo: 'Texto' | 'Arquivo' | 'Imagem';
@@ -166,9 +166,9 @@ export class MensagemDAO {
     console.log('🟢 MensagemDAO.findUltimaMensagem()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
-      `SELECT m.MensagemConteudo, m.MensagemRemetenteCPF, m.MensagemCreatedAt, m.MensagemTipo, u.UsuarioNome AS RemetenteNome
+      `SELECT m.MensagemConteudo, m.MensagemRemetenteGUID, m.MensagemCreatedAt, m.MensagemTipo, u.UsuarioNome AS RemetenteNome
        FROM mensagem m
-       INNER JOIN usuario u ON u.UsuarioCPF = m.MensagemRemetenteCPF
+       INNER JOIN usuario u ON u.UsuarioGUID = m.MensagemRemetenteGUID
        WHERE m.ConversaGUID = ? AND m.MensagemDeletedAt IS NULL
        ORDER BY m.MensagemCreatedAt DESC
        LIMIT 1`,
@@ -179,49 +179,49 @@ export class MensagemDAO {
     const r = list[0];
     return {
       MensagemConteudo: r.MensagemConteudo,
-      MensagemRemetenteCPF: r.MensagemRemetenteCPF,
+      MensagemRemetenteGUID: r.MensagemRemetenteGUID,
       RemetenteNome: r.RemetenteNome,
       MensagemCreatedAt: (r.MensagemCreatedAt as Date).toISOString(),
       MensagemTipo: r.MensagemTipo,
     };
   }
 
-  async markAsRead(mensagemGUID: string, usuarioCPF: string): Promise<void> {
+  async markAsRead(mensagemGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟢 MensagemDAO.markAsRead()');
     const pool = await this.#database.getPool();
     await pool.execute(
-      `INSERT IGNORE INTO mensagem_leitura (MensagemGUID, UsuarioCPF) VALUES (?, ?)`,
-      [mensagemGUID, usuarioCPF]
+      `INSERT IGNORE INTO mensagem_leitura (MensagemGUID, UsuarioGUID) VALUES (?, ?)`,
+      [mensagemGUID, usuarioGUID]
     );
   }
 
-  async markAllAsRead(conversaGUID: string, usuarioCPF: string): Promise<void> {
+  async markAllAsRead(conversaGUID: string, usuarioGUID: string): Promise<void> {
     console.log('🟢 MensagemDAO.markAllAsRead()');
     const pool = await this.#database.getPool();
     await pool.execute(
-      `INSERT IGNORE INTO mensagem_leitura (MensagemGUID, UsuarioCPF)
+      `INSERT IGNORE INTO mensagem_leitura (MensagemGUID, UsuarioGUID)
        SELECT m.MensagemGUID, ?
        FROM mensagem m
-       LEFT JOIN mensagem_leitura ml ON ml.MensagemGUID = m.MensagemGUID AND ml.UsuarioCPF = ?
+       LEFT JOIN mensagem_leitura ml ON ml.MensagemGUID = m.MensagemGUID AND ml.UsuarioGUID = ?
        WHERE m.ConversaGUID = ?
          AND m.MensagemDeletedAt IS NULL
          AND ml.MensagemGUID IS NULL`,
-      [usuarioCPF, usuarioCPF, conversaGUID]
+      [usuarioGUID, usuarioGUID, conversaGUID]
     );
   }
 
-  async countNaoLidas(conversaGUID: string, usuarioCPF: string): Promise<number> {
+  async countNaoLidas(conversaGUID: string, usuarioGUID: string): Promise<number> {
     console.log('🟢 MensagemDAO.countNaoLidas()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
       `SELECT COUNT(*) AS total
        FROM mensagem m
-       LEFT JOIN mensagem_leitura ml ON ml.MensagemGUID = m.MensagemGUID AND ml.UsuarioCPF = ?
+       LEFT JOIN mensagem_leitura ml ON ml.MensagemGUID = m.MensagemGUID AND ml.UsuarioGUID = ?
        WHERE m.ConversaGUID = ?
          AND m.MensagemDeletedAt IS NULL
-         AND m.MensagemRemetenteCPF != ?
+         AND m.MensagemRemetenteGUID != ?
          AND ml.MensagemGUID IS NULL`,
-      [usuarioCPF, conversaGUID, usuarioCPF]
+      [usuarioGUID, conversaGUID, usuarioGUID]
     );
     return (rows as RowDataPacket[])[0]?.total ?? 0;
   }
@@ -229,14 +229,14 @@ export class MensagemDAO {
   async pinMessage(
     mensagemGUID: string,
     conversaGUID: string,
-    fixadaPorCPF: string
+    fixadaPorGUID: string
   ): Promise<{ FixadaAt: Date }> {
     console.log('🟢 MensagemDAO.pinMessage()');
     const pool = await this.#database.getPool();
     await pool.execute(
-      `INSERT IGNORE INTO mensagem_fixada (MensagemGUID, ConversaGUID, FixadaPorCPF)
+      `INSERT IGNORE INTO mensagem_fixada (MensagemGUID, ConversaGUID, FixadaPorGUID)
        VALUES (?, ?, ?)`,
-      [mensagemGUID, conversaGUID, fixadaPorCPF]
+      [mensagemGUID, conversaGUID, fixadaPorGUID]
     );
     const [rows] = await pool.execute(
       `SELECT FixadaAt FROM mensagem_fixada WHERE MensagemGUID = ? LIMIT 1`,
@@ -281,25 +281,25 @@ export class MensagemDAO {
   // Toggle por par (usuário, emoji) — reações múltiplas e independentes por usuário na mesma mensagem.
   async toggleReacao(
     mensagemGUID: string,
-    usuarioCPF: string,
+    usuarioGUID: string,
     emoji: ReacaoEmoji
   ): Promise<'adicionada' | 'removida'> {
     console.log('🟢 MensagemDAO.toggleReacao()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
-      `SELECT 1 FROM mensagem_reacao WHERE MensagemGUID = ? AND UsuarioCPF = ? AND ReacaoEmoji = ? LIMIT 1`,
-      [mensagemGUID, usuarioCPF, emoji]
+      `SELECT 1 FROM mensagem_reacao WHERE MensagemGUID = ? AND UsuarioGUID = ? AND ReacaoEmoji = ? LIMIT 1`,
+      [mensagemGUID, usuarioGUID, emoji]
     );
     if ((rows as RowDataPacket[]).length > 0) {
       await pool.execute(
-        `DELETE FROM mensagem_reacao WHERE MensagemGUID = ? AND UsuarioCPF = ? AND ReacaoEmoji = ?`,
-        [mensagemGUID, usuarioCPF, emoji]
+        `DELETE FROM mensagem_reacao WHERE MensagemGUID = ? AND UsuarioGUID = ? AND ReacaoEmoji = ?`,
+        [mensagemGUID, usuarioGUID, emoji]
       );
       return 'removida';
     }
     await pool.execute(
-      `INSERT INTO mensagem_reacao (MensagemGUID, UsuarioCPF, ReacaoEmoji) VALUES (?, ?, ?)`,
-      [mensagemGUID, usuarioCPF, emoji]
+      `INSERT INTO mensagem_reacao (MensagemGUID, UsuarioGUID, ReacaoEmoji) VALUES (?, ?, ?)`,
+      [mensagemGUID, usuarioGUID, emoji]
     );
     return 'adicionada';
   }
@@ -310,7 +310,7 @@ export class MensagemDAO {
     const pool = await this.#database.getPool();
     const placeholders = mensagemGUIDs.map(() => '?').join(',');
     const [rows] = await pool.execute(
-      `SELECT MensagemGUID, UsuarioCPF, ReacaoEmoji FROM mensagem_reacao WHERE MensagemGUID IN (${placeholders})`,
+      `SELECT MensagemGUID, UsuarioGUID, ReacaoEmoji FROM mensagem_reacao WHERE MensagemGUID IN (${placeholders})`,
       mensagemGUIDs
     );
     return rows as MensagemReacaoRow[];
@@ -323,11 +323,11 @@ export class MensagemDAO {
     const pool = await this.#database.getPool();
     const placeholders = mensagemGUIDs.map(() => '?').join(',');
     const [rows] = await pool.execute(
-      `SELECT ml.MensagemGUID, ml.UsuarioCPF
+      `SELECT ml.MensagemGUID, ml.UsuarioGUID
        FROM mensagem_leitura ml
        INNER JOIN mensagem m ON m.MensagemGUID = ml.MensagemGUID
        WHERE ml.MensagemGUID IN (${placeholders})
-         AND ml.UsuarioCPF != m.MensagemRemetenteCPF`,
+         AND ml.UsuarioGUID != m.MensagemRemetenteGUID`,
       mensagemGUIDs
     );
     return rows as MensagemLeituraRow[];
@@ -340,10 +340,10 @@ export class MensagemDAO {
       `SELECT
          mf.MensagemGUID,
          mf.ConversaGUID,
-         mf.FixadaPorCPF,
+         mf.FixadaPorGUID,
          mf.FixadaAt,
          m.MensagemConteudo,
-         m.MensagemRemetenteCPF,
+         m.MensagemRemetenteGUID,
          m.MensagemCreatedAt,
          m.MensagemTipo
        FROM mensagem_fixada mf

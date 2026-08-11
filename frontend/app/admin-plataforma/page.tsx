@@ -271,7 +271,7 @@ export default function AdminPlataformaPage() {
               <li key={s.SugestaoGUID} className={styles.itemQuestao}>
                 <div>
                   <p className={styles.hint}>
-                    {s.UsuarioNome || s.UsuarioEmail || s.UsuarioCPF} · {new Date(s.SugestaoCreatedAt).toLocaleString('pt-BR')}
+                    {s.UsuarioNome || s.UsuarioEmail || s.UsuarioGUID.slice(0, 8)} · {new Date(s.SugestaoCreatedAt).toLocaleString('pt-BR')}
                     {s.SugestaoPaginaUrl && ` · ${s.SugestaoPaginaUrl}`}
                   </p>
                   <p>{s.SugestaoTexto}</p>

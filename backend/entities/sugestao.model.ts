@@ -7,7 +7,7 @@ import Anexo from './anexo.model';
  */
 export interface Sugestao {
   SugestaoGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string | null;
   SugestaoTexto: string;
   SugestaoPaginaUrl: string | null;

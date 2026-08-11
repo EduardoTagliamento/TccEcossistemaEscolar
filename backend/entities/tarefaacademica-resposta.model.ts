@@ -7,9 +7,9 @@
  * RespostaTextoDiscursiva preenchido, RespostaPontosObtidos fica null até o
  * professor corrigir.
  *
- * `RespostaAvaliadoPorCPF IS NULL` é o mesmo sinal canônico de "correção
+ * `RespostaAvaliadoPorGUID IS NULL` é o mesmo sinal canônico de "correção
  * automática/sistema" vs. correção humana usado em
- * tarefaacademica_matricula.TarefaAvaliadoPorCPF.
+ * tarefaacademica_matricula.TarefaAvaliadoPorGUID.
  *
  * Relacionamentos:
  * - N:1 com TarefaAcademicaMatricula
@@ -29,7 +29,7 @@ export default class TarefaAcademicaResposta {
   #RespostaTextoDiscursiva: string | null = null;
   #RespostaPontosObtidos: number | null = null;
   #RespostaAvaliadoEm: Date | null = null;
-  #RespostaAvaliadoPorCPF: string | null = null;
+  #RespostaAvaliadoPorGUID: string | null = null;
   #RespondidoEm: Date | null = null;
   #CreatedAt: Date | null = null;
   #UpdatedAt: Date | null = null;
@@ -150,17 +150,17 @@ export default class TarefaAcademicaResposta {
     this.#RespostaAvaliadoEm = value ?? null;
   }
 
-  // ========== RespostaAvaliadoPorCPF ==========
-  get RespostaAvaliadoPorCPF(): string | null {
-    return this.#RespostaAvaliadoPorCPF;
+  // ========== RespostaAvaliadoPorGUID ==========
+  get RespostaAvaliadoPorGUID(): string | null {
+    return this.#RespostaAvaliadoPorGUID;
   }
 
-  set RespostaAvaliadoPorCPF(value: string | null) {
+  set RespostaAvaliadoPorGUID(value: string | null) {
     if (value === null || value === undefined || value === "") {
-      this.#RespostaAvaliadoPorCPF = null;
+      this.#RespostaAvaliadoPorGUID = null;
       return;
     }
-    this.#RespostaAvaliadoPorCPF = value.trim();
+    this.#RespostaAvaliadoPorGUID = value.trim();
   }
 
   // ========== RespondidoEm ==========

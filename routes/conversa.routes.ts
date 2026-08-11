@@ -114,7 +114,7 @@ export function conversaRouterFactory(): Router {
   router.put(
     '/:guid/permissao/representante',
     ConversaMiddleware.validarGUID,
-    ConversaMiddleware.validarCPFBody,
+    ConversaMiddleware.validarUsuarioGUIDBody,
     controller.definirRepresentante
   );
 
@@ -129,15 +129,15 @@ export function conversaRouterFactory(): Router {
   router.put(
     '/:guid/permissao/vice-representante',
     ConversaMiddleware.validarGUID,
-    ConversaMiddleware.validarCPFBody,
+    ConversaMiddleware.validarUsuarioGUIDBody,
     controller.definirViceRepresentante
   );
 
-  // DELETE /api/conversa/:guid/permissao/vice-representante/:cpf — remove vice (Representante/Líder only)
+  // DELETE /api/conversa/:guid/permissao/vice-representante/:usuarioGUID — remove vice (Representante/Líder only)
   router.delete(
-    '/:guid/permissao/vice-representante/:cpf',
+    '/:guid/permissao/vice-representante/:usuarioGUID',
     ConversaMiddleware.validarGUID,
-    ConversaMiddleware.validarCPFParam,
+    ConversaMiddleware.validarUsuarioGUIDParam,
     controller.removerViceRepresentante
   );
 

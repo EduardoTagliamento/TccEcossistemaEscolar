@@ -12,7 +12,7 @@ export default class QuestaoBanco {
   #Dificuldade!: QuestaoBancoDificuldade;
   #Enunciado!: string;
   #VideoResolucaoUrl: string | null = null;
-  #CriadoPorCPF!: string;
+  #CriadoPorGUID!: string;
   #CreatedAt: Date | null = null;
 
   constructor() {
@@ -93,15 +93,15 @@ export default class QuestaoBanco {
     this.#VideoResolucaoUrl = value && value.trim() ? value.trim() : null;
   }
 
-  get CriadoPorCPF(): string {
-    return this.#CriadoPorCPF;
+  get CriadoPorGUID(): string {
+    return this.#CriadoPorGUID;
   }
 
-  set CriadoPorCPF(value: string) {
+  set CriadoPorGUID(value: string) {
     if (typeof value !== "string" || value.trim() === "") {
-      throw new Error("CriadoPorCPF deve ser uma string não vazia.");
+      throw new Error("CriadoPorGUID deve ser uma string não vazia.");
     }
-    this.#CriadoPorCPF = value.trim();
+    this.#CriadoPorGUID = value.trim();
   }
 
   get CreatedAt(): Date | null {

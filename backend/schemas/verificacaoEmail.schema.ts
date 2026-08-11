@@ -2,10 +2,6 @@ import { z } from "zod";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function normalizarCPF(digits: string): string {
-  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
-}
-
 /** `validateCodigoBody` original desembrulha de `body.verificacao` se existir; `validateReenviarBody` nunca desembrulha. */
 function desembrulharVerificacao(body: unknown): unknown {
   if (body && typeof body === "object" && !Array.isArray(body)) {
@@ -18,7 +14,7 @@ function desembrulharVerificacao(body: unknown): unknown {
 }
 
 const RawFieldsSchema = z.object({
-  UsuarioCPF: z.string().optional(),
+  UsuarioGUID: z.string().optional(),
   UsuarioEmail: z.string().optional(),
   email: z.string().optional(),
   VerificacaoCodigo: z.string().optional(),
@@ -26,33 +22,23 @@ const RawFieldsSchema = z.object({
 });
 
 /**
- * Réplica fiel de `validateCodigoBody`: aceita CPF OU email (ao menos um),
- * normaliza CPF pro formato mascarado, valida formato de email, exige
- * `VerificacaoCodigo`/`codigo` com 6 dígitos numéricos — tudo isso via
- * `.transform((raw, ctx) => ...)`, o único jeito de combinar validação +
- * normalização + saída num formato NOVO (`{UsuarioCPF, UsuarioEmail,
- * VerificacaoCodigo}`, sempre nessa forma independente do input ter vindo
- * plano ou aninhado em `verificacao`). O resultado é escrito de volta em
- * `request.body.verificacao` via `zodValidate(..., {aposSucesso})`.
+ * Réplica fiel de `validateCodigoBody`: aceita GUID do usuário OU email (ao
+ * menos um), valida formato de email, exige `VerificacaoCodigo`/`codigo` com
+ * 6 dígitos numéricos — tudo isso via `.transform((raw, ctx) => ...)`, o
+ * único jeito de combinar validação + saída num formato NOVO
+ * (`{UsuarioGUID, UsuarioEmail, VerificacaoCodigo}`, sempre nessa forma
+ * independente do input ter vindo plano ou aninhado em `verificacao`). O
+ * resultado é escrito de volta em `request.body.verificacao` via
+ * `zodValidate(..., {aposSucesso})`.
  */
 export const ValidarCodigoBodySchema = z.preprocess(desembrulharVerificacao, RawFieldsSchema).transform((raw, ctx) => {
-  const cpfInput = raw.UsuarioCPF?.trim();
+  const guidInput = raw.UsuarioGUID?.trim();
   const emailInput = (raw.UsuarioEmail || raw.email)?.trim();
   const codigoInput = (raw.VerificacaoCodigo || raw.codigo)?.trim();
 
-  if (!cpfInput && !emailInput) {
-    ctx.addIssue({ code: "custom", message: "Informe 'UsuarioCPF' ou 'email' para validar o código." });
+  if (!guidInput && !emailInput) {
+    ctx.addIssue({ code: "custom", message: "Informe 'UsuarioGUID' ou 'email' para validar o código." });
     return z.NEVER;
-  }
-
-  let cpfNormalizado: string | undefined;
-  if (cpfInput) {
-    const digits = cpfInput.replace(/\D/g, "");
-    if (digits.length !== 11) {
-      ctx.addIssue({ code: "custom", message: "O CPF deve ter 11 dígitos." });
-      return z.NEVER;
-    }
-    cpfNormalizado = normalizarCPF(digits);
   }
 
   if (emailInput && !EMAIL_REGEX.test(emailInput)) {
@@ -73,27 +59,17 @@ export const ValidarCodigoBodySchema = z.preprocess(desembrulharVerificacao, Raw
     return z.NEVER;
   }
 
-  return { UsuarioCPF: cpfNormalizado, UsuarioEmail: emailInput, VerificacaoCodigo: codigoInput };
+  return { UsuarioGUID: guidInput, UsuarioEmail: emailInput, VerificacaoCodigo: codigoInput };
 });
 
-/** `validateReenviarBody` — mesma lógica de CPF/email do código, sem exigir código, sem desembrulhar `verificacao`. */
+/** `validateReenviarBody` — mesma lógica de GUID/email do código, sem exigir código, sem desembrulhar `verificacao`. */
 export const ValidarReenviarBodySchema = RawFieldsSchema.transform((raw, ctx) => {
-  const cpfInput = raw.UsuarioCPF?.trim();
+  const guidInput = raw.UsuarioGUID?.trim();
   const emailInput = (raw.UsuarioEmail || raw.email)?.trim();
 
-  if (!cpfInput && !emailInput) {
-    ctx.addIssue({ code: "custom", message: "Informe 'UsuarioCPF' ou 'email' para reenviar o código." });
+  if (!guidInput && !emailInput) {
+    ctx.addIssue({ code: "custom", message: "Informe 'UsuarioGUID' ou 'email' para reenviar o código." });
     return z.NEVER;
-  }
-
-  let cpfNormalizado: string | undefined;
-  if (cpfInput) {
-    const digits = cpfInput.replace(/\D/g, "");
-    if (digits.length !== 11) {
-      ctx.addIssue({ code: "custom", message: "O CPF deve ter 11 dígitos." });
-      return z.NEVER;
-    }
-    cpfNormalizado = normalizarCPF(digits);
   }
 
   if (emailInput && !EMAIL_REGEX.test(emailInput)) {
@@ -101,19 +77,12 @@ export const ValidarReenviarBodySchema = RawFieldsSchema.transform((raw, ctx) =>
     return z.NEVER;
   }
 
-  return { UsuarioCPF: cpfNormalizado, UsuarioEmail: emailInput };
+  return { UsuarioGUID: guidInput, UsuarioEmail: emailInput };
 });
 
-/** `validateCpfParam` — normaliza `params.UsuarioCPF` pro formato mascarado, escrito de volta via `aposSucesso`. */
-export const CpfParamSchema = z
+/** `validateGuidParam` — exige `params.UsuarioGUID` não vazio. */
+export const GuidParamSchema = z
   .object({
-    UsuarioCPF: z.string({ message: "O parâmetro 'UsuarioCPF' é obrigatório." }).min(1, "O parâmetro 'UsuarioCPF' é obrigatório."),
+    UsuarioGUID: z.string({ message: "O parâmetro 'UsuarioGUID' é obrigatório." }).min(1, "O parâmetro 'UsuarioGUID' é obrigatório."),
   })
-  .transform((raw, ctx) => {
-    const digits = raw.UsuarioCPF.replace(/\D/g, "");
-    if (digits.length !== 11) {
-      ctx.addIssue({ code: "custom", message: "O CPF deve ter 11 dígitos." });
-      return z.NEVER;
-    }
-    return normalizarCPF(digits);
-  });
+  .transform((raw) => raw.UsuarioGUID.trim());

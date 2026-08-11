@@ -170,13 +170,10 @@ export default class MatriculaService {
     const matriculaCriada = await this.#matriculaDAO.create(matricula);
 
     // 8. Adicionar ao grupo de conversa da turma
-    // Nota: conversa_grupo_membro e notificacao ainda não migradas pra
-    // UsuarioGUID (ver docs/PROGRESSO_MIGRACAO_USUARIO_GUID.md) — usam o CPF
-    // real do usuário (já resolvido acima), não o UsuarioGUID.
-    if (this.#conversaGrupoService && usuario.UsuarioCPF) {
+    if (this.#conversaGrupoService) {
       await this.#conversaGrupoService.adicionarMembroTurma(
         matriculaCriada.TurmaGUID,
-        usuario.UsuarioCPF
+        usuario.UsuarioGUID
       );
     }
 
@@ -434,21 +431,17 @@ export default class MatriculaService {
       });
     }
 
-    // 5. Remover do grupo de conversa se saiu da turma (conversa_grupo_membro
-    // ainda não migrada — usa o CPF real do aluno, não o UsuarioGUID).
+    // 5. Remover do grupo de conversa se saiu da turma
     const statusSaida: MatriculaDTO['MatriculaStatus'][] = ['Transferida', 'Cancelada', 'Concluida'];
     if (
       this.#conversaGrupoService &&
       data.MatriculaStatus &&
       statusSaida.includes(data.MatriculaStatus)
     ) {
-      const aluno = await this.#usuarioDAO.findByGUID(matriculaAtualizada.UsuarioGUID);
-      if (aluno?.UsuarioCPF) {
-        await this.#conversaGrupoService.removerMembroTurma(
-          matriculaAtualizada.TurmaGUID,
-          aluno.UsuarioCPF
-        );
-      }
+      await this.#conversaGrupoService.removerMembroTurma(
+        matriculaAtualizada.TurmaGUID,
+        matriculaAtualizada.UsuarioGUID
+      );
     }
 
     void getAuditoriaService().registrar({
@@ -495,16 +488,12 @@ export default class MatriculaService {
       });
     }
 
-    // 5. Remover do grupo de conversa da turma (conversa_grupo_membro ainda
-    // não migrada — usa o CPF real do aluno, não o UsuarioGUID).
+    // 5. Remover do grupo de conversa da turma
     if (this.#conversaGrupoService) {
-      const aluno = await this.#usuarioDAO.findByGUID(matricula.UsuarioGUID);
-      if (aluno?.UsuarioCPF) {
-        await this.#conversaGrupoService.removerMembroTurma(
-          matricula.TurmaGUID,
-          aluno.UsuarioCPF
-        );
-      }
+      await this.#conversaGrupoService.removerMembroTurma(
+        matricula.TurmaGUID,
+        matricula.UsuarioGUID
+      );
     }
 
     void getAuditoriaService().registrar({

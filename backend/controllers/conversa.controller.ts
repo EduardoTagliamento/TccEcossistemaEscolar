@@ -70,11 +70,11 @@ export class ConversaController {
     console.log('🔵 ConversaController.storeIndividual()');
     try {
       const remetenteGUID = req.user!.UsuarioGUID;
-      const { DestinatarioCPF } = req.body;
+      const { DestinatarioGUID } = req.body;
 
       const resultado = await this.#conversaIndividualService.iniciarConversa(
         remetenteGUID,
-        DestinatarioCPF
+        DestinatarioGUID
       );
       const status = resultado.isNova ? 201 : 200;
       res.status(status).json({
@@ -131,8 +131,8 @@ export class ConversaController {
     console.log('🔵 ConversaController.definirRepresentante()');
     try {
       const { guid } = req.params;
-      const { UsuarioCPF } = req.body;
-      await this.#conversaPermissaoService!.definirRepresentante(guid, UsuarioCPF, req.user!.UsuarioGUID);
+      const { UsuarioGUID } = req.body;
+      await this.#conversaPermissaoService!.definirRepresentante(guid, UsuarioGUID, req.user!.UsuarioGUID);
       res.status(200).json({ success: true, message: 'Representante definido' });
     } catch (error) {
       next(error);
@@ -156,20 +156,20 @@ export class ConversaController {
     console.log('🔵 ConversaController.definirViceRepresentante()');
     try {
       const { guid } = req.params;
-      const { UsuarioCPF } = req.body;
-      await this.#conversaPermissaoService!.definirViceRepresentante(guid, UsuarioCPF, req.user!.UsuarioGUID);
+      const { UsuarioGUID } = req.body;
+      await this.#conversaPermissaoService!.definirViceRepresentante(guid, UsuarioGUID, req.user!.UsuarioGUID);
       res.status(200).json({ success: true, message: 'Vice-Representante definido' });
     } catch (error) {
       next(error);
     }
   };
 
-  // DELETE /api/conversa/:guid/permissao/vice-representante/:cpf
+  // DELETE /api/conversa/:guid/permissao/vice-representante/:usuarioGUID
   removerViceRepresentante = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log('🔵 ConversaController.removerViceRepresentante()');
     try {
-      const { guid, cpf } = req.params;
-      await this.#conversaPermissaoService!.removerViceRepresentante(guid, cpf, req.user!.UsuarioGUID);
+      const { guid, usuarioGUID } = req.params;
+      await this.#conversaPermissaoService!.removerViceRepresentante(guid, usuarioGUID, req.user!.UsuarioGUID);
       res.status(204).send();
     } catch (error) {
       next(error);

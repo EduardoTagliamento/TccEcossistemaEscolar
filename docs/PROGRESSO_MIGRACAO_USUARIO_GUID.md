@@ -2,6 +2,25 @@
 
 **Objetivo:** trocar a PK de `usuario` de `UsuarioCPF` para `UsuarioGUID` em todo o sistema (schema + backend + frontend), sem soluções temporárias/bridges. Contexto de decisão completo em `docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md`.
 
+## 🚨 INCIDENTE (2026-08-11) — schema de produção migrado, código consumidor em correção
+
+**O que aconteceu:** o commit `1afab81` (2026-08-10 23:27, "migração cpf id") alterou o backend pra ler/escrever `UsuarioGUID` em `usuario`/`escolaxusuarioxfuncao`/`matricula`/`notificacao`/`aviso`/`pendencia`/`anotacao`/`registroauditoria`, e foi pushado + deployado (Railway). **Mas o schema de produção continuava 100% no modelo antigo** — o script `2026-08-10-usuario-guid-pk.ts` nunca tinha sido executado. Resultado: `usuarioDAO.findByGUID()` (chamado em TODO request autenticado, via `auth.middleware.ts`) rodava `SELECT * FROM usuario WHERE UsuarioGUID = ?` contra uma coluna inexistente — **erro fatal de SQL, site inteiro fora do ar (login e qualquer página autenticada) por ~14h**, sem que ninguém tivesse percebido.
+
+**Diagnóstico:** confirmado por leitura direta do banco de produção (via proxy público Railway, `nozomi.proxy.rlwy.net`, já que `mysql.railway.internal` só resolve de dentro da rede do Railway) — `DESCRIBE usuario` não tinha coluna `UsuarioGUID`, `UsuarioCPF` ainda era PK.
+
+**Ação tomada:** rodei a migração de schema (`backend/database/migrations/2026-08-10-usuario-guid-pk.ts --apply --confirm-production`) contra produção, com autorização explícita do usuário. Isso:
+1. Corrige o incidente (login e tudo que já esperava GUID nas 8 tabelas acima voltou a funcionar).
+2. **Migra TODAS as 39 FKs de uma vez** (o script descobre via `information_schema`, não filtra por "só as prontas") — inclusive as 27 tabelas que o código ainda tratava como "não migradas". Ou seja, **o schema agora está 100% migrado**, mas o código consumidor dessas 27 tabelas (que deliberadamente continuava CPF, por design, até agora) ficou quebrado na direção oposta — é o que está sendo corrigido agora, ver "Status atual" abaixo.
+
+**Bugs encontrados e corrigidos no próprio script de migração** (achados reais, não só execução):
+- Em modo `--check`, duas queries (contagem de pendentes de backfill em `usuario.UsuarioGUID` e em cada tabela dependente) referenciavam a coluna nova mesmo quando ela ainda não existia de verdade (só existiria depois de um `--apply`) — corrigido pra usar `COUNT(*)` como proxy nesse caso.
+- **Achado real, não só de check**: `tarefaacademica_matricula`/`tarefaacademica_resposta` (e as outras 4 tabelas do domínio `tarefaacademica`) têm collation de tabela `utf8mb4_unicode_ci`, diferente do resto do banco (`utf8mb4_0900_ai_ci`, usado em `usuario.UsuarioGUID`). O `ADD COLUMN` original não especificava `CHARACTER SET`/`COLLATE`, então a coluna nova herdava o collation da TABELA — e o `ADD CONSTRAINT FK` falhava com "Referencing column and referenced column are incompatible". Corrigido: o script agora lê o collation real de `usuario.UsuarioGUID` uma vez e especifica explicitamente em toda `ADD COLUMN`/`MODIFY COLUMN` das tabelas dependentes, nunca herda do default da tabela.
+- A migração foi reexecutada (é idempotente — pula o que já foi feito) e completou com sucesso: `usuario.UsuarioGUID` é a PK agora, `UsuarioCPF` virou coluna comum nullable com UNIQUE INDEX.
+
+**Consequência imediata:** as 27 tabelas da lista "Tabelas ainda não migradas" abaixo mudaram de status NO BANCO (schema já é GUID em todas), mas o CÓDIGO (entities/repositories/services/controllers/frontend) ainda espera CPF em várias delas — isso está sendo corrigido agora em paralelo (4 forks por cluster de tabelas relacionadas, ver "Status atual"). Até essa correção terminar, features desses domínios (chat, tarefas em grupo, projetos, conteúdo/material didático, anexos, avaliação de tarefa, banco de questões, sugestões) podem estar retornando erro 500.
+
+**Lição pra próximas sessões:** o script de migração de schema SEMPRE migra TODAS as FKs descobertas de uma vez — não dá pra rodar "só pras tabelas prontas". Se algum dia o código ficar dessincronizado de novo (código esperando GUID numa tabela que o schema ainda não migrou, ou vice-versa), a stack inteira quebra igual a esse incidente. **Regra daqui pra frente: NUNCA fazer deploy de código que espera GUID numa tabela sem ANTES já ter rodado a migração de schema pra ela** (ou vice-versa) — os dois lados (código E schema) precisam mudar atomicamente do ponto de vista de produção, mesmo que sejam commits/execuções separadas.
+
 **Como retomar se a sessão for interrompida (leia isto primeiro):**
 1. Rode `npx tsc --noEmit -p .` na raiz do repo. A lista de erros é o checklist exato do que ainda falta — cada erro é um call site que espera uma propriedade que não existe mais (ex.: `request.user?.UsuarioCPF`, `usuarioDAO.findById`).
 2. **`npx tsc` NÃO cobre tudo.** Existem bugs de permissão e de fan-out de notificação que são silenciosos (comparam `string` com `string`, TypeScript não reclama) — ver seção "Achados críticos" abaixo antes de considerar qualquer tabela "pronta".

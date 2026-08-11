@@ -12,7 +12,7 @@ import {
 interface ConviteGrupoTarefaRow extends RowDataPacket {
   ConviteGUID: string;
   GrupoTarefaGUID: string;
-  UsuarioCPFConvidado: string;
+  UsuarioGUIDConvidado: string;
   ConviteTipo: ConviteTipo;
   ConviteStatus: ConviteStatus;
   CreatedAt: Date;
@@ -21,7 +21,7 @@ interface ConviteGrupoTarefaRow extends RowDataPacket {
 
 export interface ConviteFilters {
   GrupoTarefaGUID?: string;
-  UsuarioCPFConvidado?: string;
+  UsuarioGUIDConvidado?: string;
   ConviteTipo?: ConviteTipo;
   ConviteStatus?: ConviteStatus;
 }
@@ -44,7 +44,7 @@ export class ConviteGrupoTarefaDAO {
       INSERT INTO convitegrupotarefa (
         ConviteGUID,
         GrupoTarefaGUID,
-        UsuarioCPFConvidado,
+        UsuarioGUIDConvidado,
         ConviteTipo
       ) VALUES (?, ?, ?, ?)
     `;
@@ -53,7 +53,7 @@ export class ConviteGrupoTarefaDAO {
     await pool.execute(query, [
       conviteGUID,
       data.GrupoTarefaGUID,
-      data.UsuarioCPFConvidado,
+      data.UsuarioGUIDConvidado,
       data.ConviteTipo
     ]);
     
@@ -92,9 +92,9 @@ export class ConviteGrupoTarefaDAO {
       params.push(filters.GrupoTarefaGUID);
     }
     
-    if (filters.UsuarioCPFConvidado) {
-      query += ` AND UsuarioCPFConvidado = ?`;
-      params.push(filters.UsuarioCPFConvidado);
+    if (filters.UsuarioGUIDConvidado) {
+      query += ` AND UsuarioGUIDConvidado = ?`;
+      params.push(filters.UsuarioGUIDConvidado);
     }
     
     if (filters.ConviteTipo) {
@@ -123,23 +123,23 @@ export class ConviteGrupoTarefaDAO {
       SELECT 
         c.ConviteGUID,
         c.GrupoTarefaGUID,
-        c.UsuarioCPFConvidado,
+        c.UsuarioGUIDConvidado,
         c.ConviteTipo,
         c.ConviteStatus,
         c.CreatedAt,
         gt.GrupoNome,
-        gt.UsuarioCPFLider AS LiderCPF,
+        gt.UsuarioGUIDLider AS LiderGUID,
         u_lider.UsuarioNome AS LiderNome,
         u_convidado.UsuarioNome AS NomeConvidado,
         t.TarefaTitulo,
         t.TarefaPrazoData,
         t.TarefaMaxPessoas AS MaxPessoas,
-        (1 + COUNT(uxgt.UsuarioCPF)) AS TotalMembros
+        (1 + COUNT(uxgt.UsuarioGUID)) AS TotalMembros
       FROM convitegrupotarefa c
       INNER JOIN grupotarefa gt ON gt.GrupoTarefaGUID = c.GrupoTarefaGUID
       INNER JOIN tarefaacademica t ON t.TarefaGUID = gt.TarefaGUID
-      INNER JOIN usuario u_lider ON u_lider.UsuarioCPF = gt.UsuarioCPFLider
-      INNER JOIN usuario u_convidado ON u_convidado.UsuarioCPF = c.UsuarioCPFConvidado
+      INNER JOIN usuario u_lider ON u_lider.UsuarioGUID = gt.UsuarioGUIDLider
+      INNER JOIN usuario u_convidado ON u_convidado.UsuarioGUID = c.UsuarioGUIDConvidado
       LEFT JOIN usuarioxgrupotarefa uxgt ON uxgt.GrupoTarefaGUID = gt.GrupoTarefaGUID
       WHERE c.ConviteGUID = ?
       GROUP BY c.ConviteGUID
@@ -156,9 +156,9 @@ export class ConviteGrupoTarefaDAO {
       ConviteGUID: row.ConviteGUID,
       GrupoTarefaGUID: row.GrupoTarefaGUID,
       GrupoNome: row.GrupoNome,
-      LiderCPF: row.LiderCPF,
+      LiderGUID: row.LiderGUID,
       LiderNome: row.LiderNome,
-      UsuarioCPFConvidado: row.UsuarioCPFConvidado,
+      UsuarioGUIDConvidado: row.UsuarioGUIDConvidado,
       NomeConvidado: row.NomeConvidado,
       ConviteTipo: row.ConviteTipo,
       ConviteStatus: row.ConviteStatus,
@@ -171,46 +171,46 @@ export class ConviteGrupoTarefaDAO {
   }
 
   // READ - FIND ALL COM DETALHES (JOIN com grupo, tarefa, usuários)
-  async findAllComDetalhes(usuarioCPF: string): Promise<ConviteGrupoTarefaDTO[]> {
+  async findAllComDetalhes(usuarioGUID: string): Promise<ConviteGrupoTarefaDTO[]> {
     console.log('🟢 ConviteGrupoTarefaDAO.findAllComDetalhes()');
     
     const query = `
       SELECT 
         c.ConviteGUID,
         c.GrupoTarefaGUID,
-        c.UsuarioCPFConvidado,
+        c.UsuarioGUIDConvidado,
         c.ConviteTipo,
         c.ConviteStatus,
         c.CreatedAt,
         gt.GrupoNome,
-        gt.UsuarioCPFLider AS LiderCPF,
+        gt.UsuarioGUIDLider AS LiderGUID,
         u_lider.UsuarioNome AS LiderNome,
         u_convidado.UsuarioNome AS NomeConvidado,
         t.TarefaTitulo,
         t.TarefaPrazoData,
         t.TarefaMaxPessoas AS MaxPessoas,
-        (1 + COUNT(uxgt.UsuarioCPF)) AS TotalMembros
+        (1 + COUNT(uxgt.UsuarioGUID)) AS TotalMembros
       FROM convitegrupotarefa c
       INNER JOIN grupotarefa gt ON gt.GrupoTarefaGUID = c.GrupoTarefaGUID
       INNER JOIN tarefaacademica t ON t.TarefaGUID = gt.TarefaGUID
-      INNER JOIN usuario u_lider ON u_lider.UsuarioCPF = gt.UsuarioCPFLider
-      INNER JOIN usuario u_convidado ON u_convidado.UsuarioCPF = c.UsuarioCPFConvidado
+      INNER JOIN usuario u_lider ON u_lider.UsuarioGUID = gt.UsuarioGUIDLider
+      INNER JOIN usuario u_convidado ON u_convidado.UsuarioGUID = c.UsuarioGUIDConvidado
       LEFT JOIN usuarioxgrupotarefa uxgt ON uxgt.GrupoTarefaGUID = gt.GrupoTarefaGUID
-      WHERE c.UsuarioCPFConvidado = ? AND c.ConviteStatus = 'Pendente'
+      WHERE c.UsuarioGUIDConvidado = ? AND c.ConviteStatus = 'Pendente'
       GROUP BY c.ConviteGUID
       ORDER BY c.CreatedAt DESC
     `;
     
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioGUID]);
     
     return rows.map((row: any) => ({
       ConviteGUID: row.ConviteGUID,
       GrupoTarefaGUID: row.GrupoTarefaGUID,
       GrupoNome: row.GrupoNome,
-      LiderCPF: row.LiderCPF,
+      LiderGUID: row.LiderGUID,
       LiderNome: row.LiderNome,
-      UsuarioCPFConvidado: row.UsuarioCPFConvidado,
+      UsuarioGUIDConvidado: row.UsuarioGUIDConvidado,
       NomeConvidado: row.NomeConvidado,
       ConviteTipo: row.ConviteTipo,
       ConviteStatus: row.ConviteStatus,
@@ -251,19 +251,19 @@ export class ConviteGrupoTarefaDAO {
   }
 
   // AUXILIAR - Verificar se convite/solicitação já existe (pendente)
-  async existeConvitePendente(grupoGUID: string, usuarioCPF: string): Promise<boolean> {
+  async existeConvitePendente(grupoGUID: string, usuarioGUID: string): Promise<boolean> {
     console.log('🟢 ConviteGrupoTarefaDAO.existeConvitePendente()');
     
     const query = `
       SELECT 1 FROM convitegrupotarefa
       WHERE GrupoTarefaGUID = ? 
-        AND UsuarioCPFConvidado = ?
+        AND UsuarioGUIDConvidado = ?
         AND ConviteStatus = 'Pendente'
       LIMIT 1
     `;
     
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioGUID]);
     
     return rows.length > 0;
   }
@@ -287,7 +287,7 @@ export class ConviteGrupoTarefaDAO {
     return {
       ConviteGUID: row.ConviteGUID,
       GrupoTarefaGUID: row.GrupoTarefaGUID,
-      UsuarioCPFConvidado: row.UsuarioCPFConvidado,
+      UsuarioGUIDConvidado: row.UsuarioGUIDConvidado,
       ConviteTipo: row.ConviteTipo,
       ConviteStatus: row.ConviteStatus,
       CreatedAt: row.CreatedAt,

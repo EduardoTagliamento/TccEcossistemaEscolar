@@ -9,7 +9,7 @@ import {
 interface UsuarioXGrupoTarefaRow extends RowDataPacket {
   UsuarioXGrupoTarefaGUID: string;
   GrupoTarefaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   DataEntrada: Date;
   CreatedAt: Date;
 }
@@ -32,7 +32,7 @@ export class UsuarioXGrupoTarefaDAO {
       INSERT INTO usuarioxgrupotarefa (
         UsuarioXGrupoTarefaGUID,
         GrupoTarefaGUID,
-        UsuarioCPF
+        UsuarioGUID
       ) VALUES (?, ?, ?)
     `;
     
@@ -40,7 +40,7 @@ export class UsuarioXGrupoTarefaDAO {
     await pool.execute(query, [
       vinculoGUID,
       data.GrupoTarefaGUID,
-      data.UsuarioCPF
+      data.UsuarioGUID
     ]);
     
     const vinculoCriado = await this.findById(vinculoGUID);
@@ -83,32 +83,32 @@ export class UsuarioXGrupoTarefaDAO {
   }
 
   // READ - FIND BY USUARIO
-  async findByUsuario(usuarioCPF: string): Promise<UsuarioXGrupoTarefa[]> {
+  async findByUsuario(usuarioGUID: string): Promise<UsuarioXGrupoTarefa[]> {
     console.log('🟢 UsuarioXGrupoTarefaDAO.findByUsuario()');
     
     const query = `
       SELECT * FROM usuarioxgrupotarefa
-      WHERE UsuarioCPF = ?
+      WHERE UsuarioGUID = ?
       ORDER BY CreatedAt DESC
     `;
     
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<UsuarioXGrupoTarefaRow[]>(query, [usuarioCPF]);
+    const [rows] = await pool.execute<UsuarioXGrupoTarefaRow[]>(query, [usuarioGUID]);
     
     return rows.map(row => this.mapRow(row));
   }
 
   // DELETE - Remover membro do grupo
-  async deleteByGrupoAndUsuario(grupoGUID: string, usuarioCPF: string): Promise<boolean> {
+  async deleteByGrupoAndUsuario(grupoGUID: string, usuarioGUID: string): Promise<boolean> {
     console.log('🟢 UsuarioXGrupoTarefaDAO.deleteByGrupoAndUsuario()');
     
     const query = `
       DELETE FROM usuarioxgrupotarefa 
-      WHERE GrupoTarefaGUID = ? AND UsuarioCPF = ?
+      WHERE GrupoTarefaGUID = ? AND UsuarioGUID = ?
     `;
     
     const pool = await this.#database.getPool();
-    const [result] = await pool.execute<ResultSetHeader>(query, [grupoGUID, usuarioCPF]);
+    const [result] = await pool.execute<ResultSetHeader>(query, [grupoGUID, usuarioGUID]);
     
     return result.affectedRows > 0;
   }
@@ -126,17 +126,17 @@ export class UsuarioXGrupoTarefaDAO {
   }
 
   // AUXILIAR - Verificar se usuário é membro (não-líder) do grupo
-  async isMembroNaoLider(usuarioCPF: string, grupoGUID: string): Promise<boolean> {
+  async isMembroNaoLider(usuarioGUID: string, grupoGUID: string): Promise<boolean> {
     console.log('🟢 UsuarioXGrupoTarefaDAO.isMembroNaoLider()');
     
     const query = `
       SELECT 1 FROM usuarioxgrupotarefa
-      WHERE GrupoTarefaGUID = ? AND UsuarioCPF = ?
+      WHERE GrupoTarefaGUID = ? AND UsuarioGUID = ?
       LIMIT 1
     `;
     
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioCPF]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioGUID]);
     
     return rows.length > 0;
   }
@@ -145,7 +145,7 @@ export class UsuarioXGrupoTarefaDAO {
     return {
       UsuarioXGrupoTarefaGUID: row.UsuarioXGrupoTarefaGUID,
       GrupoTarefaGUID: row.GrupoTarefaGUID,
-      UsuarioCPF: row.UsuarioCPF,
+      UsuarioGUID: row.UsuarioGUID,
       DataEntrada: row.DataEntrada,
       CreatedAt: row.CreatedAt
     };

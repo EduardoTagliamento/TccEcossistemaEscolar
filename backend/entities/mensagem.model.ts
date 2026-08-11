@@ -1,7 +1,7 @@
 export default class Mensagem {
   #MensagemGUID!: string;
   #ConversaGUID!: string;
-  #MensagemRemetenteCPF!: string;
+  #MensagemRemetenteGUID!: string;
   #MensagemConteudo!: string;
   #MensagemTipo!: 'Texto' | 'Arquivo' | 'Imagem';
   #MensagemCreatedAt!: Date;
@@ -14,7 +14,7 @@ export default class Mensagem {
 
   get MensagemGUID(): string { return this.#MensagemGUID; }
   get ConversaGUID(): string { return this.#ConversaGUID; }
-  get MensagemRemetenteCPF(): string { return this.#MensagemRemetenteCPF; }
+  get MensagemRemetenteGUID(): string { return this.#MensagemRemetenteGUID; }
   get MensagemConteudo(): string { return this.#MensagemConteudo; }
   get MensagemTipo(): 'Texto' | 'Arquivo' | 'Imagem' { return this.#MensagemTipo; }
   get MensagemCreatedAt(): Date { return this.#MensagemCreatedAt; }
@@ -35,11 +35,11 @@ export default class Mensagem {
     this.#ConversaGUID = value.trim();
   }
 
-  set MensagemRemetenteCPF(value: string) {
+  set MensagemRemetenteGUID(value: string) {
     if (typeof value !== 'string' || value.trim().length === 0) {
-      throw new Error('MensagemRemetenteCPF não pode ser vazio');
+      throw new Error('MensagemRemetenteGUID não pode ser vazio');
     }
-    this.#MensagemRemetenteCPF = value.trim();
+    this.#MensagemRemetenteGUID = value.trim();
   }
 
   set MensagemConteudo(value: string) {
@@ -83,7 +83,7 @@ export default class Mensagem {
     return {
       MensagemGUID: this.#MensagemGUID,
       ConversaGUID: this.#ConversaGUID,
-      MensagemRemetenteCPF: this.#MensagemRemetenteCPF,
+      MensagemRemetenteGUID: this.#MensagemRemetenteGUID,
       MensagemConteudo: this.#MensagemConteudo,
       MensagemTipo: this.#MensagemTipo,
       MensagemCreatedAt: this.#MensagemCreatedAt.toISOString(),
@@ -96,7 +96,7 @@ export default class Mensagem {
     const m = new Mensagem();
     m.MensagemGUID = data.MensagemGUID;
     m.ConversaGUID = data.ConversaGUID;
-    m.MensagemRemetenteCPF = data.MensagemRemetenteCPF;
+    m.MensagemRemetenteGUID = data.MensagemRemetenteGUID;
     m.MensagemConteudo = data.MensagemConteudo;
     m.MensagemTipo = data.MensagemTipo;
     m.MensagemCreatedAt = data.MensagemCreatedAt;

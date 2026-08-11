@@ -1,15 +1,15 @@
 export default class ConversaIndividual {
   #ConversaGUID!: string;
-  #ConversaIndUsr1CPF!: string;
-  #ConversaIndUsr2CPF!: string;
+  #ConversaIndUsr1GUID!: string;
+  #ConversaIndUsr2GUID!: string;
 
   constructor() {
     console.log('⬆️  ConversaIndividual.constructor()');
   }
 
   get ConversaGUID(): string        { return this.#ConversaGUID; }
-  get ConversaIndUsr1CPF(): string  { return this.#ConversaIndUsr1CPF; }
-  get ConversaIndUsr2CPF(): string  { return this.#ConversaIndUsr2CPF; }
+  get ConversaIndUsr1GUID(): string { return this.#ConversaIndUsr1GUID; }
+  get ConversaIndUsr2GUID(): string { return this.#ConversaIndUsr2GUID; }
 
   set ConversaGUID(value: string) {
     if (typeof value !== 'string' || value.trim().length !== 36) {
@@ -18,33 +18,33 @@ export default class ConversaIndividual {
     this.#ConversaGUID = value.trim();
   }
 
-  set ConversaIndUsr1CPF(value: string) {
+  set ConversaIndUsr1GUID(value: string) {
     if (typeof value !== 'string' || value.trim().length === 0) {
-      throw new Error('ConversaIndUsr1CPF inválido');
+      throw new Error('ConversaIndUsr1GUID inválido');
     }
-    this.#ConversaIndUsr1CPF = value.trim();
+    this.#ConversaIndUsr1GUID = value.trim();
   }
 
-  set ConversaIndUsr2CPF(value: string) {
+  set ConversaIndUsr2GUID(value: string) {
     if (typeof value !== 'string' || value.trim().length === 0) {
-      throw new Error('ConversaIndUsr2CPF inválido');
+      throw new Error('ConversaIndUsr2GUID inválido');
     }
-    this.#ConversaIndUsr2CPF = value.trim();
+    this.#ConversaIndUsr2GUID = value.trim();
   }
 
   toJSON() {
     return {
       ConversaGUID: this.#ConversaGUID,
-      ConversaIndUsr1CPF: this.#ConversaIndUsr1CPF,
-      ConversaIndUsr2CPF: this.#ConversaIndUsr2CPF,
+      ConversaIndUsr1GUID: this.#ConversaIndUsr1GUID,
+      ConversaIndUsr2GUID: this.#ConversaIndUsr2GUID,
     };
   }
 
   static fromDatabase(data: any): ConversaIndividual {
     const obj = new ConversaIndividual();
-    obj.ConversaGUID       = data.ConversaGUID;
-    obj.ConversaIndUsr1CPF = data.ConversaIndUsr1CPF;
-    obj.ConversaIndUsr2CPF = data.ConversaIndUsr2CPF;
+    obj.ConversaGUID        = data.ConversaGUID;
+    obj.ConversaIndUsr1GUID = data.ConversaIndUsr1GUID;
+    obj.ConversaIndUsr2GUID = data.ConversaIndUsr2GUID;
     return obj;
   }
 }

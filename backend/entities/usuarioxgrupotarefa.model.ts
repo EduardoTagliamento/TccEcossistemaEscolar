@@ -1,34 +1,34 @@
 export interface UsuarioXGrupoTarefa {
   UsuarioXGrupoTarefaGUID: string;
   GrupoTarefaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   DataEntrada: Date;
   CreatedAt: Date;
 }
 
 export interface UsuarioXGrupoTarefaCreateDTO {
   GrupoTarefaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
 }
 
 export class UsuarioXGrupoTarefaEntity {
   #usuarioXGrupoTarefaGUID: string;
   #grupoTarefaGUID: string;
-  #usuarioCPF: string;
+  #usuarioGUID: string;
   #dataEntrada: Date;
   #createdAt: Date;
 
   constructor(data: UsuarioXGrupoTarefa) {
     this.#usuarioXGrupoTarefaGUID = data.UsuarioXGrupoTarefaGUID;
     this.#grupoTarefaGUID = data.GrupoTarefaGUID;
-    this.#usuarioCPF = data.UsuarioCPF;
+    this.#usuarioGUID = data.UsuarioGUID;
     this.#dataEntrada = data.DataEntrada;
     this.#createdAt = data.CreatedAt;
   }
 
   get usuarioXGrupoTarefaGUID(): string { return this.#usuarioXGrupoTarefaGUID; }
   get grupoTarefaGUID(): string { return this.#grupoTarefaGUID; }
-  get usuarioCPF(): string { return this.#usuarioCPF; }
+  get usuarioGUID(): string { return this.#usuarioGUID; }
   get dataEntrada(): Date { return this.#dataEntrada; }
   get createdAt(): Date { return this.#createdAt; }
 
@@ -41,9 +41,8 @@ export class UsuarioXGrupoTarefaEntity {
       throw new Error('GrupoTarefaGUID inválido');
     }
 
-    const cpfLimpo = this.#usuarioCPF.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPF deve ter 11 dígitos');
+    if (!this.#usuarioGUID || this.#usuarioGUID.trim() === '') {
+      throw new Error('UsuarioGUID deve ser uma string não vazia');
     }
   }
 
@@ -51,7 +50,7 @@ export class UsuarioXGrupoTarefaEntity {
     return {
       UsuarioXGrupoTarefaGUID: this.#usuarioXGrupoTarefaGUID,
       GrupoTarefaGUID: this.#grupoTarefaGUID,
-      UsuarioCPF: this.#usuarioCPF,
+      UsuarioGUID: this.#usuarioGUID,
       DataEntrada: this.#dataEntrada,
       CreatedAt: this.#createdAt
     };

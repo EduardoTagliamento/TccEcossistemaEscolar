@@ -17,34 +17,32 @@ export default class ConversaIndividualService {
   }
 
   // Idempotente — cria ou recupera a conversa 1:1 entre dois usuários.
-  // O par é normalizado (menor CPF → Usr1) para que a UNIQUE KEY cubra ambos os sentidos.
+  // O par é normalizado (menor GUID → Usr1) para que a UNIQUE KEY cubra ambos os sentidos.
   async iniciarConversa(
     remetenteGUID: string,
-    destinatarioCPF: string
+    destinatarioGUID: string
   ): Promise<{ ConversaGUID: string; isNova: boolean }> {
     console.log('🟣 ConversaIndividualService.iniciarConversa()');
 
-    // conversa_individual ainda usa CPF — resolver o remetente logado.
-    const usuario = await this.#usuarioDAO.findByGUID(remetenteGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
-    }
-    const remetenteCPF = usuario.UsuarioCPF;
-
-    if (remetenteCPF === destinatarioCPF) {
+    if (remetenteGUID === destinatarioGUID) {
       throw new ErrorResponse(400, 'Não é possível iniciar uma conversa consigo mesmo');
     }
 
-    const [cpfMin, cpfMax] = [remetenteCPF, destinatarioCPF].sort();
+    const destinatario = await this.#usuarioDAO.findByGUID(destinatarioGUID);
+    if (!destinatario) {
+      throw new ErrorResponse(404, 'Usuário destinatário não encontrado');
+    }
 
-    const existente = await this.#conversaIndividualDAO.findByPair(cpfMin, cpfMax);
+    const [guidMin, guidMax] = [remetenteGUID, destinatarioGUID].sort();
+
+    const existente = await this.#conversaIndividualDAO.findByPair(guidMin, guidMax);
     if (existente) {
       return { ConversaGUID: existente.ConversaGUID, isNova: false };
     }
 
     const conversaGUID = gerarGUID();
     await this.#conversaDAO.create(conversaGUID, 'Individual');
-    await this.#conversaIndividualDAO.create(conversaGUID, cpfMin, cpfMax);
+    await this.#conversaIndividualDAO.create(conversaGUID, guidMin, guidMax);
 
     return { ConversaGUID: conversaGUID, isNova: true };
   }

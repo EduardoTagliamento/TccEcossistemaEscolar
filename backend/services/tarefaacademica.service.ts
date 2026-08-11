@@ -61,7 +61,7 @@ export interface MatriculaAtribuidaDTO {
   TarefaRealizacaoData: string | null;
   TarefaNota: number | null;
   TarefaAvaliadoEm: string | null;
-  TarefaAvaliadoPorCPF: string | null;
+  TarefaAvaliadoPorGUID: string | null;
 }
 
 export interface TarefaAcademicaCreateDTO {
@@ -173,7 +173,7 @@ export interface RespostaDTO {
   RespostaTextoDiscursiva: string | null;
   RespostaPontosObtidos: number | null;
   RespostaAvaliadoEm: string | null;
-  RespostaAvaliadoPorCPF: string | null;
+  RespostaAvaliadoPorGUID: string | null;
   RespondidoEm: string | null;
 }
 
@@ -201,7 +201,7 @@ export interface QuestaoComRespostaProfessorDTO {
     AlternativaGUID: string | null;
     RespostaTextoDiscursiva: string | null;
     RespostaPontosObtidos: number | null;
-    RespostaAvaliadoPorCPF: string | null;
+    RespostaAvaliadoPorGUID: string | null;
     RespondidoEm: string | null;
   } | null;
 }
@@ -283,22 +283,9 @@ export default class TarefaAcademicaService {
     this.#usuarioDAO = usuarioDAODependency;
   }
 
-  /** Resolve o CPF de um ator a partir do UsuarioGUID — categoriaconteudo,
-   * materiaxprofessorxturma, tarefaacademica_matricula (avaliador) e
-   * tarefaacademica_resposta (avaliador) ainda usam CPF. */
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    return usuario.UsuarioCPF;
-  };
-
   /** Valida que a categoria (se informada) pertence ao professor e à mesma turma do alocação da tarefa. */
   #validarCategoria = async (categoriaGUID: string | null | undefined, matXprofXturxescGUID: string, usuarioGUID: string): Promise<void> => {
     if (!categoriaGUID) return;
-
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     const categoria = await this.#categoriaDAO.findById(categoriaGUID);
     if (!categoria) {
@@ -315,7 +302,7 @@ export default class TarefaAcademicaService {
     }
 
     if (
-      categoria.UsuarioCPF !== usuarioCPF ||
+      categoria.UsuarioGUID !== usuarioGUID ||
       categoria.MateriaGUID !== alocacao.MateriaGUID ||
       categoria.TurmaGUID !== alocacao.TurmaGUID
     ) {
@@ -592,10 +579,8 @@ export default class TarefaAcademicaService {
       });
     }
 
-    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado
-    const professorAtualizar = await this.#resolverCPFAtor(usuarioGUID);
     const alocacaoAtualizar = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
-    if (!alocacaoAtualizar || alocacaoAtualizar.UsuarioCPF !== professorAtualizar) {
+    if (!alocacaoAtualizar || alocacaoAtualizar.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Só o professor responsável por esta tarefa pode atualizá-la.",
       });
@@ -738,10 +723,8 @@ export default class TarefaAcademicaService {
       });
     }
 
-    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado
-    const professorExcluir = await this.#resolverCPFAtor(usuarioGUID);
     const alocacaoExcluir = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
-    if (!alocacaoExcluir || alocacaoExcluir.UsuarioCPF !== professorExcluir) {
+    if (!alocacaoExcluir || alocacaoExcluir.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Só o professor responsável por esta tarefa pode excluí-la.",
       });
@@ -854,7 +837,7 @@ export default class TarefaAcademicaService {
         : null,
       TarefaNota: atribuicaoAtualizada.TarefaNota,
       TarefaAvaliadoEm: atribuicaoAtualizada.TarefaAvaliadoEm ? atribuicaoAtualizada.TarefaAvaliadoEm.toISOString() : null,
-      TarefaAvaliadoPorCPF: atribuicaoAtualizada.TarefaAvaliadoPorCPF,
+      TarefaAvaliadoPorGUID: atribuicaoAtualizada.TarefaAvaliadoPorGUID,
     };
   };
 
@@ -879,10 +862,6 @@ export default class TarefaAcademicaService {
       });
     }
 
-    // materiaxprofessorxturma/tarefaacademica_matricula ainda usam CPF —
-    // resolver o professor logado.
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-
     // Buscar a atribuição diretamente pelo seu próprio GUID (não temos TarefaGUID+MatriculaGUID aqui)
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT * FROM tarefaacademica_matricula WHERE TarefaMatriculaGUID = ? LIMIT 1`,
@@ -903,7 +882,7 @@ export default class TarefaAcademicaService {
     }
 
     const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
-    if (!alocacao || alocacao.UsuarioCPF !== professorCPF) {
+    if (!alocacao || alocacao.UsuarioGUID !== professorGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Só o professor responsável por esta tarefa pode avaliá-la.",
       });
@@ -923,7 +902,7 @@ export default class TarefaAcademicaService {
     const atribuicaoAtualizada = await this.#tarefaMatriculaDAO.update(TarefaMatriculaGUID, {
       TarefaNota: nota,
       TarefaAvaliadoEm: new Date(),
-      TarefaAvaliadoPorCPF: professorCPF,
+      TarefaAvaliadoPorGUID: professorGUID,
     });
 
     if (!atribuicaoAtualizada) {
@@ -971,7 +950,7 @@ export default class TarefaAcademicaService {
         : null,
       TarefaNota: atribuicaoAtualizada.TarefaNota,
       TarefaAvaliadoEm: atribuicaoAtualizada.TarefaAvaliadoEm ? atribuicaoAtualizada.TarefaAvaliadoEm.toISOString() : null,
-      TarefaAvaliadoPorCPF: atribuicaoAtualizada.TarefaAvaliadoPorCPF,
+      TarefaAvaliadoPorGUID: atribuicaoAtualizada.TarefaAvaliadoPorGUID,
     };
   };
 
@@ -1329,7 +1308,7 @@ export default class TarefaAcademicaService {
           : null,
         TarefaNota: atrib.TarefaNota,
         TarefaAvaliadoEm: atrib.TarefaAvaliadoEm ? atrib.TarefaAvaliadoEm.toISOString() : null,
-        TarefaAvaliadoPorCPF: atrib.TarefaAvaliadoPorCPF,
+        TarefaAvaliadoPorGUID: atrib.TarefaAvaliadoPorGUID,
       })),
       CreatedAt: tarefa.CreatedAt ? tarefa.CreatedAt.toISOString() : null,
       UpdatedAt: tarefa.UpdatedAt ? tarefa.UpdatedAt.toISOString() : null,
@@ -1734,9 +1713,9 @@ export default class TarefaAcademicaService {
         if (
           resposta.RespostaPontosObtidos !== null &&
           resposta.RespostaPontosObtidos > novoMaximo &&
-          resposta.RespostaAvaliadoPorCPF
+          resposta.RespostaAvaliadoPorGUID
         ) {
-          await this.#respostaDAO.gradeDiscursiva(resposta.RespostaGUID, novoMaximo, resposta.RespostaAvaliadoPorCPF);
+          await this.#respostaDAO.gradeDiscursiva(resposta.RespostaGUID, novoMaximo, resposta.RespostaAvaliadoPorGUID);
         }
       }
     }
@@ -1847,7 +1826,7 @@ export default class TarefaAcademicaService {
     RespostaTextoDiscursiva: resposta.RespostaTextoDiscursiva,
     RespostaPontosObtidos: resposta.RespostaPontosObtidos,
     RespostaAvaliadoEm: resposta.RespostaAvaliadoEm ? resposta.RespostaAvaliadoEm.toISOString() : null,
-    RespostaAvaliadoPorCPF: resposta.RespostaAvaliadoPorCPF,
+    RespostaAvaliadoPorGUID: resposta.RespostaAvaliadoPorGUID,
     RespondidoEm: resposta.RespondidoEm ? resposta.RespondidoEm.toISOString() : null,
   });
 
@@ -1902,7 +1881,7 @@ export default class TarefaAcademicaService {
    * Depois de toda resposta/correção: fecha a submissão (TarefaFeito=true)
    * assim que todas as questões tiverem resposta, e só ESCREVE TarefaNota
    * quando todas já estiverem corrigidas (objetivas: automático; discursivas:
-   * dependem do professor). TarefaAvaliadoPorCPF reflete correção humana se
+   * dependem do professor). TarefaAvaliadoPorGUID reflete correção humana se
    * alguma discursiva foi corrigida por um professor, senão fica null
    * (mantém o sinal canônico usado pelo scheduler/board).
    *
@@ -1919,7 +1898,7 @@ export default class TarefaAcademicaService {
     const agregado = (await this.#respostaDAO.buscarAgregadoPorAluno([TarefaMatriculaGUID])).get(TarefaMatriculaGUID);
     if (!agregado || agregado.TotalQuestoes === 0) return;
 
-    const updates: Partial<Pick<TarefaAcademicaMatricula, "TarefaFeito" | "TarefaNota" | "TarefaAvaliadoEm" | "TarefaAvaliadoPorCPF">> = {};
+    const updates: Partial<Pick<TarefaAcademicaMatricula, "TarefaFeito" | "TarefaNota" | "TarefaAvaliadoEm" | "TarefaAvaliadoPorGUID">> = {};
 
     const vaiTerminarAgora = !atribuicaoAntes.TarefaFeito && agregado.QuestoesRespondidas >= agregado.TotalQuestoes;
     if (agregado.QuestoesRespondidas >= agregado.TotalQuestoes) {
@@ -1934,7 +1913,7 @@ export default class TarefaAcademicaService {
         : 0;
       updates.TarefaNota = notaFinal;
       updates.TarefaAvaliadoEm = new Date();
-      updates.TarefaAvaliadoPorCPF = await this.#respostaDAO.buscarAvaliadorHumano(TarefaMatriculaGUID);
+      updates.TarefaAvaliadoPorGUID = await this.#respostaDAO.buscarAvaliadorHumano(TarefaMatriculaGUID);
     }
 
     if (Object.keys(updates).length === 0) return;
@@ -2190,7 +2169,7 @@ export default class TarefaAcademicaService {
               AlternativaGUID: resposta.AlternativaGUID,
               RespostaTextoDiscursiva: resposta.RespostaTextoDiscursiva,
               RespostaPontosObtidos: resposta.RespostaPontosObtidos,
-              RespostaAvaliadoPorCPF: resposta.RespostaAvaliadoPorCPF,
+              RespostaAvaliadoPorGUID: resposta.RespostaAvaliadoPorGUID,
               RespondidoEm: resposta.RespondidoEm ? resposta.RespondidoEm.toISOString() : null,
             }
           : null,
@@ -2234,7 +2213,7 @@ export default class TarefaAcademicaService {
       });
     }
 
-    const atualizada = await this.#respostaDAO.gradeDiscursiva(RespostaGUID, pontos, professorCPF);
+    const atualizada = await this.#respostaDAO.gradeDiscursiva(RespostaGUID, pontos, professorGUID);
     if (!atualizada) {
       throw new ErrorResponse(500, "Erro ao corrigir resposta");
     }

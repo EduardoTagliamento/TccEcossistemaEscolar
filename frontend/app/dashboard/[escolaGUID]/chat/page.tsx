@@ -224,7 +224,7 @@ export default function ChatPage() {
 
     const handleNovaMensagem = (mensagem: ConversaAPI.Mensagem) => {
       const conversaAberta = conversaAtivaGUIDRef.current === mensagem.ConversaGUID;
-      const souEuQueEnviei = mensagem.MensagemRemetenteCPF === usuario?.UsuarioCPF;
+      const souEuQueEnviei = mensagem.MensagemRemetenteGUID === usuario?.UsuarioGUID;
 
       setConversas((prev) => {
         const alvo = prev.find((c) => c.ConversaGUID === mensagem.ConversaGUID);
@@ -234,7 +234,7 @@ export default function ChatPage() {
           ...alvo,
           UltimaMensagem: {
             MensagemConteudo: mensagem.MensagemConteudo,
-            MensagemRemetenteCPF: mensagem.MensagemRemetenteCPF,
+            MensagemRemetenteGUID: mensagem.MensagemRemetenteGUID,
             RemetenteNome: souEuQueEnviei ? 'Você' : nomeDaConversa(alvo),
             MensagemCreatedAt: mensagem.MensagemCreatedAt,
             MensagemTipo: mensagem.MensagemTipo,
@@ -288,11 +288,11 @@ export default function ChatPage() {
 
     const handleUsuarioDigitando = (payload: {
       ConversaGUID: string;
-      UsuarioCPF: string;
+      UsuarioGUID: string;
       UsuarioNome: string;
       isTyping: boolean;
     }) => {
-      if (conversaAtivaGUIDRef.current !== payload.ConversaGUID || payload.UsuarioCPF === usuario?.UsuarioCPF) return;
+      if (conversaAtivaGUIDRef.current !== payload.ConversaGUID || payload.UsuarioGUID === usuario?.UsuarioGUID) return;
       if (digitandoTimeoutRef.current) clearTimeout(digitandoTimeoutRef.current);
       if (payload.isTyping) {
         setDigitandoNome(payload.UsuarioNome);
@@ -314,17 +314,17 @@ export default function ChatPage() {
     };
 
     // mensagem_lida: markAllAsRead já marcou, no banco, tudo até LidaAt como lido
-    // por esse UsuarioCPF — replica isso localmente sem nova requisição.
-    const handleMensagemLida = (payload: { ConversaGUID: string; UsuarioCPF: string; LidaAt: string }) => {
+    // por esse UsuarioGUID — replica isso localmente sem nova requisição.
+    const handleMensagemLida = (payload: { ConversaGUID: string; UsuarioGUID: string; LidaAt: string }) => {
       if (conversaAtivaGUIDRef.current !== payload.ConversaGUID) return;
-      if (payload.UsuarioCPF === usuario?.UsuarioCPF) return;
+      if (payload.UsuarioGUID === usuario?.UsuarioGUID) return;
       const lidaAtMs = new Date(payload.LidaAt).getTime();
       setMensagens((prev) =>
         prev.map((m) => {
-          if (m.MensagemRemetenteCPF === payload.UsuarioCPF) return m;
+          if (m.MensagemRemetenteGUID === payload.UsuarioGUID) return m;
           if (new Date(m.MensagemCreatedAt).getTime() > lidaAtMs) return m;
-          if (m.Leitores?.includes(payload.UsuarioCPF)) return m;
-          return { ...m, Leitores: [...(m.Leitores || []), payload.UsuarioCPF] };
+          if (m.Leitores?.includes(payload.UsuarioGUID)) return m;
+          return { ...m, Leitores: [...(m.Leitores || []), payload.UsuarioGUID] };
         })
       );
     };
@@ -526,7 +526,7 @@ export default function ChatPage() {
   // ---------- Ações de mensagem ----------
   const meuPapelNoGrupo = useMemo(() => {
     if (!conversaAtiva || conversaAtiva.ConversaTipo !== 'Grupo') return null;
-    return conversaAtiva.Membros?.find((m) => m.UsuarioCPF === usuario?.UsuarioCPF)?.MembroFuncao || null;
+    return conversaAtiva.Membros?.find((m) => m.UsuarioGUID === usuario?.UsuarioGUID)?.MembroFuncao || null;
   }, [conversaAtiva, usuario]);
 
   const podeFixarNaConversa = useMemo(() => {
@@ -547,7 +547,7 @@ export default function ChatPage() {
 
   const podeApagar = (mensagem: ConversaAPI.Mensagem): boolean => {
     if (!conversaAtiva) return false;
-    if (mensagem.MensagemRemetenteCPF === usuario?.UsuarioCPF) return true;
+    if (mensagem.MensagemRemetenteGUID === usuario?.UsuarioGUID) return true;
     if (conversaAtiva.ConversaTipo === 'Individual') return false;
     if (conversaAtiva.ConversaGrupoTipo === 'Tarefa') return meuPapelNoGrupo === 'Lider';
     return meuPapelNoGrupo === 'Representante' || meuPapelNoGrupo === 'Vice-Representante';
@@ -815,7 +815,7 @@ export default function ChatPage() {
                           !mensagemAnterior ||
                           new Date(mensagemAnterior.MensagemCreatedAt).toDateString() !==
                             new Date(mensagem.MensagemCreatedAt).toDateString();
-                        const mine = mensagem.MensagemRemetenteCPF === usuario?.UsuarioCPF;
+                        const mine = mensagem.MensagemRemetenteGUID === usuario?.UsuarioGUID;
                         const apagada = !!mensagem.MensagemDeletedAt;
                         const editandoEsta = editandoMensagemGUID === mensagem.MensagemGUID;
                         const fixada = conversaAtiva?.MensagensFixadas.some((f) => f.MensagemGUID === mensagem.MensagemGUID);
@@ -830,7 +830,7 @@ export default function ChatPage() {
                             <div className={`${styles.bolhaLinha} ${mine ? styles.bolhaLinhaMinha : ''}`}>
                               <div className={`${styles.bolha} ${mine ? styles.bolhaMinha : styles.bolhaOutro} ${apagada ? styles.bolhaApagada : ''}`}>
                                 {conversaAtiva?.ConversaTipo === 'Grupo' && !mine && !apagada && (
-                                  <span className={styles.bolhaAutor}>{mensagem.MensagemRemetenteCPF}</span>
+                                  <span className={styles.bolhaAutor}>{mensagem.MensagemRemetenteGUID}</span>
                                 )}
 
                                 {editandoEsta ? (
@@ -886,14 +886,14 @@ export default function ChatPage() {
                                 {!editandoEsta && mensagem.Reacoes && mensagem.Reacoes.length > 0 && (
                                   <div className={styles.reacoesLinha}>
                                     {mensagem.Reacoes.map((reacao) => {
-                                      const euReagi = usuario?.UsuarioCPF ? reacao.UsuariosCPF.includes(usuario.UsuarioCPF) : false;
+                                      const euReagi = usuario?.UsuarioGUID ? reacao.UsuariosGUID.includes(usuario.UsuarioGUID) : false;
                                       return (
                                         <button
                                           type="button"
                                           key={reacao.Emoji}
                                           className={`${styles.reacaoChip} ${euReagi ? styles.reacaoChipAtiva : ''}`}
                                           onClick={() => handleReagir(mensagem, reacao.Emoji as ConversaAPI.ReacaoEmoji)}
-                                          title={reacao.UsuariosCPF.length + ' reação(ões)'}
+                                          title={reacao.UsuariosGUID.length + ' reação(ões)'}
                                         >
                                           {reacao.Emoji} {reacao.Quantidade}
                                         </button>
@@ -1063,7 +1063,7 @@ export default function ChatPage() {
       <NovaConversaModal
         aberto={modalNovaConversaAberto}
         escolaGUID={escolaGUID}
-        meuCPF={usuario?.UsuarioCPF || ''}
+        meuGUID={usuario?.UsuarioGUID || ''}
         onClose={() => setModalNovaConversaAberto(false)}
         onConversaIniciada={(guid) => void handleConversaIniciada(guid)}
       />
@@ -1072,7 +1072,7 @@ export default function ChatPage() {
         <GerenciarGrupoModal
           aberto={gerenciarGrupoAberto}
           conversa={conversaAtiva}
-          meuCPF={usuario?.UsuarioCPF || ''}
+          meuGUID={usuario?.UsuarioGUID || ''}
           meuPapelNoGrupo={meuPapelNoGrupo}
           isCoordenacaoOuDirecao={isCoordenacaoOuDirecao}
           onClose={() => setGerenciarGrupoAberto(false)}

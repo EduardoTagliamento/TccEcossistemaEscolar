@@ -38,7 +38,7 @@ export type MensagemTipo = 'Texto' | 'Arquivo' | 'Imagem';
 
 export interface UltimaMensagemResumo {
   MensagemConteudo: string;
-  MensagemRemetenteCPF: string;
+  MensagemRemetenteGUID: string;
   RemetenteNome: string;
   MensagemCreatedAt: string;
   MensagemTipo: MensagemTipo;
@@ -49,7 +49,7 @@ export interface ConversaListItem {
   ConversaTipo: ConversaTipo;
   ConversaGrupoNome: string | null;
   ConversaGrupoTipo: ConversaGrupoTipo | null;
-  ParceiroCPF: string | null;
+  ParceiroGUID: string | null;
   ParceiroNome: string | null;
   TagContextual: string | null;
   UltimaMensagem: UltimaMensagemResumo | null;
@@ -57,7 +57,7 @@ export interface ConversaListItem {
 }
 
 export interface ConversaMembro {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   MembroFuncao: MembroFuncao;
   MembroEntradaAt: string;
@@ -69,13 +69,13 @@ export type ReacaoEmoji = (typeof EMOJIS_REACAO_PERMITIDOS)[number];
 export interface ReacaoResumo {
   Emoji: string;
   Quantidade: number;
-  UsuariosCPF: string[];
+  UsuariosGUID: string[];
 }
 
 export interface Mensagem {
   MensagemGUID: string;
   ConversaGUID: string;
-  MensagemRemetenteCPF: string;
+  MensagemRemetenteGUID: string;
   MensagemConteudo: string;
   MensagemTipo: MensagemTipo;
   MensagemCreatedAt: string;
@@ -89,10 +89,10 @@ export interface MensagemFixada {
   MensagemGUID: string;
   ConversaGUID: string;
   MensagemConteudo: string;
-  MensagemRemetenteCPF: string;
+  MensagemRemetenteGUID: string;
   MensagemCreatedAt: string;
   MensagemTipo: MensagemTipo;
-  FixadaPorCPF: string;
+  FixadaPorGUID: string;
   FixadaAt: string;
 }
 
@@ -103,7 +103,7 @@ export interface ConversaDetalhe {
   ConversaGrupoTipo: ConversaGrupoTipo | null;
   ConversaGrupoRefGUID: string | null;
   Membros?: ConversaMembro[];
-  ParceiroCPF: string | null;
+  ParceiroGUID: string | null;
   ParceiroNome: string | null;
   TagContextual: string | null;
   MensagensFixadas: MensagemFixada[];
@@ -177,11 +177,11 @@ export async function listarFixadas(conversaGUID: string): Promise<MensagemFixad
 }
 
 /** Cria (ou recupera, se já existir) a conversa 1:1 com outro usuário da escola. */
-export async function iniciarConversaIndividual(destinatarioCPF: string): Promise<IniciarConversaResultado> {
+export async function iniciarConversaIndividual(destinatarioGUID: string): Promise<IniciarConversaResultado> {
   const response = await fetch(`${API_URL}/conversa/individual`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ DestinatarioCPF: destinatarioCPF }),
+    body: JSON.stringify({ DestinatarioGUID: destinatarioGUID }),
   });
   return tratarResposta<IniciarConversaResultado>(response, 'Erro ao iniciar conversa');
 }
@@ -232,7 +232,7 @@ export interface ReacaoAtualizada {
   ConversaGUID: string;
   MensagemGUID: string;
   Reacoes: ReacaoResumo[];
-  AtorCPF: string;
+  AtorGUID: string;
   Acao: 'adicionada' | 'removida';
 }
 
@@ -256,11 +256,11 @@ export async function reagirMensagem(
 // valida a autorização real (403 se o papel não permitir); estas funções só
 // fazem a chamada.
 
-export async function definirRepresentante(conversaGUID: string, usuarioCPF: string): Promise<void> {
+export async function definirRepresentante(conversaGUID: string, usuarioGUID: string): Promise<void> {
   const response = await fetch(`${API_URL}/conversa/${conversaGUID}/permissao/representante`, {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify({ UsuarioCPF: usuarioCPF }),
+    body: JSON.stringify({ UsuarioGUID: usuarioGUID }),
   });
   return tratarResposta<void>(response, 'Erro ao definir representante');
 }
@@ -273,17 +273,17 @@ export async function removerRepresentante(conversaGUID: string): Promise<void> 
   return tratarResposta<void>(response, 'Erro ao remover representante');
 }
 
-export async function definirViceRepresentante(conversaGUID: string, usuarioCPF: string): Promise<void> {
+export async function definirViceRepresentante(conversaGUID: string, usuarioGUID: string): Promise<void> {
   const response = await fetch(`${API_URL}/conversa/${conversaGUID}/permissao/vice-representante`, {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify({ UsuarioCPF: usuarioCPF }),
+    body: JSON.stringify({ UsuarioGUID: usuarioGUID }),
   });
   return tratarResposta<void>(response, 'Erro ao definir vice-representante');
 }
 
-export async function removerViceRepresentante(conversaGUID: string, usuarioCPF: string): Promise<void> {
-  const response = await fetch(`${API_URL}/conversa/${conversaGUID}/permissao/vice-representante/${usuarioCPF}`, {
+export async function removerViceRepresentante(conversaGUID: string, usuarioGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/conversa/${conversaGUID}/permissao/vice-representante/${usuarioGUID}`, {
     method: 'DELETE',
     headers: getHeaders(),
   });

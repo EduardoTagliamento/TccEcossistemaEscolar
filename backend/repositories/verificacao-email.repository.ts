@@ -3,7 +3,7 @@ import VerificacaoEmail from "../entities/verificacao-email.model";
 
 interface VerificacaoEmailRow {
   VerificacaoId: number;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   VerificacaoCodigo: string;
   VerificacaoExpiresAt: Date;
   VerificacaoUsado: number; // MySQL retorna 0 ou 1
@@ -26,12 +26,12 @@ export class VerificacaoEmailDAO {
 
     const sql = `
       INSERT INTO verificacao_email (
-        UsuarioCPF, VerificacaoCodigo, VerificacaoExpiresAt
+        UsuarioGUID, VerificacaoCodigo, VerificacaoExpiresAt
       ) VALUES (?, ?, ?)
     `;
 
     const params = [
-      verificacao.UsuarioCPF,
+      verificacao.UsuarioGUID,
       verificacao.VerificacaoCodigo,
       verificacao.VerificacaoExpiresAt,
     ];
@@ -44,14 +44,14 @@ export class VerificacaoEmailDAO {
   }
 
   /**
-   * Busca código válido (não expirado, não usado) por CPF e Código
+   * Busca código válido (não expirado, não usado) por GUID do usuário e Código
    */
-  async findValidCode(cpf: string, codigo: string): Promise<VerificacaoEmail | null> {
+  async findValidCode(usuarioGUID: string, codigo: string): Promise<VerificacaoEmail | null> {
     console.log("🔵 VerificacaoEmailDAO.findValidCode()");
 
     const sql = `
       SELECT * FROM verificacao_email
-      WHERE UsuarioCPF = ?
+      WHERE UsuarioGUID = ?
         AND VerificacaoCodigo = ?
         AND VerificacaoUsado = FALSE
         AND VerificacaoExpiresAt > NOW()
@@ -60,7 +60,7 @@ export class VerificacaoEmailDAO {
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(sql, [cpf, codigo]);
+    const [rows] = await pool.execute(sql, [usuarioGUID, codigo]);
     
     const linhas = rows as VerificacaoEmailRow[];
     if (linhas.length === 0) {
@@ -88,38 +88,38 @@ export class VerificacaoEmailDAO {
   }
 
   /**
-   * Invalida todos os códigos não usados de um CPF (ao gerar novo)
+   * Invalida todos os códigos não usados de um usuário (ao gerar novo)
    */
-  async invalidateOldCodes(cpf: string): Promise<boolean> {
+  async invalidateOldCodes(usuarioGUID: string): Promise<boolean> {
     console.log("🔵 VerificacaoEmailDAO.invalidateOldCodes()");
 
     const sql = `
       UPDATE verificacao_email
       SET VerificacaoUsado = TRUE
-      WHERE UsuarioCPF = ?
+      WHERE UsuarioGUID = ?
         AND VerificacaoUsado = FALSE
     `;
 
     const pool = await this.#database.getPool();
-    const [result] = await pool.execute(sql, [cpf]);
+    const [result] = await pool.execute(sql, [usuarioGUID]);
     return (result as { affectedRows: number }).affectedRows >= 0; // Pode ser 0 se não houver códigos antigos
   }
 
   /**
    * Conta tentativas de solicitação nas últimas N horas (anti-spam)
    */
-  async countRecentAttempts(cpf: string, hours: number = 1): Promise<number> {
+  async countRecentAttempts(usuarioGUID: string, hours: number = 1): Promise<number> {
     console.log("🔵 VerificacaoEmailDAO.countRecentAttempts()");
 
     const sql = `
       SELECT COUNT(*) as total
       FROM verificacao_email
-      WHERE UsuarioCPF = ?
+      WHERE UsuarioGUID = ?
         AND VerificacaoCreatedAt > DATE_SUB(NOW(), INTERVAL ? HOUR)
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(sql, [cpf, hours]);
+    const [rows] = await pool.execute(sql, [usuarioGUID, hours]);
     
     const linhas = rows as any[];
     return linhas[0]?.total || 0;
@@ -149,7 +149,7 @@ export class VerificacaoEmailDAO {
     const verificacao = new VerificacaoEmail();
     
     verificacao.VerificacaoId = row.VerificacaoId;
-    verificacao.UsuarioCPF = row.UsuarioCPF;
+    verificacao.UsuarioGUID = row.UsuarioGUID;
     verificacao.VerificacaoCodigo = row.VerificacaoCodigo;
     verificacao.VerificacaoExpiresAt = new Date(row.VerificacaoExpiresAt);
     verificacao.VerificacaoUsado = Boolean(row.VerificacaoUsado);

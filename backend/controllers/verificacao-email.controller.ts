@@ -10,15 +10,15 @@ export default class VerificacaoEmailController {
   }
 
   /**
-   * POST /api/verificacao-email/solicitar/:UsuarioCPF
+   * POST /api/verificacao-email/solicitar/:UsuarioGUID
    * Solicita código de verificação por email
    */
   solicitarCodigo = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 VerificacaoEmailController.solicitarCodigo()");
-    
+
     try {
-      const { UsuarioCPF } = request.params;
-      const result = await this.#service.solicitarVerificacao(UsuarioCPF);
+      const { UsuarioGUID } = request.params;
+      const result = await this.#service.solicitarVerificacao(UsuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -36,11 +36,11 @@ export default class VerificacaoEmailController {
    */
   validarCodigo = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 VerificacaoEmailController.validarCodigo()");
-    
+
     try {
-      const { UsuarioCPF, UsuarioEmail, VerificacaoCodigo } = request.body.verificacao;
-      const result = UsuarioCPF
-        ? await this.#service.validarCodigo(UsuarioCPF, VerificacaoCodigo)
+      const { UsuarioGUID, UsuarioEmail, VerificacaoCodigo } = request.body.verificacao;
+      const result = UsuarioGUID
+        ? await this.#service.validarCodigo(UsuarioGUID, VerificacaoCodigo)
         : await this.#service.validarCodigoPorEmail(UsuarioEmail, VerificacaoCodigo);
 
       response.status(200).json({
@@ -54,15 +54,15 @@ export default class VerificacaoEmailController {
   };
 
   /**
-   * POST /api/verificacao-email/reenviar/:UsuarioCPF
+   * POST /api/verificacao-email/reenviar/:UsuarioGUID
    * Reenvia código de verificação
    */
   reenviarCodigo = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 VerificacaoEmailController.reenviarCodigo()");
-    
+
     try {
-      const { UsuarioCPF } = request.params;
-      const result = await this.#service.reenviarCodigo(UsuarioCPF);
+      const { UsuarioGUID } = request.params;
+      const result = await this.#service.reenviarCodigo(UsuarioGUID);
 
       response.status(200).json({
         success: true,
@@ -76,15 +76,15 @@ export default class VerificacaoEmailController {
 
   /**
    * POST /api/verificacao-email/reenviar
-   * Reenvia código por CPF ou email no body
+   * Reenvia código de verificação via body (UsuarioGUID ou email)
    */
   reenviarCodigoBody = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 VerificacaoEmailController.reenviarCodigoBody()");
 
     try {
-      const { UsuarioCPF, UsuarioEmail } = request.body.verificacao;
-      const result = UsuarioCPF
-        ? await this.#service.reenviarCodigo(UsuarioCPF)
+      const { UsuarioGUID, UsuarioEmail } = request.body.verificacao;
+      const result = UsuarioGUID
+        ? await this.#service.reenviarCodigo(UsuarioGUID)
         : await this.#service.reenviarCodigoPorEmail(UsuarioEmail);
 
       response.status(200).json({

@@ -4,7 +4,7 @@ export type ConviteStatus = 'Pendente' | 'Aceito' | 'Recusado';
 export interface ConviteGrupoProjeto {
   ConviteGUID: string;
   GrupoProjetoGUID: string;
-  UsuarioCPFConvidado: string;
+  UsuarioGUIDConvidado: string;
   ConviteTipo: ConviteTipo;
   ConviteStatus: ConviteStatus;
   CreatedAt: Date;
@@ -13,7 +13,7 @@ export interface ConviteGrupoProjeto {
 
 export interface ConviteGrupoProjetoCreateDTO {
   GrupoProjetoGUID: string;
-  UsuarioCPFConvidado: string;
+  UsuarioGUIDConvidado: string;
   ConviteTipo: ConviteTipo;
 }
 
@@ -21,9 +21,9 @@ export interface ConviteGrupoProjetoDTO {
   ConviteGUID: string;
   GrupoProjetoGUID: string;
   GrupoProjetoNome: string | null;
-  LiderCPF: string;
+  LiderGUID: string;
   LiderNome: string;
-  UsuarioCPFConvidado: string;
+  UsuarioGUIDConvidado: string;
   NomeConvidado: string;
   ConviteTipo: ConviteTipo;
   ConviteStatus: ConviteStatus;
@@ -37,7 +37,7 @@ export interface ConviteGrupoProjetoDTO {
 export class ConviteGrupoProjetoEntity {
   #conviteGUID: string;
   #grupoProjetoGUID: string;
-  #usuarioCPFConvidado: string;
+  #usuarioGUIDConvidado: string;
   #conviteTipo: ConviteTipo;
   #conviteStatus: ConviteStatus;
   #createdAt: Date;
@@ -46,7 +46,7 @@ export class ConviteGrupoProjetoEntity {
   constructor(data: ConviteGrupoProjeto) {
     this.#conviteGUID = data.ConviteGUID;
     this.#grupoProjetoGUID = data.GrupoProjetoGUID;
-    this.#usuarioCPFConvidado = data.UsuarioCPFConvidado;
+    this.#usuarioGUIDConvidado = data.UsuarioGUIDConvidado;
     this.#conviteTipo = data.ConviteTipo;
     this.#conviteStatus = data.ConviteStatus;
     this.#createdAt = data.CreatedAt;
@@ -55,7 +55,7 @@ export class ConviteGrupoProjetoEntity {
 
   get conviteGUID(): string { return this.#conviteGUID; }
   get grupoProjetoGUID(): string { return this.#grupoProjetoGUID; }
-  get usuarioCPFConvidado(): string { return this.#usuarioCPFConvidado; }
+  get usuarioGUIDConvidado(): string { return this.#usuarioGUIDConvidado; }
   get conviteTipo(): ConviteTipo { return this.#conviteTipo; }
   get conviteStatus(): ConviteStatus { return this.#conviteStatus; }
   get createdAt(): Date { return this.#createdAt; }
@@ -78,9 +78,8 @@ export class ConviteGrupoProjetoEntity {
       throw new Error('GrupoProjetoGUID inválido');
     }
 
-    const cpfLimpo = this.#usuarioCPFConvidado.replace(/\D/g, '');
-    if (cpfLimpo.length !== 11) {
-      throw new Error('UsuarioCPFConvidado deve ter 11 dígitos');
+    if (!this.#usuarioGUIDConvidado || this.#usuarioGUIDConvidado.trim() === '') {
+      throw new Error('UsuarioGUIDConvidado deve ser uma string não vazia');
     }
 
     const tiposValidos: ConviteTipo[] = ['Convite', 'Solicitacao'];
@@ -98,7 +97,7 @@ export class ConviteGrupoProjetoEntity {
     return {
       ConviteGUID: this.#conviteGUID,
       GrupoProjetoGUID: this.#grupoProjetoGUID,
-      UsuarioCPFConvidado: this.#usuarioCPFConvidado,
+      UsuarioGUIDConvidado: this.#usuarioGUIDConvidado,
       ConviteTipo: this.#conviteTipo,
       ConviteStatus: this.#conviteStatus,
       CreatedAt: this.#createdAt,
