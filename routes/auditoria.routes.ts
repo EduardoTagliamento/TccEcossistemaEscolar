@@ -18,6 +18,7 @@ import MysqlDatabase from "../backend/database/MysqlDatabase";
 import { RegistroAuditoriaDAO } from "../backend/repositories/registroauditoria.repository";
 import { CategoriaAuditoriaDAO } from "../backend/repositories/categoriaauditoria.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import AuditoriaService from "../backend/services/auditoria.service";
 import AuditoriaController from "../backend/controllers/auditoria.controller";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
@@ -29,8 +30,9 @@ export function auditoriaRoutes(): Router {
   const registroDAO = new RegistroAuditoriaDAO(database);
   const categoriaDAO = new CategoriaAuditoriaDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
+  const usuarioDAO = new UsuarioDAO(database);
 
-  const auditoriaService = new AuditoriaService(registroDAO, categoriaDAO);
+  const auditoriaService = new AuditoriaService(registroDAO, categoriaDAO, usuarioDAO);
   const controller = new AuditoriaController(auditoriaService, escolaxUsuarioxFuncaoDAO);
 
   router.use(AuthMiddleware.authenticate);

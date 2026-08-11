@@ -67,7 +67,7 @@ export default function PendenciaDetalhesPage() {
     }
   }, [usuario, authLoading, router]);
 
-  const souDestinatario = !!usuario && !!pendencia && usuario.UsuarioCPF === pendencia.UsuarioCPF;
+  const souDestinatario = !!usuario && !!pendencia && usuario.UsuarioGUID === pendencia.UsuarioGUID;
 
   const handleSelecionarArquivo = async (arquivo: File | null) => {
     if (!arquivo || !pendencia) return;

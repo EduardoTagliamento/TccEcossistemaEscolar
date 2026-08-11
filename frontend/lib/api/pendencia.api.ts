@@ -24,7 +24,7 @@ function getHeaders(): HeadersInit {
 
 export interface Pendencia {
   PendenciaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   PendenciaTitulo: string;
   PendenciaConteudo: string | null;

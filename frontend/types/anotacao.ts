@@ -1,6 +1,6 @@
 export interface Anotacao {
   AnotacaoGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   AnotacaoData: string;              // ISO string
   AnotacaoTitulo: string;

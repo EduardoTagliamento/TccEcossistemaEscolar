@@ -18,6 +18,7 @@ import Loader from '@/components/Loader';
 import styles from './page.module.css';
 
 import * as AuditoriaAPI from '@/lib/api/auditoria.api';
+import { buscarUsuarioPorCPF } from '@/lib/api/usuario.api';
 import {
   ACAO_AUDITORIA_LABEL,
   CATEGORIA_AUDITORIA_LABEL,
@@ -141,15 +142,33 @@ export default function AuditoriaPage() {
     }
   };
 
-  const montarFiltros = (limite: number): AuditoriaAPI.AuditoriaFiltros => ({
-    AcaoTipo: filtroAcaoTipo || undefined,
-    EntidadeTipo: filtroEntidadeTipo || undefined,
-    CategoriaAuditoriaId: filtroCategoriaId ? Number(filtroCategoriaId) : undefined,
-    UsuarioCPFAtor: filtroCPFAtor.trim() ? filtroCPFAtor.replace(/\D/g, '') : undefined,
-    dataInicio: filtroDataInicio || undefined,
-    dataFim: filtroDataFim || undefined,
-    limit: limite,
-  });
+  // Resolve o CPF digitado pro GUID do ator (filtro real do backend é por
+  // UsuarioGUIDAtor — CPF é só a forma que a Coordenação/Secretaria/Direção
+  // conhece a pessoa, mesmo padrão de `buscarUsuarioPorCPF` usado em
+  // coordenacao/secretaria). Se o CPF não corresponder a ninguém, mostra
+  // "nenhum resultado" em vez de deixar o filtro cair no chão.
+  const montarFiltros = async (limite: number): Promise<AuditoriaAPI.AuditoriaFiltros | null> => {
+    let usuarioGUIDAtor: string | undefined;
+    const cpfDigitado = filtroCPFAtor.trim() ? filtroCPFAtor.replace(/\D/g, '') : '';
+    if (cpfDigitado) {
+      try {
+        const usuarioEncontrado = await buscarUsuarioPorCPF(cpfDigitado);
+        usuarioGUIDAtor = usuarioEncontrado.UsuarioGUID;
+      } catch {
+        return null;
+      }
+    }
+
+    return {
+      AcaoTipo: filtroAcaoTipo || undefined,
+      EntidadeTipo: filtroEntidadeTipo || undefined,
+      CategoriaAuditoriaId: filtroCategoriaId ? Number(filtroCategoriaId) : undefined,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
+      dataInicio: filtroDataInicio || undefined,
+      dataFim: filtroDataFim || undefined,
+      limit: limite,
+    };
+  };
 
   // Aceita um `limiteOverride` pra quando o próprio limite muda (troca do
   // seletor "registros por página") — nesse caso não dá pra confiar no
@@ -161,8 +180,17 @@ export default function AuditoriaPage() {
       setCarregando(true);
       setErro('');
 
+      const filtros = await montarFiltros(limite);
+      if (!filtros) {
+        setRegistros([]);
+        setOffset(novoOffset);
+        setTemMais(false);
+        setErro('Nenhum usuário encontrado com o CPF informado.');
+        return;
+      }
+
       const { registros: lista } = await AuditoriaAPI.listarRegistros(escolaGUID, {
-        ...montarFiltros(limite),
+        ...filtros,
         offset: novoOffset,
       });
 
@@ -362,7 +390,7 @@ export default function AuditoriaPage() {
                     <th>Ação</th>
                     <th>Módulo</th>
                     <th>Registro</th>
-                    <th>Responsável (CPF)</th>
+                    <th>Responsável</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -384,7 +412,11 @@ export default function AuditoriaPage() {
                         <td>{ACAO_AUDITORIA_LABEL[registro.AcaoTipo] || registro.AcaoTipo}</td>
                         <td>{ENTIDADE_TIPO_LABEL[registro.EntidadeTipo] || registro.EntidadeTipo}</td>
                         <td>{registro.EntidadeDescricao || truncarGUID(registro.EntidadeGUID)}</td>
-                        <td>{formatarCPF(registro.UsuarioCPFAtor)}</td>
+                        <td>
+                          {registro.UsuarioNomeAtor
+                            ? `${registro.UsuarioNomeAtor}${registro.UsuarioCPFAtor ? ` (${formatarCPF(registro.UsuarioCPFAtor)})` : ''}`
+                            : truncarGUID(registro.UsuarioGUIDAtor)}
+                        </td>
                       </tr>
                     );
                   })}
