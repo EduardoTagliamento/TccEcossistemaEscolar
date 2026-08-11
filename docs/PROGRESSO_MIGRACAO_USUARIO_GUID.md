@@ -317,3 +317,37 @@ Para cada um: o valor de `req.user.UsuarioGUID` é sempre o ATOR — renomear a 
 5. Atualizar `docs/routes/*.md`.
 6. Testar login + fluxos principais manualmente contra o banco já migrado.
 7. Considerar remover a dependência `uuid` do `package.json` (não é mais usada em lugar nenhum — trocada por `gerarGUID()`).
+
+Site restaurado. Achei e corrigi um incidente crítico: o código que já estava deployado esperava colunas UsuarioGUID que não existiam no banco de produção — o site inteiro (login incluso) estava fora do ar há ~14h sem que ninguém tivesse percebido. Rodei a migração de schema (com sua autorização), corrigi dois bugs reais no próprio script durante o processo, e agora as 39 tabelas relacionadas a usuario estão migradas no banco.
+
+Como essa migração afeta todas as tabelas de uma vez, isso quebrou (na direção oposta) o código das 27 tabelas que ainda esperavam CPF — chat, grupos de tarefa/projeto, conteúdo/material didático, anexos, avaliação de tarefas, banco de questões, sugestões. Lancei 4 agentes em paralelo, cada um migrando um cluster independente de arquivos, pra corrigir isso o mais rápido possível. Vou revisar tudo assim que terminarem.
+
+✻ Worked for 19m 13s
+
+✻ Claude resuming /loop wakeup (Aug 11 2:38pm)
+
+Essa checagem já foi feita e resolvida há algumas etapas — o agente mysql confirmou o schema desatualizado, eu já rodei a migração de schema (com sua autorização) e ela concluiu com sucesso. Agora estou na etapa seguinte: aguardando os 4 forks paralelos terminarem de corrigir o código das 27 tabelas que ficaram desalinhadas por causa da migração. Ainda não recebi nenhuma notificação de conclusão deles — vou revisar assim que chegarem.
+
+✻ Churned for 8s
+
+● Agent "Migrar cluster Conteúdo/Material/Anexo/Professor pra GUID" failed: Agent terminated early due to an API error: You've hit your session limit · resets 6:20pm (America/Sao_Paulo)
+
+  Ran 1 shell command
+
+● Agent "Migrar cluster Grupos/Projetos/Convites pra GUID" failed: Agent terminated early due to an API error: You've hit your session limit · resets 6:20pm (America/Sao_Paulo)
+
+● Agent "Migrar cluster Conversa/Chat pra GUID" failed: Agent terminated early due to an API error: You've hit your session limit · resets 6:20pm (America/Sao_Paulo)
+
+● Agent "Migrar cluster Avaliação/QuestãoBanco/Sugestão pra GUID" failed: Agent terminated early due to an API error: You've hit your session limit · resets 6:20pm (America/Sao_Paulo)
+
+● Agent "Migrar cluster Avaliação/Questões/Sugestão pra GUID" failed: Agent terminated early due to an API error: You've hit your session limit · resets 6:20pm (America/Sao_Paulo)
+You've hit your session limit · resets 6:20pm (America/Sao_Paulo)
+/upgrade to increase your usage limit.
+
+✻ Cogitated for 11s
+
+● Agent "Migrar cluster Grupos/Projetos/Convites pra GUID" failed: Agent terminated early due to an API error: You've hit your session limit · resets 6:20pm (America/Sao_Paulo)
+You've hit your session limit · resets 6:20pm (America/Sao_Paulo)
+/upgrade to increase your usage limit.
+
+✻ Cooked for 36m 29s
