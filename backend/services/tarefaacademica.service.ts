@@ -1012,9 +1012,6 @@ export default class TarefaAcademicaService {
   }>> => {
     console.log("🟣 TarefaAcademicaService.listarPendentesAvaliacaoProfessor()");
 
-    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
-    const professorCPF = await this.#resolverCPFAtor(usuarioGUID);
-
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT tm.TarefaMatriculaGUID, t.TarefaGUID, t.TarefaTitulo,
               mat.MateriaGUID, mat.MateriaNome, tu.TurmaGUID, tu.TurmaNome, u.UsuarioNome AS AlunoNome
@@ -1025,11 +1022,11 @@ export default class TarefaAcademicaService {
        INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
        INNER JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
        INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
-       WHERE mpt.UsuarioCPF = ?
+       WHERE mpt.UsuarioGUID = ?
          AND tm.TarefaFeito = TRUE
          AND tm.TarefaNota IS NULL
        ORDER BY tm.TarefaRealizacaoData ASC`,
-      [professorCPF]
+      [usuarioGUID]
     );
 
     return rows.map((row: any) => ({
@@ -1046,7 +1043,7 @@ export default class TarefaAcademicaService {
 
   #notificarTarefaRespostaRecebida = async (tarefa: TarefaAcademica, alunoGUID: string): Promise<void> => {
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT mpt.UsuarioCPF AS ProfessorCPF, t.EscolaGUID
+      `SELECT mpt.UsuarioGUID AS ProfessorGUID, t.EscolaGUID
        FROM materiaxprofessorxturma mpt
        INNER JOIN turma t ON t.TurmaGUID = mpt.TurmaGUID
        WHERE mpt.MatProfTurGUID = ?
@@ -1054,11 +1051,7 @@ export default class TarefaAcademicaService {
       [tarefa.matXprofXturxescGUID]
     );
     const info = rows[0] as any;
-    if (!info?.ProfessorCPF || !info?.EscolaGUID) return;
-
-    // materiaxprofessorxturma ainda usa CPF — resolver pra GUID (notificacao já exige GUID)
-    const professor = await this.#usuarioDAO.findByCPF(info.ProfessorCPF);
-    if (!professor) return;
+    if (!info?.ProfessorGUID || !info?.EscolaGUID) return;
 
     const [alunoRows] = await pool.execute<RowDataPacket[]>(
       "SELECT UsuarioNome FROM usuario WHERE UsuarioGUID = ? LIMIT 1",
@@ -1068,7 +1061,7 @@ export default class TarefaAcademicaService {
 
     await getNotificacaoService().disparar({
       tipoSlug: "tarefa_resposta_recebida",
-      destinatarios: [professor.UsuarioGUID],
+      destinatarios: [info.ProfessorGUID],
       escolaGUID: info.EscolaGUID,
       titulo: `${alunoNome} enviou a resposta da tarefa "${tarefa.TarefaTitulo}"`,
       entidadeTipo: "tarefa",
@@ -1112,9 +1105,7 @@ export default class TarefaAcademicaService {
       });
     }
 
-    // anexo ainda usa CPF — resolver o usuário logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    if (anexo.UsuarioCPF !== usuarioCPF) {
+    if (anexo.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode enviar como entrega um anexo que você mesmo enviou.",
       });
@@ -1197,10 +1188,8 @@ export default class TarefaAcademicaService {
       }
     } else {
       // Material de apoio (descrição): só o professor responsável pela tarefa.
-      // materiaxprofessorxturma ainda usa CPF — resolver o usuário logado.
-      const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
       const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
-      if (!alocacao || alocacao.UsuarioCPF !== usuarioCPF) {
+      if (!alocacao || alocacao.UsuarioGUID !== usuarioGUID) {
         throw new ErrorResponse(403, "Sem permissão", {
           message: "Só o professor responsável por esta tarefa pode remover o material de apoio.",
         });
@@ -1320,7 +1309,7 @@ export default class TarefaAcademicaService {
   // ========== Questão de tarefa "lista" (quiz estilo Forms) ==========
 
   /** Busca a tarefa, confirma que é do tipo 'lista' e que o professor é o dono. */
-  #validarTarefaListaDoProfessor = async (TarefaGUID: string, professorCPF: string): Promise<TarefaAcademica> => {
+  #validarTarefaListaDoProfessor = async (TarefaGUID: string, professorGUID: string): Promise<TarefaAcademica> => {
     const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
     if (!tarefa) {
       throw new ErrorResponse(404, "Tarefa não encontrada", {
@@ -1333,7 +1322,7 @@ export default class TarefaAcademicaService {
       });
     }
     const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
-    if (!alocacao || alocacao.UsuarioCPF !== professorCPF) {
+    if (!alocacao || alocacao.UsuarioGUID !== professorGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Só o professor responsável por esta tarefa pode gerenciar suas questões.",
       });
@@ -1406,8 +1395,7 @@ export default class TarefaAcademicaService {
   criarQuestao = async (TarefaGUID: string, data: QuestaoCreateDTO, professorGUID: string): Promise<QuestaoDTO> => {
     console.log("🟣 TarefaAcademicaService.criarQuestao()");
 
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorGUID);
 
     if (data.QuestaoTipo === "objetiva") {
       this.#validarAlternativas(data.Alternativas);
@@ -1444,7 +1432,7 @@ export default class TarefaAcademicaService {
     if (data.AnexosGUID && data.AnexosGUID.length > 0) {
       for (const anexoGUID of data.AnexosGUID) {
         const anexo = await this.#anexoDAO.findById(anexoGUID);
-        if (anexo && anexo.UsuarioCPF === professorCPF) {
+        if (anexo && anexo.UsuarioGUID === professorGUID) {
           await this.#questaoDAO.vincularAnexo(questao.QuestaoGUID, anexoGUID);
         }
       }
@@ -1461,8 +1449,7 @@ export default class TarefaAcademicaService {
   ): Promise<{ criadas: QuestaoDTO[]; count: number }> => {
     console.log(`🟣 TarefaAcademicaService.criarQuestoesBatch() - ${questoesData.length} questões`);
 
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorGUID);
 
     if (questoesData.length === 0) {
       throw new ErrorResponse(400, "Nenhuma questão fornecida", {
@@ -1518,7 +1505,7 @@ export default class TarefaAcademicaService {
       if (anexosGUID && anexosGUID.length > 0) {
         for (const anexoGUID of anexosGUID) {
           const anexo = await this.#anexoDAO.findById(anexoGUID);
-          if (anexo && anexo.UsuarioCPF === professorCPF) {
+          if (anexo && anexo.UsuarioGUID === professorGUID) {
             await this.#questaoDAO.vincularAnexo(questoesEntidade[idx].QuestaoGUID, anexoGUID);
           }
         }
@@ -1543,8 +1530,7 @@ export default class TarefaAcademicaService {
   ): Promise<ImportacaoResultadoDTO> => {
     console.log(`🟣 TarefaAcademicaService.importarQuestoesPlanilha() - ${linhas.length} linhas`);
 
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorGUID);
 
     const questoesExistentes = await this.#questaoDAO.findByTarefa(TarefaGUID);
     let proximaOrdem = questoesExistentes.length > 0 ? Math.max(...questoesExistentes.map((q) => q.QuestaoOrdem)) + 1 : 0;
@@ -1601,8 +1587,7 @@ export default class TarefaAcademicaService {
   listarQuestoes = async (TarefaGUID: string, professorGUID: string): Promise<QuestaoDTO[]> => {
     console.log("🟣 TarefaAcademicaService.listarQuestoes()");
 
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorGUID);
 
     const questoes = await this.#questaoDAO.findByTarefa(TarefaGUID);
     if (questoes.length === 0) return [];
@@ -1634,8 +1619,7 @@ export default class TarefaAcademicaService {
         message: `Não existe questão com id ${QuestaoGUID}`,
       });
     }
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorGUID);
 
     const temResposta = await this.#respostaDAO.existeRespostaParaQuestao(QuestaoGUID);
 
@@ -1736,8 +1720,7 @@ export default class TarefaAcademicaService {
         message: `Não existe questão com id ${QuestaoGUID}`,
       });
     }
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorGUID);
 
     const temResposta = await this.#respostaDAO.existeRespostaParaQuestao(QuestaoGUID);
     if (temResposta) {
@@ -1757,8 +1740,7 @@ export default class TarefaAcademicaService {
   ): Promise<void> => {
     console.log("🟣 TarefaAcademicaService.reordenarQuestoes()");
 
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorGUID);
 
     const questoesExistentes = await this.#questaoDAO.findByTarefa(TarefaGUID);
     const guidsValidos = new Set(questoesExistentes.map((q) => q.QuestaoGUID));
@@ -1783,8 +1765,7 @@ export default class TarefaAcademicaService {
         message: `Não existe questão com id ${QuestaoGUID}`,
       });
     }
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorGUID);
 
     const anexo = await this.#anexoDAO.findById(AnexoGUID);
     if (!anexo) {
@@ -1792,7 +1773,7 @@ export default class TarefaAcademicaService {
         message: `Não existe anexo com id ${AnexoGUID}`,
       });
     }
-    if (anexo.UsuarioCPF !== professorCPF) {
+    if (anexo.UsuarioGUID !== professorGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode vincular um anexo que você mesmo enviou.",
       });
@@ -1811,8 +1792,7 @@ export default class TarefaAcademicaService {
         message: `Não existe questão com id ${QuestaoGUID}`,
       });
     }
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorGUID);
 
     await this.#questaoDAO.desvincularAnexo(QuestaoGUID, AnexoGUID);
   };
@@ -2120,8 +2100,7 @@ export default class TarefaAcademicaService {
   ): Promise<QuestaoComRespostaProfessorDTO[]> => {
     console.log("🟣 TarefaAcademicaService.buscarRespostasAluno()");
 
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
-    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(TarefaGUID, professorGUID);
 
     const atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
     const atribuicao = atribuicoes.find((a) => a.TarefaMatriculaGUID === TarefaMatriculaGUID);
@@ -2186,7 +2165,6 @@ export default class TarefaAcademicaService {
   avaliarQuestaoDiscursiva = async (RespostaGUID: string, pontos: number, professorGUID: string): Promise<RespostaDTO> => {
     console.log("🟣 TarefaAcademicaService.avaliarQuestaoDiscursiva()");
 
-    const professorCPF = await this.#resolverCPFAtor(professorGUID);
     const resposta = await this.#respostaDAO.findById(RespostaGUID);
     if (!resposta) {
       throw new ErrorResponse(404, "Resposta não encontrada", {
@@ -2205,7 +2183,7 @@ export default class TarefaAcademicaService {
         message: `Não existe questão com id ${resposta.QuestaoGUID}`,
       });
     }
-    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorCPF);
+    await this.#validarTarefaListaDoProfessor(questao.TarefaGUID, professorGUID);
 
     if (pontos < 0 || pontos > questao.QuestaoPontosMaximos) {
       throw new ErrorResponse(400, "Pontos inválidos", {

@@ -9,7 +9,7 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 export interface AlocacaoFilters {
   MateriaGUID?: string;
   TurmaGUID?: string;
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
 }
 
@@ -20,7 +20,7 @@ interface AlocacaoRow extends RowDataPacket {
   MatProfTurGUID: string;
   MateriaGUID: string;
   TurmaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
   AulasPorSemana: number | null;
   MatProfTurCreatedAt: Date;
@@ -31,7 +31,8 @@ interface AlocacaoRow extends RowDataPacket {
  * Interface de mapeamento para rows do MySQL (usuário)
  */
 interface UsuarioRow extends RowDataPacket {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
   UsuarioNome: string;
   UsuarioEmail: string;
   UsuarioDataNascimento: Date;
@@ -65,7 +66,7 @@ export class MaterialProfessorTurmaDAO {
         MatProfTurGUID,
         MateriaGUID,
         TurmaGUID,
-        UsuarioCPF,
+        UsuarioGUID,
         AlocacaoStatus,
         AulasPorSemana,
         MatProfTurCreatedAt,
@@ -77,7 +78,7 @@ export class MaterialProfessorTurmaDAO {
       alocacao.MatProfTurGUID,
       alocacao.MateriaGUID,
       alocacao.TurmaGUID,
-      alocacao.UsuarioCPF,
+      alocacao.UsuarioGUID,
       alocacao.AlocacaoStatus,
       alocacao.AulasPorSemana,
       alocacao.MatProfTurCreatedAt,
@@ -106,9 +107,9 @@ export class MaterialProfessorTurmaDAO {
       params.push(filters.TurmaGUID);
     }
 
-    if (filters?.UsuarioCPF) {
-      query += ` AND UsuarioCPF = ?`;
-      params.push(filters.UsuarioCPF);
+    if (filters?.UsuarioGUID) {
+      query += ` AND UsuarioGUID = ?`;
+      params.push(filters.UsuarioGUID);
     }
 
     if (filters?.AlocacaoStatus) {
@@ -140,17 +141,17 @@ export class MaterialProfessorTurmaDAO {
   }
 
   /**
-   * Buscar alocações de um professor (por CPF)
+   * Buscar alocações de um professor (por GUID)
    */
-  async findByProfessor(cpf: string): Promise<MaterialProfessorTurma[]> {
+  async findByProfessor(usuarioGUID: string): Promise<MaterialProfessorTurma[]> {
     const query = `
-      SELECT * FROM materiaxprofessorxturma 
-      WHERE UsuarioCPF = ?
+      SELECT * FROM materiaxprofessorxturma
+      WHERE UsuarioGUID = ?
       ORDER BY MatProfTurCreatedAt DESC
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(query, [cpf]);
+    const [rows] = await pool.execute(query, [usuarioGUID]);
 
     return this.mapRows(rows as AlocacaoRow[]);
   }
@@ -177,18 +178,18 @@ export class MaterialProfessorTurmaDAO {
   async findByMateriaTurmaProfessor(
     materiaGUID: string,
     turmaGUID: string,
-    cpf: string
+    usuarioGUID: string
   ): Promise<MaterialProfessorTurma | null> {
     const query = `
-      SELECT * FROM materiaxprofessorxturma 
-      WHERE MateriaGUID = ? 
-        AND TurmaGUID = ? 
-        AND UsuarioCPF = ?
+      SELECT * FROM materiaxprofessorxturma
+      WHERE MateriaGUID = ?
+        AND TurmaGUID = ?
+        AND UsuarioGUID = ?
       LIMIT 1
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(query, [materiaGUID, turmaGUID, cpf]);
+    const [rows] = await pool.execute(query, [materiaGUID, turmaGUID, usuarioGUID]);
 
     if (!rows || (rows as AlocacaoRow[]).length === 0) {
       return null;
@@ -204,7 +205,8 @@ export class MaterialProfessorTurmaDAO {
    */
   async findProfessoresByEscola(escolaGUID: string): Promise<Usuario[]> {
     const query = `
-      SELECT DISTINCT 
+      SELECT DISTINCT
+        u.UsuarioGUID,
         u.UsuarioCPF,
         u.UsuarioNome,
         u.UsuarioEmail,
@@ -214,8 +216,8 @@ export class MaterialProfessorTurmaDAO {
         u.UsuarioCreatedAt,
         u.UsuarioUpdatedAt
       FROM usuario u
-      JOIN escolaxusuarioxfuncao euf ON u.UsuarioCPF = euf.UsuarioCPF
-      WHERE euf.EscolaGUID = ? 
+      JOIN escolaxusuarioxfuncao euf ON u.UsuarioGUID = euf.UsuarioGUID
+      WHERE euf.EscolaGUID = ?
         AND euf.FuncaoId = 3
         AND euf.Status = 'Ativo'
         AND u.UsuarioStatus = 'Ativo'
@@ -290,15 +292,15 @@ export class MaterialProfessorTurmaDAO {
   /**
    * Contar alocações de um professor
    */
-  async countByProfessor(cpf: string): Promise<number> {
+  async countByProfessor(usuarioGUID: string): Promise<number> {
     const query = `
-      SELECT COUNT(*) as total 
-      FROM materiaxprofessorxturma 
-      WHERE UsuarioCPF = ?
+      SELECT COUNT(*) as total
+      FROM materiaxprofessorxturma
+      WHERE UsuarioGUID = ?
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(query, [cpf]);
+    const [rows] = await pool.execute(query, [usuarioGUID]);
 
     return (rows as RowDataPacket[])[0]?.total || 0;
   }
@@ -328,7 +330,7 @@ export class MaterialProfessorTurmaDAO {
       alocacao.MatProfTurGUID = row.MatProfTurGUID;
       alocacao.MateriaGUID = row.MateriaGUID;
       alocacao.TurmaGUID = row.TurmaGUID;
-      alocacao.UsuarioCPF = row.UsuarioCPF;
+      alocacao.UsuarioGUID = row.UsuarioGUID;
       alocacao.AlocacaoStatus = row.AlocacaoStatus;
       alocacao.AulasPorSemana = row.AulasPorSemana;
       alocacao.MatProfTurCreatedAt = row.MatProfTurCreatedAt;
@@ -343,6 +345,7 @@ export class MaterialProfessorTurmaDAO {
   private mapUsuarioRows(rows: UsuarioRow[]): Usuario[] {
     return rows.map((row) => {
       const usuario = new Usuario();
+      usuario.UsuarioGUID = row.UsuarioGUID;
       usuario.UsuarioCPF = row.UsuarioCPF;
       usuario.UsuarioNome = row.UsuarioNome;
       usuario.UsuarioEmail = row.UsuarioEmail;

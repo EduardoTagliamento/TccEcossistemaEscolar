@@ -33,7 +33,7 @@ export interface ConteudoTurmaDTO {
 export interface ConteudoDTO {
   ConteudoGUID: string;
   MateriaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   CategoriaGUID: string | null;
   ConteudoTitulo: string;
   ConteudoTipo: ConteudoTipo;
@@ -55,6 +55,14 @@ export interface ConteudoDTO {
   };
   CreatedAt: string | null;
   UpdatedAt: string | null;
+}
+
+/** Filtros de listagem recebidos do cliente — `UsuarioCPF` é resolvido pra GUID dentro de `listarConteudos`. */
+export interface ConteudoListarFiltrosDTO {
+  MateriaGUID?: string;
+  UsuarioCPF?: string;
+  CategoriaGUID?: string;
+  ConteudoTipo?: ConteudoTipo;
 }
 
 export interface ConteudoCreateDTO {
@@ -143,22 +151,12 @@ export default class ConteudoService {
     this.#usuarioDAO = usuarioDAO;
   }
 
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    return usuario.UsuarioCPF;
-  };
-
   criarConteudo = async (
     data: ConteudoCreateDTO,
     arquivos: ConteudoArquivos,
     usuarioGUID: string
   ): Promise<ConteudoDTO> => {
     console.log("🟣 ConteudoService.criarConteudo()");
-
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     if (!data.TurmasGUID || data.TurmasGUID.length === 0) {
       throw new ErrorResponse(400, "Nenhuma turma selecionada", {
@@ -189,7 +187,7 @@ export default class ConteudoService {
       const alocacao = await this.#matProfTurDAO.findByMateriaTurmaProfessor(
         data.MateriaGUID,
         turmaGUID,
-        usuarioCPF
+        usuarioGUID
       );
       if (!alocacao || alocacao.AlocacaoStatus !== "Ativa") {
         throw new ErrorResponse(403, "Sem permissão", {
@@ -205,7 +203,7 @@ export default class ConteudoService {
         const categoria = await this.#categoriaDAO.findById(categoriaGUID);
         if (
           !categoria ||
-          categoria.UsuarioCPF !== usuarioCPF ||
+          categoria.UsuarioGUID !== usuarioGUID ||
           categoria.MateriaGUID !== data.MateriaGUID ||
           categoria.TurmaGUID !== turmaGUID
         ) {
@@ -228,7 +226,7 @@ export default class ConteudoService {
     const conteudo = new Conteudo();
     conteudo.ConteudoGUID = gerarGUID();
     conteudo.MateriaGUID = data.MateriaGUID;
-    conteudo.UsuarioCPF = usuarioCPF;
+    conteudo.UsuarioGUID = usuarioGUID;
     // Categoria agora é por turma (ConteudoTurma.CategoriaGUID) — este campo
     // no Conteudo em si fica sempre null pra conteúdo novo (ver DTO acima).
     conteudo.CategoriaGUID = null;
@@ -392,10 +390,22 @@ export default class ConteudoService {
     await this.#paginadoDAO.createBatch(arquivos);
   };
 
-  listarConteudos = async (filters: ConteudoFilters): Promise<ConteudoDTO[]> => {
+  /**
+   * O cliente ainda filtra por CPF do professor (`?UsuarioCPF=`), então
+   * resolvemos CPF -> GUID aqui antes de repassar pro repositório — `conteudo`
+   * já está migrado pra GUID.
+   */
+  listarConteudos = async (filters: ConteudoListarFiltrosDTO): Promise<ConteudoDTO[]> => {
     console.log("🟣 ConteudoService.listarConteudos()");
 
-    const conteudos = await this.#conteudoDAO.findAll(filters);
+    const { UsuarioCPF, ...resto } = filters;
+    const daoFilters: ConteudoFilters = { ...resto };
+    if (UsuarioCPF) {
+      const usuario = await this.#usuarioDAO.findByCPF(UsuarioCPF);
+      daoFilters.UsuarioGUID = usuario?.UsuarioGUID ?? "__cpf_nao_encontrado__";
+    }
+
+    const conteudos = await this.#conteudoDAO.findAll(daoFilters);
     return Promise.all(conteudos.map((c) => this.montarDTO(c)));
   };
 
@@ -435,8 +445,7 @@ export default class ConteudoService {
       });
     }
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    if (conteudo.UsuarioCPF !== usuarioCPF) {
+    if (conteudo.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode editar conteúdos que você mesmo criou.",
       });
@@ -554,8 +563,7 @@ export default class ConteudoService {
       });
     }
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    if (conteudo.UsuarioCPF !== usuarioCPF) {
+    if (conteudo.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode excluir conteúdos que você mesmo criou.",
       });
@@ -625,8 +633,7 @@ export default class ConteudoService {
       });
     }
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    if (conteudo.UsuarioCPF !== usuarioCPF) {
+    if (conteudo.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode excluir conteúdos que você mesmo criou.",
       });
@@ -670,7 +677,7 @@ export default class ConteudoService {
     const dto: ConteudoDTO = {
       ConteudoGUID: conteudo.ConteudoGUID,
       MateriaGUID: conteudo.MateriaGUID,
-      UsuarioCPF: conteudo.UsuarioCPF,
+      UsuarioGUID: conteudo.UsuarioGUID,
       CategoriaGUID: conteudo.CategoriaGUID,
       ConteudoTitulo: conteudo.ConteudoTitulo || "",
       ConteudoTipo: conteudo.ConteudoTipo,

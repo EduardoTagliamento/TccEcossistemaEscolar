@@ -34,7 +34,6 @@ export class CalendarioDAO {
 
   buscarAvisosCalendario = async (
     usuarioGUID: string,
-    usuarioCPF: string | null,
     escolaGUID: string,
     filters?: CalendarioFilters
   ): Promise<CalendarioAviso[]> => {
@@ -82,7 +81,7 @@ export class CalendarioDAO {
         AND (
           m.UsuarioGUID = ?
           OR (
-            mpt.UsuarioCPF = ?
+            mpt.UsuarioGUID = ?
             AND mpt.AlocacaoStatus = 'Ativa'
           )
         )
@@ -125,7 +124,7 @@ export class CalendarioDAO {
         AND (
           m.UsuarioGUID = ?
           OR (
-            mpt.UsuarioCPF = ?
+            mpt.UsuarioGUID = ?
             AND mpt.AlocacaoStatus = 'Ativa'
           )
         )
@@ -137,14 +136,14 @@ export class CalendarioDAO {
     const params = [
       escolaGUID,
       usuarioGUID,
-      usuarioCPF,
+      usuarioGUID,
       filters?.DataInicio || null,
       filters?.DataInicio || null,
       filters?.DataFim || null,
       filters?.DataFim || null,
       escolaGUID,
       usuarioGUID,
-      usuarioCPF,
+      usuarioGUID,
       filters?.DataInicio || null,
       filters?.DataInicio || null,
       filters?.DataFim || null,
@@ -152,7 +151,7 @@ export class CalendarioDAO {
     ];
 
     console.log("🟢 [CalendarioDAO] Executando query SQL...");
-    console.log("🟢 [CalendarioDAO] Params:", { escolaGUID, usuarioGUID, usuarioCPF, filters });
+    console.log("🟢 [CalendarioDAO] Params:", { escolaGUID, usuarioGUID, filters });
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<CalendarioAvisoRow[]>(query, params);
@@ -164,7 +163,6 @@ export class CalendarioDAO {
 
   buscarDetalhesDia = async (
     usuarioGUID: string,
-    usuarioCPF: string | null,
     escolaGUID: string,
     data: Date,
     filters?: Omit<CalendarioFilters, "DataInicio" | "DataFim">
@@ -177,7 +175,7 @@ export class CalendarioDAO {
     const fimDia = new Date(data);
     fimDia.setHours(23, 59, 59, 999);
 
-    return this.buscarAvisosCalendario(usuarioGUID, usuarioCPF, escolaGUID, {
+    return this.buscarAvisosCalendario(usuarioGUID, escolaGUID, {
       ...filters,
       DataInicio: inicioDia,
       DataFim: fimDia,

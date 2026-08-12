@@ -9,14 +9,12 @@
  * - Os dados específicos de cada tipo ficam em tabelas separadas
  *   (ConteudoCronometrado, ConteudoTexto, ConteudoPaginadoArquivo).
  */
-import { normalizeCPF } from "../utils/helpers/cpf.helper";
-
 export type ConteudoTipo = "cronometrado" | "texto" | "paginado";
 
 export default class Conteudo {
   #ConteudoGUID!: string;
   #MateriaGUID!: string;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #CategoriaGUID: string | null = null;
   #ConteudoTitulo: string | null = null;
   #ConteudoTipo!: ConteudoTipo;
@@ -61,13 +59,16 @@ export default class Conteudo {
     this.#MateriaGUID = guid;
   }
 
-  // ========== UsuarioCPF ==========
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  // ========== UsuarioGUID ==========
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
-  set UsuarioCPF(value: string) {
-    this.#UsuarioCPF = normalizeCPF(value);
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia.");
+    }
+    this.#UsuarioGUID = value.trim();
   }
 
   // ========== CategoriaGUID ==========

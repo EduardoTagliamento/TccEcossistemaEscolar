@@ -5,11 +5,9 @@
  * - Encapsular os dados de um anexo (arquivo).
  * - Garantir integridade dos atributos via getters e setters.
  */
-import { normalizeCPF } from "../utils/helpers/cpf.helper";
-
 export default class Anexo {
   #AnexoGUID!: string;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #EscolaGUID!: string;
   #AnexoCaminho!: string;
   #AnexoNomeOriginal: string | null = null;
@@ -38,13 +36,16 @@ export default class Anexo {
     this.#AnexoGUID = guid;
   }
 
-  // ========== UsuarioCPF ==========
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  // ========== UsuarioGUID ==========
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
-  set UsuarioCPF(value: string) {
-    this.#UsuarioCPF = normalizeCPF(value);
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia.");
+    }
+    this.#UsuarioGUID = value.trim();
   }
 
   // ========== EscolaGUID ==========

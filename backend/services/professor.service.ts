@@ -157,14 +157,6 @@ export default class ProfessorService {
       throw new ErrorResponse(500, "Serviço mal configurado");
     }
 
-    // materiaxprofessorxturma/materiacustomizacao ainda usam CPF — resolver
-    // a partir do UsuarioGUID do professor logado.
-    const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!professor?.UsuarioCPF) {
-      return [];
-    }
-    const professorCPF = professor.UsuarioCPF;
-
     const materias = await this.buscarMateriasProfessor(usuarioGUID, escolaGUID);
     const materiasUnicas = Array.from(new Map(materias.map((m) => [m.MateriaGUID, m])).values());
     const escola = await this.#escolaDAO.findById(escolaGUID);
@@ -172,7 +164,7 @@ export default class ProfessorService {
 
     return Promise.all(
       materiasUnicas.map(async (materia) => {
-        const customizacao = await this.#customizacaoDAO!.findByMateriaEProfessor(materia.MateriaGUID, professorCPF);
+        const customizacao = await this.#customizacaoDAO!.findByMateriaEProfessor(materia.MateriaGUID, usuarioGUID);
         return {
           MatProfTurGUID: materia.MatProfTurGUID,
           MateriaGUID: materia.MateriaGUID,
@@ -195,16 +187,9 @@ export default class ProfessorService {
   }>> {
     console.log("🟣 ProfessorService.buscarTurmasComCapaProfessor()");
 
-    // materiaxprofessorxturma ainda usa CPF — resolver a partir do
-    // UsuarioGUID do professor logado.
-    const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!professor?.UsuarioCPF) {
-      return [];
-    }
-
     const alocacoes = await this.#alocacaoDAO.findAll({
       MateriaGUID: materiaGUID,
-      UsuarioCPF: professor.UsuarioCPF,
+      UsuarioGUID: usuarioGUID,
       AlocacaoStatus: "Ativa",
     });
 
@@ -279,7 +264,7 @@ export default class ProfessorService {
     }
 
     // 2. Buscar todas as alocações do professor
-    const todasAlocacoes = await this.#alocacaoDAO.findByProfessor(cpf);
+    const todasAlocacoes = await this.#alocacaoDAO.findByProfessor(usuarioProfessor!.UsuarioGUID);
 
     // 3. Filtrar apenas as da escola especificada
     const alocacoesFiltradas: MaterialProfessorTurma[] = [];
@@ -292,7 +277,7 @@ export default class ProfessorService {
     }
 
     return {
-      alocacoes: alocacoesFiltradas.map((a) => this.toAlocacaoDTO(a)),
+      alocacoes: await Promise.all(alocacoesFiltradas.map((a) => this.toAlocacaoDTO(a))),
       total: alocacoesFiltradas.length,
     };
   }
@@ -372,10 +357,11 @@ export default class ProfessorService {
     }
 
     // 6. Validar duplicidade
+    const professorGUID = usuarioProfessorAlocacao!.UsuarioGUID;
     const existente = await this.#alocacaoDAO.findByMateriaTurmaProfessor(
       data.MateriaGUID!,
       data.TurmaGUID!,
-      data.UsuarioCPF
+      professorGUID
     );
 
     if (existente) {
@@ -397,7 +383,7 @@ export default class ProfessorService {
         AulasPorSemana: data.AulasPorSemana ?? existente.AulasPorSemana,
       });
 
-      return this.toAlocacaoDTO(reativada!);
+      return await this.toAlocacaoDTO(reativada!);
     }
 
     // 7. Criar alocação
@@ -405,7 +391,7 @@ export default class ProfessorService {
     alocacao.MatProfTurGUID = gerarGUID();
     alocacao.MateriaGUID = data.MateriaGUID!;
     alocacao.TurmaGUID = data.TurmaGUID!;
-    alocacao.UsuarioCPF = data.UsuarioCPF;
+    alocacao.UsuarioGUID = professorGUID;
     alocacao.AlocacaoStatus = data.AlocacaoStatus || 'Ativa';
     alocacao.AulasPorSemana = data.AulasPorSemana ?? null;
     alocacao.MatProfTurCreatedAt = new Date();
@@ -415,7 +401,7 @@ export default class ProfessorService {
 
     const alocacaoCriada = await this.#alocacaoDAO.create(alocacao);
 
-    return this.toAlocacaoDTO(alocacaoCriada);
+    return await this.toAlocacaoDTO(alocacaoCriada);
   }
 
   /**
@@ -428,7 +414,7 @@ export default class ProfessorService {
     const alocacoes = await this.#alocacaoDAO.findAll(filters);
 
     return {
-      alocacoes: alocacoes.map((a) => this.toAlocacaoDTO(a)),
+      alocacoes: await Promise.all(alocacoes.map((a) => this.toAlocacaoDTO(a))),
       total: alocacoes.length,
     };
   }
@@ -445,7 +431,7 @@ export default class ProfessorService {
       });
     }
 
-    return this.toAlocacaoDTO(alocacao);
+    return await this.toAlocacaoDTO(alocacao);
   }
 
   /**
@@ -484,7 +470,7 @@ export default class ProfessorService {
       });
     }
 
-    return this.toAlocacaoDTO(alocacaoAtualizada);
+    return await this.toAlocacaoDTO(alocacaoAtualizada);
   }
 
   /**
@@ -889,10 +875,11 @@ export default class ProfessorService {
         setAlocacoes.add(chaveAlocacao);
 
         // Validar duplicidade no banco
+        const professorGUIDLote = usuarioProfessorLote!.UsuarioGUID;
         const existente = await this.#alocacaoDAO.findByMateriaTurmaProfessor(
           materiaGUID,
           turmaGUID,
-          dados.UsuarioCPF
+          professorGUIDLote
         );
 
         if (existente) {
@@ -901,7 +888,7 @@ export default class ProfessorService {
               item: dados,
               sucesso: true,
               mensagem: 'Alocação já existe',
-              dados: this.toAlocacaoDTO(existente),
+              dados: await this.toAlocacaoDTO(existente),
               tipo: 'existente'
             });
             existentes++;
@@ -916,7 +903,7 @@ export default class ProfessorService {
             item: dados,
             sucesso: true,
             mensagem: 'Alocação reativada com sucesso',
-            dados: this.toAlocacaoDTO(reativada!),
+            dados: await this.toAlocacaoDTO(reativada!),
             tipo: 'existente'
           });
           existentes++;
@@ -928,7 +915,7 @@ export default class ProfessorService {
         alocacao.MatProfTurGUID = gerarGUID();
         alocacao.MateriaGUID = materiaGUID;
         alocacao.TurmaGUID = turmaGUID;
-        alocacao.UsuarioCPF = dados.UsuarioCPF;
+        alocacao.UsuarioGUID = professorGUIDLote;
         alocacao.AlocacaoStatus = dados.AlocacaoStatus || 'Ativa';
         alocacao.MatProfTurCreatedAt = new Date();
         alocacao.MatProfTurUpdatedAt = new Date();
@@ -941,7 +928,7 @@ export default class ProfessorService {
           item: dados,
           sucesso: true,
           mensagem: 'Alocação criada com sucesso',
-          dados: this.toAlocacaoDTO(alocacaoCriada),
+          dados: await this.toAlocacaoDTO(alocacaoCriada),
           tipo: 'criado'
         });
         criados++;
@@ -1004,14 +991,17 @@ export default class ProfessorService {
   }
 
   /**
-   * Converte entidade MaterialProfessorTurma para DTO
+   * Converte entidade MaterialProfessorTurma para DTO — o cliente ainda
+   * identifica o professor por CPF nesta tela, então resolvemos
+   * UsuarioGUID -> CPF aqui (materiaxprofessorxturma já está migrado pra GUID).
    */
-  private toAlocacaoDTO(alocacao: MaterialProfessorTurma): AlocacaoDTO {
+  private async toAlocacaoDTO(alocacao: MaterialProfessorTurma): Promise<AlocacaoDTO> {
+    const usuario = await this.#usuarioDAO.findByGUID(alocacao.UsuarioGUID);
     return {
       MatProfTurGUID: alocacao.MatProfTurGUID,
       MateriaGUID: alocacao.MateriaGUID,
       TurmaGUID: alocacao.TurmaGUID,
-      UsuarioCPF: alocacao.UsuarioCPF,
+      UsuarioCPF: usuario?.UsuarioCPF ?? '',
       AlocacaoStatus: alocacao.AlocacaoStatus,
       AulasPorSemana: alocacao.AulasPorSemana,
       MatProfTurCreatedAt: alocacao.MatProfTurCreatedAt,
@@ -1050,15 +1040,8 @@ export default class ProfessorService {
   }>> {
     console.log("🟣 ProfessorService.buscarMateriasProfessor()");
 
-    // materiaxprofessorxturma ainda usa CPF — resolver a partir do
-    // UsuarioGUID do professor logado.
-    const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!professor?.UsuarioCPF) {
-      return [];
-    }
-
     const alocacoes = await this.#alocacaoDAO.findAll({
-      UsuarioCPF: professor.UsuarioCPF,
+      UsuarioGUID: usuarioGUID,
       AlocacaoStatus: 'Ativa'
     });
 
@@ -1121,13 +1104,6 @@ export default class ProfessorService {
   }> {
     console.log("🟣 ProfessorService.buscarTurmasAlunos()");
 
-    // materiaxprofessorxturma ainda usa CPF — resolver a partir do
-    // UsuarioGUID do professor logado.
-    const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!professor?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
-    }
-
     // 1. Buscar alocação base
     const alocacaoBase = await this.#alocacaoDAO.findById(matProfTurGUID);
 
@@ -1136,7 +1112,7 @@ export default class ProfessorService {
     }
 
     // 2. Validar que o professor é dono da alocação
-    if (alocacaoBase.UsuarioCPF !== professor.UsuarioCPF) {
+    if (alocacaoBase.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
     }
 
@@ -1150,7 +1126,7 @@ export default class ProfessorService {
 
     // 4. Buscar TODAS as alocações do professor na mesma matéria e escola
     const todasAlocacoes = await this.#alocacaoDAO.findAll({
-      UsuarioCPF: professor.UsuarioCPF,
+      UsuarioGUID: usuarioGUID,
       MateriaGUID: alocacaoBase.MateriaGUID,
       AlocacaoStatus: 'Ativa'
     });

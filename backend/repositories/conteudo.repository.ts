@@ -4,7 +4,7 @@ import Conteudo, { ConteudoTipo } from "../entities/conteudo.model";
 interface ConteudoRow {
   ConteudoGUID: string;
   MateriaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   CategoriaGUID: string | null;
   ConteudoTitulo: string;
   ConteudoTipo: ConteudoTipo;
@@ -16,7 +16,7 @@ interface ConteudoRow {
 
 export interface ConteudoFilters {
   MateriaGUID?: string;
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   CategoriaGUID?: string;
   ConteudoTipo?: ConteudoTipo;
 }
@@ -41,13 +41,13 @@ export class ConteudoDAO {
 
     const SQL = `
       INSERT INTO conteudo
-      (ConteudoGUID, MateriaGUID, UsuarioCPF, CategoriaGUID, ConteudoTitulo, ConteudoTipo, ConteudoDescricao, ConteudoDataPublicacao)
+      (ConteudoGUID, MateriaGUID, UsuarioGUID, CategoriaGUID, ConteudoTitulo, ConteudoTipo, ConteudoDescricao, ConteudoDataPublicacao)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       conteudo.ConteudoGUID,
       conteudo.MateriaGUID,
-      conteudo.UsuarioCPF,
+      conteudo.UsuarioGUID,
       conteudo.CategoriaGUID,
       conteudo.ConteudoTitulo,
       conteudo.ConteudoTipo,
@@ -83,9 +83,9 @@ export class ConteudoDAO {
       conditions.push("MateriaGUID = ?");
       params.push(filters.MateriaGUID);
     }
-    if (filters.UsuarioCPF) {
-      conditions.push("UsuarioCPF = ?");
-      params.push(filters.UsuarioCPF);
+    if (filters.UsuarioGUID) {
+      conditions.push("UsuarioGUID = ?");
+      params.push(filters.UsuarioGUID);
     }
     if (filters.CategoriaGUID) {
       conditions.push("CategoriaGUID = ?");
@@ -155,7 +155,7 @@ export class ConteudoDAO {
       const conteudo = new Conteudo();
       conteudo.ConteudoGUID = row.ConteudoGUID;
       conteudo.MateriaGUID = row.MateriaGUID;
-      conteudo.UsuarioCPF = row.UsuarioCPF;
+      conteudo.UsuarioGUID = row.UsuarioGUID;
       conteudo.CategoriaGUID = row.CategoriaGUID;
       conteudo.ConteudoTitulo = row.ConteudoTitulo;
       conteudo.ConteudoTipo = row.ConteudoTipo;

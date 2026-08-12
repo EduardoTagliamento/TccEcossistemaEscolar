@@ -4,7 +4,7 @@ import MateriaCustomizacao from "../entities/materiacustomizacao.model";
 interface MateriaCustomizacaoRow {
   MateriaCustomizacaoGUID: string;
   MateriaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   ImagemUrl: string | null;
   CorFundo: string | null;
   MensagemBoasVindas: string | null;
@@ -24,13 +24,13 @@ export class MateriaCustomizacaoDAO {
     console.log("🟢 MateriaCustomizacaoDAO.create()");
 
     const SQL = `
-      INSERT INTO materiacustomizacao (MateriaCustomizacaoGUID, MateriaGUID, UsuarioCPF, ImagemUrl, CorFundo, MensagemBoasVindas)
+      INSERT INTO materiacustomizacao (MateriaCustomizacaoGUID, MateriaGUID, UsuarioGUID, ImagemUrl, CorFundo, MensagemBoasVindas)
       VALUES (?, ?, ?, ?, ?, ?);
     `;
     const params = [
       customizacao.MateriaCustomizacaoGUID,
       customizacao.MateriaGUID,
-      customizacao.UsuarioCPF,
+      customizacao.UsuarioGUID,
       customizacao.ImagemUrl,
       customizacao.CorFundo,
       customizacao.MensagemBoasVindas,
@@ -42,12 +42,12 @@ export class MateriaCustomizacaoDAO {
     return customizacao.MateriaCustomizacaoGUID;
   };
 
-  findByMateriaEProfessor = async (materiaGUID: string, usuarioCPF: string): Promise<MateriaCustomizacao | null> => {
+  findByMateriaEProfessor = async (materiaGUID: string, usuarioGUID: string): Promise<MateriaCustomizacao | null> => {
     console.log("🟢 MateriaCustomizacaoDAO.findByMateriaEProfessor()");
 
-    const SQL = `SELECT * FROM materiacustomizacao WHERE MateriaGUID = ? AND UsuarioCPF = ? LIMIT 1`;
+    const SQL = `SELECT * FROM materiacustomizacao WHERE MateriaGUID = ? AND UsuarioGUID = ? LIMIT 1`;
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(SQL, [materiaGUID, usuarioCPF]);
+    const [rows] = await pool.execute(SQL, [materiaGUID, usuarioGUID]);
 
     const lista = this.mapRows(rows as MateriaCustomizacaoRow[]);
     return lista[0] || null;
@@ -66,7 +66,7 @@ export class MateriaCustomizacaoDAO {
   upsert = async (customizacao: MateriaCustomizacao): Promise<void> => {
     console.log("🟢 MateriaCustomizacaoDAO.upsert()");
 
-    const existente = await this.findByMateriaEProfessor(customizacao.MateriaGUID, customizacao.UsuarioCPF);
+    const existente = await this.findByMateriaEProfessor(customizacao.MateriaGUID, customizacao.UsuarioGUID);
     if (existente) {
       const SQL = `
         UPDATE materiacustomizacao
@@ -91,7 +91,7 @@ export class MateriaCustomizacaoDAO {
       const customizacao = new MateriaCustomizacao();
       customizacao.MateriaCustomizacaoGUID = row.MateriaCustomizacaoGUID;
       customizacao.MateriaGUID = row.MateriaGUID;
-      customizacao.UsuarioCPF = row.UsuarioCPF;
+      customizacao.UsuarioGUID = row.UsuarioGUID;
       customizacao.ImagemUrl = row.ImagemUrl;
       customizacao.CorFundo = row.CorFundo;
       customizacao.MensagemBoasVindas = row.MensagemBoasVindas;

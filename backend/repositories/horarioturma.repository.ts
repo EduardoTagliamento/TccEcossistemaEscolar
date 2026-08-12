@@ -19,7 +19,7 @@ export interface HorarioTurmaDetalhado {
   MatProfTurGUID: string;
   MateriaGUID: string;
   MateriaNome: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   DiaSemana: DiaSemana;
   HoraInicio: string;
@@ -89,11 +89,11 @@ export class HorarioTurmaDAO {
       SELECT
         h.HorarioTurmaGUID, h.TurmaGUID, h.MatProfTurGUID, h.DiaSemana, h.HoraInicio, h.HoraFim,
         m.MateriaGUID, mat.MateriaNome,
-        m.UsuarioCPF, u.UsuarioNome
+        m.UsuarioGUID, u.UsuarioNome
       FROM horarioturma h
       JOIN materiaxprofessorxturma m ON m.MatProfTurGUID = h.MatProfTurGUID
       JOIN materia mat ON mat.MateriaGUID = m.MateriaGUID
-      JOIN usuario u ON u.UsuarioCPF = m.UsuarioCPF
+      JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
       WHERE h.TurmaGUID = ?
       ORDER BY FIELD(h.DiaSemana, 'Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'), h.HoraInicio
     `;
@@ -138,7 +138,7 @@ export class HorarioTurmaDAO {
    * mesmo dia da semana, com sobreposição de horário.
    */
   findConflitoProfessor = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     diaSemana: DiaSemana,
     horaInicio: string,
     horaFim: string,
@@ -155,14 +155,14 @@ export class HorarioTurmaDAO {
       JOIN materiaxprofessorxturma m ON m.MatProfTurGUID = h.MatProfTurGUID
       JOIN materia mat ON mat.MateriaGUID = m.MateriaGUID
       JOIN turma t ON t.TurmaGUID = h.TurmaGUID
-      WHERE m.UsuarioCPF = ?
+      WHERE m.UsuarioGUID = ?
         AND h.DiaSemana = ?
         AND h.TurmaGUID <> ?
         AND h.HoraInicio < ?
         AND h.HoraFim > ?
       LIMIT 1
     `;
-    const params = [usuarioCPF, diaSemana, turmaGUIDExcluir, horaFim, horaInicio];
+    const params = [usuarioGUID, diaSemana, turmaGUIDExcluir, horaFim, horaInicio];
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(SQL, params);

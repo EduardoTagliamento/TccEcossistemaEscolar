@@ -322,17 +322,9 @@ export default class GrupoTarefaService {
   ): Promise<{ mensagem: string }> {
     console.log('🟣 GrupoTarefaService.transferirLideranca()');
 
-    // grupotarefa/usuarioxgrupotarefa ainda usam CPF — resolver o líder
-    // atual (ator) a partir do UsuarioGUID.
-    const liderAtualUsuario = await this.#usuarioDAO.findByGUID(liderAtualGUID);
-    if (!liderAtualUsuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Apenas o líder pode transferir a liderança');
-    }
-    const liderAtualCPF = liderAtualUsuario.UsuarioCPF;
-
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
-    
+
     try {
       await connection.beginTransaction();
 
@@ -343,47 +335,55 @@ export default class GrupoTarefaService {
       }
 
       // 2. Validar se quem transfere é o líder atual
-      if (grupo.UsuarioCPFLider !== liderAtualCPF) {
+      if (grupo.UsuarioGUIDLider !== liderAtualGUID) {
         throw new ErrorResponse(403, 'Apenas o líder pode transferir a liderança');
       }
 
+      // O cliente identifica o novo líder por CPF (UX de "transferir por
+      // CPF") — resolver CPF -> GUID antes de qualquer operação.
+      const novoLider = await this.#usuarioDAO.findByCPF(novoLiderCPF);
+      if (!novoLider) {
+        throw new ErrorResponse(404, 'Usuário com este CPF não encontrado');
+      }
+      const novoLiderGUID = novoLider.UsuarioGUID;
+
       // 3. Validar se novo líder é membro do grupo
-      const isMembroNaoLider = await this.#usuarioXGrupoDAO.isMembroNaoLider(novoLiderCPF, grupoGUID);
+      const isMembroNaoLider = await this.#usuarioXGrupoDAO.isMembroNaoLider(novoLiderGUID, grupoGUID);
       if (!isMembroNaoLider) {
         throw new ErrorResponse(400, 'Novo líder deve ser um membro do grupo');
       }
 
       // 4. TRANSAÇÃO:
       //    a) Remover novo líder de usuarioxgrupotarefa
-      await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, novoLiderCPF);
+      await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, novoLiderGUID);
 
       //    b) Adicionar líder antigo em usuarioxgrupotarefa
       await this.#usuarioXGrupoDAO.create({
         GrupoTarefaGUID: grupoGUID,
-        UsuarioCPF: liderAtualCPF
+        UsuarioGUID: liderAtualGUID
       });
 
-      //    c) Atualizar GrupoTarefa.UsuarioCPFLider
+      //    c) Atualizar GrupoTarefa.UsuarioGUIDLider
       await this.#grupoTarefaDAO.update(grupoGUID, {
-        UsuarioCPFLider: novoLiderCPF
+        UsuarioGUIDLider: novoLiderGUID
       });
 
       // 4d. Sincronizar funcao na conversa do grupo
       if (this.#conversaGrupoService) {
-        await this.#conversaGrupoService.transferirLiderGrupoTarefa(grupoGUID, liderAtualCPF, novoLiderCPF);
+        await this.#conversaGrupoService.transferirLiderGrupoTarefa(grupoGUID, liderAtualGUID, novoLiderGUID);
       }
 
       // 5. Registrar no histórico
       await this.#historicoService.registrar({
         GrupoTarefaGUID: grupoGUID,
         HistoricoTipo: 'TransferenciaLider',
-        UsuarioCPFAtor: liderAtualCPF,
-        UsuarioCPFAlvo: novoLiderCPF
+        UsuarioCPFAtor: liderAtualGUID,
+        UsuarioCPFAlvo: novoLiderGUID
       });
 
       await connection.commit();
 
-      this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', liderAtualCPF, `Liderança transferida para ${novoLiderCPF}`).catch((error) => {
+      this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', liderAtualGUID, `Liderança transferida para ${novoLiderCPF}`).catch((error) => {
         console.error('🔴 GrupoTarefaService.#registrarAuditoriaGrupo() falhou:', error);
       });
 
@@ -410,13 +410,6 @@ export default class GrupoTarefaService {
   ): Promise<{ mensagem: string }> {
     console.log('🟣 GrupoTarefaService.atualizarNomeGrupo()');
 
-    // grupotarefa ainda usa CPF — resolver a partir do UsuarioGUID
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Apenas o líder pode alterar o nome do grupo');
-    }
-    const usuarioCPF = usuario.UsuarioCPF;
-
     // 1. Validar grupo
     const grupo = await this.#grupoTarefaDAO.findById(grupoGUID);
     if (!grupo) {
@@ -424,7 +417,7 @@ export default class GrupoTarefaService {
     }
 
     // 2. Validar se usuário é o líder
-    if (grupo.UsuarioCPFLider !== usuarioCPF) {
+    if (grupo.UsuarioGUIDLider !== usuarioGUID) {
       throw new ErrorResponse(403, 'Apenas o líder pode alterar o nome do grupo');
     }
 
@@ -436,7 +429,7 @@ export default class GrupoTarefaService {
     // 4. Atualizar
     await this.#grupoTarefaDAO.update(grupoGUID, { GrupoNome: novoNome.trim() });
 
-    this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', usuarioCPF, `Nome do grupo alterado para "${novoNome.trim()}"`).catch((error) => {
+    this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', usuarioGUID, `Nome do grupo alterado para "${novoNome.trim()}"`).catch((error) => {
       console.error('🔴 GrupoTarefaService.#registrarAuditoriaGrupo() falhou:', error);
     });
 
@@ -449,12 +442,12 @@ export default class GrupoTarefaService {
    * AUXILIAR - Validar se usuário está sozinho no grupo
    * (Pré-condição para aceitar convite ou solicitação)
    */
-  async usuarioEstaSozinhoNoGrupo(usuarioCPF: string, grupoGUID: string): Promise<boolean> {
+  async usuarioEstaSozinhoNoGrupo(usuarioGUID: string, grupoGUID: string): Promise<boolean> {
     console.log('🟣 GrupoTarefaService.usuarioEstaSozinhoNoGrupo()');
 
     // 1. Verificar se é líder
     const grupo = await this.#grupoTarefaDAO.findById(grupoGUID);
-    if (!grupo || grupo.UsuarioCPFLider !== usuarioCPF) {
+    if (!grupo || grupo.UsuarioGUIDLider !== usuarioGUID) {
       return false;
     }
 

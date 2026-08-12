@@ -173,7 +173,7 @@ export default class GrupoProjetoController {
       res.status(200).json({
         success: true,
         message: resultado.mensagem,
-        data: { novoLiderCPF: resultado.novoLiderCPF ?? null, grupoDissolvido: resultado.grupoDissolvido ?? false }
+        data: { novoLiderGUID: resultado.novoLiderGUID ?? null, grupoDissolvido: resultado.grupoDissolvido ?? false }
       });
     } catch (error) {
       next(error);

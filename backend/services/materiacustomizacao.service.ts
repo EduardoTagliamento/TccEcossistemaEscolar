@@ -12,7 +12,7 @@ import { getAuditoriaService } from "./auditoria.service";
 
 export interface MateriaCustomizacaoDTO {
   MateriaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   ImagemUrl: string | null;
   CorFundo: string;
   MensagemBoasVindas: string | null;
@@ -40,14 +40,6 @@ export default class MateriaCustomizacaoService {
     this.#usuarioDAO = usuarioDAO;
   }
 
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    return usuario.UsuarioCPF;
-  };
-
   salvarCustomizacao = async (
     materiaGUID: string,
     usuarioGUID: string,
@@ -62,11 +54,9 @@ export default class MateriaCustomizacaoService {
       });
     }
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-
     const alocacoes = await this.#alocacaoDAO.findAll({
       MateriaGUID: materiaGUID,
-      UsuarioCPF: usuarioCPF,
+      UsuarioGUID: usuarioGUID,
       AlocacaoStatus: "Ativa",
     });
     if (alocacoes.length === 0) {
@@ -75,18 +65,18 @@ export default class MateriaCustomizacaoService {
       });
     }
 
-    const existente = await this.#customizacaoDAO.findByMateriaEProfessor(materiaGUID, usuarioCPF);
+    const existente = await this.#customizacaoDAO.findByMateriaEProfessor(materiaGUID, usuarioGUID);
 
     const customizacao = new MateriaCustomizacao();
     customizacao.MateriaCustomizacaoGUID = existente?.MateriaCustomizacaoGUID ?? gerarGUID();
     customizacao.MateriaGUID = materiaGUID;
-    customizacao.UsuarioCPF = usuarioCPF;
+    customizacao.UsuarioGUID = usuarioGUID;
     customizacao.MensagemBoasVindas =
       dados.mensagem !== undefined ? dados.mensagem : existente?.MensagemBoasVindas ?? null;
 
     if (dados.imagem) {
       const extensao = dados.imagem.mimetype.split("/")[1] || "jpg";
-      const chave = `materias/${materiaGUID}/${usuarioCPF}/capa-${Date.now()}.${extensao}`;
+      const chave = `materias/${materiaGUID}/${usuarioGUID}/capa-${Date.now()}.${extensao}`;
       const novaUrl = await R2StorageService.upload(chave, dados.imagem.buffer, dados.imagem.mimetype);
 
       if (existente?.ImagemUrl) {
@@ -110,7 +100,7 @@ export default class MateriaCustomizacaoService {
       AcaoTipo: existente ? "Update" : "Create",
       EntidadeTipo: "materiacustomizacao",
       EntidadeGUID: customizacao.MateriaCustomizacaoGUID,
-      EntidadeDescricao: `Customização de ${materia.MateriaNome} por ${usuarioCPF}`,
+      EntidadeDescricao: `Customização de ${materia.MateriaNome} por ${usuarioGUID}`,
       CategoriaAuditoriaId: 2,
     });
 
@@ -127,10 +117,9 @@ export default class MateriaCustomizacaoService {
       });
     }
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const customizacao = await this.#customizacaoDAO.findByMateriaEProfessor(materiaGUID, usuarioCPF);
+    const customizacao = await this.#customizacaoDAO.findByMateriaEProfessor(materiaGUID, usuarioGUID);
     if (!customizacao) {
-      return this.dtoPadrao(materiaGUID, usuarioCPF, materia.EscolaGUID);
+      return this.dtoPadrao(materiaGUID, usuarioGUID, materia.EscolaGUID);
     }
 
     return this.toDTO(customizacao, materia.EscolaGUID);
@@ -153,18 +142,18 @@ export default class MateriaCustomizacaoService {
   private toDTO = (customizacao: MateriaCustomizacao, escolaGUID: string): MateriaCustomizacaoDTO => {
     return {
       MateriaGUID: customizacao.MateriaGUID,
-      UsuarioCPF: customizacao.UsuarioCPF,
+      UsuarioGUID: customizacao.UsuarioGUID,
       ImagemUrl: customizacao.ImagemUrl,
       CorFundo: customizacao.CorFundo || "#17C077",
       MensagemBoasVindas: customizacao.MensagemBoasVindas,
     };
   };
 
-  private dtoPadrao = async (materiaGUID: string, usuarioCPF: string, escolaGUID: string): Promise<MateriaCustomizacaoDTO> => {
+  private dtoPadrao = async (materiaGUID: string, usuarioGUID: string, escolaGUID: string): Promise<MateriaCustomizacaoDTO> => {
     const escola = await this.#escolaDAO.findById(escolaGUID);
     return {
       MateriaGUID: materiaGUID,
-      UsuarioCPF: usuarioCPF,
+      UsuarioGUID: usuarioGUID,
       ImagemUrl: null,
       CorFundo: escola?.EscolaCorPriEs ? `#${escola.EscolaCorPriEs.replace(/^#/, "")}` : "#17C077",
       MensagemBoasVindas: null,

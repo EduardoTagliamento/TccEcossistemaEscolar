@@ -61,16 +61,12 @@ export class AvisoService {
 
     const anexosVinculados: Anexo[] = [];
     if (data.AnexoGUIDs && data.AnexoGUIDs.length > 0) {
-      // `anexo` ainda não migrada pra UsuarioGUID (ver
-      // docs/PROGRESSO_MIGRACAO_USUARIO_GUID.md) — resolve o CPF do autor
-      // aqui pra comparar contra anexo.UsuarioCPF.
-      const autor = await this.usuarioDAO.findByGUID(data.UsuarioGUIDAutor);
       for (const anexoGUID of data.AnexoGUIDs) {
         const anexo = await this.anexoDAO.findById(anexoGUID);
         if (!anexo) {
           throw new ErrorResponse(404, `Anexo ${anexoGUID} não encontrado`);
         }
-        if (!autor || anexo.UsuarioCPF !== autor.UsuarioCPF) {
+        if (anexo.UsuarioGUID !== data.UsuarioGUIDAutor) {
           throw new ErrorResponse(403, 'Você só pode anexar arquivos que você mesmo enviou');
         }
         await this.relacaoAnexosDAO.vincularAnexoAviso(anexoGUID, created.AvisoGUID);

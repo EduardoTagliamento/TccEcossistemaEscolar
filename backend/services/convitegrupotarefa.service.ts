@@ -44,6 +44,8 @@ export default class ConviteGrupoTarefaService {
   /**
    * LÍDER ENVIA CONVITE para aluno
    * Validações: líder deve ser do grupo, grupo não pode estar cheio
+   * O cliente ainda identifica o convidado por CPF (UX de "convidar por
+   * CPF"), então resolvemos CPF -> GUID aqui antes de qualquer operação.
    */
   async enviarConvite(
     grupoGUID: string,
@@ -52,14 +54,6 @@ export default class ConviteGrupoTarefaService {
   ): Promise<ConviteGrupoTarefa> {
     console.log('🟣 ConviteGrupoTarefaService.enviarConvite()');
 
-    // grupotarefa ainda usa CPF — resolver o líder (ator) a partir do
-    // UsuarioGUID.
-    const liderUsuario = await this.#usuarioDAO.findByGUID(liderGUID);
-    if (!liderUsuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Apenas o líder pode enviar convites');
-    }
-    const liderCPF = liderUsuario.UsuarioCPF;
-
     // 1. Validar grupo
     const grupo = await this.#grupoTarefaDAO.findById(grupoGUID);
     if (!grupo) {
@@ -67,7 +61,7 @@ export default class ConviteGrupoTarefaService {
     }
 
     // 2. Validar se quem envia é o líder
-    if (grupo.UsuarioCPFLider !== liderCPF) {
+    if (grupo.UsuarioGUIDLider !== liderGUID) {
       throw new ErrorResponse(403, 'Apenas o líder pode enviar convites');
     }
 
@@ -76,14 +70,20 @@ export default class ConviteGrupoTarefaService {
     // Buscar limite da tarefa (precisaria buscar a tarefa, simplificando aqui)
     // TODO: Validar limite máximo
 
+    const convidado = await this.#usuarioDAO.findByCPF(convidadoCPF);
+    if (!convidado) {
+      throw new ErrorResponse(404, 'Usuário com este CPF não encontrado');
+    }
+    const convidadoGUID = convidado.UsuarioGUID;
+
     // 4. Verificar se já existe convite pendente
-    const existeConvite = await this.#conviteDAO.existeConvitePendente(grupoGUID, convidadoCPF);
+    const existeConvite = await this.#conviteDAO.existeConvitePendente(grupoGUID, convidadoGUID);
     if (existeConvite) {
       throw new ErrorResponse(409, 'Já existe um convite pendente para este usuário');
     }
 
     // 5. Verificar se convidado já está no grupo
-    const jaEstaNoGrupo = await this.#grupoTarefaDAO.usuarioPertenceAoGrupo(convidadoCPF, grupoGUID);
+    const jaEstaNoGrupo = await this.#grupoTarefaDAO.usuarioPertenceAoGrupo(convidadoGUID, grupoGUID);
     if (jaEstaNoGrupo) {
       throw new ErrorResponse(400, 'Usuário já é membro do grupo');
     }
@@ -91,17 +91,17 @@ export default class ConviteGrupoTarefaService {
     // 6. Criar convite
     const conviteData: ConviteGrupoTarefaCreateDTO = {
       GrupoTarefaGUID: grupoGUID,
-      UsuarioCPFConvidado: convidadoCPF,
+      UsuarioGUIDConvidado: convidadoGUID,
       ConviteTipo: 'Convite'
     };
 
     const convite = await this.#conviteDAO.create(conviteData);
 
-    this.#notificarConviteGrupo(grupo.TurmaGUID, grupo.TarefaGUID, liderCPF, convidadoCPF).catch((error) => {
+    this.#notificarConviteGrupo(grupo.TurmaGUID, grupo.TarefaGUID, liderGUID, convidadoGUID).catch((error) => {
       console.error('🔴 ConviteGrupoTarefaService.#notificarConviteGrupo() falhou:', error);
     });
 
-    this.#registrarAuditoriaConvite(grupo.TurmaGUID, convite.ConviteGUID, 'Create', liderCPF, `Convite enviado a ${convidadoCPF}`).catch((error) => {
+    this.#registrarAuditoriaConvite(grupo.TurmaGUID, convite.ConviteGUID, 'Create', liderGUID, `Convite enviado a ${convidadoCPF}`).catch((error) => {
       console.error('🔴 ConviteGrupoTarefaService.#registrarAuditoriaConvite() falhou:', error);
     });
 
@@ -125,16 +125,14 @@ export default class ConviteGrupoTarefaService {
     turmaGUID: string,
     conviteGUID: string,
     acaoTipo: 'Create' | 'Update' | 'Delete',
-    usuarioCPFAtor: string,
+    usuarioGUIDAtor: string,
     entidadeDescricao?: string
   ): Promise<void> => {
     const escolaGUID = await this.#resolverEscolaGUID(turmaGUID);
     if (!escolaGUID) return;
-    const ator = await this.#usuarioDAO.findByCPF(usuarioCPFAtor);
-    if (!ator) return;
     void getAuditoriaService().registrar({
       EscolaGUID: escolaGUID,
-      UsuarioGUIDAtor: ator.UsuarioGUID,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
       AcaoTipo: acaoTipo,
       EntidadeTipo: 'convitegrupotarefa',
       EntidadeGUID: conviteGUID,
@@ -147,27 +145,24 @@ export default class ConviteGrupoTarefaService {
   #notificarConviteGrupo = async (
     turmaGUID: string,
     tarefaGUID: string,
-    liderCPF: string,
-    convidadoCPF: string
+    liderGUID: string,
+    convidadoGUID: string
   ): Promise<void> => {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT t.EscolaGUID, ta.TarefaTitulo, u.UsuarioNome AS LiderNome
        FROM turma t
        INNER JOIN tarefaacademica ta ON ta.TarefaGUID = ?
-       INNER JOIN usuario u ON u.UsuarioCPF = ?
+       INNER JOIN usuario u ON u.UsuarioGUID = ?
        WHERE t.TurmaGUID = ?
        LIMIT 1`,
-      [tarefaGUID, liderCPF, turmaGUID]
+      [tarefaGUID, liderGUID, turmaGUID]
     );
     const info = rows[0] as any;
     if (!info?.EscolaGUID) return;
 
-    const convidado = await this.#usuarioDAO.findByCPF(convidadoCPF);
-    if (!convidado) return;
-
     await getNotificacaoService().disparar({
       tipoSlug: 'convite_grupo',
-      destinatarios: [convidado.UsuarioGUID],
+      destinatarios: [convidadoGUID],
       escolaGUID: info.EscolaGUID,
       titulo: `${info.LiderNome} te convidou para o grupo da tarefa "${info.TarefaTitulo}"`,
       entidadeTipo: 'tarefa',
@@ -185,14 +180,6 @@ export default class ConviteGrupoTarefaService {
   ): Promise<ConviteGrupoTarefa> {
     console.log('🟣 ConviteGrupoTarefaService.solicitarEntrada()');
 
-    // convitegrupotarefa ainda usa CPF — resolver o solicitante a partir do
-    // UsuarioGUID.
-    const solicitanteUsuario = await this.#usuarioDAO.findByGUID(solicitanteGUID);
-    if (!solicitanteUsuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
-    }
-    const solicitanteCPF = solicitanteUsuario.UsuarioCPF;
-
     // 1. Validar grupo
     const grupo = await this.#grupoTarefaDAO.findById(grupoGUID);
     if (!grupo) {
@@ -203,7 +190,7 @@ export default class ConviteGrupoTarefaService {
     // TODO: Implementar validação completa
 
     // 3. Verificar se já existe solicitação pendente
-    const existeSolicitacao = await this.#conviteDAO.existeConvitePendente(grupoGUID, solicitanteCPF);
+    const existeSolicitacao = await this.#conviteDAO.existeConvitePendente(grupoGUID, solicitanteGUID);
     if (existeSolicitacao) {
       throw new ErrorResponse(409, 'Já existe uma solicitação pendente');
     }
@@ -211,13 +198,13 @@ export default class ConviteGrupoTarefaService {
     // 4. Criar solicitação
     const solicitacaoData: ConviteGrupoTarefaCreateDTO = {
       GrupoTarefaGUID: grupoGUID,
-      UsuarioCPFConvidado: solicitanteCPF,
+      UsuarioGUIDConvidado: solicitanteGUID,
       ConviteTipo: 'Solicitacao'
     };
 
     const solicitacao = await this.#conviteDAO.create(solicitacaoData);
 
-    this.#registrarAuditoriaConvite(grupo.TurmaGUID, solicitacao.ConviteGUID, 'Create', solicitanteCPF, 'Solicitação de entrada no grupo').catch((error) => {
+    this.#registrarAuditoriaConvite(grupo.TurmaGUID, solicitacao.ConviteGUID, 'Create', solicitanteGUID, 'Solicitação de entrada no grupo').catch((error) => {
       console.error('🔴 ConviteGrupoTarefaService.#registrarAuditoriaConvite() falhou:', error);
     });
 
@@ -233,14 +220,6 @@ export default class ConviteGrupoTarefaService {
     usuarioGUID: string
   ): Promise<{ mensagem: string }> {
     console.log('🟣 ConviteGrupoTarefaService.aceitar()');
-
-    // convitegrupotarefa/grupotarefa/usuarioxgrupotarefa/historicogrupotarefa
-    // ainda usam CPF — resolver a partir do UsuarioGUID.
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
-    }
-    const usuarioCPF = usuario.UsuarioCPF;
 
     const pool = await this.#database.getPool();
     const connection = await pool.getConnection();
@@ -259,7 +238,7 @@ export default class ConviteGrupoTarefaService {
       }
 
       // 2. Validar autorização
-      if (convite.ConviteTipo === 'Convite' && convite.UsuarioCPFConvidado !== usuarioCPF) {
+      if (convite.ConviteTipo === 'Convite' && convite.UsuarioGUIDConvidado !== usuarioGUID) {
         throw new ErrorResponse(403, 'Você não pode aceitar este convite');
       }
 
@@ -268,16 +247,16 @@ export default class ConviteGrupoTarefaService {
         throw new ErrorResponse(404, 'Grupo não encontrado');
       }
 
-      if (convite.ConviteTipo === 'Solicitacao' && grupo.UsuarioCPFLider !== usuarioCPF) {
+      if (convite.ConviteTipo === 'Solicitacao' && grupo.UsuarioGUIDLider !== usuarioGUID) {
         throw new ErrorResponse(403, 'Apenas o líder pode aceitar solicitações');
       }
 
       // 3. Adicionar usuário ao grupo
-      const novoMembroCPF = convite.UsuarioCPFConvidado;
-      
+      const novoMembroGUID = convite.UsuarioGUIDConvidado;
+
       await this.#usuarioXGrupoDAO.create({
         GrupoTarefaGUID: convite.GrupoTarefaGUID,
-        UsuarioCPF: novoMembroCPF
+        UsuarioGUID: novoMembroGUID
       });
 
       // 4. Atualizar status do convite
@@ -287,8 +266,8 @@ export default class ConviteGrupoTarefaService {
       await this.#historicoService.registrar({
         GrupoTarefaGUID: convite.GrupoTarefaGUID,
         HistoricoTipo: 'Entrada',
-        UsuarioCPFAtor: usuarioCPF,
-        UsuarioCPFAlvo: novoMembroCPF,
+        UsuarioCPFAtor: usuarioGUID,
+        UsuarioCPFAlvo: novoMembroGUID,
         HistoricoDetalhes: {
           tipo: convite.ConviteTipo
         }
@@ -296,7 +275,7 @@ export default class ConviteGrupoTarefaService {
 
       await connection.commit();
 
-      this.#registrarAuditoriaConvite(grupo.TurmaGUID, conviteGUID, 'Update', usuarioCPF, `${convite.ConviteTipo} aceito`).catch((error) => {
+      this.#registrarAuditoriaConvite(grupo.TurmaGUID, conviteGUID, 'Update', usuarioGUID, `${convite.ConviteTipo} aceito`).catch((error) => {
         console.error('🔴 ConviteGrupoTarefaService.#registrarAuditoriaConvite() falhou:', error);
       });
 
@@ -321,13 +300,6 @@ export default class ConviteGrupoTarefaService {
   ): Promise<{ mensagem: string }> {
     console.log('🟣 ConviteGrupoTarefaService.recusar()');
 
-    // convitegrupotarefa ainda usa CPF — resolver a partir do UsuarioGUID.
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
-    }
-    const usuarioCPF = usuario.UsuarioCPF;
-
     // 1. Buscar convite
     const convite = await this.#conviteDAO.findById(conviteGUID);
     if (!convite) {
@@ -339,7 +311,7 @@ export default class ConviteGrupoTarefaService {
     }
 
     // 2. Validar autorização
-    if (convite.ConviteTipo === 'Convite' && convite.UsuarioCPFConvidado !== usuarioCPF) {
+    if (convite.ConviteTipo === 'Convite' && convite.UsuarioGUIDConvidado !== usuarioGUID) {
       throw new ErrorResponse(403, 'Você não pode recusar este convite');
     }
 
@@ -348,14 +320,14 @@ export default class ConviteGrupoTarefaService {
       throw new ErrorResponse(404, 'Grupo não encontrado');
     }
 
-    if (convite.ConviteTipo === 'Solicitacao' && grupo.UsuarioCPFLider !== usuarioCPF) {
+    if (convite.ConviteTipo === 'Solicitacao' && grupo.UsuarioGUIDLider !== usuarioGUID) {
       throw new ErrorResponse(403, 'Apenas o líder pode recusar solicitações');
     }
 
     // 3. Atualizar status
     await this.#conviteDAO.updateStatus(conviteGUID, 'Recusado');
 
-    this.#registrarAuditoriaConvite(grupo.TurmaGUID, conviteGUID, 'Update', usuarioCPF, `${convite.ConviteTipo} recusado`).catch((error) => {
+    this.#registrarAuditoriaConvite(grupo.TurmaGUID, conviteGUID, 'Update', usuarioGUID, `${convite.ConviteTipo} recusado`).catch((error) => {
       console.error('🔴 ConviteGrupoTarefaService.#registrarAuditoriaConvite() falhou:', error);
     });
 
@@ -369,15 +341,6 @@ export default class ConviteGrupoTarefaService {
    */
   async listarPendentes(usuarioGUID: string): Promise<ConviteGrupoTarefaDTO[]> {
     console.log('🟣 ConviteGrupoTarefaService.listarPendentes()');
-
-    // convitegrupotarefa ainda usa CPF — resolver a partir do UsuarioGUID.
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      return [];
-    }
-
-    const convites = await this.#conviteDAO.findAllComDetalhes(usuario.UsuarioCPF);
-
-    return convites;
+    return await this.#conviteDAO.findAllComDetalhes(usuarioGUID);
   }
 }

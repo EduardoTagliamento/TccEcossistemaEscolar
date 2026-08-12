@@ -48,17 +48,8 @@ export default class AssuntoService {
     this.#usuarioDAO = usuarioDAODependency;
   }
 
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    return usuario.UsuarioCPF;
-  };
-
   #validarProfessorResponsavel = async (materiaGUID: string, usuarioGUID: string): Promise<void> => {
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const alocacoes = await this.#alocacaoDAO.findByProfessor(usuarioCPF);
+    const alocacoes = await this.#alocacaoDAO.findByProfessor(usuarioGUID);
     const alocado = alocacoes.some((a) => a.MateriaGUID === materiaGUID && a.AlocacaoStatus === "Ativa");
     if (!alocado) {
       throw new ErrorResponse(403, "Sem permissão", {

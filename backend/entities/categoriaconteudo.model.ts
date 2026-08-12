@@ -7,11 +7,9 @@
  *   categorias, por matéria (mesmo que dois professores lecionem a mesma
  *   matéria, cada um tem as suas).
  */
-import { normalizeCPF } from "../utils/helpers/cpf.helper";
-
 export default class CategoriaConteudo {
   #CategoriaGUID!: string;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #MateriaGUID!: string;
   #TurmaGUID!: string;
   #CategoriaNome: string | null = null;
@@ -39,13 +37,16 @@ export default class CategoriaConteudo {
     this.#CategoriaGUID = guid;
   }
 
-  // ========== UsuarioCPF ==========
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  // ========== UsuarioGUID ==========
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
-  set UsuarioCPF(value: string) {
-    this.#UsuarioCPF = normalizeCPF(value);
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia.");
+    }
+    this.#UsuarioGUID = value.trim();
   }
 
   // ========== MateriaGUID ==========

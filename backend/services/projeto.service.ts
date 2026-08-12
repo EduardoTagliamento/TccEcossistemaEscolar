@@ -36,16 +36,6 @@ export default class ProjetoService {
     this.#usuarioDAO = usuarioDAO;
   }
 
-  /** Resolve o CPF de um ator a partir do UsuarioGUID — a tabela `projeto`
-   * ainda usa CPF (UsuarioCPFCriador). */
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
-    }
-    return usuario.UsuarioCPF;
-  };
-
   /**
    * CRIAR PROJETO
    * Apenas Professor (FuncaoId=3) ou Direção (FuncaoId=6) da escola —
@@ -58,8 +48,6 @@ export default class ProjetoService {
     if (!podecriar) {
       throw new ErrorResponse(403, 'Apenas Professor ou Direção podem criar um projeto');
     }
-
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     if (data.ProjetoGrupoMinPessoas < 1) {
       throw new ErrorResponse(400, 'ProjetoGrupoMinPessoas deve ser >= 1');
@@ -103,7 +91,7 @@ export default class ProjetoService {
       turmasGUID = data.TurmasGUID;
     }
 
-    const projetoCriado = await this.#projetoDAO.create(data, usuarioCPF);
+    const projetoCriado = await this.#projetoDAO.create(data, usuarioGUID);
 
     if (turmasGUID.length > 0) {
       await this.#projetoDAO.addTurmas(projetoCriado.ProjetoGUID, turmasGUID);
@@ -172,13 +160,12 @@ export default class ProjetoService {
     console.log('🟣 ProjetoService.listarProjetos()');
 
     const eProfessorOuDirecao = await this.#escolaxUsuarioxFuncaoDAO.isProfessorOuDirecaoEmEscola(usuarioGUID, escolaGUID);
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
 
     if (eProfessorOuDirecao) {
-      return await this.#projetoDAO.findAll({ EscolaGUID: escolaGUID, UsuarioCPFCriador: usuarioCPF });
+      return await this.#projetoDAO.findAll({ EscolaGUID: escolaGUID, UsuarioGUIDCriador: usuarioGUID });
     }
 
-    return await this.#projetoDAO.findElegiveisParaAluno(escolaGUID, usuarioCPF);
+    return await this.#projetoDAO.findElegiveisParaAluno(escolaGUID, usuarioGUID);
   };
 
   /**
@@ -205,13 +192,12 @@ export default class ProjetoService {
   ): Promise<ProjetoDTO> => {
     console.log('🟣 ProjetoService.atualizarProjeto()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const projeto = await this.#projetoDAO.findById(projetoGUID);
     if (!projeto) {
       throw new ErrorResponse(404, 'Projeto não encontrado');
     }
 
-    if (projeto.UsuarioCPFCriador !== usuarioCPF) {
+    if (projeto.UsuarioGUIDCriador !== usuarioGUID) {
       throw new ErrorResponse(403, 'Apenas o criador pode atualizar o projeto');
     }
 
@@ -250,13 +236,12 @@ export default class ProjetoService {
   encerrarProjeto = async (projetoGUID: string, usuarioGUID: string): Promise<{ mensagem: string }> => {
     console.log('🟣 ProjetoService.encerrarProjeto()');
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const projeto = await this.#projetoDAO.findById(projetoGUID);
     if (!projeto) {
       throw new ErrorResponse(404, 'Projeto não encontrado');
     }
 
-    if (projeto.UsuarioCPFCriador !== usuarioCPF) {
+    if (projeto.UsuarioGUIDCriador !== usuarioGUID) {
       throw new ErrorResponse(403, 'Apenas o criador pode encerrar o projeto');
     }
 

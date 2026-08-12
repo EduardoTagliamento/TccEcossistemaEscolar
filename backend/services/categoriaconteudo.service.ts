@@ -75,7 +75,7 @@ export interface BoardGeralDTO {
 
 export interface CategoriaConteudoDTO {
   CategoriaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   MateriaGUID: string;
   TurmaGUID: string;
   CategoriaNome: string;
@@ -150,16 +150,6 @@ export default class CategoriaConteudoService {
     this.#matriculaDAO = matriculaDAO;
     this.#respostaDAO = respostaDAO;
   }
-
-  /** Resolve o CPF de um ator a partir do UsuarioGUID — categoriaconteudo e
-   * materiaxprofessorxturma ainda usam CPF. */
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    return usuario.UsuarioCPF;
-  };
 
   /**
    * Resolve Estado/Percentual de um item "tarefa_lista" — o progresso é por
@@ -370,12 +360,10 @@ export default class CategoriaConteudoService {
   ): Promise<CategoriasCompletasResultDTO> => {
     console.log("🟣 CategoriaConteudoService.reordenarItens()");
 
-    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
       `SELECT 1 FROM materiaxprofessorxturma
-       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
-      [materiaGUID, turmaGUID, usuarioCPF]
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioGUID = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [materiaGUID, turmaGUID, usuarioGUID]
     );
     if (alocacaoRows.length === 0) {
       throw new ErrorResponse(403, "Sem permissão", {
@@ -384,7 +372,7 @@ export default class CategoriaConteudoService {
     }
 
     const categoriasDoProfessor = await this.#categoriaDAO.findAll({
-      UsuarioCPF: usuarioCPF,
+      UsuarioGUID: usuarioGUID,
       MateriaGUID: materiaGUID,
       TurmaGUID: turmaGUID,
     });
@@ -460,9 +448,6 @@ export default class CategoriaConteudoService {
   ): Promise<CategoriaConteudoDTO> => {
     console.log("🟣 CategoriaConteudoService.criarCategoria()");
 
-    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-
     const materia = await this.#materiaDAO.findById(data.MateriaGUID);
     if (!materia) {
       throw new ErrorResponse(404, "Matéria não encontrada", {
@@ -482,8 +467,8 @@ export default class CategoriaConteudoService {
     // botão ligado no frontend (função futura, ver PLANO_IMPLEMENTACAO_MATERIAS.md).
     const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
       `SELECT 1 FROM materiaxprofessorxturma
-       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
-      [data.MateriaGUID, data.TurmaGUID, usuarioCPF]
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioGUID = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [data.MateriaGUID, data.TurmaGUID, usuarioGUID]
     );
     if (alocacaoRows.length === 0) {
       throw new ErrorResponse(403, "Sem permissão", {
@@ -493,7 +478,7 @@ export default class CategoriaConteudoService {
 
     const nome = data.CategoriaNome.trim();
     const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(
-      usuarioCPF,
+      usuarioGUID,
       data.MateriaGUID,
       data.TurmaGUID,
       nome
@@ -504,11 +489,11 @@ export default class CategoriaConteudoService {
       });
     }
 
-    const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, data.MateriaGUID, data.TurmaGUID);
+    const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioGUID, data.MateriaGUID, data.TurmaGUID);
 
     const categoria = new CategoriaConteudo();
     categoria.CategoriaGUID = gerarGUID();
-    categoria.UsuarioCPF = usuarioCPF;
+    categoria.UsuarioGUID = usuarioGUID;
     categoria.MateriaGUID = data.MateriaGUID;
     categoria.TurmaGUID = data.TurmaGUID;
     categoria.CategoriaNome = nome;
@@ -533,8 +518,6 @@ export default class CategoriaConteudoService {
   ): Promise<CategoriaConteudoDTO> => {
     console.log("🟣 CategoriaConteudoService.atualizarCategoria()");
 
-    // categoriaconteudo ainda usa CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const categoria = await this.#categoriaDAO.findById(guid);
     if (!categoria) {
       throw new ErrorResponse(404, "Categoria não encontrada", {
@@ -545,7 +528,7 @@ export default class CategoriaConteudoService {
     // Nota: quando a função de representante-cria-categoria entrar em vigor
     // (fase futura), esta checagem precisa aceitar também o representante/vice
     // da turma da categoria, não só o professor autor.
-    if (categoria.UsuarioCPF !== usuarioCPF) {
+    if (categoria.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode editar suas próprias categorias.",
       });
@@ -553,7 +536,7 @@ export default class CategoriaConteudoService {
 
     const nome = novoNome.trim();
     const duplicada = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(
-      usuarioCPF,
+      usuarioGUID,
       categoria.MateriaGUID,
       categoria.TurmaGUID,
       nome
@@ -580,10 +563,8 @@ export default class CategoriaConteudoService {
   ): Promise<CategoriaConteudoDTO[]> => {
     console.log("🟣 CategoriaConteudoService.reordenarCategorias()");
 
-    // categoriaconteudo ainda usa CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const categoriasAtuais = await this.#categoriaDAO.findAll({
-      UsuarioCPF: usuarioCPF,
+      UsuarioGUID: usuarioGUID,
       MateriaGUID: materiaGUID,
       TurmaGUID: turmaGUID,
     });
@@ -599,24 +580,24 @@ export default class CategoriaConteudoService {
       ordemGUIDs.map((guid, indice) => ({ CategoriaGUID: guid, Ordem: indice }))
     );
 
-    return this.listarCategorias({ UsuarioCPF: usuarioCPF, MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
+    return this.listarCategorias({ UsuarioGUID: usuarioGUID, MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
   };
 
   // ==================== Board geral (categoria aplicada em massa) ====================
   //
   // Sem tabela nova: uma "categoria geral" é só o conjunto de linhas de
-  // `categoriaconteudo` que compartilham o mesmo (UsuarioCPF, MateriaGUID,
+  // `categoriaconteudo` que compartilham o mesmo (UsuarioGUID, MateriaGUID,
   // CategoriaNome) — uma por turma onde o professor leciona a matéria.
   // Criar/reordenar "em massa" é só criar/atualizar essas N linhas de uma vez.
 
   /** Turmas ativas onde esse professor leciona essa matéria — base de todo o board geral. */
-  #turmasAtivasDoProfessor = async (usuarioCPF: string, materiaGUID: string): Promise<{ TurmaGUID: string; TurmaNome: string; TurmaSerie: string }[]> => {
+  #turmasAtivasDoProfessor = async (usuarioGUID: string, materiaGUID: string): Promise<{ TurmaGUID: string; TurmaNome: string; TurmaSerie: string }[]> => {
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT DISTINCT mpt.TurmaGUID, tu.TurmaNome, tu.TurmaSerie
        FROM materiaxprofessorxturma mpt
        INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
-       WHERE mpt.MateriaGUID = ? AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'`,
-      [materiaGUID, usuarioCPF]
+       WHERE mpt.MateriaGUID = ? AND mpt.UsuarioGUID = ? AND mpt.AlocacaoStatus = 'Ativa'`,
+      [materiaGUID, usuarioGUID]
     );
     return rows as any[];
   };
@@ -628,9 +609,6 @@ export default class CategoriaConteudoService {
   criarCategoriaGeral = async (usuarioGUID: string, materiaGUID: string, categoriaNome: string): Promise<void> => {
     console.log("🟣 CategoriaConteudoService.criarCategoriaGeral()");
 
-    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-
     const nome = categoriaNome.trim();
     if (nome.length < 2 || nome.length > 100) {
       throw new ErrorResponse(400, "CategoriaNome inválido", {
@@ -638,7 +616,7 @@ export default class CategoriaConteudoService {
       });
     }
 
-    const turmas = await this.#turmasAtivasDoProfessor(usuarioCPF, materiaGUID);
+    const turmas = await this.#turmasAtivasDoProfessor(usuarioGUID, materiaGUID);
     if (turmas.length === 0) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você não está alocado em nenhuma turma ativa nesta matéria.",
@@ -646,13 +624,13 @@ export default class CategoriaConteudoService {
     }
 
     for (const turma of turmas) {
-      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nome);
+      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioGUID, materiaGUID, turma.TurmaGUID, nome);
       if (existente) continue;
 
-      const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, materiaGUID, turma.TurmaGUID);
+      const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioGUID, materiaGUID, turma.TurmaGUID);
       const categoria = new CategoriaConteudo();
       categoria.CategoriaGUID = gerarGUID();
-      categoria.UsuarioCPF = usuarioCPF;
+      categoria.UsuarioGUID = usuarioGUID;
       categoria.MateriaGUID = materiaGUID;
       categoria.TurmaGUID = turma.TurmaGUID;
       categoria.CategoriaNome = nome;
@@ -676,9 +654,6 @@ export default class CategoriaConteudoService {
   ): Promise<{ turmasAtualizadas: number }> => {
     console.log("🟣 CategoriaConteudoService.atualizarCategoriaGeral()");
 
-    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-
     const nomeAtual = categoriaNomeAtual.trim();
     const nome = novoNome.trim();
     if (nome.length < 2 || nome.length > 100) {
@@ -687,7 +662,7 @@ export default class CategoriaConteudoService {
       });
     }
 
-    const turmas = await this.#turmasAtivasDoProfessor(usuarioCPF, materiaGUID);
+    const turmas = await this.#turmasAtivasDoProfessor(usuarioGUID, materiaGUID);
     if (turmas.length === 0) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você não está alocado em nenhuma turma ativa nesta matéria.",
@@ -696,10 +671,10 @@ export default class CategoriaConteudoService {
 
     let turmasAtualizadas = 0;
     for (const turma of turmas) {
-      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nomeAtual);
+      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioGUID, materiaGUID, turma.TurmaGUID, nomeAtual);
       if (!existente) continue;
 
-      const conflito = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nome);
+      const conflito = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioGUID, materiaGUID, turma.TurmaGUID, nome);
       if (conflito && conflito.CategoriaGUID !== existente.CategoriaGUID) continue;
 
       await this.#categoriaDAO.update(existente.CategoriaGUID, nome);
@@ -727,15 +702,12 @@ export default class CategoriaConteudoService {
   ): Promise<{ turmasExcluidas: number }> => {
     console.log("🟣 CategoriaConteudoService.excluirCategoriaGeral()");
 
-    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-
     const nome = categoriaNome.trim();
-    const turmas = await this.#turmasAtivasDoProfessor(usuarioCPF, materiaGUID);
+    const turmas = await this.#turmasAtivasDoProfessor(usuarioGUID, materiaGUID);
 
     let turmasExcluidas = 0;
     for (const turma of turmas) {
-      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turma.TurmaGUID, nome);
+      const existente = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioGUID, materiaGUID, turma.TurmaGUID, nome);
       if (!existente) continue;
       await this.excluirCategoria(existente.CategoriaGUID, usuarioGUID);
       turmasExcluidas++;
@@ -779,9 +751,7 @@ export default class CategoriaConteudoService {
   buscarBoardGeral = async (usuarioGUID: string, materiaGUID: string): Promise<BoardGeralDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarBoardGeral()");
 
-    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const categoriasRows = await this.#categoriaDAO.findAll({ UsuarioCPF: usuarioCPF, MateriaGUID: materiaGUID });
+    const categoriasRows = await this.#categoriaDAO.findAll({ UsuarioGUID: usuarioGUID, MateriaGUID: materiaGUID });
     const nomeParaOrdem = new Map<string, number>();
     categoriasRows.forEach((c) => {
       if (c.CategoriaNome && !nomeParaOrdem.has(c.CategoriaNome)) nomeParaOrdem.set(c.CategoriaNome, c.Ordem);
@@ -801,8 +771,8 @@ export default class CategoriaConteudoService {
        INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
        INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
        LEFT JOIN categoriaconteudo cc ON cc.CategoriaGUID = t.CategoriaGUID
-       WHERE mpt.MateriaGUID = ? AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'`,
-      [materiaGUID, usuarioCPF]
+       WHERE mpt.MateriaGUID = ? AND mpt.UsuarioGUID = ? AND mpt.AlocacaoStatus = 'Ativa'`,
+      [materiaGUID, usuarioGUID]
     );
     for (const row of tarefaRows as any[]) {
       const tipoTarefa: ItemTipo =
@@ -827,10 +797,10 @@ export default class CategoriaConteudoService {
        INNER JOIN conteudoturma ct ON ct.ConteudoGUID = c.ConteudoGUID
        INNER JOIN turma tu ON tu.TurmaGUID = ct.TurmaGUID
        INNER JOIN materiaxprofessorxturma mpt
-         ON mpt.MateriaGUID = c.MateriaGUID AND mpt.TurmaGUID = ct.TurmaGUID AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'
+         ON mpt.MateriaGUID = c.MateriaGUID AND mpt.TurmaGUID = ct.TurmaGUID AND mpt.UsuarioGUID = ? AND mpt.AlocacaoStatus = 'Ativa'
        LEFT JOIN categoriaconteudo cc ON cc.CategoriaGUID = ct.CategoriaGUID
        WHERE c.MateriaGUID = ?`,
-      [usuarioCPF, materiaGUID]
+      [usuarioGUID, materiaGUID]
     );
     const tipoConteudoMap: Record<string, ItemTipo> = {
       cronometrado: "conteudo_video",
@@ -874,10 +844,10 @@ export default class CategoriaConteudoService {
        INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
        INNER JOIN turma tu ON tu.TurmaGUID = pt.TurmaGUID
        INNER JOIN materiaxprofessorxturma mpt
-         ON mpt.MateriaGUID = p.MateriaGUID AND mpt.TurmaGUID = pt.TurmaGUID AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'
+         ON mpt.MateriaGUID = p.MateriaGUID AND mpt.TurmaGUID = pt.TurmaGUID AND mpt.UsuarioGUID = ? AND mpt.AlocacaoStatus = 'Ativa'
        LEFT JOIN categoriaconteudo cc ON cc.CategoriaGUID = pt.CategoriaGUID
        WHERE p.MateriaGUID = ?`,
-      [usuarioCPF, materiaGUID]
+      [usuarioGUID, materiaGUID]
     );
     const gruposProva = new Map<
       string,
@@ -919,9 +889,7 @@ export default class CategoriaConteudoService {
   reordenarCategoriasGerais = async (usuarioGUID: string, materiaGUID: string, ordemNomes: string[]): Promise<BoardGeralDTO> => {
     console.log("🟣 CategoriaConteudoService.reordenarCategoriasGerais()");
 
-    // categoriaconteudo ainda usa CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    const categoriasAtuais = await this.#categoriaDAO.findAll({ UsuarioCPF: usuarioCPF, MateriaGUID: materiaGUID });
+    const categoriasAtuais = await this.#categoriaDAO.findAll({ UsuarioGUID: usuarioGUID, MateriaGUID: materiaGUID });
     const nomesValidos = new Set(categoriasAtuais.map((c) => c.CategoriaNome));
     if (ordemNomes.length !== nomesValidos.size || !ordemNomes.every((nome) => nomesValidos.has(nome))) {
       throw new ErrorResponse(400, "Lista de ordenação inválida", {
@@ -939,17 +907,17 @@ export default class CategoriaConteudoService {
 
   /** Resolve o GUID da categoria (por nome) numa turma, criando-a se essa turma ainda não a tinha. */
   #resolverOuCriarCategoriaGeral = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     materiaGUID: string,
     turmaGUID: string,
     nome: string
   ): Promise<string> => {
-    let categoria = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioCPF, materiaGUID, turmaGUID, nome);
+    let categoria = await this.#categoriaDAO.findByUsuarioMateriaTurmaNome(usuarioGUID, materiaGUID, turmaGUID, nome);
     if (!categoria) {
-      const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioCPF, materiaGUID, turmaGUID);
+      const maiorOrdem = await this.#categoriaDAO.findMaiorOrdem(usuarioGUID, materiaGUID, turmaGUID);
       const nova = new CategoriaConteudo();
       nova.CategoriaGUID = gerarGUID();
-      nova.UsuarioCPF = usuarioCPF;
+      nova.UsuarioGUID = usuarioGUID;
       nova.MateriaGUID = materiaGUID;
       nova.TurmaGUID = turmaGUID;
       nova.CategoriaNome = nome;
@@ -982,9 +950,6 @@ export default class CategoriaConteudoService {
   ): Promise<Record<string, string>> => {
     console.log("🟣 CategoriaConteudoService.resolverCategoriaPorNomeParaTurmas()");
 
-    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-
     const nome = categoriaNome.trim();
     if (nome.length < 2 || nome.length > 100) {
       throw new ErrorResponse(400, "CategoriaNome inválido", {
@@ -1001,15 +966,15 @@ export default class CategoriaConteudoService {
     for (const turmaGUID of turmasGUID) {
       const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
         `SELECT 1 FROM materiaxprofessorxturma
-         WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
-        [materiaGUID, turmaGUID, usuarioCPF]
+         WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioGUID = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+        [materiaGUID, turmaGUID, usuarioGUID]
       );
       if (alocacaoRows.length === 0) {
         throw new ErrorResponse(403, "Sem permissão", {
           message: `Você não está alocado nesta matéria na turma ${turmaGUID}.`,
         });
       }
-      mapa[turmaGUID] = await this.#resolverOuCriarCategoriaGeral(usuarioCPF, materiaGUID, turmaGUID, nome);
+      mapa[turmaGUID] = await this.#resolverOuCriarCategoriaGeral(usuarioGUID, materiaGUID, turmaGUID, nome);
     }
     return mapa;
   };
@@ -1036,21 +1001,19 @@ export default class CategoriaConteudoService {
   ): Promise<BoardGeralDTO> => {
     console.log("🟣 CategoriaConteudoService.moverItemBoardGeral()");
 
-    // categoriaconteudo/materiaxprofessorxturma ainda usam CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const nome = categoriaNomeDestino?.trim() || null;
 
     if (tipo === "tarefa_digital" || tipo === "tarefa_presencial" || tipo === "tarefa_lista") {
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT 1 FROM tarefaacademica t
          INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
-         WHERE t.TarefaGUID = ? AND mpt.MateriaGUID = ? AND mpt.TurmaGUID = ? AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa' LIMIT 1`,
-        [itemGUID, materiaGUID, turmaGUID, usuarioCPF]
+         WHERE t.TarefaGUID = ? AND mpt.MateriaGUID = ? AND mpt.TurmaGUID = ? AND mpt.UsuarioGUID = ? AND mpt.AlocacaoStatus = 'Ativa' LIMIT 1`,
+        [itemGUID, materiaGUID, turmaGUID, usuarioGUID]
       );
       if (rows.length === 0) {
         throw new ErrorResponse(403, "Item inválido", { message: `A tarefa ${itemGUID} não pertence a esta matéria/turma.` });
       }
-      const categoriaGUIDDestino = nome ? await this.#resolverOuCriarCategoriaGeral(usuarioCPF, materiaGUID, turmaGUID, nome) : null;
+      const categoriaGUIDDestino = nome ? await this.#resolverOuCriarCategoriaGeral(usuarioGUID, materiaGUID, turmaGUID, nome) : null;
       await pool.execute(`UPDATE tarefaacademica SET CategoriaGUID = ?, ItemOrdem = 0 WHERE TarefaGUID = ?`, [
         categoriaGUIDDestino,
         itemGUID,
@@ -1060,16 +1023,16 @@ export default class CategoriaConteudoService {
         `SELECT ct.TurmaGUID FROM conteudo c
          INNER JOIN conteudoturma ct ON ct.ConteudoGUID = c.ConteudoGUID
          INNER JOIN materiaxprofessorxturma mpt ON mpt.MateriaGUID = c.MateriaGUID AND mpt.TurmaGUID = ct.TurmaGUID
-           AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'
+           AND mpt.UsuarioGUID = ? AND mpt.AlocacaoStatus = 'Ativa'
          WHERE c.ConteudoGUID = ? AND c.MateriaGUID = ?`,
-        [usuarioCPF, itemGUID, materiaGUID]
+        [usuarioGUID, itemGUID, materiaGUID]
       );
       if (rows.length === 0) {
         throw new ErrorResponse(403, "Item inválido", { message: `O conteúdo ${itemGUID} não pertence a esta matéria/turma.` });
       }
       for (const row of rows as any[]) {
         const categoriaGUIDDestino = nome
-          ? await this.#resolverOuCriarCategoriaGeral(usuarioCPF, materiaGUID, row.TurmaGUID, nome)
+          ? await this.#resolverOuCriarCategoriaGeral(usuarioGUID, materiaGUID, row.TurmaGUID, nome)
           : null;
         await pool.execute(`UPDATE conteudoturma SET CategoriaGUID = ?, ItemOrdem = 0 WHERE ConteudoGUID = ? AND TurmaGUID = ?`, [
           categoriaGUIDDestino,
@@ -1082,16 +1045,16 @@ export default class CategoriaConteudoService {
         `SELECT pt.TurmaGUID FROM provaagendada p
          INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
          INNER JOIN materiaxprofessorxturma mpt ON mpt.MateriaGUID = p.MateriaGUID AND mpt.TurmaGUID = pt.TurmaGUID
-           AND mpt.UsuarioCPF = ? AND mpt.AlocacaoStatus = 'Ativa'
+           AND mpt.UsuarioGUID = ? AND mpt.AlocacaoStatus = 'Ativa'
          WHERE p.ProvaAgendadaGUID = ? AND p.MateriaGUID = ?`,
-        [usuarioCPF, itemGUID, materiaGUID]
+        [usuarioGUID, itemGUID, materiaGUID]
       );
       if (rows.length === 0) {
         throw new ErrorResponse(403, "Item inválido", { message: `A prova ${itemGUID} não pertence a esta matéria/turma.` });
       }
       for (const row of rows as any[]) {
         const categoriaGUIDDestino = nome
-          ? await this.#resolverOuCriarCategoriaGeral(usuarioCPF, materiaGUID, row.TurmaGUID, nome)
+          ? await this.#resolverOuCriarCategoriaGeral(usuarioGUID, materiaGUID, row.TurmaGUID, nome)
           : null;
         await pool.execute(`UPDATE provaagendada_turma SET CategoriaGUID = ?, ItemOrdem = 0 WHERE ProvaAgendadaGUID = ? AND TurmaGUID = ?`, [
           categoriaGUIDDestino,
@@ -1119,17 +1082,15 @@ export default class CategoriaConteudoService {
     console.log("🟣 CategoriaConteudoService.verificarPendencia()");
 
     if (ehProfessor) {
-      // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
-      const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT 1
          FROM tarefaacademica t
          INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
          INNER JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID
-         WHERE mpt.MateriaGUID = ? AND mpt.TurmaGUID = ? AND mpt.UsuarioCPF = ?
+         WHERE mpt.MateriaGUID = ? AND mpt.TurmaGUID = ? AND mpt.UsuarioGUID = ?
            AND tm.TarefaFeito = TRUE AND tm.TarefaNota IS NULL
          LIMIT 1`,
-        [materiaGUID, turmaGUID, usuarioCPF]
+        [materiaGUID, turmaGUID, usuarioGUID]
       );
       return rows.length > 0;
     }
@@ -1159,17 +1120,15 @@ export default class CategoriaConteudoService {
     console.log("🟣 CategoriaConteudoService.verificarPendenciaAgregada()");
 
     if (ehProfessor) {
-      // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
-      const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
       const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT 1
          FROM tarefaacademica t
          INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
          INNER JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID
-         WHERE mpt.UsuarioCPF = ?
+         WHERE mpt.UsuarioGUID = ?
            AND tm.TarefaFeito = TRUE AND tm.TarefaNota IS NULL
          LIMIT 1`,
-        [usuarioCPF]
+        [usuarioGUID]
       );
       return rows.length > 0;
     }
@@ -1205,8 +1164,6 @@ export default class CategoriaConteudoService {
   ): Promise<EstatisticasItemDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarEstatisticasItem()");
 
-    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     let materiaGUID: string;
 
     if (tipo === "tarefa_digital" || tipo === "tarefa_presencial" || tipo === "tarefa_lista") {
@@ -1237,8 +1194,8 @@ export default class CategoriaConteudoService {
 
     const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
       `SELECT 1 FROM materiaxprofessorxturma
-       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
-      [materiaGUID, turmaGUID, usuarioCPF]
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioGUID = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [materiaGUID, turmaGUID, usuarioGUID]
     );
     if (alocacaoRows.length === 0) {
       throw new ErrorResponse(403, "Sem permissão", {
@@ -1358,9 +1315,6 @@ export default class CategoriaConteudoService {
   ): Promise<EstatisticasPorQuestaoDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarEstatisticasPorQuestao()");
 
-    // materiaxprofessorxturma ainda usa CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-
     if (!this.#respostaDAO) {
       throw new ErrorResponse(500, "Serviço indisponível", { message: "Estatística por questão não configurada." });
     }
@@ -1377,8 +1331,8 @@ export default class CategoriaConteudoService {
 
     const [alocacaoRows] = await pool.execute<RowDataPacket[]>(
       `SELECT 1 FROM materiaxprofessorxturma
-       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioCPF = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
-      [materiaGUID, turmaGUID, usuarioCPF]
+       WHERE MateriaGUID = ? AND TurmaGUID = ? AND UsuarioGUID = ? AND AlocacaoStatus = 'Ativa' LIMIT 1`,
+      [materiaGUID, turmaGUID, usuarioGUID]
     );
     if (alocacaoRows.length === 0) {
       throw new ErrorResponse(403, "Sem permissão", {
@@ -1461,8 +1415,6 @@ export default class CategoriaConteudoService {
   excluirCategoria = async (guid: string, usuarioGUID: string): Promise<void> => {
     console.log("🟣 CategoriaConteudoService.excluirCategoria()");
 
-    // categoriaconteudo ainda usa CPF — resolver o professor logado.
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const categoria = await this.#categoriaDAO.findById(guid);
     if (!categoria) {
       throw new ErrorResponse(404, "Categoria não encontrada", {
@@ -1470,7 +1422,7 @@ export default class CategoriaConteudoService {
       });
     }
 
-    if (categoria.UsuarioCPF !== usuarioCPF) {
+    if (categoria.UsuarioGUID !== usuarioGUID) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você só pode excluir suas próprias categorias.",
       });
@@ -1499,7 +1451,7 @@ export default class CategoriaConteudoService {
   private toDTO(categoria: CategoriaConteudo): CategoriaConteudoDTO {
     return {
       CategoriaGUID: categoria.CategoriaGUID,
-      UsuarioCPF: categoria.UsuarioCPF,
+      UsuarioGUID: categoria.UsuarioGUID,
       MateriaGUID: categoria.MateriaGUID,
       TurmaGUID: categoria.TurmaGUID,
       CategoriaNome: categoria.CategoriaNome || "",

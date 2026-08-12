@@ -25,7 +25,7 @@ import ErrorResponse from "../utils/ErrorResponse";
  */
 export interface AnexoDTO {
   AnexoGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   AnexoCaminho: string;
   AnexoNomeOriginal: string | null;
@@ -230,7 +230,7 @@ export default class RelacaoAnexosService {
   #toDTO(anexo: Anexo): AnexoDTO {
     return {
       AnexoGUID: anexo.AnexoGUID,
-      UsuarioCPF: anexo.UsuarioCPF,
+      UsuarioGUID: anexo.UsuarioGUID,
       EscolaGUID: anexo.EscolaGUID,
       AnexoCaminho: anexo.AnexoCaminho,
       AnexoNomeOriginal: anexo.AnexoNomeOriginal,

@@ -4,7 +4,7 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 interface AnexoRow extends RowDataPacket {
   AnexoGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   AnexoCaminho: string;
   AnexoNomeOriginal: string | null;
@@ -13,7 +13,7 @@ interface AnexoRow extends RowDataPacket {
 }
 
 export interface AnexoFilters {
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   EscolaGUID?: string;
   DataInicio?: Date;
   DataFim?: Date;
@@ -32,12 +32,12 @@ export class AnexoDAO {
 
     const SQL = `
       INSERT INTO anexo
-      (AnexoGUID, UsuarioCPF, EscolaGUID, AnexoCaminho, AnexoNomeOriginal, AnexoTamanho)
+      (AnexoGUID, UsuarioGUID, EscolaGUID, AnexoCaminho, AnexoNomeOriginal, AnexoTamanho)
       VALUES (?, ?, ?, ?, ?, ?);
     `;
     const params = [
       anexo.AnexoGUID,
-      anexo.UsuarioCPF,
+      anexo.UsuarioGUID,
       anexo.EscolaGUID,
       anexo.AnexoCaminho,
       anexo.AnexoNomeOriginal,
@@ -85,9 +85,9 @@ export class AnexoDAO {
     let SQL = "SELECT * FROM anexo WHERE 1=1";
     const params: any[] = [];
 
-    if (filters?.UsuarioCPF) {
-      SQL += " AND UsuarioCPF = ?";
-      params.push(filters.UsuarioCPF);
+    if (filters?.UsuarioGUID) {
+      SQL += " AND UsuarioGUID = ?";
+      params.push(filters.UsuarioGUID);
     }
 
     if (filters?.EscolaGUID) {
@@ -206,7 +206,7 @@ export class AnexoDAO {
   private mapRowToAnexo(row: AnexoRow): Anexo {
     const anexo = new Anexo();
     anexo.AnexoGUID = row.AnexoGUID;
-    anexo.UsuarioCPF = row.UsuarioCPF;
+    anexo.UsuarioGUID = row.UsuarioGUID;
     anexo.EscolaGUID = row.EscolaGUID;
     anexo.AnexoCaminho = row.AnexoCaminho;
     anexo.AnexoNomeOriginal = row.AnexoNomeOriginal;

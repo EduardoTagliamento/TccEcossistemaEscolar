@@ -56,16 +56,10 @@ export default class CalendarioService {
       });
     }
 
-    // `materiaxprofessorxturma` ainda não migrada pra UsuarioGUID (ver
-    // docs/PROGRESSO_MIGRACAO_USUARIO_GUID.md) — resolve o CPF aqui pro lado
-    // "professor" da consulta; o lado "aluno" (matricula) já usa GUID direto.
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-
     console.log("🟣 [CalendarioService] Chamando buscarAvisosCalendario...");
 
     const avisos = await this.#calendarioDAO.buscarAvisosCalendario(
       usuarioGUID,
-      usuario?.UsuarioCPF ?? null,
       escolaGUID,
       filters
     );
