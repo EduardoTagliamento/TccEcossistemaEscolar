@@ -8,12 +8,10 @@
  * - Sem customização (nenhuma linha ainda): fallback é a cor primária da
  *   escola + label com o nome da matéria (resolvido no service, não aqui).
  */
-import { normalizeCPF } from "../utils/helpers/cpf.helper";
-
 export default class MateriaCustomizacao {
   #MateriaCustomizacaoGUID!: string;
   #MateriaGUID!: string;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #ImagemUrl: string | null = null;
   #CorFundo: string | null = null;
   #MensagemBoasVindas: string | null = null;
@@ -48,13 +46,16 @@ export default class MateriaCustomizacao {
     this.#MateriaGUID = value.trim();
   }
 
-  // ========== UsuarioCPF ==========
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  // ========== UsuarioGUID ==========
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
-  set UsuarioCPF(value: string) {
-    this.#UsuarioCPF = normalizeCPF(value);
+  set UsuarioGUID(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("UsuarioGUID deve ser uma string não vazia.");
+    }
+    this.#UsuarioGUID = value.trim();
   }
 
   // ========== ImagemUrl ==========

@@ -31,13 +31,13 @@ export class CategoriaConteudoController {
     }
   };
 
-  // GET /api/categoria-conteudo?MateriaGUID=&UsuarioCPF=&TurmaGUID=
+  // GET /api/categoria-conteudo?MateriaGUID=&UsuarioGUID=&TurmaGUID=
   index = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 CategoriaConteudoController.index()");
     try {
       const categorias = await this.#categoriaService.listarCategorias({
         MateriaGUID: req.query.MateriaGUID as string | undefined,
-        UsuarioCPF: req.query.UsuarioCPF as string | undefined,
+        UsuarioGUID: req.query.UsuarioGUID as string | undefined,
         TurmaGUID: req.query.TurmaGUID as string | undefined,
       });
 

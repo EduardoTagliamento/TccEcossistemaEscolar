@@ -42,20 +42,12 @@ export class SugestaoService {
     // TarefaAcademicaService.enviarAnexoEntrega / AvisoService.criarAviso:
     // só dá pra anexar arquivo que você mesmo enviou.
     if (data.AnexoGUIDs && data.AnexoGUIDs.length > 0) {
-      // anexo ainda usa CPF (tabela não migrada) — resolver o CPF real do
-      // autor da sugestão pra comparar com o dono do anexo.
-      const usuario = await this.usuarioDAO.findByGUID(data.UsuarioGUID);
-      if (!usuario?.UsuarioCPF) {
-        throw new ErrorResponse(403, 'Usuário sem CPF cadastrado');
-      }
-      const usuarioCPF = usuario.UsuarioCPF;
-
       for (const anexoGUID of data.AnexoGUIDs) {
         const anexo = await this.anexoDAO.findById(anexoGUID);
         if (!anexo) {
           throw new ErrorResponse(404, `Anexo ${anexoGUID} não encontrado`);
         }
-        if (anexo.UsuarioCPF !== usuarioCPF) {
+        if (anexo.UsuarioGUID !== data.UsuarioGUID) {
           throw new ErrorResponse(403, 'Você só pode anexar arquivos que você mesmo enviou');
         }
         await this.relacaoAnexosDAO.vincularAnexoSugestao(anexoGUID, created.SugestaoGUID);

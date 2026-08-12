@@ -3,7 +3,7 @@ import CategoriaConteudo from "../entities/categoriaconteudo.model";
 
 interface CategoriaConteudoRow {
   CategoriaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   MateriaGUID: string;
   TurmaGUID: string;
   CategoriaNome: string;
@@ -13,7 +13,7 @@ interface CategoriaConteudoRow {
 }
 
 export interface CategoriaConteudoFilters {
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   MateriaGUID?: string;
   TurmaGUID?: string;
 }
@@ -30,12 +30,12 @@ export class CategoriaConteudoDAO {
     console.log("🟢 CategoriaConteudoDAO.create()");
 
     const SQL = `
-      INSERT INTO categoriaconteudo (CategoriaGUID, UsuarioCPF, MateriaGUID, TurmaGUID, CategoriaNome, Ordem)
+      INSERT INTO categoriaconteudo (CategoriaGUID, UsuarioGUID, MateriaGUID, TurmaGUID, CategoriaNome, Ordem)
       VALUES (?, ?, ?, ?, ?, ?);
     `;
     const params = [
       categoria.CategoriaGUID,
-      categoria.UsuarioCPF,
+      categoria.UsuarioGUID,
       categoria.MateriaGUID,
       categoria.TurmaGUID,
       categoria.CategoriaNome,
@@ -55,9 +55,9 @@ export class CategoriaConteudoDAO {
     const conditions: string[] = [];
     const params: any[] = [];
 
-    if (filters.UsuarioCPF) {
-      conditions.push("UsuarioCPF = ?");
-      params.push(filters.UsuarioCPF);
+    if (filters.UsuarioGUID) {
+      conditions.push("UsuarioGUID = ?");
+      params.push(filters.UsuarioGUID);
     }
     if (filters.MateriaGUID) {
       conditions.push("MateriaGUID = ?");
@@ -87,7 +87,7 @@ export class CategoriaConteudoDAO {
   };
 
   findByUsuarioMateriaTurmaNome = async (
-    usuarioCPF: string,
+    usuarioGUID: string,
     materiaGUID: string,
     turmaGUID: string,
     nome: string
@@ -96,25 +96,25 @@ export class CategoriaConteudoDAO {
 
     const SQL = `
       SELECT * FROM categoriaconteudo
-      WHERE UsuarioCPF = ? AND MateriaGUID = ? AND TurmaGUID = ? AND CategoriaNome = ?
+      WHERE UsuarioGUID = ? AND MateriaGUID = ? AND TurmaGUID = ? AND CategoriaNome = ?
       LIMIT 1
     `;
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(SQL, [usuarioCPF, materiaGUID, turmaGUID, nome]);
+    const [rows] = await pool.execute(SQL, [usuarioGUID, materiaGUID, turmaGUID, nome]);
 
     const categorias = this.mapRows(rows as CategoriaConteudoRow[]);
     return categorias[0] || null;
   };
 
-  findMaiorOrdem = async (usuarioCPF: string, materiaGUID: string, turmaGUID: string): Promise<number> => {
+  findMaiorOrdem = async (usuarioGUID: string, materiaGUID: string, turmaGUID: string): Promise<number> => {
     console.log("🟢 CategoriaConteudoDAO.findMaiorOrdem()");
 
     const SQL = `
       SELECT MAX(Ordem) AS MaiorOrdem FROM categoriaconteudo
-      WHERE UsuarioCPF = ? AND MateriaGUID = ? AND TurmaGUID = ?
+      WHERE UsuarioGUID = ? AND MateriaGUID = ? AND TurmaGUID = ?
     `;
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(SQL, [usuarioCPF, materiaGUID, turmaGUID]);
+    const [rows] = await pool.execute(SQL, [usuarioGUID, materiaGUID, turmaGUID]);
     const resultado = (rows as Array<{ MaiorOrdem: number | null }>)[0];
 
     return resultado?.MaiorOrdem ?? -1;
@@ -173,7 +173,7 @@ export class CategoriaConteudoDAO {
     return rows.map((row) => {
       const categoria = new CategoriaConteudo();
       categoria.CategoriaGUID = row.CategoriaGUID;
-      categoria.UsuarioCPF = row.UsuarioCPF;
+      categoria.UsuarioGUID = row.UsuarioGUID;
       categoria.MateriaGUID = row.MateriaGUID;
       categoria.TurmaGUID = row.TurmaGUID;
       categoria.CategoriaNome = row.CategoriaNome;

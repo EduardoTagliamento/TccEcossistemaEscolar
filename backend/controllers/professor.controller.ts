@@ -223,11 +223,11 @@ export default class ProfessorController {
    * GET /api/professor/alocacao
    * Listar alocações com filtros opcionais
    * 
-   * Query: ?MateriaGUID=X&TurmaGUID=Y&UsuarioCPF=Z&AlocacaoStatus=W
+   * Query: ?MateriaGUID=X&TurmaGUID=Y&UsuarioGUID=Z&AlocacaoStatus=W
    */
   listarAlocacoes = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { MateriaGUID, TurmaGUID, UsuarioCPF, AlocacaoStatus } = req.query;
+      const { MateriaGUID, TurmaGUID, UsuarioGUID, AlocacaoStatus } = req.query;
 
       const filters: any = {};
 
@@ -239,8 +239,8 @@ export default class ProfessorController {
         filters.TurmaGUID = TurmaGUID;
       }
 
-      if (UsuarioCPF && typeof UsuarioCPF === "string") {
-        filters.UsuarioCPF = UsuarioCPF;
+      if (UsuarioGUID && typeof UsuarioGUID === "string") {
+        filters.UsuarioGUID = UsuarioGUID;
       }
 
       if (AlocacaoStatus && typeof AlocacaoStatus === "string") {

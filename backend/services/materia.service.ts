@@ -129,15 +129,15 @@ export default class MateriaService {
       const materia = await this.#materiaDAO.findById(alocacao.MateriaGUID);
       if (!materia || materia.EscolaGUID !== escolaGUID || materia.MateriaStatus !== "Ativa") continue;
 
-      const professor = await this.#usuarioDAO.findByCPF(alocacao.UsuarioCPF);
-      const customizacao = await this.#customizacaoDAO.findByMateriaEProfessor(alocacao.MateriaGUID, alocacao.UsuarioCPF);
+      const professor = await this.#usuarioDAO.findByGUID(alocacao.UsuarioGUID);
+      const customizacao = await this.#customizacaoDAO.findByMateriaEProfessor(alocacao.MateriaGUID, alocacao.UsuarioGUID);
       const escola = customizacao?.CorFundo ? null : await this.#escolaDAO.findById(escolaGUID);
 
       resultado.push({
         MateriaGUID: materia.MateriaGUID,
         MateriaNome: materia.MateriaNome || "",
         TurmaGUID: matricula.TurmaGUID,
-        ProfessorCPF: alocacao.UsuarioCPF,
+        ProfessorCPF: professor?.UsuarioCPF ?? "",
         ProfessorNome: professor?.UsuarioNome ?? "Professor",
         ProfessorFotoUrl: professor?.UsuarioFotoUrl ?? null,
         ImagemUrl: customizacao?.ImagemUrl ?? null,

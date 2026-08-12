@@ -17,7 +17,7 @@ export interface HorarioTurmaDTO {
   MatProfTurGUID: string;
   MateriaGUID: string;
   MateriaNome: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   DiaSemana: DiaSemana;
   HoraInicio: string;
@@ -28,7 +28,7 @@ export interface BancoItemDTO {
   MatProfTurGUID: string;
   MateriaGUID: string;
   MateriaNome: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   AulasPorSemana: number | null;
   AulasAlocadas: number;
@@ -118,7 +118,7 @@ export default class HorarioTurmaService {
       MatProfTurGUID: s.MatProfTurGUID,
       MateriaGUID: s.MateriaGUID,
       MateriaNome: s.MateriaNome,
-      UsuarioCPF: s.UsuarioCPF,
+      UsuarioGUID: s.UsuarioGUID,
       UsuarioNome: s.UsuarioNome,
       DiaSemana: s.DiaSemana,
       HoraInicio: s.HoraInicio,
@@ -133,7 +133,7 @@ export default class HorarioTurmaService {
     const banco: BancoItemDTO[] = [];
     for (const alocacao of alocacoes) {
       const materia = await this.#materiaDAO.findById(alocacao.MateriaGUID);
-      const usuario = await this.#usuarioDAO.findByCPF(alocacao.UsuarioCPF);
+      const usuario = await this.#usuarioDAO.findByGUID(alocacao.UsuarioGUID);
 
       const aulasPorSemana = alocacao.AulasPorSemana ?? materia?.MateriaAulasPorSemanaPadrao ?? null;
       const aulasAlocadas = slots.filter((s) => s.MatProfTurGUID === alocacao.MatProfTurGUID).length;
@@ -142,7 +142,7 @@ export default class HorarioTurmaService {
         MatProfTurGUID: alocacao.MatProfTurGUID,
         MateriaGUID: alocacao.MateriaGUID,
         MateriaNome: materia?.MateriaNome || "",
-        UsuarioCPF: alocacao.UsuarioCPF,
+        UsuarioGUID: alocacao.UsuarioGUID,
         UsuarioNome: usuario?.UsuarioNome || "",
         AulasPorSemana: aulasPorSemana,
         AulasAlocadas: aulasAlocadas,
@@ -309,10 +309,10 @@ export default class HorarioTurmaService {
       });
     }
 
-    const professor = await this.#usuarioDAO.findByCPF(alocacao.UsuarioCPF);
+    const professor = await this.#usuarioDAO.findByGUID(alocacao.UsuarioGUID);
 
     const conflito = await this.#horarioTurmaDAO.findConflitoProfessor(
-      alocacao.UsuarioCPF,
+      alocacao.UsuarioGUID,
       data.DiaSemana,
       data.HoraInicio,
       data.HoraFim,
@@ -352,7 +352,7 @@ export default class HorarioTurmaService {
       MatProfTurGUID: alocacao.MatProfTurGUID,
       MateriaGUID: alocacao.MateriaGUID,
       MateriaNome: materia?.MateriaNome || "",
-      UsuarioCPF: alocacao.UsuarioCPF,
+      UsuarioGUID: alocacao.UsuarioGUID,
       UsuarioNome: professor?.UsuarioNome || "",
       DiaSemana: data.DiaSemana,
       HoraInicio: data.HoraInicio,

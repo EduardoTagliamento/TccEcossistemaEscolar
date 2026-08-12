@@ -15,14 +15,12 @@
  * - N:1 com Turma
  * - N:1 com Usuario (professor)
  */
-import { normalizeCPF } from "../utils/helpers/cpf.helper";
-
 export default class MaterialProfessorTurma {
   // Campos privados (encapsulamento)
   #MatProfTurGUID!: string;
   #MateriaGUID!: string;
   #TurmaGUID!: string;
-  #UsuarioCPF!: string;
+  #UsuarioGUID!: string;
   #AlocacaoStatus!: 'Ativa' | 'Inativa';
   #AulasPorSemana: number | null = null;
   #MatProfTurCreatedAt!: Date;
@@ -42,8 +40,8 @@ export default class MaterialProfessorTurma {
     return this.#TurmaGUID;
   }
 
-  get UsuarioCPF(): string {
-    return this.#UsuarioCPF;
+  get UsuarioGUID(): string {
+    return this.#UsuarioGUID;
   }
 
   get AlocacaoStatus(): 'Ativa' | 'Inativa' {
@@ -85,8 +83,11 @@ export default class MaterialProfessorTurma {
     this.#TurmaGUID = value.trim();
   }
 
-  set UsuarioCPF(value: string) {
-    this.#UsuarioCPF = normalizeCPF(value);
+  set UsuarioGUID(value: string) {
+    if (typeof value !== 'string' || value.trim() === '') {
+      throw new Error('UsuarioGUID deve ser uma string não vazia');
+    }
+    this.#UsuarioGUID = value.trim();
   }
 
   set AlocacaoStatus(value: 'Ativa' | 'Inativa') {
@@ -130,7 +131,7 @@ export default class MaterialProfessorTurma {
     if (!this.#MatProfTurGUID) throw new Error('MatProfTurGUID é obrigatório');
     if (!this.#MateriaGUID) throw new Error('MateriaGUID é obrigatório');
     if (!this.#TurmaGUID) throw new Error('TurmaGUID é obrigatório');
-    if (!this.#UsuarioCPF) throw new Error('UsuarioCPF é obrigatório');
+    if (!this.#UsuarioGUID) throw new Error('UsuarioGUID é obrigatório');
     if (!this.#AlocacaoStatus) throw new Error('AlocacaoStatus é obrigatório');
     if (!this.#MatProfTurCreatedAt) throw new Error('MatProfTurCreatedAt é obrigatório');
     if (!this.#MatProfTurUpdatedAt) throw new Error('MatProfTurUpdatedAt é obrigatório');
@@ -144,7 +145,7 @@ export default class MaterialProfessorTurma {
       MatProfTurGUID: this.#MatProfTurGUID,
       MateriaGUID: this.#MateriaGUID,
       TurmaGUID: this.#TurmaGUID,
-      UsuarioCPF: this.#UsuarioCPF,
+      UsuarioGUID: this.#UsuarioGUID,
       AlocacaoStatus: this.#AlocacaoStatus,
       AulasPorSemana: this.#AulasPorSemana,
       MatProfTurCreatedAt: this.#MatProfTurCreatedAt,
@@ -160,7 +161,7 @@ export default class MaterialProfessorTurma {
     alocacao.MatProfTurGUID = data.MatProfTurGUID;
     alocacao.MateriaGUID = data.MateriaGUID;
     alocacao.TurmaGUID = data.TurmaGUID;
-    alocacao.UsuarioCPF = data.UsuarioCPF;
+    alocacao.UsuarioGUID = data.UsuarioGUID;
     alocacao.AlocacaoStatus = data.AlocacaoStatus;
     alocacao.AulasPorSemana = data.AulasPorSemana ?? null;
     alocacao.MatProfTurCreatedAt = data.MatProfTurCreatedAt;

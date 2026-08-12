@@ -176,7 +176,7 @@ export class RelacaoAnexosDAO {
     const query = `
       SELECT
         a.AnexoGUID,
-        a.UsuarioCPF,
+        a.UsuarioGUID,
         a.EscolaGUID,
         a.AnexoCaminho,
         a.AnexoNomeOriginal,
@@ -203,7 +203,7 @@ export class RelacaoAnexosDAO {
     const query = `
       SELECT
         a.AnexoGUID,
-        a.UsuarioCPF,
+        a.UsuarioGUID,
         a.EscolaGUID,
         a.AnexoCaminho,
         a.AnexoNomeOriginal,
@@ -230,7 +230,7 @@ export class RelacaoAnexosDAO {
     const query = `
       SELECT
         a.AnexoGUID,
-        a.UsuarioCPF,
+        a.UsuarioGUID,
         a.EscolaGUID,
         a.AnexoCaminho,
         a.AnexoNomeOriginal,
@@ -257,7 +257,7 @@ export class RelacaoAnexosDAO {
     const query = `
       SELECT
         a.AnexoGUID,
-        a.UsuarioCPF,
+        a.UsuarioGUID,
         a.EscolaGUID,
         a.AnexoCaminho,
         a.AnexoNomeOriginal,
@@ -284,7 +284,7 @@ export class RelacaoAnexosDAO {
     const query = `
       SELECT
         a.AnexoGUID,
-        a.UsuarioCPF,
+        a.UsuarioGUID,
         a.EscolaGUID,
         a.AnexoCaminho,
         a.AnexoNomeOriginal,
@@ -392,7 +392,7 @@ export class RelacaoAnexosDAO {
   #mapRowToAnexo(row: any): Anexo {
     const anexo = new Anexo();
     anexo.AnexoGUID = row.AnexoGUID;
-    anexo.UsuarioCPF = row.UsuarioCPF;
+    anexo.UsuarioGUID = row.UsuarioGUID;
     anexo.EscolaGUID = row.EscolaGUID;
     anexo.AnexoCaminho = row.AnexoCaminho;
     anexo.AnexoNomeOriginal = row.AnexoNomeOriginal;

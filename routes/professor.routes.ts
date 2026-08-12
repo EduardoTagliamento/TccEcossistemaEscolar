@@ -105,7 +105,7 @@ export function professorRouterFactory(): Router {
   /**
    * GET /api/professor/alocacao
    * Listar alocações com filtros opcionais
-   * Query: ?MateriaGUID=X&TurmaGUID=Y&UsuarioCPF=Z&AlocacaoStatus=W
+   * Query: ?MateriaGUID=X&TurmaGUID=Y&UsuarioGUID=Z&AlocacaoStatus=W
    */
   router.get(
     "/alocacao",

@@ -10,12 +10,20 @@ import R2StorageService from "./r2storage.service";
 
 export interface AnexoDTO {
   AnexoGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   EscolaGUID: string;
   AnexoCaminho: string;
   AnexoNomeOriginal: string | null;
   AnexoTamanho: number | null;
   CreatedAt: string | null; // ISO string
+}
+
+/** Filtros de listagem recebidos do cliente — `UsuarioCPF` é resolvido pra GUID dentro de `listarAnexos`. */
+export interface AnexoListarFiltrosDTO {
+  UsuarioCPF?: string;
+  EscolaGUID?: string;
+  DataInicio?: Date;
+  DataFim?: Date;
 }
 
 export default class AnexoService {
@@ -36,14 +44,6 @@ export default class AnexoService {
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAODependency;
     this.#usuarioDAO = usuarioDAODependency;
   }
-
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    return usuario.UsuarioCPF;
-  };
 
   uploadAnexo = async (
     file: Express.Multer.File,
@@ -75,10 +75,9 @@ export default class AnexoService {
     const fileUrl = await R2StorageService.upload(chave, file.buffer, file.mimetype, contentDisposition);
 
     // Criar registro do anexo
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
     const anexo = new Anexo();
     anexo.AnexoGUID = anexoGUID;
-    anexo.UsuarioCPF = this.normalizeCPF(usuarioCPF);
+    anexo.UsuarioGUID = usuarioGUID;
     anexo.EscolaGUID = EscolaGUID;
     anexo.AnexoCaminho = fileUrl;
     anexo.AnexoNomeOriginal = file.originalname;
@@ -163,10 +162,22 @@ export default class AnexoService {
     return deletado;
   };
 
-  listarAnexos = async (filters?: AnexoFilters): Promise<AnexoDTO[]> => {
+  /**
+   * O cliente ainda filtra por CPF do dono do anexo (`?UsuarioCPF=`), então
+   * resolvemos CPF -> GUID aqui antes de repassar pro repositório — `anexo`
+   * já está migrado pra GUID.
+   */
+  listarAnexos = async (filters?: AnexoListarFiltrosDTO): Promise<AnexoDTO[]> => {
     console.log("🟣 AnexoService.listarAnexos()");
 
-    const anexos = await this.#anexoDAO.findAll(filters);
+    const { UsuarioCPF, ...resto } = filters ?? {};
+    const daoFilters: AnexoFilters = { ...resto };
+    if (UsuarioCPF) {
+      const usuario = await this.#usuarioDAO.findByCPF(UsuarioCPF);
+      daoFilters.UsuarioGUID = usuario?.UsuarioGUID ?? "__cpf_nao_encontrado__";
+    }
+
+    const anexos = await this.#anexoDAO.findAll(daoFilters);
     return anexos.map((anexo) => this.toDTO(anexo));
   };
 
@@ -178,30 +189,13 @@ export default class AnexoService {
   private toDTO(anexo: Anexo): AnexoDTO {
     return {
       AnexoGUID: anexo.AnexoGUID,
-      UsuarioCPF: anexo.UsuarioCPF,
+      UsuarioGUID: anexo.UsuarioGUID,
       EscolaGUID: anexo.EscolaGUID,
       AnexoCaminho: anexo.AnexoCaminho,
       AnexoNomeOriginal: anexo.AnexoNomeOriginal,
       AnexoTamanho: anexo.AnexoTamanho,
       CreatedAt: anexo.CreatedAt ? anexo.CreatedAt.toISOString() : null,
     };
-  }
-
-  /**
-   * Normaliza CPF para formato XXX.XXX.XXX-XX
-   */
-  private normalizeCPF(cpf: string): string {
-    const normalized = cpf.trim();
-    if (/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(normalized)) {
-      return normalized;
-    }
-
-    const digits = normalized.replace(/\D/g, "");
-    if (digits.length === 11) {
-      return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
-    }
-
-    return normalized;
   }
 
   /**
@@ -217,9 +211,7 @@ export default class AnexoService {
       });
     }
 
-    const cpfNormalizado = this.normalizeCPF(await this.#resolverCPFAtor(usuarioGUID));
-
-    if (anexo.UsuarioCPF === cpfNormalizado) {
+    if (anexo.UsuarioGUID === usuarioGUID) {
       return;
     }
 
@@ -242,10 +234,8 @@ export default class AnexoService {
    * Apenas dono do arquivo OU Coordenação/Direção da escola podem deletar
    */
   private async validarPermissaoEscrita(usuarioGUID: string, anexo: Anexo): Promise<void> {
-    const cpfNormalizado = this.normalizeCPF(await this.#resolverCPFAtor(usuarioGUID));
-
     // Permitir se for o dono do arquivo
-    if (anexo.UsuarioCPF === cpfNormalizado) {
+    if (anexo.UsuarioGUID === usuarioGUID) {
       return;
     }
 

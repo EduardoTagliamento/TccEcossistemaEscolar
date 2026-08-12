@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import AnexoService from "../services/anexo.service";
-import { AnexoFilters } from "../repositories/anexo.repository";
+import AnexoService, { AnexoListarFiltrosDTO } from "../services/anexo.service";
 
 export default class AnexoControl {
   #anexoService: AnexoService;
@@ -49,7 +48,7 @@ export default class AnexoControl {
   index = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 AnexoControl.index()");
     try {
-      const filters: AnexoFilters = {
+      const filters: AnexoListarFiltrosDTO = {
         UsuarioCPF: request.query.UsuarioCPF as string | undefined,
         EscolaGUID: request.query.EscolaGUID as string | undefined,
         DataInicio: request.query.DataInicio

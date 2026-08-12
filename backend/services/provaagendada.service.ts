@@ -137,14 +137,6 @@ export default class ProvaAgendadaService {
     this.#usuarioDAO = usuarioDAODependency;
   }
 
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    return usuario.UsuarioCPF;
-  };
-
   /** Valida que o capítulo existe e pertence à MESMA matéria da prova (guardrail §7: nunca texto livre de página). */
   #validarCapitulo = async (materiaGUID: string, materialDidaticoCapituloGUID: string): Promise<void> => {
     const capitulo = await this.#materialDidaticoCapituloDAO.findById(materialDidaticoCapituloGUID);
@@ -168,12 +160,12 @@ export default class ProvaAgendadaService {
   };
 
   /**
-   * Confirma que usuarioCPF é professor ativamente alocado na matéria da
-   * prova — ProvaAgendada não tem UsuarioCPF próprio (é por MateriaGUID,
+   * Confirma que usuarioGUID é professor ativamente alocado na matéria da
+   * prova — ProvaAgendada não tem UsuarioGUID próprio (é por MateriaGUID,
    * compartilhada entre turmas), então ownership é resolvido via alocação.
    */
-  #validarProfessorResponsavel = async (materiaGUID: string, usuarioCPF: string): Promise<void> => {
-    const alocacoes = await this.#alocacaoDAO.findByProfessor(usuarioCPF);
+  #validarProfessorResponsavel = async (materiaGUID: string, usuarioGUID: string): Promise<void> => {
+    const alocacoes = await this.#alocacaoDAO.findByProfessor(usuarioGUID);
     const alocado = alocacoes.some(
       (a) => a.MateriaGUID === materiaGUID && a.AlocacaoStatus === "Ativa"
     );
@@ -251,12 +243,11 @@ export default class ProvaAgendadaService {
     // Validar categorias por turma (se fornecidas) — cada uma deve pertencer
     // a este professor + matéria + à MESMA turma daquela linha de distribuição
     if (data.CategoriasPorTurma) {
-      const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
       for (const [turmaGUID, categoriaGUID] of Object.entries(data.CategoriasPorTurma)) {
         const categoria = await this.#categoriaDAO.findById(categoriaGUID);
         if (
           !categoria ||
-          categoria.UsuarioCPF !== usuarioCPF ||
+          categoria.UsuarioGUID !== usuarioGUID ||
           categoria.MateriaGUID !== data.MateriaGUID ||
           categoria.TurmaGUID !== turmaGUID
         ) {
@@ -455,8 +446,7 @@ export default class ProvaAgendadaService {
       });
     }
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
+    await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioGUID);
 
     const updates: Partial<
       Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus" | "MaterialDidaticoCapituloGUID">
@@ -562,8 +552,7 @@ export default class ProvaAgendadaService {
       });
     }
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
+    await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioGUID);
 
     // Resolver EscolaGUID antes de excluir (CASCADE apaga as atribuições junto)
     const atribuicoesParaAuditoria = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
@@ -616,8 +605,7 @@ export default class ProvaAgendadaService {
       });
     }
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioCPF);
+    await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioGUID);
 
     const atribuicoes = await this.#provaTurmaDAO.findByProva(ProvaAgendadaGUID);
     const atribuicaoDaTurma = atribuicoes.find((a) => a.TurmaGUID === turmaGUID);
