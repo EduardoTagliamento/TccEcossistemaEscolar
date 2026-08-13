@@ -1,28 +1,109 @@
+/* Tokens do Bauá Design System (mcp claude-design, project
+   689c269f-be3b-4445-98c6-69b779c38839) escopados localmente, mesmo padrão
+   já usado no restante do dashboard (ver notificacoes/page.module.css). */
 .container {
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --line-100: #EDF3EF;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
   max-width: 720px;
   margin: 0 auto;
-  padding: var(--spacing-xl);
+  padding: 2rem 1.5rem 3rem;
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-600);
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+/* ============================================================
+   PREFERÊNCIAS DE ACESSIBILIDADE (tema escuro / daltônico / alto contraste)
+   Mesmo mecanismo de perfil/page.module.css — ver comentário lá pra
+   contexto completo.
+   ============================================================ */
+:global(html[data-theme="dark"]) .container {
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --danger-500: #FF6B70;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --slate-400: #6B7A70;
+  --line-200: #2A3A31;
+  --line-100: #21302A;
+  --surface-50: #0F1712;
+  --white: #16211C;
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-500: #2F6FED;
+  --green-600: #2558C7;
+  --green-700: #1D46A3;
+  --danger-500: #E8720C;
+  --danger-50: #FDEEDF;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-500: #5B8CFF;
+  --green-600: #2F6FED;
+  --green-700: #2558C7;
+  --danger-500: #FF9142;
+  --danger-50: #3A2410;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --slate-400: #46564D;
+  --line-200: #8A968E;
+  --line-100: #B7C1BA;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --slate-400: #C7D2CB;
+  --line-200: #7C8B82;
+  --line-100: #647268;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
+  gap: 1rem;
+  margin-bottom: 2rem;
   flex-wrap: wrap;
 }
 
 .titulo {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
-  margin: 0 0 var(--spacing-xs);
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--ink-900);
+  margin: 0 0 0.25rem;
 }
 
 .subtitulo {
-  font-size: var(--font-size-sm);
-  color: var(--text-tertiary);
+  font-size: 0.875rem;
+  color: var(--slate-500);
   margin: 0;
   max-width: 480px;
 }
@@ -30,96 +111,107 @@
 .botaoSecundario {
   display: inline-flex;
   align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--line-200);
+  background: var(--white);
+  color: var(--slate-600);
+  font-size: 0.8125rem;
+  font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .botaoSecundario:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: var(--green-500);
+  color: var(--green-700);
 }
 
 .erro {
-  padding: var(--spacing-md);
+  padding: 12px 14px;
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-error) 10%, transparent);
-  color: var(--color-error);
-  margin-bottom: var(--spacing-md);
-  font-size: var(--font-size-sm);
+  background: var(--danger-50);
+  color: var(--danger-500);
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 .estadoVazio {
-  padding: var(--spacing-2xl) var(--spacing-md);
+  padding: 3rem 1rem;
   text-align: center;
-  color: var(--text-tertiary);
+  color: var(--slate-400);
+  font-size: 0.875rem;
 }
 
 .secao {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: 1.75rem;
 }
 
 .secaoTitulo {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-  margin: 0 0 var(--spacing-sm);
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0 0 0.75rem;
 }
 
 .lista {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--line-100);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  background: var(--white);
 }
 
 .linha {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
-  background: var(--bg-primary);
+  gap: 1rem;
+  padding: 14px 16px;
   flex-wrap: wrap;
 }
 
 .linha:not(:last-child) {
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--line-100);
 }
 
 .linhaTitulo {
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-900);
   flex: 1;
   min-width: 200px;
 }
 
 .linhaControles {
   display: flex;
-  gap: var(--spacing-md);
+  gap: 1rem;
 }
 
 .toggle {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--slate-500);
   cursor: pointer;
   user-select: none;
 }
 
 .toggle input {
-  accent-color: var(--color-primary);
+  accent-color: var(--color-primary, var(--green-500));
   width: 16px;
   height: 16px;
   cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 1.5rem 1rem 2.5rem;
+  }
 }

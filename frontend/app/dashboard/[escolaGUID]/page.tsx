@@ -62,10 +62,12 @@ export default function DashboardPage() {
   const erroPendencias = pendenciasQuery.error instanceof Error ? pendenciasQuery.error.message : '';
 
   const [tarefas, setTarefas] = useState<MateriasModuloAPI.TarefaPendenteAluno[]>([]);
+  const [tarefasTotal, setTarefasTotal] = useState(0);
   const [carregandoTarefas, setCarregandoTarefas] = useState(true);
   const [erroTarefas, setErroTarefas] = useState('');
 
   const [avaliacoesPendentes, setAvaliacoesPendentes] = useState<MateriasModuloAPI.TarefaPendenteAvaliacao[]>([]);
+  const [avaliacoesTotal, setAvaliacoesTotal] = useState(0);
   const [carregandoAvaliacoes, setCarregandoAvaliacoes] = useState(true);
   const [erroAvaliacoes, setErroAvaliacoes] = useState('');
 
@@ -220,6 +222,7 @@ export default function DashboardPage() {
     setErroTarefas('');
     try {
       const dados = await MateriasModuloAPI.listarPendentesAluno();
+      setTarefasTotal(dados.length);
       setTarefas(dados.slice(0, 5));
     } catch (erro: any) {
       setErroTarefas(erro?.message || 'Erro ao carregar tarefas');
@@ -233,6 +236,7 @@ export default function DashboardPage() {
     setErroAvaliacoes('');
     try {
       const dados = await MateriasModuloAPI.listarPendentesAvaliacaoProfessor();
+      setAvaliacoesTotal(dados.length);
       setAvaliacoesPendentes(dados.slice(0, 5));
     } catch (erro: any) {
       setErroAvaliacoes(erro?.message || 'Erro ao carregar avaliações pendentes');
@@ -312,12 +316,28 @@ export default function DashboardPage() {
         <div className={styles.contentStack}>
           <section className={styles.greetingBanner}>
             <div className={styles.gridBg} aria-hidden="true" />
+            <div className={styles.heroBlob} aria-hidden="true" />
             <div className={styles.bannerContent}>
               <span className={styles.bannerEyebrow}>{diaSemana} · {diaMes}</span>
               <h1 className={styles.bannerTitle}>{saudacao}, {primeiroNome || 'bem-vindo'} 👋</h1>
               <p className={styles.bannerSubtitle}>
                 Aqui está um resumo do que precisa da sua atenção em {escola?.EscolaNome || 'sua escola'}.
               </p>
+              {((isAluno && !carregandoTarefas && tarefasTotal > 0) ||
+                (isProfessor && !carregandoAvaliacoes && avaliacoesTotal > 0)) && (
+                <div className={styles.bannerStats}>
+                  {isAluno && !carregandoTarefas && tarefasTotal > 0 && (
+                    <div className={styles.statPill}>
+                      <span className={styles.statNumber}>{tarefasTotal}</span> tarefa{tarefasTotal === 1 ? '' : 's'} a vencer
+                    </div>
+                  )}
+                  {isProfessor && !carregandoAvaliacoes && avaliacoesTotal > 0 && (
+                    <div className={`${styles.statPill} ${styles.statPillAccent}`}>
+                      <span className={styles.statNumber}>{avaliacoesTotal}</span> avaliaç{avaliacoesTotal === 1 ? 'ão' : 'ões'} pendente{avaliacoesTotal === 1 ? '' : 's'}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 

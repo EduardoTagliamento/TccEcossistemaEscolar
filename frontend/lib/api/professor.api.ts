@@ -35,7 +35,7 @@ export interface Alocacao {
   MatProfTurGUID: string;
   MateriaGUID: string;
   TurmaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
   AulasPorSemana: number | null;
   MatProfTurCreatedAt: Date;
@@ -58,7 +58,10 @@ export interface Turma {
 // ==================== DTOs ====================
 
 export interface ProfessorCreateDTO {
-  UsuarioCPF: string;
+  /** Preenchido quando a pessoa já foi resolvida via busca por nome (dropdown de candidatos). */
+  UsuarioGUID?: string;
+  /** Opcional — CPF deixou de ser obrigatório/identificador de busca. */
+  UsuarioCPF?: string;
   UsuarioNome: string;
   UsuarioEmail?: string;
   UsuarioTelefone?: string;
@@ -72,7 +75,7 @@ export interface AlocacaoCreateDTO {
   MateriaNome?: string;
   TurmaGUID?: string;
   TurmaNome?: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
   AulasPorSemana?: number | null;
 }
@@ -162,9 +165,10 @@ export async function criarProfessor(
     throw new Error(erro?.mensagem || 'Erro ao criar professor');
   }
 
-  const professorCriado = resultadoProfessor.data.resultados[0].dados;
+  const professorCriado: Professor = resultadoProfessor.data.resultados[0].dados;
 
-  // 2. Se fornecidas matérias e turmas, criar alocações
+  // 2. Se fornecidas matérias e turmas, criar alocações — materiaxprofessorxturma
+  // é GUID nativamente, então funciona mesmo pra professor sem CPF.
   if (dados.Materias && dados.Turmas) {
     const materias = dados.Materias.split(',').map(m => m.trim());
     const turmas = dados.Turmas.split(',').map(t => t.trim());
@@ -177,7 +181,7 @@ export async function criarProfessor(
         alocacoes.push({
           MateriaNome: materia,
           TurmaNome: turma,
-          UsuarioCPF: dados.UsuarioCPF,
+          UsuarioGUID: professorCriado.UsuarioGUID,
           AlocacaoStatus: 'Ativa'
         });
       }
@@ -224,11 +228,16 @@ export async function criarProfessoresEmMassa(
   const resultadoProfessores = await responseProfessores.json();
   const batchProfessores: BatchCreateResponse = resultadoProfessores.data;
 
-  // 2. Criar alocações para todos os professores que têm matérias/turmas
+  // 2. Criar alocações para todos os professores que têm matérias/turmas —
+  // materiaxprofessorxturma é GUID nativamente, então usa o GUID do usuário
+  // resolvido (resultados[i].dados), funcionando mesmo sem CPF.
   const todasAlocacoes: AlocacaoCreateDTO[] = [];
 
-  for (const professor of professores) {
-    if (professor.Materias && professor.Turmas) {
+  professores.forEach((professor, indice) => {
+    const resolvido = batchProfessores.resultados[indice];
+    const guidResolvido: string | undefined = resolvido?.dados?.UsuarioGUID ?? undefined;
+
+    if (professor.Materias && professor.Turmas && guidResolvido) {
       const materias = professor.Materias.split(',').map(m => m.trim());
       const turmas = professor.Turmas.split(',').map(t => t.trim());
 
@@ -238,13 +247,13 @@ export async function criarProfessoresEmMassa(
           todasAlocacoes.push({
             MateriaNome: materia,
             TurmaNome: turma,
-            UsuarioCPF: professor.UsuarioCPF,
+            UsuarioGUID: guidResolvido,
             AlocacaoStatus: 'Ativa'
           });
         }
       }
     }
-  }
+  });
 
   // 3. Criar alocações em massa (se houver)
   if (todasAlocacoes.length > 0) {
@@ -313,16 +322,16 @@ export async function listarProfessores(filters: {
 
 /**
  * Buscar alocações de um professor
- * 
- * @param cpf CPF do professor
+ *
+ * @param usuarioGUID GUID do professor
  * @param escolaGUID GUID da escola
  */
 export async function buscarAlocacoesProfessor(
-  cpf: string,
+  usuarioGUID: string,
   escolaGUID: string
 ): Promise<{ alocacoes: Alocacao[]; total: number }> {
   const response = await fetch(
-    `${API_URL}/professor/${cpf}/escolas/${escolaGUID}/alocacoes`,
+    `${API_URL}/professor/${usuarioGUID}/escolas/${escolaGUID}/alocacoes`,
     {
       method: 'GET',
       headers: getHeaders(),
@@ -348,13 +357,13 @@ export async function buscarAlocacoesProfessor(
 export async function listarAlocacoes(filters: {
   MateriaGUID?: string;
   TurmaGUID?: string;
-  UsuarioCPF?: string;
+  UsuarioGUID?: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
 }): Promise<{ alocacoes: Alocacao[]; total: number }> {
   const query = new URLSearchParams();
   if (filters.MateriaGUID) query.append('MateriaGUID', filters.MateriaGUID);
   if (filters.TurmaGUID) query.append('TurmaGUID', filters.TurmaGUID);
-  if (filters.UsuarioCPF) query.append('UsuarioCPF', filters.UsuarioCPF);
+  if (filters.UsuarioGUID) query.append('UsuarioGUID', filters.UsuarioGUID);
   if (filters.AlocacaoStatus) query.append('AlocacaoStatus', filters.AlocacaoStatus);
 
   const response = await fetch(`${API_URL}/professor/alocacao?${query.toString()}`, {

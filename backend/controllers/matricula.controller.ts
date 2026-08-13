@@ -67,6 +67,7 @@ export default class MatriculaController {
 
         const createData: MatriculaCreateDTO = {
           MatriculaGUID: matricula.MatriculaGUID,
+          UsuarioGUID: matricula.UsuarioGUID,
           UsuarioCPF: matricula.UsuarioCPF,
           TurmaGUID: matricula.TurmaGUID,
           TurmaNome: matricula.TurmaNome,
@@ -152,11 +153,11 @@ export default class MatriculaController {
    * GET /api/matricula
    * Listar matrículas com filtros opcionais
    * 
-   * Query: ?UsuarioGUID=X&TurmaGUID=Y&MatriculaStatus=Z
+   * Query: ?UsuarioGUID=X&TurmaGUID=Y&MatriculaStatus=Z&EscolaGUID=W
    */
   index = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { UsuarioGUID, TurmaGUID, MatriculaStatus } = req.query;
+      const { UsuarioGUID, TurmaGUID, MatriculaStatus, EscolaGUID } = req.query;
 
       const filters: any = {};
 
@@ -170,6 +171,10 @@ export default class MatriculaController {
 
       if (MatriculaStatus && typeof MatriculaStatus === "string") {
         filters.MatriculaStatus = MatriculaStatus;
+      }
+
+      if (EscolaGUID && typeof EscolaGUID === "string") {
+        filters.EscolaGUID = EscolaGUID;
       }
 
       const resultado = await this.#matriculaService.listarMatriculas(filters);

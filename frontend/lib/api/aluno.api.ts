@@ -44,12 +44,15 @@ export interface Aluno {
 // DTOs para criação
 export interface AlunoCreateDTO {
   // Dados do usuário
-  UsuarioCPF: string;
+  /** Preenchido quando a pessoa já foi resolvida via busca por nome (dropdown de candidatos). */
+  UsuarioGUID?: string;
+  /** Opcional — CPF deixou de ser obrigatório/identificador de busca. */
+  UsuarioCPF?: string;
   UsuarioNome: string;
   UsuarioEmail?: string;
   UsuarioTelefone?: string;
   UsuarioDataNascimento?: string;
-  
+
   // Dados da matrícula
   TurmaGUID?: string;
   TurmaNome?: string; // Alternativa: nome da turma para resolução automática
@@ -87,17 +90,18 @@ function getAuthToken(): string {
 /**
  * Criar aluno (usuário + matrícula) em uma única operação.
  *
- * `usuarioJaExiste`: quando o CPF já pertence a um usuário cadastrado na
- * plataforma (ver `UsuarioAPI.buscarUsuarioPorCPF`, usado no formulário pra
- * autopreencher e travar os campos), pula a criação do usuário — só
- * vincula a matrícula. Sem isso, o passo 1 sempre falharia com "CPF já
- * cadastrado" e a matrícula nunca seria criada.
+ * `usuarioGUIDExistente`: quando a pessoa já foi encontrada pela busca por
+ * nome (ver `UsuarioAPI.buscarUsuariosPorNome`, usada no formulário pra
+ * autopreencher e travar os campos), pula a criação do usuário — só vincula
+ * a matrícula ao GUID já resolvido. Sem isso, o passo 1 tentaria criar uma
+ * conta duplicada.
  */
-export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string, usuarioJaExiste = false): Promise<Aluno> {
+export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string, usuarioGUIDExistente?: string): Promise<Aluno> {
   try {
     let dataUsuario: any = null;
+    let usuarioGUID = usuarioGUIDExistente;
 
-    if (!usuarioJaExiste) {
+    if (!usuarioGUID) {
       // 1. Criar usuário
       const responseUsuario = await fetch(`${API_URL}/usuario`, {
         method: 'POST',
@@ -125,6 +129,7 @@ export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string, usua
       }
 
       dataUsuario = await responseUsuario.json();
+      usuarioGUID = dataUsuario.data.usuario.UsuarioGUID;
     }
 
     // 2. Criar matrícula
@@ -136,7 +141,7 @@ export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string, usua
       },
       body: JSON.stringify({
         matricula: {
-          UsuarioCPF: dados.UsuarioCPF,
+          UsuarioGUID: usuarioGUID,
           TurmaGUID: dados.TurmaGUID,
           TurmaNome: dados.TurmaNome
         }
@@ -151,14 +156,16 @@ export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string, usua
     const dataMatricula = await responseMatricula.json();
 
     return {
-      // Quando usuarioJaExiste=true não recriamos o usuário, então não há
-      // resposta de POST /api/usuario pra usar aqui — o próprio caller
-      // sempre recarrega a lista do servidor logo em seguida, então um
-      // objeto local (montado a partir do que já tínhamos) é suficiente.
+      // Quando usuarioGUIDExistente já veio preenchido não recriamos o
+      // usuário, então não há resposta de POST /api/usuario pra usar aqui —
+      // o próprio caller sempre recarrega a lista do servidor logo em
+      // seguida, então um objeto local (montado a partir do que já
+      // tínhamos) é suficiente.
       usuario: dataUsuario
         ? dataUsuario.data.usuario
         : {
-            UsuarioCPF: dados.UsuarioCPF,
+            UsuarioGUID: usuarioGUID,
+            UsuarioCPF: dados.UsuarioCPF ?? null,
             UsuarioNome: dados.UsuarioNome,
             UsuarioEmail: dados.UsuarioEmail ?? null,
             UsuarioId: null,
@@ -217,10 +224,18 @@ export async function criarAlunosEmMassa(
 
     const resultadoUsuarios = await responseUsuarios.json();
 
-    // 2. Criar matrículas em massa (apenas para usuários criados ou existentes)
-    const cpfsParaMatricular = resultadoUsuarios.data.resultados
-      .filter((r: BatchItemResult) => r.sucesso)
-      .map((r: BatchItemResult) => r.item.UsuarioCPF);
+    // 2. Criar matrículas em massa (apenas para usuários criados ou
+    // existentes) — usa o UsuarioGUID resolvido em cada resultado, não o
+    // CPF da linha de entrada (pode ter vindo vazio quando a pessoa foi
+    // resolvida só por nome).
+    const matriculas = (resultadoUsuarios.data.resultados as BatchItemResult[])
+      .map((r, indice) => ({ resultado: r, aluno: alunos[indice] }))
+      .filter(({ resultado }) => resultado.sucesso && resultado.dados?.UsuarioGUID)
+      .map(({ resultado, aluno }) => ({
+        UsuarioGUID: resultado.dados.UsuarioGUID,
+        TurmaGUID: aluno.TurmaGUID,
+        TurmaNome: aluno.TurmaNome
+      }));
 
     const responseMatriculas = await fetch(`${API_URL}/matricula`, {
       method: 'POST',
@@ -228,16 +243,7 @@ export async function criarAlunosEmMassa(
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${getAuthToken()}`
       },
-      body: JSON.stringify({
-        matriculas: alunos
-          .filter(aluno => cpfsParaMatricular.includes(aluno.UsuarioCPF))
-          .map(aluno => ({
-            UsuarioCPF: aluno.UsuarioCPF,
-            TurmaGUID: aluno.TurmaGUID,
-            TurmaNome: aluno.TurmaNome
-          })),
-        escolaGUID
-      })
+      body: JSON.stringify({ matriculas, escolaGUID })
     });
 
     if (!responseMatriculas.ok) {
@@ -275,6 +281,7 @@ export async function listarAlunos(filtros: {
   try {
     // Buscar matrículas
     const queryParams = new URLSearchParams();
+    if (filtros.EscolaGUID) queryParams.append('EscolaGUID', filtros.EscolaGUID);
     if (filtros.TurmaGUID) queryParams.append('TurmaGUID', filtros.TurmaGUID);
     if (filtros.MatriculaStatus) queryParams.append('MatriculaStatus', filtros.MatriculaStatus);
 

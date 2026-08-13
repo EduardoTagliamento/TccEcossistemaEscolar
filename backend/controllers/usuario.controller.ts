@@ -103,6 +103,32 @@ export default class UsuarioControl {
     }
   };
 
+  // GET /api/usuario/busca-nome?nome=
+  buscarPorNome = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("🔵 UsuarioControl.buscarPorNome()");
+    try {
+      const nome = request.query.nome as string | undefined;
+      if (!nome || nome.trim().length < 3) {
+        response.status(400).json({
+          success: false,
+          message: "Nome deve ter ao menos 3 caracteres",
+          data: null,
+        });
+        return;
+      }
+
+      const usuarios = await this.#usuarioService.buscarPorNome(nome.trim());
+
+      response.status(200).json({
+        success: true,
+        message: "Executado com sucesso",
+        data: { usuarios },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   update = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 UsuarioControl.update()");
     try {

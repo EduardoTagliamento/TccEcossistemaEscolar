@@ -20,13 +20,15 @@ import styles from './page.module.css';
 
 import BaseTabelaDados, { Coluna } from '@/components/gestao-dados/BaseTabelaDados';
 import BaseUploadPlanilha, { DadosPlanilha } from '@/components/gestao-dados/BaseUploadPlanilha';
+import ListaCandidatosUsuario from '@/components/gestao-dados/ListaCandidatosUsuario';
 import { Icon } from '@/components/Icon';
 
 import * as VinculoAPI from '@/lib/api/escolaxusuarioxfuncao.api';
-import * as UsuarioAPI from '@/lib/api/usuario.api';
+import { UsuarioBusca } from '@/lib/api/usuario.api';
+import { useBuscaUsuarioPorNome } from '@/lib/usuario/useBuscaUsuarioPorNome';
 import * as EscolaAPI from '@/lib/api/escola.api';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { formatarCPF, limparCPF, validarCPF } from '@/lib/validators/cpf';
+import { formatarCPF } from '@/lib/validators/cpf';
 
 const FUNCAO_ID_COORDENACAO = 1;
 const FUNCAO_ID_DIRECAO = 6;
@@ -59,11 +61,13 @@ export default function CoordenacaoPage() {
 
   // Modal: adicionar à Coordenação
   const [modalAberto, setModalAberto] = useState(false);
-  const [cpfBusca, setCpfBusca] = useState('');
-  const [buscando, setBuscando] = useState(false);
+  const [nomeBusca, setNomeBusca] = useState('');
   const [erroBusca, setErroBusca] = useState('');
-  const [usuarioEncontrado, setUsuarioEncontrado] = useState<UsuarioAPI.UsuarioBusca | null>(null);
+  const [usuarioEncontrado, setUsuarioEncontrado] = useState<UsuarioBusca | null>(null);
   const [vinculando, setVinculando] = useState(false);
+  const { candidatos, buscando, limpar: limparBuscaNome } = useBuscaUsuarioPorNome(
+    usuarioEncontrado ? '' : nomeBusca
+  );
 
   // Modal: importar via planilha
   const [modalUploadAberto, setModalUploadAberto] = useState(false);
@@ -151,33 +155,15 @@ export default function CoordenacaoPage() {
   // ===== Adicionar à Coordenação =====
   const fecharModal = () => {
     setModalAberto(false);
-    setCpfBusca('');
+    setNomeBusca('');
     setErroBusca('');
     setUsuarioEncontrado(null);
+    limparBuscaNome();
   };
 
-  const handleBuscarCPF = async () => {
-    const cpfLimpo = limparCPF(cpfBusca);
-    if (!validarCPF(cpfLimpo)) {
-      setErroBusca('CPF inválido. Confira os números digitados.');
-      return;
-    }
-    try {
-      setBuscando(true);
-      setErroBusca('');
-      setUsuarioEncontrado(null);
-      // GET /api/usuario/:UsuarioCPF exige o CPF já formatado (XXX.XXX.XXX-XX) —
-      // cpfLimpo é só dígitos, usado pra validar o dígito verificador acima.
-      const usuarioEntrado = await UsuarioAPI.buscarUsuarioPorCPF(formatarCPF(cpfLimpo));
-      setUsuarioEncontrado(usuarioEntrado);
-    } catch (erro: any) {
-      console.error('Erro ao buscar usuário por CPF:', erro);
-      setErroBusca(
-        erro.message || 'Usuário não encontrado. Peça para a pessoa se cadastrar em /cadastro primeiro.'
-      );
-    } finally {
-      setBuscando(false);
-    }
+  const handleSelecionarCandidato = (encontrado: UsuarioBusca) => {
+    setErroBusca('');
+    setUsuarioEncontrado(encontrado);
   };
 
   const handleConfirmarVinculo = async () => {
@@ -211,9 +197,8 @@ export default function CoordenacaoPage() {
     setDadosImportados(dados);
   };
 
-  const extrairCPF = (linha: any): string => (linha['CPF'] || linha.UsuarioCPF || linha.cpf || '').toString();
   const extrairItem = (linha: any): VinculoAPI.VinculoEmMassaItem => ({
-    CPF: extrairCPF(linha),
+    CPF: (linha['CPF'] || linha.UsuarioCPF || linha.cpf || '').toString().trim() || undefined,
     Nome: (linha['Nome Completo'] || linha.Nome || linha.nome || '').toString().trim() || undefined,
     Email: (linha['Email'] || linha.email || '').toString().trim() || undefined,
   });
@@ -222,7 +207,9 @@ export default function CoordenacaoPage() {
     if (!dadosImportados) return;
     try {
       setProcessandoBatch(true);
-      const itens = dadosImportados.dados.map(extrairItem).filter((item) => item.CPF.trim() !== '');
+      // Nome é o identificador de resolução agora — CPF é opcional, só serve
+      // de desempate extra quando presente.
+      const itens = dadosImportados.dados.map(extrairItem).filter((item) => !!item.CPF || !!item.Nome);
 
       const resultado = await VinculoAPI.criarVinculosEmMassa({
         EscolaGUID: escolaGUID,
@@ -433,27 +420,30 @@ export default function CoordenacaoPage() {
             <div className={styles.modalConteudo}>
               <h2 className={styles.modalTitulo}>Adicionar à Coordenação</h2>
               <p className={styles.subtitulo}>
-                Busque por CPF um usuário que já tenha se cadastrado na plataforma.
+                Busque pelo nome um usuário que já tenha se cadastrado na plataforma.
               </p>
 
-              <div className={styles.campoBusca}>
-                <input
-                  type="text"
-                  value={cpfBusca}
-                  onChange={(e) => setCpfBusca(formatarCPF(e.target.value))}
-                  placeholder="000.000.000-00"
-                  className={styles.inputBusca}
-                  maxLength={14}
-                  aria-label="CPF do usuário"
+              {!usuarioEncontrado && (
+                <div className={styles.campoBusca}>
+                  <input
+                    type="text"
+                    value={nomeBusca}
+                    onChange={(e) => setNomeBusca(e.target.value)}
+                    placeholder="Nome completo"
+                    className={styles.inputBusca}
+                    aria-label="Nome do usuário"
+                  />
+                </div>
+              )}
+
+              {!usuarioEncontrado && (
+                <ListaCandidatosUsuario
+                  termo={nomeBusca}
+                  candidatos={candidatos}
+                  buscando={buscando}
+                  onSelecionar={handleSelecionarCandidato}
                 />
-                <button onClick={handleBuscarCPF} disabled={buscando} className={styles.botaoBuscar}>
-                  {buscando ? 'Buscando...' : (
-                    <>
-                      <Icon name="search" size={16} /> Buscar
-                    </>
-                  )}
-                </button>
-              </div>
+              )}
 
               {erroBusca && <div className={styles.erro}>{erroBusca}</div>}
 
@@ -467,6 +457,16 @@ export default function CoordenacaoPage() {
                   </p>
                   <button onClick={handleConfirmarVinculo} disabled={vinculando} className={styles.botaoImportar}>
                     {vinculando ? 'Vinculando...' : 'Confirmar e vincular à Coordenação'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUsuarioEncontrado(null);
+                      setNomeBusca('');
+                    }}
+                    className={styles.botaoCancelar}
+                  >
+                    Buscar outra pessoa
                   </button>
                 </div>
               )}
@@ -535,11 +535,11 @@ export default function CoordenacaoPage() {
               {!resultadoBatch && (
                 <BaseUploadPlanilha
                   titulo="Upload de Planilha"
-                  subtitulo="CPF, Nome Completo e Email. Se o CPF já existir na plataforma só é vinculado; se não existir, a conta é criada automaticamente e a pessoa recebe um e-mail com a senha temporária."
+                  subtitulo="Nome Completo, CPF (opcional) e Email. Cada pessoa é resolvida por nome — se já existir na plataforma, só é vinculada; se não existir, a conta é criada automaticamente e a pessoa recebe um e-mail com a senha temporária. CPF ajuda a desempatar nomes repetidos."
                   modeloUrl="/modelos/modelo-coordenacao.xlsx"
                   onDadosCarregados={handleDadosCarregados}
                   onErro={(erro) => alert(erro)}
-                  colunasEsperadas={['CPF']}
+                  colunasEsperadas={['Nome Completo']}
                 />
               )}
 
@@ -553,7 +553,7 @@ export default function CoordenacaoPage() {
                       const item = extrairItem(linha);
                       return (
                         <div key={idx} className={styles.previewItem}>
-                          <Icon name="check" size={14} /> {formatarCPF(item.CPF)}{item.Nome ? ` — ${item.Nome}` : ''}
+                          <Icon name="check" size={14} /> {item.Nome || '(nome não informado)'}{item.CPF ? ` — CPF: ${formatarCPF(item.CPF)}` : ''}
                         </div>
                       );
                     })}

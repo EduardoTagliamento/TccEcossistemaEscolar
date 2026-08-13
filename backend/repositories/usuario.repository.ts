@@ -147,6 +147,33 @@ export class UsuarioDAO {
     return usuarios;
   };
 
+  /**
+   * Busca por nome (parcial) pensada pra desambiguação de "essa pessoa já é
+   * usuária da plataforma?" nas telas de Gestão de Dados (ver
+   * docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md) — CPF virou opcional, então
+   * nome é o novo identificador de busca. Nomes que começam com o termo
+   * digitado vêm primeiro (mais provável de ser o que a pessoa quer),
+   * limitado pra nunca devolver uma lista gigante de "quase match".
+   */
+  searchByNome = async (nome: string, limit: number = 10): Promise<Usuario[]> => {
+    console.log("🟢 UsuarioDAO.searchByNome()");
+
+    const SQL = `
+      SELECT * FROM usuario
+      WHERE UsuarioDeletedAt IS NULL AND UsuarioNome LIKE ?
+      ORDER BY (UsuarioNome LIKE ?) DESC, UsuarioNome ASC
+      LIMIT ?
+    `;
+    const termoContem = `%${nome}%`;
+    const termoComeca = `${nome}%`;
+    const params = [termoContem, termoComeca, limit];
+
+    const pool = await this.#database.getPool();
+    const [linhas] = await pool.execute(SQL, params);
+
+    return (linhas as UsuarioRow[]).map((row) => this.mapRowToEntity(row));
+  };
+
   findByGUID = async (UsuarioGUID: string): Promise<Usuario | null> => {
     console.log("🟢 UsuarioDAO.findByGUID()");
 

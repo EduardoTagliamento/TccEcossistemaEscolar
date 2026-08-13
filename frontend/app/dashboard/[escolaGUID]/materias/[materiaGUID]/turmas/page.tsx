@@ -149,7 +149,7 @@ export default function TurmasDaMateriaPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.titulo}>
-          <Icon name="grid" size={26} /> Turmas
+          <span className={styles.tituloIcone}><Icon name="grid" size={20} /></span> Turmas
         </h1>
         <div className={styles.acoes}>
           <button className={styles.botaoIcone} onClick={() => void abrirModalEditar()} title="Editar matéria">

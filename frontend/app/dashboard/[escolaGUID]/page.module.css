@@ -227,21 +227,33 @@
   overflow: hidden;
   border-radius: var(--radius-xl);
   padding: 26px 28px;
-  color: #fff;
-  background: linear-gradient(
-    120deg,
-    var(--color-primary, var(--green-500)),
-    color-mix(in oklch, var(--color-primary, var(--green-500)) 78%, black)
-  );
+  color: var(--ink-900);
+  background: color-mix(in oklch, var(--color-primary, var(--green-500)) 14%, var(--white));
+  border: 1px solid color-mix(in oklch, var(--color-primary, var(--green-500)) 22%, transparent);
 }
 
 .gridBg {
   position: absolute;
   inset: 0;
-  opacity: 0.16;
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.35) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.35) 1px, transparent 1px);
-  background-size: 74px 74px;
+  opacity: 0.5;
+  background-image: radial-gradient(var(--ink-900) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 55%);
+  mask-image: linear-gradient(90deg, transparent, #000 55%);
+  pointer-events: none;
+}
+
+.heroBlob {
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 220px;
+  height: 220px;
+  border-radius: 60px;
+  background: var(--color-primary, var(--green-500));
+  opacity: 0.14;
+  transform: rotate(22deg);
+  pointer-events: none;
 }
 
 .bannerContent {
@@ -254,21 +266,52 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
 .bannerTitle {
   font-size: 28px;
   font-weight: 800;
-  color: #fff;
+  color: var(--ink-900);
   margin-top: 6px !important;
 }
 
 .bannerSubtitle {
   margin-top: 6px;
-  opacity: 0.92;
+  opacity: 0.85;
   max-width: 560px;
   font-size: 15px;
+}
+
+.bannerStats {
+  display: flex;
+  gap: 20px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+
+.statPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-primary, var(--green-500));
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.statPillAccent {
+  background: var(--gold-500);
+  color: var(--ink-900);
+}
+
+.statNumber {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
 }
 
 /* ---- Aviso em destaque (banner grande, some após a 1ª visualização) ---- */

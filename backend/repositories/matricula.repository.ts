@@ -9,6 +9,7 @@ export interface MatriculaFilters {
   UsuarioGUID?: string;
   TurmaGUID?: string;
   MatriculaStatus?: 'Ativa' | 'Transferida' | 'Concluida' | 'Cancelada';
+  EscolaGUID?: string;
 }
 
 /**
@@ -93,6 +94,11 @@ export class MatriculaDAO {
     if (filters?.MatriculaStatus) {
       query += ` AND MatriculaStatus = ?`;
       params.push(filters.MatriculaStatus);
+    }
+
+    if (filters?.EscolaGUID) {
+      query += ` AND TurmaGUID IN (SELECT TurmaGUID FROM turma WHERE EscolaGUID = ?)`;
+      params.push(filters.EscolaGUID);
     }
 
     query += ` ORDER BY MatriculaDataEntrada DESC`;

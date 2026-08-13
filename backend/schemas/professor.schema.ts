@@ -2,6 +2,9 @@ import { z } from "zod";
 
 // Regex estrita (UUID v4), igual ao middleware original de professor.
 const GUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// usuario.UsuarioGUID é CHAR(12) (base64url), diferente do UUID v4 padrão
+// (ver backend/utils/helpers/guid.helper.ts).
+const USUARIO_GUID_REGEX = /^[A-Za-z0-9_-]{12}$/;
 
 export const ProfessorListagemQuerySchema = z.object({
   EscolaGUID: z
@@ -10,9 +13,9 @@ export const ProfessorListagemQuerySchema = z.object({
 });
 
 export const ProfessorAlocacoesParamsSchema = z.object({
-  cpf: z
+  usuarioGUID: z
     .string({ message: "Informe o professor" })
-    .refine((v) => v.replace(/\D/g, "").length === 11, "CPF do professor inválido"),
+    .regex(USUARIO_GUID_REGEX, "Identificador do professor inválido"),
   escolaGUID: z
     .string({ message: "Escola inválida" })
     .regex(GUID_REGEX, "Escola inválida"),
@@ -39,9 +42,9 @@ export const CriarAlocacaoBodySchema = z.object({
       TurmaGUID: z
         .string({ message: "Selecione uma turma" })
         .regex(GUID_REGEX, "Turma inválida"),
-      UsuarioCPF: z
+      UsuarioGUID: z
         .string({ message: "Selecione o professor" })
-        .refine((v) => v.replace(/\D/g, "").length === 11, "CPF do professor inválido"),
+        .regex(USUARIO_GUID_REGEX, "Identificador do professor inválido"),
       AlocacaoStatus: z.enum(ALOCACAO_STATUS_ENUM, { message: ALOCACAO_STATUS_MSG }).optional(),
       AulasPorSemana: aulasPorSemanaCampo(),
     },
