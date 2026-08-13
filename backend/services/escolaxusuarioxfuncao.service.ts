@@ -105,7 +105,7 @@ export default class EscolaxUsuarioxFuncaoService {
     relacao.UsuarioGUID = usuarioGUID;
     relacao.EscolaGUID = escolaGUID;
     relacao.FuncaoId = funcaoId;
-    relacao.DataInicio = payload.DataInicio ? new Date(payload.DataInicio as string) : null;
+    relacao.DataInicio = payload.DataInicio ? new Date(payload.DataInicio as string) : new Date(); // coluna NOT NULL no banco
     relacao.DataFim = payload.DataFim ? new Date(payload.DataFim as string) : null;
     relacao.Status = (payload.Status as "Ativo" | "Inativo" | "Finalizado") ?? "Ativo";
 
@@ -294,7 +294,7 @@ export default class EscolaxUsuarioxFuncaoService {
         relacao.UsuarioGUID = usuario.UsuarioGUID;
         relacao.EscolaGUID = escolaGUID;
         relacao.FuncaoId = funcaoId;
-        relacao.DataInicio = null;
+        relacao.DataInicio = new Date(); // coluna NOT NULL no banco
         relacao.DataFim = null;
         relacao.Status = "Ativo";
 
@@ -436,7 +436,8 @@ export default class EscolaxUsuarioxFuncaoService {
     relacao.FuncaoId = funcaoId;
 
     if (payload.DataInicio !== undefined) {
-      relacao.DataInicio = payload.DataInicio ? new Date(payload.DataInicio as string) : null;
+      // coluna NOT NULL no banco — nunca aceita limpar pra null, só trocar a data
+      relacao.DataInicio = payload.DataInicio ? new Date(payload.DataInicio as string) : existente.DataInicio;
     } else {
       relacao.DataInicio = existente.DataInicio;
     }

@@ -4,6 +4,7 @@ import Usuario from "../entities/usuario.model";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
 import { gerarGUIDUsuario } from "../utils/helpers/guid.helper";
+import { normalizarTelefone } from "../utils/helpers/telefone.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 
 export interface UsuarioDTO {
@@ -440,7 +441,11 @@ export default class UsuarioService {
     novoUsuario.UsuarioNome = nome;
     novoUsuario.UsuarioEmail = (dados.UsuarioEmail as string | null) ?? null;
     novoUsuario.UsuarioId = (dados.UsuarioId as string | null) ?? null;
-    novoUsuario.UsuarioTelefone = (dados.UsuarioTelefone as string | null) ?? null;
+    // Vem cru da planilha em massa (sem passar pelo Zod, que só valida o
+    // corpo individual — ver ehCorpoEmMassa) — normaliza antes do setter
+    // estrito da entidade rejeitar.
+    const telefoneBruto = dados.UsuarioTelefone as string | null;
+    novoUsuario.UsuarioTelefone = telefoneBruto ? normalizarTelefone(telefoneBruto) : null;
     novoUsuario.UsuarioEmailVerificado = false;
     novoUsuario.UsuarioStatus = 'Ativo';
 

@@ -10,6 +10,7 @@ import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { gerarGUID, gerarGUIDUsuario } from "../utils/helpers/guid.helper";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
+import { normalizarTelefone } from "../utils/helpers/telefone.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 import bcrypt from "bcrypt";
 import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repository";
@@ -571,7 +572,10 @@ export default class ProfessorService {
     novoUsuario.UsuarioNome = dados.UsuarioNome;
     novoUsuario.UsuarioEmail = dados.UsuarioEmail || null;
     novoUsuario.UsuarioId = null;
-    novoUsuario.UsuarioTelefone = dados.UsuarioTelefone || null;
+    // Vem cru da planilha em massa (sem passar pelo Zod, que só valida o
+    // corpo individual — ver nota em usuario.schema.ts::ehCorpoEmMassa) —
+    // normaliza aqui antes do setter estrito da entidade rejeitar.
+    novoUsuario.UsuarioTelefone = dados.UsuarioTelefone ? normalizarTelefone(dados.UsuarioTelefone) : null;
     novoUsuario.UsuarioEmailVerificado = false;
     novoUsuario.UsuarioStatus = 'Ativo';
 
@@ -669,6 +673,7 @@ export default class ProfessorService {
         vinculo.EscolaGUID = escolaGUID;
         vinculo.UsuarioGUID = usuario.UsuarioGUID;
         vinculo.FuncaoId = 3; // Professor
+        vinculo.DataInicio = new Date(); // coluna NOT NULL no banco
         vinculo.Status = 'Ativo';
 
         await this.#escolaxUsuarioxFuncaoDAO.create(vinculo);
