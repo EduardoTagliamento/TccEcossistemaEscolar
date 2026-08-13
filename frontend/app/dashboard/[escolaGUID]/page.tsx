@@ -357,10 +357,10 @@ export default function DashboardPage() {
 
           {(carregandoMaterias || materiasAtalho.length > 0) && (
             <section className={styles.materiasAtalhoSection}>
-              <div className={styles.widgetHeader}>
-                <h3>Minhas Matérias</h3>
-                <Link href={`/dashboard/${escolaGUID}/materias`} className={styles.widgetVerTodas}>
-                  Ver todas
+              <div className={styles.materiasAtalhoHeader}>
+                <h3 className={styles.materiasAtalhoTitulo}>Minhas Matérias</h3>
+                <Link href={`/dashboard/${escolaGUID}/materias`} className={styles.materiasAtalhoVerTodas}>
+                  Ver todas →
                 </Link>
               </div>
               {carregandoMaterias ? (
@@ -411,7 +411,7 @@ export default function DashboardPage() {
                 <div className={styles.widgetHeader}>
                   <h3>Tarefas a se esgotar</h3>
                   <Link href={`/dashboard/${escolaGUID}/materias`} className={styles.widgetVerTodas}>
-                    Ver todas
+                    Ver todas →
                   </Link>
                 </div>
                 {carregandoTarefas ? (
@@ -445,7 +445,7 @@ export default function DashboardPage() {
                 <div className={styles.widgetHeader}>
                   <h3>Avaliações pendentes</h3>
                   <Link href={`/dashboard/${escolaGUID}/materias`} className={styles.widgetVerTodas}>
-                    Ver todas
+                    Ver todas →
                   </Link>
                 </div>
                 {carregandoAvaliacoes ? (
@@ -478,7 +478,7 @@ export default function DashboardPage() {
               <div className={styles.widgetHeader}>
                 <h3>Avisos gerais</h3>
                 <Link href={`/dashboard/${escolaGUID}/notificacoes`} className={styles.widgetVerTodas}>
-                  Ver todas
+                  Ver todas →
                 </Link>
               </div>
               {carregandoAvisos ? (

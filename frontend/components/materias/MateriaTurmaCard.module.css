@@ -1,13 +1,14 @@
 .card {
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
   text-decoration: none;
-  box-shadow: 0 2px 8px rgba(15, 29, 23, 0.08);
+  box-shadow: 0 1px 3px rgba(15, 29, 23, 0.08);
   transition: transform 0.15s, box-shadow 0.15s;
   position: relative;
   background: var(--white, #fff);
+  border: 1px solid var(--line-200, #E2EAE5);
 }
 
 .card:hover {
@@ -28,73 +29,54 @@
 }
 
 .capa {
-  height: 110px;
+  min-height: 82px;
   background-size: cover;
   background-position: center;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 1rem;
+  align-items: flex-end;
+  padding: 16px 18px;
 }
 
-.capaLabel {
+.capaTitulo {
   color: #fff;
   font-weight: 700;
-  font-size: 1.1rem;
-  text-align: center;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  font-size: 1rem;
+  line-height: 1.25;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.faixa {
+.rodape {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 1rem;
-  gap: 0.5rem;
-}
-
-.textos {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.titulo {
-  color: #fff;
-  font-weight: 700;
-  font-size: 0.95rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.subtitulo {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.8rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  gap: 10px;
+  padding: 12px 16px;
 }
 
 .avatar {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
 }
 
 .avatarFoto {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+
+.subtitulo {
+  color: var(--slate-500, #647268);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

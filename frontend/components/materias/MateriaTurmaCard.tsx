@@ -31,21 +31,18 @@ export default function MateriaTurmaCard({ href, titulo, subtitulo, imagemUrl, c
         className={styles.capa}
         style={imagemUrl ? { backgroundImage: `url(${imagemUrl})` } : { backgroundColor: cor }}
       >
-        {!imagemUrl && <span className={styles.capaLabel}>{titulo}</span>}
+        <span className={styles.capaTitulo}>{titulo}</span>
       </div>
-      <div className={styles.faixa} style={{ backgroundColor: cor }}>
-        <div className={styles.textos}>
-          <span className={styles.titulo}>{titulo}</span>
-          {subtitulo && <span className={styles.subtitulo}>{subtitulo}</span>}
-        </div>
-        {subtitulo && (
-          avatarFotoUrl ? (
+      {subtitulo && (
+        <div className={styles.rodape}>
+          {avatarFotoUrl ? (
             <img src={avatarFotoUrl} alt={subtitulo} className={styles.avatarFoto} />
           ) : (
-            <span className={styles.avatar}>{iniciais(subtitulo)}</span>
-          )
-        )}
-      </div>
+            <span className={styles.avatar} style={{ backgroundColor: cor }}>{iniciais(subtitulo)}</span>
+          )}
+          <span className={styles.subtitulo}>{subtitulo}</span>
+        </div>
+      )}
     </Link>
   );
 }
