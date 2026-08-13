@@ -158,15 +158,22 @@ export class UsuarioDAO {
   searchByNome = async (nome: string, limit: number = 10): Promise<Usuario[]> => {
     console.log("🟢 UsuarioDAO.searchByNome()");
 
+    // `LIMIT ?` como parâmetro bindado quebra em pool.execute() (prepared
+    // statement) com "ER_WRONG_ARGUMENTS / Incorrect arguments to
+    // mysqld_stmt_execute" — bug conhecido do mysql2. Como `limit` nunca vem
+    // direto de input do usuário (só valores internos do código), valida e
+    // interpola como inteiro literal em vez de bindar.
+    const limiteSeguro = Number.isInteger(limit) && limit > 0 ? limit : 10;
+
     const SQL = `
       SELECT * FROM usuario
       WHERE UsuarioDeletedAt IS NULL AND UsuarioNome LIKE ?
       ORDER BY (UsuarioNome LIKE ?) DESC, UsuarioNome ASC
-      LIMIT ?
+      LIMIT ${limiteSeguro}
     `;
     const termoContem = `%${nome}%`;
     const termoComeca = `${nome}%`;
-    const params = [termoContem, termoComeca, limit];
+    const params = [termoContem, termoComeca];
 
     const pool = await this.#database.getPool();
     const [linhas] = await pool.execute(SQL, params);
