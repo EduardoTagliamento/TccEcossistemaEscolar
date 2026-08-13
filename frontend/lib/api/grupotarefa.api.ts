@@ -67,9 +67,9 @@ export async function atualizarNomeGrupo(
 // DELETE - Expulsar membro do grupo (só líder)
 export async function expulsarMembro(
   grupoGUID: string,
-  membroCPF: string
+  membroGUID: string
 ): Promise<void> {
-  const response = await fetch(`${API_URL}/grupotarefa/${grupoGUID}/membros/${membroCPF}`, {
+  const response = await fetch(`${API_URL}/grupotarefa/${grupoGUID}/membros/${membroGUID}`, {
     method: 'DELETE',
     headers: getHeaders()
   });
@@ -84,12 +84,12 @@ export async function expulsarMembro(
 // PATCH - Transferir liderança (só líder atual)
 export async function transferirLideranca(
   grupoGUID: string,
-  novoCPFLider: string
+  novoLiderGUID: string
 ): Promise<void> {
   const response = await fetch(`${API_URL}/grupotarefa/${grupoGUID}/transferir-lider`, {
     method: 'PATCH',
     headers: getHeaders(),
-    body: JSON.stringify({ NovoLiderCPF: novoCPFLider })
+    body: JSON.stringify({ NovoLiderGUID: novoLiderGUID })
   });
 
   const result = await response.json();

@@ -21,7 +21,7 @@ function getHeaders(): HeadersInit {
 
 export interface CategoriaConteudo {
   CategoriaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   MateriaGUID: string;
   TurmaGUID: string;
   CategoriaNome: string;

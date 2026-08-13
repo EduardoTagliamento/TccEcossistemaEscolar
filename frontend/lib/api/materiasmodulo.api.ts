@@ -87,7 +87,7 @@ export async function listarTurmasComCapaProfessor(materiaGUID: string): Promise
 
 export interface MateriaCustomizacao {
   MateriaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   ImagemUrl: string | null;
   CorFundo: string;
   MensagemBoasVindas: string | null;

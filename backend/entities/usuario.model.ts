@@ -44,6 +44,13 @@ export default class Usuario {
     if (typeof value !== "string" || value.trim() === "") {
       throw new Error("UsuarioGUID deve ser uma string não vazia.");
     }
+    // usuario.UsuarioGUID é CHAR(12) no banco (não CHAR(36) como o resto do
+    // sistema) — ver backend/utils/helpers/guid.helper.ts. Validado aqui pra
+    // pegar em runtime qualquer geração acidental com gerarGUID() (36 chars)
+    // em vez de gerarGUIDUsuario() (12 chars), antes de virar erro de SQL.
+    if (value.length !== 12) {
+      throw new Error("UsuarioGUID deve ter 12 caracteres (gerado por gerarGUIDUsuario()).");
+    }
     this.#UsuarioGUID = value;
   }
 

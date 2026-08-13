@@ -17,7 +17,7 @@ export function useAtualizarNomeGrupo() {
 export function useExpulsarMembro() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ grupoGUID, membroCPF }: { grupoGUID: string; membroCPF: string }) => expulsarMembro(grupoGUID, membroCPF),
+    mutationFn: ({ grupoGUID, membroGUID }: { grupoGUID: string; membroGUID: string }) => expulsarMembro(grupoGUID, membroGUID),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: grupoTarefaKeys.all });
     },
@@ -27,7 +27,7 @@ export function useExpulsarMembro() {
 export function useTransferirLideranca() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ grupoGUID, novoCPFLider }: { grupoGUID: string; novoCPFLider: string }) => transferirLideranca(grupoGUID, novoCPFLider),
+    mutationFn: ({ grupoGUID, novoLiderGUID }: { grupoGUID: string; novoLiderGUID: string }) => transferirLideranca(grupoGUID, novoLiderGUID),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: grupoTarefaKeys.all });
     },

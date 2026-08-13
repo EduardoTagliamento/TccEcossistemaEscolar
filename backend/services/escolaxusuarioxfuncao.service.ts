@@ -8,7 +8,7 @@ import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { getAuditoriaService } from "./auditoria.service";
 import { normalizeCPF } from "../utils/helpers/cpf.helper";
-import { gerarGUID } from "../utils/helpers/guid.helper";
+import { gerarGUIDUsuario } from "../utils/helpers/guid.helper";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 
@@ -213,7 +213,7 @@ export default class EscolaxUsuarioxFuncaoService {
           const senhaHash = await bcrypt.hash(senhaTemporaria, SALT_ROUNDS);
 
           const novoUsuario = new Usuario();
-          novoUsuario.UsuarioGUID = gerarGUID();
+          novoUsuario.UsuarioGUID = gerarGUIDUsuario();
           novoUsuario.UsuarioCPF = cpf;
           novoUsuario.UsuarioNome = nome;
           novoUsuario.UsuarioEmail = item.Email || null;

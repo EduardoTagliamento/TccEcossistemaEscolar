@@ -3,7 +3,7 @@ import ErrorResponse from "../utils/ErrorResponse";
 import Usuario from "../entities/usuario.model";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
-import { gerarGUID } from "../utils/helpers/guid.helper";
+import { gerarGUIDUsuario } from "../utils/helpers/guid.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 
 export interface UsuarioDTO {
@@ -79,7 +79,7 @@ export default class UsuarioService {
     }
 
     const usuario = new Usuario();
-    usuario.UsuarioGUID = gerarGUID();
+    usuario.UsuarioGUID = gerarGUIDUsuario();
     usuario.UsuarioCPF = (jsonUsuario.UsuarioCPF as string | null) ?? null;
     usuario.UsuarioNome = this.normalizeNomeCompleto(jsonUsuario);
     usuario.UsuarioEmail = (jsonUsuario.UsuarioEmail as string | null) ?? null;
@@ -434,7 +434,7 @@ export default class UsuarioService {
 
           // Criar usuário
           const novoUsuario = new Usuario();
-          novoUsuario.UsuarioGUID = gerarGUID();
+          novoUsuario.UsuarioGUID = gerarGUIDUsuario();
           novoUsuario.UsuarioCPF = cpf;
           novoUsuario.UsuarioNome = this.normalizeNomeCompleto(dados);
           novoUsuario.UsuarioEmail = (dados.UsuarioEmail as string | null) ?? null;

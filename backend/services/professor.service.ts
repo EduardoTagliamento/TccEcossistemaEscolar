@@ -8,7 +8,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.
 import { MatriculaDAO } from "../repositories/matricula.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
-import { gerarGUID } from "../utils/helpers/guid.helper";
+import { gerarGUID, gerarGUIDUsuario } from "../utils/helpers/guid.helper";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 import bcrypt from "bcrypt";
@@ -609,7 +609,7 @@ export default class ProfessorService {
           senhaTemporaria = gerarSenhaTemporaria(dados.UsuarioNome);
 
           const novoUsuario = new Usuario();
-          novoUsuario.UsuarioGUID = gerarGUID();
+          novoUsuario.UsuarioGUID = gerarGUIDUsuario();
           novoUsuario.UsuarioCPF = cpf;
           novoUsuario.UsuarioNome = dados.UsuarioNome;
           novoUsuario.UsuarioEmail = dados.UsuarioEmail || null;

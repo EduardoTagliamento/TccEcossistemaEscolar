@@ -66,7 +66,7 @@ export function useSairGrupo() {
 export function useAdicionarMembro() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ grupoGUID, usuarioCPF }: { grupoGUID: string; usuarioCPF: string }) => adicionarMembro(grupoGUID, usuarioCPF),
+    mutationFn: ({ grupoGUID, usuarioGUID }: { grupoGUID: string; usuarioGUID: string }) => adicionarMembro(grupoGUID, usuarioGUID),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: grupoProjetoKeys.all });
     },
@@ -76,7 +76,7 @@ export function useAdicionarMembro() {
 export function useExpulsarMembro() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ grupoGUID, cpf }: { grupoGUID: string; cpf: string }) => expulsarMembro(grupoGUID, cpf),
+    mutationFn: ({ grupoGUID, membroGUID }: { grupoGUID: string; membroGUID: string }) => expulsarMembro(grupoGUID, membroGUID),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: grupoProjetoKeys.all });
     },
@@ -86,7 +86,7 @@ export function useExpulsarMembro() {
 export function useTransferirLideranca() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ grupoGUID, novoLiderCPF }: { grupoGUID: string; novoLiderCPF: string }) => transferirLideranca(grupoGUID, novoLiderCPF),
+    mutationFn: ({ grupoGUID, novoLiderGUID }: { grupoGUID: string; novoLiderGUID: string }) => transferirLideranca(grupoGUID, novoLiderGUID),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: grupoProjetoKeys.all });
     },

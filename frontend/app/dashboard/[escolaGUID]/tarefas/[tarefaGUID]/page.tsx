@@ -37,7 +37,7 @@ export default function TarefaDetalhesPage() {
   // busca o detalhe completo desse grupo específico.
   const gruposQuery = useGruposDaTarefa(tarefaGUID, Boolean(tarefa?.TarefaCompartilhada) && !!usuario);
   const meuGrupoResumo = gruposQuery.data?.find(
-    (g) => g.UsuarioCPFLider === usuario?.UsuarioCPF || g.Membros?.some((m) => m.UsuarioCPF === usuario?.UsuarioCPF)
+    (g) => g.UsuarioGUIDLider === usuario?.UsuarioGUID || g.Membros?.some((m) => m.UsuarioGUID === usuario?.UsuarioGUID)
   );
   const grupoDetalheQuery = useGrupoComMembros(meuGrupoResumo?.GrupoTarefaGUID);
   const grupo = grupoDetalheQuery.data ?? null;
@@ -83,13 +83,13 @@ export default function TarefaDetalhesPage() {
     }
   };
 
-  const handleExpulsarMembro = async (cpf: string, nome: string) => {
+  const handleExpulsarMembro = async (membroGUID: string, nome: string) => {
     if (!grupo || !usuarioELider) return;
 
     if (!confirm(`Deseja expulsar ${nome} do grupo?`)) return;
 
     try {
-      await expulsarMembroMutation.mutateAsync({ grupoGUID: grupo.GrupoTarefaGUID, membroCPF: cpf });
+      await expulsarMembroMutation.mutateAsync({ grupoGUID: grupo.GrupoTarefaGUID, membroGUID });
       alert('Membro expulso do grupo.');
     } catch (err: any) {
       alert(err?.message || 'Erro ao expulsar membro');
@@ -121,7 +121,7 @@ export default function TarefaDetalhesPage() {
   const prazo = new Date(tarefa.TarefaPrazoData);
   const agora = new Date();
   const atrasada = prazo < agora;
-  const usuarioELider = grupo && grupo.UsuarioCPFLider === usuario?.UsuarioCPF;
+  const usuarioELider = grupo && grupo.UsuarioGUIDLider === usuario?.UsuarioGUID;
   const usuarioEstaSozinho = grupo && grupo.Membros.filter(m => !m.IsLider).length === 0;
   const grupoAtingiuLimite = grupo && tarefa && (grupo.Membros.length + 1) >= (tarefa.TarefaMaxPessoas || 999);
 
@@ -141,7 +141,7 @@ export default function TarefaDetalhesPage() {
             onClose={() => setModalTransferir(false)}
             grupoGUID={grupo.GrupoTarefaGUID}
             membros={grupo.Membros}
-            liderAtualCPF={grupo.UsuarioCPFLider}
+            liderAtualGUID={grupo.UsuarioGUIDLider}
             onTransferido={recarregarGrupo}
           />
         </>
@@ -240,7 +240,7 @@ export default function TarefaDetalhesPage() {
               <div className={styles.membrosLista}>
                 <h3>Membros</h3>
                 {grupo.Membros.map((membro) => (
-                  <div key={membro.UsuarioCPF} className={styles.membroCard}>
+                  <div key={membro.UsuarioGUID} className={styles.membroCard}>
                     <div className={styles.membroInfo}>
                       <div className={styles.membroAvatar}>
                         {membro.UsuarioNome.charAt(0)}
@@ -263,7 +263,7 @@ export default function TarefaDetalhesPage() {
                       <div className={styles.membroAcoes}>
                         <button
                           className={styles.btnExpulsar}
-                          onClick={() => handleExpulsarMembro(membro.UsuarioCPF, membro.UsuarioNome)}
+                          onClick={() => handleExpulsarMembro(membro.UsuarioGUID, membro.UsuarioNome)}
                         >
                           Expulsar
                         </button>

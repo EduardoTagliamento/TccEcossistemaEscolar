@@ -31,7 +31,7 @@ export interface HorarioTurma {
   MatProfTurGUID: string;
   MateriaGUID: string;
   MateriaNome: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   DiaSemana: DiaSemana;
   HoraInicio: string;
@@ -42,7 +42,7 @@ export interface BancoItem {
   MatProfTurGUID: string;
   MateriaGUID: string;
   MateriaNome: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   AulasPorSemana: number | null;
   AulasAlocadas: number;

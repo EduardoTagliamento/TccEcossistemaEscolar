@@ -16,6 +16,7 @@ import {
   useTransferirLideranca,
 } from '@/lib/grupoprojeto/useGrupoProjetoMutations';
 import { useSolicitarEntrada } from '@/lib/convitegrupoprojeto/useConviteGrupoProjetoMutations';
+import { buscarUsuarioPorCPF } from '@/lib/api/usuario.api';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -70,9 +71,9 @@ export default function GrupoProjetoDetalhePage() {
     }
   }, [grupo]);
 
-  const souLider = grupo?.UsuarioCPFLider === usuario?.UsuarioCPF;
-  const souCriadorProjeto = projeto?.UsuarioCPFCriador === usuario?.UsuarioCPF;
-  const souMembro = grupo?.Membros.some((m) => m.UsuarioCPF === usuario?.UsuarioCPF) ?? false;
+  const souLider = grupo?.UsuarioGUIDLider === usuario?.UsuarioGUID;
+  const souCriadorProjeto = projeto?.UsuarioGUIDCriador === usuario?.UsuarioGUID;
+  const souMembro = grupo?.Membros.some((m) => m.UsuarioGUID === usuario?.UsuarioGUID) ?? false;
 
   const executar = async (acao: () => Promise<void>, mensagemSucesso: string) => {
     setAcaoErro(null);
@@ -96,14 +97,14 @@ export default function GrupoProjetoDetalhePage() {
     void executar(() => sairGrupoMutation.mutateAsync(grupoGUID), 'Você saiu do grupo.');
   };
 
-  const handleExpulsar = (cpf: string) => {
+  const handleExpulsar = (membroGUID: string) => {
     if (!confirm('Tem certeza que deseja remover este membro?')) return;
-    void executar(() => expulsarMembroMutation.mutateAsync({ grupoGUID, cpf }), 'Membro removido.');
+    void executar(() => expulsarMembroMutation.mutateAsync({ grupoGUID, membroGUID }), 'Membro removido.');
   };
 
-  const handleTransferir = (cpf: string) => {
+  const handleTransferir = (membroGUID: string) => {
     if (!confirm('Tem certeza que deseja transferir a liderança?')) return;
-    void executar(() => transferirLiderancaMutation.mutateAsync({ grupoGUID, novoLiderCPF: cpf }), 'Liderança transferida.');
+    void executar(() => transferirLiderancaMutation.mutateAsync({ grupoGUID, novoLiderGUID: membroGUID }), 'Liderança transferida.');
   };
 
   const handleToggleVisibilidade = () => {
@@ -119,7 +120,8 @@ export default function GrupoProjetoDetalhePage() {
     event.preventDefault();
     if (!novoCPF.trim()) return;
     void executar(async () => {
-      await adicionarMembroMutation.mutateAsync({ grupoGUID, usuarioCPF: novoCPF.trim() });
+      const usuarioEncontrado = await buscarUsuarioPorCPF(novoCPF.trim());
+      await adicionarMembroMutation.mutateAsync({ grupoGUID, usuarioGUID: usuarioEncontrado.UsuarioGUID });
       setNovoCPF('');
     }, 'Membro adicionado.');
   };
@@ -204,7 +206,7 @@ export default function GrupoProjetoDetalhePage() {
         <h2>Membros</h2>
         <ul className={styles.membrosList}>
           {grupo.Membros.map((membro) => (
-            <li key={membro.UsuarioCPF} className={styles.membroItem}>
+            <li key={membro.UsuarioGUID} className={styles.membroItem}>
               <span>
                 {membro.UsuarioNome} {membro.IsLider && (
                   <span className={styles.liderTag}>
@@ -215,16 +217,16 @@ export default function GrupoProjetoDetalhePage() {
               <div className={styles.membroAcoes}>
                 {souLider && !membro.IsLider && (
                   <>
-                    <button onClick={() => handleTransferir(membro.UsuarioCPF)} className={styles.linkBtn}>
+                    <button onClick={() => handleTransferir(membro.UsuarioGUID)} className={styles.linkBtn}>
                       Tornar líder
                     </button>
-                    <button onClick={() => handleExpulsar(membro.UsuarioCPF)} className={styles.linkBtnDanger}>
+                    <button onClick={() => handleExpulsar(membro.UsuarioGUID)} className={styles.linkBtnDanger}>
                       Remover
                     </button>
                   </>
                 )}
                 {souCriadorProjeto && !souLider && (
-                  <button onClick={() => handleExpulsar(membro.UsuarioCPF)} className={styles.linkBtnDanger}>
+                  <button onClick={() => handleExpulsar(membro.UsuarioGUID)} className={styles.linkBtnDanger}>
                     Remover (criador do projeto)
                   </button>
                 )}

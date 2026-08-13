@@ -6,7 +6,7 @@ export interface GrupoTarefa {
   GrupoTarefaGUID: string;
   TarefaGUID: string;
   TurmaGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   GrupoNome: string | null;
   CreatedAt: string;
   UpdatedAt: string;
@@ -15,13 +15,13 @@ export interface GrupoTarefa {
 export interface UsuarioXGrupoTarefa {
   UsuarioXGrupoTarefaGUID: string;
   GrupoTarefaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   DataEntrada: string;
   CreatedAt: string;
 }
 
 export interface MembroGrupo {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   UsuarioEmail: string | null;
   IsLider: boolean;
@@ -32,7 +32,7 @@ export interface GrupoTarefaComMembros {
   GrupoTarefaGUID: string;
   TarefaGUID: string;
   TurmaGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   GrupoNome: string | null;
   CreatedAt: string;
   UpdatedAt: string;
@@ -47,5 +47,5 @@ export interface GrupoTarefaUpdateData {
 }
 
 export interface TransferirLiderancaData {
-  NovoCPFLider: string;
+  NovoLiderGUID: string;
 }
