@@ -226,6 +226,7 @@ export class EscolaxUsuarioxFuncaoDAO {
       EscolaCor3: string | null;
       EscolaCor4: string | null;
       EscolaLogo: string | null;
+      EscolaIcone: string | null;
     };
     funcoes: Array<{
       EscolaxUsuarioxFuncaoId: number;
@@ -248,6 +249,7 @@ export class EscolaxUsuarioxFuncaoDAO {
         e.EscolaCorSecEs AS EscolaCor3,
         e.EscolaCorSecCl AS EscolaCor4,
         e.EscolaLogo,
+        e.EscolaIcone,
         euf.EscolaxUsuarioxFuncaoId,
         euf.FuncaoId,
         f.FuncaoNome,
@@ -273,6 +275,7 @@ export class EscolaxUsuarioxFuncaoDAO {
       EscolaCor3: string | null;
       EscolaCor4: string | null;
       EscolaLogo: string | null;
+      EscolaIcone: Buffer | null;
       EscolaxUsuarioxFuncaoId: number;
       FuncaoId: number;
       FuncaoNome: string;
@@ -292,6 +295,7 @@ export class EscolaxUsuarioxFuncaoDAO {
         EscolaCor3: string | null;
         EscolaCor4: string | null;
         EscolaLogo: string | null;
+        EscolaIcone: string | null;
       };
       funcoes: Array<{
         EscolaxUsuarioxFuncaoId: number;
@@ -317,6 +321,7 @@ export class EscolaxUsuarioxFuncaoDAO {
             EscolaCor3: row.EscolaCor3,
             EscolaCor4: row.EscolaCor4,
             EscolaLogo: row.EscolaLogo,
+            EscolaIcone: row.EscolaIcone ? row.EscolaIcone.toString("base64") : null,
           },
           funcoes: [],
         });

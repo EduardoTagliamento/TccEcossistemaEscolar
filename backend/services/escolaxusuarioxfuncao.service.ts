@@ -521,6 +521,7 @@ export default class EscolaxUsuarioxFuncaoService {
       EscolaCor3: string | null;
       EscolaCor4: string | null;
       EscolaLogo: string | null;
+      EscolaIcone: string | null;
     };
     funcoes: Array<{
       EscolaxUsuarioxFuncaoId: number;

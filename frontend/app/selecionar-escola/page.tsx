@@ -47,7 +47,10 @@ interface Escola {
   EscolaCor2: string | null;
   EscolaCor3: string | null;
   EscolaCor4: string | null;
+  /** Path de arquivo legado — nunca populado em nenhum fluxo real do app hoje; mantido só como fallback secundário. */
   EscolaLogo: string | null;
+  /** Ícone da escola salvo em /configuracoes, serializado como base64 pelo backend. */
+  EscolaIcone: string | null;
 }
 
 interface EscolaComFuncoes {
@@ -173,7 +176,13 @@ export default function SelecionarEscolaPage() {
                 className={styles.escolaCard}
                 onClick={() => selecionarEscola(item.escola.EscolaGUID)}
               >
-                {item.escola.EscolaLogo ? (
+                {item.escola.EscolaIcone ? (
+                  <img
+                    src={`data:image/png;base64,${item.escola.EscolaIcone}`}
+                    alt=""
+                    className={styles.escolaLogoImg}
+                  />
+                ) : item.escola.EscolaLogo ? (
                   <img src={item.escola.EscolaLogo} alt="" className={styles.escolaLogoImg} />
                 ) : (
                   <span
