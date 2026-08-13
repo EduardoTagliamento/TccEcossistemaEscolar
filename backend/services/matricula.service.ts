@@ -26,7 +26,11 @@ export interface MatriculaDTO {
 
 export interface MatriculaCreateDTO {
   MatriculaGUID?: string; // Opcional: RA customizado OU gera UUID
-  UsuarioCPF: string; // CPF do aluno — resolvido internamente pra UsuarioGUID (identidade real da matrícula)
+  /** Preenchido quando o cliente já resolveu o aluno via busca por nome. */
+  UsuarioGUID?: string;
+  /** Opcional — CPF deixou de ser obrigatório/identificador de busca. Ainda
+   *  serve como caminho de resolução quando fornecido (compatibilidade). */
+  UsuarioCPF?: string;
   TurmaGUID?: string; // GUID da turma
   TurmaNome?: string; // NOME da turma (para resolução automática)
   MatriculaDataEntrada?: Date;
@@ -127,11 +131,22 @@ export default class MatriculaService {
     }
     await this.validarPermissaoEscrita(usuarioGUIDAtor, turma.EscolaGUID);
 
-    // 3. Validar que usuário (aluno) existe
-    const usuario = await this.#usuarioDAO.findByCPF(data.UsuarioCPF);
+    // 3. Validar que usuário (aluno) existe — GUID (já resolvido pelo
+    // cliente via busca por nome) tem prioridade sobre CPF, que agora é
+    // opcional (ver docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md).
+    if (!data.UsuarioGUID && !data.UsuarioCPF) {
+      throw new ErrorResponse(400, 'Aluno não informado', {
+        message: 'É necessário informar UsuarioGUID ou UsuarioCPF do aluno',
+      });
+    }
+    const usuario = data.UsuarioGUID
+      ? await this.#usuarioDAO.findByGUID(data.UsuarioGUID)
+      : await this.#usuarioDAO.findByCPF(data.UsuarioCPF!);
     if (!usuario) {
       throw new ErrorResponse(404, 'Usuário não encontrado', {
-        message: `Não existe usuário com CPF ${data.UsuarioCPF}`,
+        message: data.UsuarioGUID
+          ? `Não existe usuário com o identificador informado`
+          : `Não existe usuário com CPF ${data.UsuarioCPF}`,
       });
     }
 
@@ -683,13 +698,28 @@ export default class MatriculaService {
           continue;
         }
 
-        // Resolver aluno por CPF (planilha) -> UsuarioGUID (identidade real)
-        const aluno = await this.#usuarioDAO.findByCPF(dados.UsuarioCPF);
+        // Resolver aluno — GUID (já resolvido no passo anterior de criação/
+        // vínculo do usuário) tem prioridade sobre CPF, que é opcional.
+        if (!dados.UsuarioGUID && !dados.UsuarioCPF) {
+          resultados.push({
+            item: dados,
+            sucesso: false,
+            mensagem: 'Aluno não informado (UsuarioGUID ou UsuarioCPF)',
+            tipo: 'erro'
+          });
+          erros++;
+          continue;
+        }
+        const aluno = dados.UsuarioGUID
+          ? await this.#usuarioDAO.findByGUID(dados.UsuarioGUID)
+          : await this.#usuarioDAO.findByCPF(dados.UsuarioCPF!);
         if (!aluno) {
           resultados.push({
             item: dados,
             sucesso: false,
-            mensagem: `Nenhum usuário cadastrado com o CPF ${dados.UsuarioCPF}`,
+            mensagem: dados.UsuarioGUID
+              ? 'Nenhum usuário cadastrado com o identificador informado'
+              : `Nenhum usuário cadastrado com o CPF ${dados.UsuarioCPF}`,
             tipo: 'erro'
           });
           erros++;

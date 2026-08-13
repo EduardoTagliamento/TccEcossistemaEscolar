@@ -22,7 +22,7 @@ export interface AlocacaoDTO {
   MatProfTurGUID: string;
   MateriaGUID: string;
   TurmaGUID: string;
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
   AulasPorSemana: number | null;
   MatProfTurCreatedAt: Date;
@@ -34,7 +34,7 @@ export interface AlocacaoCreateDTO {
   MateriaNome?: string; // Novo: aceita nome da matéria
   TurmaGUID?: string;
   TurmaNome?: string; // Novo: aceita nome da turma
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
   AulasPorSemana?: number | null; // Override do padrão da matéria, específico desta turma
 }
@@ -58,7 +58,13 @@ export interface ProfessorDTO {
 }
 
 export interface ProfessorCreateDTO {
-  UsuarioCPF: string;
+  /** Preenchido quando o cliente já resolveu a pessoa via busca por nome (ver
+   *  docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md) — vincula direto, sem tentar
+   *  resolver por CPF/nome de novo. */
+  UsuarioGUID?: string;
+  /** Opcional desde que CPF deixou de ser obrigatório — ainda serve como
+   *  desempate forte na resolução por nome (ver #resolverOuCriarUsuario). */
+  UsuarioCPF?: string;
   UsuarioNome: string;
   UsuarioEmail?: string;
   UsuarioTelefone?: string;
@@ -236,24 +242,20 @@ export default class ProfessorService {
    * 2. Buscar todas as alocações do professor
    * 3. Filtrar apenas as da escola especificada
    */
-  async buscarAlocacoesProfessor(cpf: string, escolaGUID: string): Promise<{
+  async buscarAlocacoesProfessor(usuarioGUID: string, escolaGUID: string): Promise<{
     alocacoes: AlocacaoDTO[];
     total: number;
   }> {
-    // 1. Verificar se é professor na escola (materiaxprofessorxturma ainda
-    // usa CPF — escolaxusuarioxfuncao já exige UsuarioGUID, resolver antes)
-    const usuarioProfessor = await this.#usuarioDAO.findByCPF(cpf);
-    const vinculo = usuarioProfessor
-      ? await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-          usuarioProfessor.UsuarioGUID,
-          escolaGUID,
-          3 // FuncaoId Professor
-        )
-      : null;
+    // 1. Verificar se é professor na escola
+    const vinculo = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
+      usuarioGUID,
+      escolaGUID,
+      3 // FuncaoId Professor
+    );
 
     if (!vinculo) {
       throw new ErrorResponse(404, 'Usuário não é professor nesta escola', {
-        message: 'O CPF informado não está vinculado como professor nesta escola',
+        message: 'O identificador informado não está vinculado como professor nesta escola',
       });
     }
 
@@ -264,7 +266,7 @@ export default class ProfessorService {
     }
 
     // 2. Buscar todas as alocações do professor
-    const todasAlocacoes = await this.#alocacaoDAO.findByProfessor(usuarioProfessor!.UsuarioGUID);
+    const todasAlocacoes = await this.#alocacaoDAO.findByProfessor(usuarioGUID);
 
     // 3. Filtrar apenas as da escola especificada
     const alocacoesFiltradas: MaterialProfessorTurma[] = [];
@@ -333,20 +335,15 @@ export default class ProfessorService {
     }
 
     // 5. Validar que usuário é professor ativo na escola
-    // (materiaxprofessorxturma ainda usa CPF — escolaxusuarioxfuncao já
-    // exige UsuarioGUID, resolver antes)
-    const usuarioProfessorAlocacao = await this.#usuarioDAO.findByCPF(data.UsuarioCPF);
-    const vinculo = usuarioProfessorAlocacao
-      ? await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-          usuarioProfessorAlocacao.UsuarioGUID,
-          turma.EscolaGUID,
-          3 // FuncaoId Professor
-        )
-      : null;
+    const vinculo = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
+      data.UsuarioGUID,
+      turma.EscolaGUID,
+      3 // FuncaoId Professor
+    );
 
     if (!vinculo) {
       throw new ErrorResponse(403, 'Usuário não é professor nesta escola', {
-        message: 'O CPF informado não está vinculado como professor nesta escola',
+        message: 'O identificador informado não está vinculado como professor nesta escola',
       });
     }
 
@@ -357,7 +354,7 @@ export default class ProfessorService {
     }
 
     // 6. Validar duplicidade
-    const professorGUID = usuarioProfessorAlocacao!.UsuarioGUID;
+    const professorGUID = data.UsuarioGUID;
     const existente = await this.#alocacaoDAO.findByMateriaTurmaProfessor(
       data.MateriaGUID!,
       data.TurmaGUID!,
@@ -522,6 +519,74 @@ export default class ProfessorService {
    * @param enviarEmails Se deve enviar emails automáticos
    * @returns BatchProfessorCreateResponse com resultados detalhados
    */
+  /**
+   * Resolve a pessoa por prioridade — GUID já resolvido pelo cliente (busca
+   * por nome na tela) > CPF exato > nome único > cria conta nova. Se o nome
+   * bater em mais de uma pessoa sem CPF pra desempatar, lança erro em vez
+   * de adivinhar (ver docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md — CPF virou
+   * opcional, nome não é único como CPF era). Usado tanto no cadastro
+   * individual quanto no lote, já que os dois passam por
+   * criarProfessoresEmMassa.
+   */
+  async #resolverOuCriarUsuario(
+    dados: ProfessorCreateDTO
+  ): Promise<{ usuario: Usuario; jaExistia: boolean; senhaTemporaria?: string }> {
+    if (dados.UsuarioGUID) {
+      const usuario = await this.#usuarioDAO.findByGUID(dados.UsuarioGUID);
+      if (!usuario) {
+        throw new Error('Usuário informado não encontrado');
+      }
+      return { usuario, jaExistia: true };
+    }
+
+    if (dados.UsuarioCPF) {
+      const usuarioPorCPF = await this.#usuarioDAO.findByCPF(dados.UsuarioCPF);
+      if (usuarioPorCPF) {
+        return { usuario: usuarioPorCPF, jaExistia: true };
+      }
+    } else if (dados.UsuarioNome) {
+      const candidatos = await this.#usuarioDAO.searchByNome(dados.UsuarioNome, 5);
+      const exatos = candidatos.filter(
+        (c) => c.UsuarioNome.trim().toLowerCase() === dados.UsuarioNome.trim().toLowerCase()
+      );
+      if (exatos.length === 1) {
+        return { usuario: exatos[0], jaExistia: true };
+      }
+      if (exatos.length > 1) {
+        throw new Error(
+          `Nome "${dados.UsuarioNome}" corresponde a ${exatos.length} usuários diferentes — cadastre pelo formulário individual pra escolher a pessoa certa.`
+        );
+      }
+    }
+
+    if (!dados.UsuarioNome) {
+      throw new Error('Nome é obrigatório');
+    }
+
+    // Ninguém encontrado — cria conta nova (CPF agora é opcional)
+    const senhaTemporaria = gerarSenhaTemporaria(dados.UsuarioNome);
+    const novoUsuario = new Usuario();
+    novoUsuario.UsuarioGUID = gerarGUIDUsuario();
+    novoUsuario.UsuarioCPF = dados.UsuarioCPF || null;
+    novoUsuario.UsuarioNome = dados.UsuarioNome;
+    novoUsuario.UsuarioEmail = dados.UsuarioEmail || null;
+    novoUsuario.UsuarioId = null;
+    novoUsuario.UsuarioTelefone = dados.UsuarioTelefone || null;
+    novoUsuario.UsuarioEmailVerificado = false;
+    novoUsuario.UsuarioStatus = 'Ativo';
+
+    if (dados.UsuarioDataNascimento) {
+      novoUsuario.UsuarioDataNascimento = new Date(dados.UsuarioDataNascimento);
+    }
+
+    const senhaHash = await bcrypt.hash(senhaTemporaria, 10);
+    novoUsuario.UsuarioSenha = senhaHash;
+
+    await this.#usuarioDAO.create(novoUsuario);
+
+    return { usuario: novoUsuario, jaExistia: false, senhaTemporaria };
+  }
+
   async criarProfessoresEmMassa(
     professores: ProfessorCreateDTO[],
     escolaGUID: string,
@@ -534,23 +599,9 @@ export default class ProfessorService {
     let erros = 0;
 
     const emailsParaEnviar: Array<{ tipo: 'novo' | 'existente'; dados: any }> = [];
-    const SALT_ROUNDS = 10;
 
     for (const dados of professores) {
       try {
-        const cpf = dados.UsuarioCPF;
-
-        if (!cpf) {
-          resultados.push({
-            item: dados,
-            sucesso: false,
-            mensagem: 'CPF é obrigatório',
-            tipo: 'erro'
-          });
-          erros++;
-          continue;
-        }
-
         if (!dados.UsuarioNome) {
           resultados.push({
             item: dados,
@@ -562,16 +613,9 @@ export default class ProfessorService {
           continue;
         }
 
-        // Verificar se usuário já existe
-        const usuarioExistente = await this.#usuarioDAO.findByCPF(cpf);
+        const { usuario, jaExistia, senhaTemporaria } = await this.#resolverOuCriarUsuario(dados);
 
-        let usuario: Usuario;
-        let senhaTemporaria: string | undefined;
-
-        if (usuarioExistente) {
-          // Usuário já existe
-          usuario = usuarioExistente;
-
+        if (jaExistia) {
           // Verificar se já é professor na escola
           const vinculoExistente = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
             usuario.UsuarioGUID,
@@ -603,32 +647,7 @@ export default class ProfessorService {
               }
             });
           }
-
         } else {
-          // Criar novo usuário
-          senhaTemporaria = gerarSenhaTemporaria(dados.UsuarioNome);
-
-          const novoUsuario = new Usuario();
-          novoUsuario.UsuarioGUID = gerarGUIDUsuario();
-          novoUsuario.UsuarioCPF = cpf;
-          novoUsuario.UsuarioNome = dados.UsuarioNome;
-          novoUsuario.UsuarioEmail = dados.UsuarioEmail || null;
-          novoUsuario.UsuarioId = null;
-          novoUsuario.UsuarioTelefone = dados.UsuarioTelefone || null;
-          novoUsuario.UsuarioEmailVerificado = false;
-          novoUsuario.UsuarioStatus = 'Ativo';
-
-          if (dados.UsuarioDataNascimento) {
-            novoUsuario.UsuarioDataNascimento = new Date(dados.UsuarioDataNascimento);
-          }
-
-          // Hash da senha
-          const senhaHash = await bcrypt.hash(senhaTemporaria, SALT_ROUNDS);
-          novoUsuario.UsuarioSenha = senhaHash;
-
-          await this.#usuarioDAO.create(novoUsuario);
-          usuario = novoUsuario;
-
           // Email de boas-vindas (se fornecido email e envio habilitado)
           if (enviarEmails && usuario.UsuarioEmail) {
             emailsParaEnviar.push({
@@ -660,10 +679,10 @@ export default class ProfessorService {
           mensagem: 'Professor criado/vinculado com sucesso',
           dados: this.toProfessorDTO(usuario),
           senhaTemporaria: senhaTemporaria,
-          tipo: usuarioExistente ? 'existente' : 'criado'
+          tipo: jaExistia ? 'existente' : 'criado'
         });
 
-        if (usuarioExistente) {
+        if (jaExistia) {
           existentes++;
         } else {
           criados++;
@@ -827,16 +846,11 @@ export default class ProfessorService {
         }
 
         // Validar que professor existe e está ativo na escola
-        // (materiaxprofessorxturma ainda usa CPF — escolaxusuarioxfuncao já
-        // exige UsuarioGUID, resolver antes)
-        const usuarioProfessorLote = await this.#usuarioDAO.findByCPF(dados.UsuarioCPF);
-        const vinculo = usuarioProfessorLote
-          ? await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-              usuarioProfessorLote.UsuarioGUID,
-              escolaGUID,
-              3 // FuncaoId Professor
-            )
-          : null;
+        const vinculo = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
+          dados.UsuarioGUID,
+          escolaGUID,
+          3 // FuncaoId Professor
+        );
 
         if (!vinculo) {
           resultados.push({
@@ -861,7 +875,7 @@ export default class ProfessorService {
         }
 
         // Detectar duplicata no batch
-        const chaveAlocacao = `${dados.UsuarioCPF}|${materiaGUID}|${turmaGUID}`;
+        const chaveAlocacao = `${dados.UsuarioGUID}|${materiaGUID}|${turmaGUID}`;
         if (setAlocacoes.has(chaveAlocacao)) {
           resultados.push({
             item: dados,
@@ -875,7 +889,7 @@ export default class ProfessorService {
         setAlocacoes.add(chaveAlocacao);
 
         // Validar duplicidade no banco
-        const professorGUIDLote = usuarioProfessorLote!.UsuarioGUID;
+        const professorGUIDLote = dados.UsuarioGUID;
         const existente = await this.#alocacaoDAO.findByMateriaTurmaProfessor(
           materiaGUID,
           turmaGUID,
@@ -991,17 +1005,15 @@ export default class ProfessorService {
   }
 
   /**
-   * Converte entidade MaterialProfessorTurma para DTO — o cliente ainda
-   * identifica o professor por CPF nesta tela, então resolvemos
-   * UsuarioGUID -> CPF aqui (materiaxprofessorxturma já está migrado pra GUID).
+   * Converte entidade MaterialProfessorTurma para DTO — materiaxprofessorxturma
+   * já é GUID nativamente, então não precisa de lookup nenhum aqui.
    */
   private async toAlocacaoDTO(alocacao: MaterialProfessorTurma): Promise<AlocacaoDTO> {
-    const usuario = await this.#usuarioDAO.findByGUID(alocacao.UsuarioGUID);
     return {
       MatProfTurGUID: alocacao.MatProfTurGUID,
       MateriaGUID: alocacao.MateriaGUID,
       TurmaGUID: alocacao.TurmaGUID,
-      UsuarioCPF: usuario?.UsuarioCPF ?? '',
+      UsuarioGUID: alocacao.UsuarioGUID,
       AlocacaoStatus: alocacao.AlocacaoStatus,
       AulasPorSemana: alocacao.AulasPorSemana,
       MatProfTurCreatedAt: alocacao.MatProfTurCreatedAt,

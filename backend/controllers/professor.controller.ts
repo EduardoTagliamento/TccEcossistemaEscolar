@@ -117,15 +117,15 @@ export default class ProfessorController {
   };
 
   /**
-   * GET /api/professor/:cpf/escolas/:escolaGUID/alocacoes
+   * GET /api/professor/:usuarioGUID/escolas/:escolaGUID/alocacoes
    * Buscar alocações de um professor em uma escola
    */
   buscarAlocacoesProfessor = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { cpf, escolaGUID } = req.params;
+      const { usuarioGUID: professorGUID, escolaGUID } = req.params;
 
       const resultado = await this.#professorService.buscarAlocacoesProfessor(
-        cpf,
+        professorGUID,
         escolaGUID
       );
 
@@ -155,7 +155,7 @@ export default class ProfessorController {
    * POST /api/professor/alocacao
    * Criar alocação (vincular professor a matéria+turma) - individual ou em massa
    * 
-   * Body (Individual): { alocacao: { MateriaGUID, TurmaGUID, UsuarioCPF, AlocacaoStatus? } }
+   * Body (Individual): { alocacao: { MateriaGUID, TurmaGUID, UsuarioGUID, AlocacaoStatus? } }
    * Body (Massa): { alocacoes: [...], EscolaGUID }
    */
   criarAlocacao = async (req: Request, res: Response): Promise<void> => {
@@ -186,7 +186,7 @@ export default class ProfessorController {
         const createData: AlocacaoCreateDTO = {
           MateriaGUID: alocacao.MateriaGUID,
           TurmaGUID: alocacao.TurmaGUID,
-          UsuarioCPF: alocacao.UsuarioCPF,
+          UsuarioGUID: alocacao.UsuarioGUID,
           AlocacaoStatus: alocacao.AlocacaoStatus,
           AulasPorSemana: alocacao.AulasPorSemana,
         };

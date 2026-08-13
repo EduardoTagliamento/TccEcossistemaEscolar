@@ -73,7 +73,8 @@ type IconName =
   | 'chevron-right'
   | 'message-circle'
   | 'user'
-  | 'shield';
+  | 'shield'
+  | 'clock';
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const common: React.SVGProps<SVGSVGElement> = {
@@ -204,6 +205,13 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       );
+    case 'clock':
+      return (
+        <svg {...common} aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -244,6 +252,7 @@ export default function DashboardNavbar() {
 
   const [notifAberto, setNotifAberto] = useState(false);
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
+  const [categoriaPorTipo, setCategoriaPorTipo] = useState<Map<number, 'Aviso' | 'Lembrete'>>(new Map());
   const [carregandoNotif, setCarregandoNotif] = useState(false);
   const [naoLidas, setNaoLidas] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -306,6 +315,9 @@ export default function DashboardNavbar() {
     NotificacaoAPI.contarNaoLidas()
       .then(setNaoLidas)
       .catch(() => setNaoLidas(0));
+    NotificacaoAPI.listarTipos()
+      .then((tipos) => setCategoriaPorTipo(new Map(tipos.map((t) => [t.NotificacaoTipoId, t.NotificacaoTipoCategoria]))))
+      .catch(() => {});
   }, [usuario]);
 
   // Mantém o badge do sino em tempo real (WebSocket `notificacao:nova`) —
@@ -638,25 +650,34 @@ export default function DashboardNavbar() {
                   ) : notificacoes.length === 0 ? (
                     <p className={styles.notifEstadoVazio}>Nenhuma notificação por aqui.</p>
                   ) : (
-                    notificacoes.map((notificacao) => (
-                      <button
-                        type="button"
-                        key={notificacao.NotificacaoGUID}
-                        className={
-                          notificacao.NotificacaoLida ? styles.notifItem : `${styles.notifItem} ${styles.notifItemNaoLido}`
-                        }
-                        onClick={() => void handleClicarNotificacao(notificacao)}
-                      >
-                        {!notificacao.NotificacaoLida && <span className={styles.notifPonto} aria-hidden="true" />}
-                        <span className={styles.notifItemConteudo}>
-                          <span className={styles.notifItemTitulo}>{notificacao.NotificacaoTitulo}</span>
-                          {notificacao.NotificacaoConteudo && (
-                            <span className={styles.notifItemTexto}>{notificacao.NotificacaoConteudo}</span>
-                          )}
-                          <span className={styles.notifItemData}>{formatarDataNotificacao(notificacao.NotificacaoCreatedAt)}</span>
-                        </span>
-                      </button>
-                    ))
+                    notificacoes.map((notificacao) => {
+                      const categoria = categoriaPorTipo.get(notificacao.NotificacaoTipoId);
+                      const ehLembrete = categoria === 'Lembrete';
+                      return (
+                        <button
+                          type="button"
+                          key={notificacao.NotificacaoGUID}
+                          className={
+                            notificacao.NotificacaoLida ? styles.notifItem : `${styles.notifItem} ${styles.notifItemNaoLido}`
+                          }
+                          onClick={() => void handleClicarNotificacao(notificacao)}
+                        >
+                          <span className={ehLembrete ? `${styles.notifItemIcone} ${styles.notifItemIconeLembrete}` : styles.notifItemIcone}>
+                            <Icon name={ehLembrete ? 'clock' : 'bell'} size={14} />
+                          </span>
+                          <span className={styles.notifItemConteudo}>
+                            <span className={styles.notifItemTituloRow}>
+                              <span className={styles.notifItemTitulo}>{notificacao.NotificacaoTitulo}</span>
+                              {!notificacao.NotificacaoLida && <span className={styles.notifPonto} aria-hidden="true" />}
+                            </span>
+                            {notificacao.NotificacaoConteudo && (
+                              <span className={styles.notifItemTexto}>{notificacao.NotificacaoConteudo}</span>
+                            )}
+                            <span className={styles.notifItemData}>{formatarDataNotificacao(notificacao.NotificacaoCreatedAt)}</span>
+                          </span>
+                        </button>
+                      );
+                    })
                   )}
                 </div>
                 <Link

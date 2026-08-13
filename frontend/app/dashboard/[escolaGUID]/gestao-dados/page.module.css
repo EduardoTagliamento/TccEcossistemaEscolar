@@ -160,6 +160,9 @@
   font-weight: 700;
   margin-bottom: 0.5rem;
   color: var(--ink-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .subtitulo {
@@ -346,6 +349,63 @@
 
 .botaoUpload:hover {
   background: var(--blue-700);
+}
+
+/* Botões de ação da tabela (usados em alunos/page.tsx e
+   professores/page.tsx) — mesmo padrão de
+   gestao-dados/coordenacao/page.module.css e
+   gestao-dados/secretaria/page.module.css. */
+.botaoEditar,
+.botaoExcluir,
+.botaoReativar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-200);
+  background: var(--white);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--slate-600);
+}
+
+.botaoEditar:hover {
+  border-color: var(--blue-500);
+  color: var(--blue-700);
+}
+
+.botaoExcluir:hover {
+  border-color: var(--danger-500);
+  color: var(--danger-600);
+}
+
+.botaoReativar:hover {
+  border-color: var(--green-500);
+  color: var(--green-700);
+}
+
+/* Caixa de dicas/ajuda dentro do modal de cadastro (ex.: alocações do
+   professor, formato esperado da planilha). */
+.ajuda {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line-200);
+  font-size: 0.8125rem;
+  color: var(--slate-500);
+  line-height: 1.5;
+}
+
+.ajuda p {
+  margin: 0 0 0.5rem;
+}
+
+.ajuda strong {
+  color: var(--ink-900);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 /* Status — pares texto+fundo com contraste reforçado (também em alto

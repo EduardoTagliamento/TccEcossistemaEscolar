@@ -1,0 +1,82 @@
+/* ============================================================
+   Gestão de Dados — Lista de candidatos (busca por nome) —
+   mesmos tokens escopados de BaseFormularioCadastro.module.css.
+   ============================================================ */
+
+.status {
+  --slate-500: #647268;
+  margin: -0.5rem 0 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--slate-500);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+:global(html[data-theme="dark"]) .status {
+  --slate-500: #93A398;
+}
+
+.lista {
+  --green-500: #17C077;
+  --ink-900: #0F1D17;
+  --slate-500: #647268;
+  --line-200: #E2EAE5;
+  --surface-muted: #F0F4F1;
+  --white: #FFFFFF;
+  --radius-md: 8px;
+
+  list-style: none;
+  margin: -0.5rem 0 0.5rem;
+  padding: 0;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+:global(html[data-theme="dark"]) .lista {
+  --ink-900: #F3F7F4;
+  --slate-500: #93A398;
+  --line-200: #2A3A31;
+  --surface-muted: #16211C;
+  --white: #16211C;
+}
+
+.item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  background: var(--white);
+  border: none;
+  border-bottom: 1px solid var(--line-200);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.lista li:last-child .item {
+  border-bottom: none;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--surface-muted);
+  outline: none;
+}
+
+.nome {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.detalhes {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: var(--slate-500);
+}

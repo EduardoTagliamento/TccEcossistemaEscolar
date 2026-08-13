@@ -15,7 +15,8 @@ import { EmailAlunoService } from "./email-aluno.service";
 const SALT_ROUNDS = 10;
 
 export interface VinculoEmMassaItem {
-  CPF: string;
+  /** Opcional agora — Nome é o identificador de resolução quando CPF não vem preenchido. */
+  CPF?: string;
   Nome?: string;
   Email?: string;
 }
@@ -177,33 +178,69 @@ export default class EscolaxUsuarioxFuncaoService {
     let erros = 0;
 
     for (const item of itens) {
-      let cpf: string;
-      try {
-        cpf = normalizeCPF(String(item.CPF));
-      } catch {
+      // CPF é opcional agora — quando ausente, resolve por nome (ver
+      // docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md). CPF exato continua sendo o
+      // sinal mais forte quando presente (compatível com o comportamento
+      // anterior); nome só decide sozinho quando bate em exatamente 1 pessoa.
+      const cpfBruto = item.CPF ? String(item.CPF).trim() : "";
+      const nome = item.Nome?.trim();
+      let cpf = "";
+      if (cpfBruto) {
+        try {
+          cpf = normalizeCPF(cpfBruto);
+        } catch {
+          erros++;
+          resultados.push({
+            cpf: cpfBruto,
+            sucesso: false,
+            mensagem: `CPF "${cpfBruto}" invalido.`,
+            tipo: "erro",
+          });
+          continue;
+        }
+      } else if (!nome) {
         erros++;
         resultados.push({
-          cpf: String(item.CPF),
+          cpf: "",
           sucesso: false,
-          mensagem: `CPF "${item.CPF}" invalido.`,
+          mensagem: "Informe ao menos CPF ou Nome.",
           tipo: "erro",
         });
         continue;
       }
 
       try {
-        let usuario = await this.#usuarioDAO.findByCPF(cpf);
+        let usuario: Usuario | null = null;
+
+        if (cpf) {
+          usuario = await this.#usuarioDAO.findByCPF(cpf);
+        } else if (nome) {
+          const candidatos = await this.#usuarioDAO.searchByNome(nome, 5);
+          const exatos = candidatos.filter((c) => c.UsuarioNome.trim().toLowerCase() === nome.toLowerCase());
+          if (exatos.length === 1) {
+            usuario = exatos[0];
+          } else if (exatos.length > 1) {
+            erros++;
+            resultados.push({
+              cpf: "",
+              sucesso: false,
+              mensagem: `Nome "${nome}" corresponde a ${exatos.length} usuários diferentes — cadastre manualmente pra escolher a pessoa certa.`,
+              tipo: "erro",
+            });
+            continue;
+          }
+        }
+
         let senhaTemporaria: string | undefined;
         const contaCriada = !usuario;
 
         if (!usuario) {
-          const nome = item.Nome?.trim();
           if (!nome) {
             erros++;
             resultados.push({
               cpf,
               sucesso: false,
-              mensagem: `Nenhum usuario cadastrado com o CPF ${cpf} e o nome nao foi informado na planilha para criar a conta.`,
+              mensagem: `Nenhum usuario encontrado com o CPF ${cpf} e o nome nao foi informado na planilha para criar a conta.`,
               tipo: "erro",
             });
             continue;
@@ -214,7 +251,7 @@ export default class EscolaxUsuarioxFuncaoService {
 
           const novoUsuario = new Usuario();
           novoUsuario.UsuarioGUID = gerarGUIDUsuario();
-          novoUsuario.UsuarioCPF = cpf;
+          novoUsuario.UsuarioCPF = cpf || null;
           novoUsuario.UsuarioNome = nome;
           novoUsuario.UsuarioEmail = item.Email || null;
           novoUsuario.UsuarioId = null;
@@ -245,7 +282,7 @@ export default class EscolaxUsuarioxFuncaoService {
         if (duplicated) {
           duplicados++;
           resultados.push({
-            cpf,
+            cpf: usuario.UsuarioCPF ?? cpf,
             sucesso: true,
             mensagem: "Ja existe um vinculo para este usuario nesta funcao.",
             tipo: "duplicado",
@@ -281,7 +318,7 @@ export default class EscolaxUsuarioxFuncaoService {
 
         criados++;
         resultados.push({
-          cpf,
+          cpf: usuario.UsuarioCPF ?? cpf,
           sucesso: true,
           mensagem: contaCriada ? "Conta criada e usuario vinculado com sucesso." : "Usuario vinculado com sucesso.",
           dados: this.toDTO(created, null, usuario.UsuarioNome, usuario.UsuarioCPF),

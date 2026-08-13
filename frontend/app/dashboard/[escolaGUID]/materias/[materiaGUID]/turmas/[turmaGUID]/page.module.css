@@ -121,7 +121,7 @@
 
 .categoria {
   background: var(--white, #fff);
-  border-radius: 10px;
+  border-radius: 16px;
   margin-bottom: 1.25rem;
   box-shadow: 0 2px 8px rgba(15, 29, 23, 0.06);
   overflow: hidden;

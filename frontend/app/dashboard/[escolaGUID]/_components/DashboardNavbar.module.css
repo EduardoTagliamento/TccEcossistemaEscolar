@@ -449,12 +449,27 @@
   background: var(--green-50);
 }
 
+.notifItemIcone {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  color: var(--green-700);
+  flex-shrink: 0;
+}
+
+.notifItemIconeLembrete {
+  color: var(--gold-600);
+}
+
 .notifPonto {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--green-500);
-  margin-top: 6px;
   flex-shrink: 0;
 }
 
@@ -463,6 +478,12 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+.notifItemTituloRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .notifItemTitulo {

@@ -51,6 +51,25 @@ export async function buscarUsuarioPorCPF(cpf: string): Promise<UsuarioBusca> {
   return resultado.data.usuario;
 }
 
+/**
+ * GET /api/usuario/busca-nome?nome= — busca usuários já cadastrados na
+ * plataforma por nome (parcial, até 10 resultados). Substitui a busca por
+ * CPF nas telas de Gestão de Dados agora que CPF é opcional — como nome não
+ * é único, o chamador precisa lidar com 0, 1 ou N resultados (ver
+ * ListaCandidatosUsuario/useBuscaUsuarioPorNome). Nunca lança em lista
+ * vazia; só lança em erro de rede/servidor.
+ */
+export async function buscarUsuariosPorNome(nome: string): Promise<UsuarioBusca[]> {
+  const response = await fetch(`${API_URL}/usuario/busca-nome?nome=${encodeURIComponent(nome)}`, {
+    headers: getHeaders(),
+  });
+  const resultado = await response.json();
+  if (!response.ok || resultado?.success === false) {
+    throw new Error(resultado?.message || 'Erro ao buscar usuários por nome');
+  }
+  return resultado.data.usuarios;
+}
+
 export interface UsuarioAtualizado {
   UsuarioGUID: string;
   UsuarioCPF: string | null;

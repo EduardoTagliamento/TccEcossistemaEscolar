@@ -10,8 +10,9 @@ import { Icon } from '@/components/Icon';
 
 import * as ProfessorAPI from '@/lib/api/professor.api';
 import * as EscolaAPI from '@/lib/api/escola.api';
-import * as UsuarioAPI from '@/lib/api/usuario.api';
-import { formatarCPF, limparCPF } from '@/lib/validators/cpf';
+import { UsuarioBusca } from '@/lib/api/usuario.api';
+import { useBuscaUsuarioPorNome } from '@/lib/usuario/useBuscaUsuarioPorNome';
+import ListaCandidatosUsuario from '@/components/gestao-dados/ListaCandidatosUsuario';
 import { useProfessores, useAlocacoesProfessor } from '@/lib/professor/useProfessorQueries';
 import {
   useCriarProfessor,
@@ -39,12 +40,6 @@ export default function ProfessoresPage() {
   const [processandoBatch, setProcessandoBatch] = useState(false);
   const [resultadoBatch, setResultadoBatch] = useState<ProfessorAPI.BatchCreateResponse | null>(null);
 
-  // CPFs da planilha que já pertencem a usuários cadastrados na plataforma —
-  // mesma checagem do formulário manual, só que em lote pra dar visibilidade
-  // no preview antes de confirmar a importação (o backend já lida bem com
-  // isso sozinho, isso aqui é só transparência pra quem está importando).
-  const [cpfsExistentes, setCpfsExistentes] = useState<Set<string>>(new Set());
-  const [verificandoExistentes, setVerificandoExistentes] = useState(false);
   const [professorEditando, setProfessorEditando] = useState<ProfessorAPI.Professor | null>(null);
   const [novaAlocacaoTurma, setNovaAlocacaoTurma] = useState('');
   const [novaAlocacaoMateria, setNovaAlocacaoMateria] = useState('');
@@ -73,18 +68,20 @@ export default function ProfessoresPage() {
   const [salvandoFormulario, setSalvandoFormulario] = useState(false);
   const [erroFormulario, setErroFormulario] = useState('');
 
-  // Usuário já cadastrado na plataforma, detectado pelo CPF digitado no
-  // formulário de criação (não se aplica a edição, que já trava o CPF) —
-  // quando encontrado, autopreenche e trava os campos que já pertencem a
+  // Usuário já cadastrado na plataforma, selecionado a partir da busca por
+  // nome (CPF não é mais o identificador de busca — ficou opcional) —
+  // quando escolhido, autopreenche e trava os campos que já pertencem a
   // esse cadastro (só estamos vinculando essa pessoa como professor desta
   // escola, não recriando/editando o cadastro dela).
-  const [usuarioExistente, setUsuarioExistente] = useState<UsuarioAPI.UsuarioBusca | null>(null);
-  const [verificandoCPF, setVerificandoCPF] = useState(false);
-  const [ultimoCPFConsultado, setUltimoCPFConsultado] = useState('');
+  const [usuarioExistente, setUsuarioExistente] = useState<UsuarioBusca | null>(null);
+  const [termoBuscaNome, setTermoBuscaNome] = useState('');
+  const { candidatos, buscando: buscandoNome, limpar: limparBuscaNome } = useBuscaUsuarioPorNome(
+    !professorEditando && !usuarioExistente ? termoBuscaNome : ''
+  );
 
   const professoresQuery = useProfessores(escolaGUID);
   const professores = professoresQuery.data?.professores ?? [];
-  const alocacoesQuery = useAlocacoesProfessor(professorEditando?.UsuarioCPF ?? undefined, escolaGUID, !!professorEditando);
+  const alocacoesQuery = useAlocacoesProfessor(professorEditando?.UsuarioGUID ?? undefined, escolaGUID, !!professorEditando);
   const alocacoesProfessor = (alocacoesQuery.data?.alocacoes ?? []).filter((a) => a.AlocacaoStatus === 'Ativa');
   const carregandoAlocacoes = alocacoesQuery.isLoading;
   const carregando = professoresQuery.isLoading || carregandoAuxiliares;
@@ -125,23 +122,24 @@ export default function ProfessoresPage() {
   // Definir campos do formulário
   const camposFormulario: CampoFormulario[] = [
     {
-      id: 'UsuarioCPF',
-      label: 'CPF',
-      tipo: 'cpf',
-      obrigatorio: true,
-      placeholder: '000.000.000-00',
-      // CPF é o identificador do usuário — editar aqui não tem efeito (a
-      // atualização usa professorEditando.UsuarioCPF, não este campo),
-      // então trava pra não sugerir que dá pra trocar.
-      desabilitado: !!professorEditando
-    },
-    {
       id: 'UsuarioNome',
       label: 'Nome Completo',
       tipo: 'text',
       obrigatorio: true,
       placeholder: 'Ex: João Silva Santos',
+      // Nome é o novo identificador de busca (CPF virou opcional) — digitar
+      // aqui dispara a busca de candidatos (ver handleChangeFormulario).
+      // Trava quando um candidato já foi selecionado, igual aos demais
+      // campos pessoais.
       desabilitado: !!usuarioExistente
+    },
+    {
+      id: 'UsuarioCPF',
+      label: 'CPF (opcional)',
+      tipo: 'cpf',
+      obrigatorio: false,
+      placeholder: '000.000.000-00',
+      desabilitado: !!professorEditando || !!usuarioExistente
     },
     {
       id: 'UsuarioEmail',
@@ -226,9 +224,10 @@ export default function ProfessoresPage() {
   ];
 
   // Handlers
-  const limparBuscaCPF = () => {
+  const limparBuscaCandidato = () => {
     setUsuarioExistente(null);
-    setUltimoCPFConsultado('');
+    setTermoBuscaNome('');
+    limparBuscaNome();
   };
 
   const resetarFormulario = () => {
@@ -241,46 +240,32 @@ export default function ProfessoresPage() {
       Materias: '',
       Turmas: ''
     });
-    limparBuscaCPF();
+    limparBuscaCandidato();
   };
 
-  // Intercepta a digitação do CPF: ao completar 11 dígitos (e só na
-  // criação — na edição o CPF já vem travado), busca se já existe um
-  // usuário cadastrado com esse CPF. Se existir, autopreenche e trava
-  // nome/email/telefone/nascimento (ver camposFormulario acima). Criar
-  // professor com um CPF já existente já é tolerado pelo backend (reaproveita
-  // o usuário e só cria o vínculo), então isso é só uma otimização de UX —
-  // não depende de mudança na chamada de criação.
+  // Intercepta a digitação do Nome (novo identificador de busca — CPF virou
+  // opcional) e alimenta useBuscaUsuarioPorNome, que mostra os candidatos
+  // via ListaCandidatosUsuario abaixo do campo. Selecionar um candidato
+  // autopreenche e trava os campos pessoais (ver camposFormulario acima e
+  // handleSelecionarCandidato). Só roda na criação — na edição o nome já
+  // vem travado.
   const handleChangeFormulario = (campo: string, valor: any) => {
     setValoresFormulario((prev) => ({ ...prev, [campo]: valor }));
 
-    if (campo !== 'UsuarioCPF' || professorEditando) return;
+    if (campo !== 'UsuarioNome' || professorEditando || usuarioExistente) return;
+    setTermoBuscaNome(valor);
+  };
 
-    const cpfLimpo = limparCPF(valor);
-    if (cpfLimpo.length !== 11) {
-      if (usuarioExistente) limparBuscaCPF();
-      return;
-    }
-    if (cpfLimpo === ultimoCPFConsultado) return;
-
-    setUltimoCPFConsultado(cpfLimpo);
-    setVerificandoCPF(true);
-    UsuarioAPI.buscarUsuarioPorCPF(valor)
-      .then((encontrado) => {
-        setUsuarioExistente(encontrado);
-        setValoresFormulario((prev) => ({
-          ...prev,
-          UsuarioNome: encontrado.UsuarioNome,
-          UsuarioEmail: encontrado.UsuarioEmail || '',
-          UsuarioTelefone: encontrado.UsuarioTelefone || '',
-          UsuarioDataNascimento: encontrado.UsuarioDataNascimento || '',
-        }));
-      })
-      .catch(() => {
-        // 404 esperado — CPF ainda não cadastrado, segue o cadastro normal.
-        setUsuarioExistente(null);
-      })
-      .finally(() => setVerificandoCPF(false));
+  const handleSelecionarCandidato = (encontrado: UsuarioBusca) => {
+    setUsuarioExistente(encontrado);
+    setValoresFormulario((prev) => ({
+      ...prev,
+      UsuarioNome: encontrado.UsuarioNome,
+      UsuarioCPF: encontrado.UsuarioCPF || '',
+      UsuarioEmail: encontrado.UsuarioEmail || '',
+      UsuarioTelefone: encontrado.UsuarioTelefone || '',
+      UsuarioDataNascimento: encontrado.UsuarioDataNascimento || '',
+    }));
   };
 
   const handleSubmitFormulario = async () => {
@@ -301,10 +286,11 @@ export default function ProfessoresPage() {
         });
         alert('Professor atualizado com sucesso!');
       } else {
-        // Criar novo professor (ou só vincular, se o CPF já pertence a um usuário existente)
+        // Criar novo professor (ou só vincular, se a pessoa já foi encontrada pela busca por nome)
         await criarProfessorMutation.mutateAsync({
           dados: {
-            UsuarioCPF: valoresFormulario.UsuarioCPF,
+            UsuarioGUID: usuarioExistente?.UsuarioGUID,
+            UsuarioCPF: valoresFormulario.UsuarioCPF || undefined,
             UsuarioNome: valoresFormulario.UsuarioNome,
             UsuarioEmail: valoresFormulario.UsuarioEmail,
             UsuarioTelefone: valoresFormulario.UsuarioTelefone,
@@ -335,7 +321,7 @@ export default function ProfessoresPage() {
   };
 
   const handleEditar = (professor: ProfessorAPI.Professor) => {
-    limparBuscaCPF();
+    limparBuscaCandidato();
     setProfessorEditando(professor);
     setValoresFormulario({
       UsuarioCPF: professor.UsuarioCPF,
@@ -379,7 +365,7 @@ export default function ProfessoresPage() {
       setErroAlocacao('');
       await criarAlocacaoMutation.mutateAsync({
         alocacao: {
-          UsuarioCPF: professorEditando!.UsuarioCPF!,
+          UsuarioGUID: professorEditando!.UsuarioGUID,
           MateriaGUID: novaAlocacaoMateria,
           TurmaGUID: novaAlocacaoTurma,
           AlocacaoStatus: 'Ativa',
@@ -427,14 +413,14 @@ export default function ProfessoresPage() {
         AlocacaoStatus: 'Ativa',
       });
 
-      const conflito = existentes.find(a => a.UsuarioCPF !== professorEditando!.UsuarioCPF);
+      const conflito = existentes.find(a => a.UsuarioGUID !== professorEditando!.UsuarioGUID);
       if (conflito) {
-        const outroProfessor = professores.find(p => p.UsuarioCPF === conflito.UsuarioCPF);
+        const outroProfessor = professores.find(p => p.UsuarioGUID === conflito.UsuarioGUID);
         const mat = materias.find(m => m.MateriaGUID === novaAlocacaoMateria);
         const tur = turmas.find(t => t.TurmaGUID === novaAlocacaoTurma);
         setSalvandoAlocacao(false);
         setAvisoConflito({
-          professorNome: outroProfessor?.UsuarioNome ?? conflito.UsuarioCPF,
+          professorNome: outroProfessor?.UsuarioNome ?? conflito.UsuarioGUID,
           materiaNome: mat?.MateriaNome ?? novaAlocacaoMateria,
           turmaNome: tur ? `${tur.TurmaSerie} ${tur.TurmaNome}` : novaAlocacaoTurma,
           confirmar: executarCriacaoAlocacao,
@@ -478,37 +464,9 @@ export default function ProfessoresPage() {
     }
   };
 
-  const extrairCPFDaLinha = (linha: any): string =>
-    limparCPF(String(linha['CPF'] || linha.UsuarioCPF || linha.cpf || ''));
-
-  const verificarCPFsExistentes = async (linhas: any[]) => {
-    setVerificandoExistentes(true);
-    try {
-      const resultados = await Promise.allSettled(
-        linhas.map(async (linha) => {
-          const cpf = extrairCPFDaLinha(linha);
-          if (cpf.length !== 11) return null;
-          await UsuarioAPI.buscarUsuarioPorCPF(formatarCPF(cpf));
-          return cpf;
-        })
-      );
-      const encontrados = new Set<string>();
-      for (const resultado of resultados) {
-        if (resultado.status === 'fulfilled' && resultado.value) {
-          encontrados.add(resultado.value);
-        }
-      }
-      setCpfsExistentes(encontrados);
-    } finally {
-      setVerificandoExistentes(false);
-    }
-  };
-
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
     console.log('Dados carregados:', dados);
     setDadosImportados(dados);
-    setCpfsExistentes(new Set());
-    void verificarCPFsExistentes(dados.dados);
   };
 
   const handleSalvarImportados = async () => {
@@ -517,10 +475,14 @@ export default function ProfessoresPage() {
     try {
       setProcessandoBatch(true);
 
-      // Converter dados da planilha para DTO
+      // Converter dados da planilha para DTO. Nome é o identificador de
+      // resolução agora (CPF é opcional, só serve de desempate extra quando
+      // presente) — a resolução em si (achar pessoa existente por nome, ou
+      // criar nova) acontece no backend, linha por linha, pra cada item do
+      // lote (ver ProfessorService#resolverOuCriarUsuario).
       const professoresDTO: ProfessorAPI.ProfessorCreateDTO[] = dadosImportados.dados.map((linha: any) => ({
-        UsuarioCPF: linha['CPF'] || linha.UsuarioCPF || linha.cpf || '',
         UsuarioNome: linha['Nome'] || linha.UsuarioNome || linha.nome || '',
+        UsuarioCPF: linha['CPF'] || linha.UsuarioCPF || linha.cpf || undefined,
         UsuarioEmail: linha['Email'] || linha.UsuarioEmail || linha.email || undefined,
         UsuarioTelefone: linha['Telefone'] || linha.UsuarioTelefone || linha.telefone || undefined,
         UsuarioDataNascimento: linha['Data de Nascimento'] || linha.UsuarioDataNascimento || undefined,
@@ -537,7 +499,6 @@ export default function ProfessoresPage() {
 
       setResultadoBatch(resultado);
       setDadosImportados(null);
-      setCpfsExistentes(new Set());
 
     } catch (erro: any) {
       console.error('Erro ao importar professores:', erro);
@@ -625,10 +586,15 @@ export default function ProfessoresPage() {
       {modalAberto && (
         <div className={styles.overlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            {!professorEditando && verificandoCPF && (
-              <p style={{ margin: '1.25rem 1.25rem 0', color: 'var(--slate-400)', fontSize: '0.875rem' }}>
-                Verificando CPF...
-              </p>
+            {!professorEditando && !usuarioExistente && (
+              <div style={{ margin: '1.25rem 1.25rem 0' }}>
+                <ListaCandidatosUsuario
+                  termo={termoBuscaNome}
+                  candidatos={candidatos}
+                  buscando={buscandoNome}
+                  onSelecionar={handleSelecionarCandidato}
+                />
+              </div>
             )}
             {!professorEditando && usuarioExistente && (
               <p
@@ -644,8 +610,18 @@ export default function ProfessoresPage() {
                   gap: '0.4rem',
                 }}
               >
-                <Icon name="check" size={14} /> Esse CPF já pertence a um usuário cadastrado na plataforma — dados
-                preenchidos automaticamente. Ao salvar, ele só será vinculado como professor desta escola.
+                <Icon name="check" size={14} /> Esse nome já pertence a um usuário cadastrado na plataforma — dados
+                preenchidos automaticamente. Ao salvar, ele só será vinculado como professor desta escola.{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    limparBuscaCandidato();
+                    setValoresFormulario((prev) => ({ ...prev, UsuarioNome: '', UsuarioCPF: '', UsuarioEmail: '', UsuarioTelefone: '', UsuarioDataNascimento: '' }));
+                  }}
+                  style={{ background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', color: 'inherit', padding: 0, fontSize: 'inherit' }}
+                >
+                  Buscar outra pessoa
+                </button>
               </p>
             )}
             <BaseFormularioCadastro
@@ -883,7 +859,7 @@ export default function ProfessoresPage() {
                 modeloUrl="/modelos/modelo-professores.xlsx"
                 onDadosCarregados={handleDadosCarregados}
                 onErro={(erro) => alert(erro)}
-                colunasEsperadas={['CPF', 'Nome']}
+                colunasEsperadas={['Nome']}
               />
 
               {/* Preview dos dados importados */}
@@ -892,53 +868,25 @@ export default function ProfessoresPage() {
                   <h3 className={styles.previewTitulo}>
                     <Icon name="file-text" size={18} /> Preview - {dadosImportados.dados.length} professores encontrados
                   </h3>
-                  {verificandoExistentes ? (
-                    <p className={styles.textoSecundario}>Verificando CPFs já cadastrados na plataforma...</p>
-                  ) : cpfsExistentes.size > 0 ? (
-                    <p
-                      style={{
-                        padding: '0.6rem 0.85rem',
-                        marginBottom: '0.75rem',
-                        background: 'var(--green-50)',
-                        color: 'var(--green-700)',
-                        borderRadius: 'var(--radius-md)',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <Icon name="check" size={14} /> {cpfsExistentes.size} de {dadosImportados.dados.length} já{' '}
-                      {cpfsExistentes.size === 1 ? 'está cadastrado' : 'estão cadastrados'} na plataforma — serão só
-                      vinculados a esta escola, sem alterar os dados existentes.
-                    </p>
-                  ) : null}
+                  <p className={styles.textoSecundario}>
+                    <Icon name="help-circle" size={14} /> Cada pessoa é resolvida por nome ao salvar — se já existir
+                    na plataforma, só é vinculada; senão, uma conta nova é criada. CPF na planilha é opcional, mas
+                    ajuda a desempatar nomes repetidos.
+                  </p>
                   <div className={styles.previewLista}>
-                    {dadosImportados.dados.slice(0, 5).map((linha: any, idx: number) => {
-                      const jaExiste = cpfsExistentes.has(extrairCPFDaLinha(linha));
-                      return (
-                        <div key={idx} className={styles.previewItem}>
-                          <Icon name="check" size={14} /> {linha['Nome'] || linha.UsuarioNome || linha.nome} (CPF: {linha['CPF'] || linha.UsuarioCPF || linha.cpf})
-                          {(linha['Matérias'] || linha.Materias) && (
-                            <span className={styles.previewCurso}>
-                              {' '}→ Matérias: {linha['Matérias'] || linha.Materias}
-                            </span>
-                          )}
-                          {jaExiste && (
-                            <span
-                              style={{
-                                marginLeft: '0.5rem',
-                                padding: '0.1rem 0.5rem',
-                                background: 'var(--green-50)',
-                                color: 'var(--green-700)',
-                                borderRadius: 'var(--radius-pill)',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                              }}
-                            >
-                              já cadastrado
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {dadosImportados.dados.slice(0, 5).map((linha: any, idx: number) => (
+                      <div key={idx} className={styles.previewItem}>
+                        <Icon name="check" size={14} /> {linha['Nome'] || linha.UsuarioNome || linha.nome}
+                        {(linha['CPF'] || linha.UsuarioCPF || linha.cpf) && (
+                          <span> (CPF: {linha['CPF'] || linha.UsuarioCPF || linha.cpf})</span>
+                        )}
+                        {(linha['Matérias'] || linha.Materias) && (
+                          <span className={styles.previewCurso}>
+                            {' '}→ Matérias: {linha['Matérias'] || linha.Materias}
+                          </span>
+                        )}
+                      </div>
+                    ))}
                     {dadosImportados.dados.length > 5 && (
                       <div className={styles.previewMais}>
                         + {dadosImportados.dados.length - 5} professores...
@@ -1006,7 +954,6 @@ export default function ProfessoresPage() {
                 onClick={() => {
                   setModalUploadAberto(false);
                   setDadosImportados(null);
-                  setCpfsExistentes(new Set());
                 }}
                 className={styles.botaoCancelar}
               >

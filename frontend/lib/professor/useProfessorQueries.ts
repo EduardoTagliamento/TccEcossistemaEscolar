@@ -12,10 +12,10 @@ export function useProfessores(escolaGUID: string | undefined, habilitado = true
   });
 }
 
-export function useAlocacoesProfessor(cpf: string | undefined, escolaGUID: string | undefined, habilitado = true) {
+export function useAlocacoesProfessor(usuarioGUID: string | undefined, escolaGUID: string | undefined, habilitado = true) {
   return useQuery({
-    queryKey: professorKeys.alocacoes(cpf ?? '', escolaGUID ?? ''),
-    queryFn: () => buscarAlocacoesProfessor(cpf as string, escolaGUID as string),
-    enabled: !!cpf && !!escolaGUID && habilitado,
+    queryKey: professorKeys.alocacoes(usuarioGUID ?? '', escolaGUID ?? ''),
+    queryFn: () => buscarAlocacoesProfessor(usuarioGUID as string, escolaGUID as string),
+    enabled: !!usuarioGUID && !!escolaGUID && habilitado,
   });
 }

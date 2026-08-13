@@ -23,7 +23,7 @@ import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
  * Padrão de roteamento:
  * 1. POST / - criar professores (individual ou massa)
  * 2. GET / - listar professores da escola (query: EscolaGUID)
- * 3. GET /:cpf/escolas/:escolaGUID/alocacoes - buscar alocações do professor
+ * 3. GET /:usuarioGUID/escolas/:escolaGUID/alocacoes - buscar alocações do professor
  * 4. POST /alocacao - criar alocação (individual ou massa)
  * 5. GET /alocacao - listar alocações
  * 6. GET /alocacao/:guid - buscar alocação
@@ -81,11 +81,11 @@ export function professorRouterFactory(): Router {
   );
 
   /**
-   * GET /api/professor/:cpf/escolas/:escolaGUID/alocacoes
+   * GET /api/professor/:usuarioGUID/escolas/:escolaGUID/alocacoes
    * Buscar alocações de um professor em uma escola
    */
   router.get(
-    "/:cpf/escolas/:escolaGUID/alocacoes",
+    "/:usuarioGUID/escolas/:escolaGUID/alocacoes",
     AuthMiddleware.authenticate,
     ProfessorMiddleware.validarBuscarAlocacoesProfessor,
     professorController.buscarAlocacoesProfessor

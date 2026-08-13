@@ -14,27 +14,41 @@ export function ehCorpoEmMassa(body: unknown): boolean {
   return !!body && typeof body === "object" && !Array.isArray(body) && Array.isArray((body as Record<string, unknown>).matriculas);
 }
 
+// usuario.UsuarioGUID é CHAR(12) (base64url), diferente do UUID v4 padrão
+// (ver backend/utils/helpers/guid.helper.ts) — não usa GUID_REGEX acima.
+const USUARIO_GUID_REGEX = /^[A-Za-z0-9_-]{12}$/;
+
 export const CriarMatriculaBodySchema = z.object({
-  matricula: z.object(
-    {
-      MatriculaGUID: z
-        .string()
-        .trim()
-        .min(1, "MatriculaGUID deve ter entre 1 e 36 caracteres")
-        .max(36, "MatriculaGUID deve ter entre 1 e 36 caracteres")
-        .optional()
-        .nullable(),
-      UsuarioCPF: z
-        .string({ message: "UsuarioCPF é obrigatório" })
-        .refine((v) => v.replace(/\D/g, "").length === 11, "UsuarioCPF deve ter 11 dígitos"),
-      TurmaGUID: z.string({ message: "TurmaGUID é obrigatório" }).regex(GUID_REGEX, "TurmaGUID deve ser um UUID válido"),
-      MatriculaDataEntrada: z
-        .string()
-        .refine((v) => !isNaN(new Date(v).getTime()), "MatriculaDataEntrada deve ser uma data válida")
-        .optional(),
-    },
-    { message: 'Campo "matricula" é obrigatório e deve ser um objeto' }
-  ),
+  matricula: z
+    .object(
+      {
+        MatriculaGUID: z
+          .string()
+          .trim()
+          .min(1, "MatriculaGUID deve ter entre 1 e 36 caracteres")
+          .max(36, "MatriculaGUID deve ter entre 1 e 36 caracteres")
+          .optional()
+          .nullable(),
+        // GUID (já resolvido pelo cliente via busca por nome) tem prioridade
+        // sobre CPF, que agora é opcional — ver
+        // docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md.
+        UsuarioGUID: z.string().regex(USUARIO_GUID_REGEX, "UsuarioGUID inválido").optional(),
+        UsuarioCPF: z
+          .string()
+          .refine((v) => v.replace(/\D/g, "").length === 11, "UsuarioCPF deve ter 11 dígitos")
+          .optional(),
+        TurmaGUID: z.string({ message: "TurmaGUID é obrigatório" }).regex(GUID_REGEX, "TurmaGUID deve ser um UUID válido"),
+        MatriculaDataEntrada: z
+          .string()
+          .refine((v) => !isNaN(new Date(v).getTime()), "MatriculaDataEntrada deve ser uma data válida")
+          .optional(),
+      },
+      { message: 'Campo "matricula" é obrigatório e deve ser um objeto' }
+    )
+    .refine((v) => !!v.UsuarioGUID || !!v.UsuarioCPF, {
+      message: "É necessário informar UsuarioGUID ou UsuarioCPF do aluno",
+      path: ["UsuarioGUID"],
+    }),
 });
 
 // Simplificação: "pelo menos um campo" checado via `!== undefined` uniforme

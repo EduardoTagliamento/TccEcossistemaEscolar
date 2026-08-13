@@ -141,7 +141,7 @@ export default function MateriasPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.titulo}>
-            <Icon name="book-open" size={26} /> Matérias
+            <span className={styles.tituloIcone}><Icon name="book-open" size={20} /></span> Matérias
           </h1>
           <p className={styles.subtitulo}>
             {modo === 'aluno' ? 'Suas matérias e o que o professor postou nelas' : 'Escolha a matéria pra ver as turmas'}

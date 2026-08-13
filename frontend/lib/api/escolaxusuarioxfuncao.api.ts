@@ -100,7 +100,8 @@ export async function atualizarVinculo(
 }
 
 export interface VinculoEmMassaItem {
-  CPF: string;
+  /** Opcional — Nome é o identificador de resolução quando CPF não vem preenchido. */
+  CPF?: string;
   Nome?: string;
   Email?: string;
 }

@@ -626,6 +626,9 @@ export default function ChatPage() {
     });
   }, [conversas, aba, buscaConversas]);
 
+  const nomeDoRemetente = (remetenteGUID: string): string =>
+    conversaAtiva?.Membros?.find((m) => m.UsuarioGUID === remetenteGUID)?.UsuarioNome || 'Membro';
+
   const tituloConversaAtiva = conversaAtiva
     ? conversaAtiva.ConversaTipo === 'Grupo'
       ? conversaAtiva.ConversaGrupoNome || 'Grupo'
@@ -830,7 +833,7 @@ export default function ChatPage() {
                             <div className={`${styles.bolhaLinha} ${mine ? styles.bolhaLinhaMinha : ''}`}>
                               <div className={`${styles.bolha} ${mine ? styles.bolhaMinha : styles.bolhaOutro} ${apagada ? styles.bolhaApagada : ''}`}>
                                 {conversaAtiva?.ConversaTipo === 'Grupo' && !mine && !apagada && (
-                                  <span className={styles.bolhaAutor}>{mensagem.MensagemRemetenteGUID}</span>
+                                  <span className={styles.bolhaAutor}>{nomeDoRemetente(mensagem.MensagemRemetenteGUID)}</span>
                                 )}
 
                                 {editandoEsta ? (

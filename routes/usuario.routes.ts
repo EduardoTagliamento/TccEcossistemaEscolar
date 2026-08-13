@@ -74,6 +74,14 @@ export default class UsuarioRoteador {
       this.#usuarioControle.buscarPorCPF
     );
 
+    // GET /api/usuario/busca-nome?nome= - Buscar usuários existentes por nome (parcial, até 10)
+    // (DEVE vir antes de "/:UsuarioGUID" pra não colidir com ele)
+    this.#router.get(
+      "/busca-nome",
+      AuthMiddleware.authenticate,
+      this.#usuarioControle.buscarPorNome
+    );
+
     // GET /api/usuario/:UsuarioGUID/escolas - Buscar escolas do usuário
     this.#router.get(
       "/:UsuarioGUID/escolas",

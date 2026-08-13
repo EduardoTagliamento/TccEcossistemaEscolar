@@ -141,6 +141,20 @@ export default class UsuarioService {
     return this.toDTO(usuario);
   };
 
+  /**
+   * Busca por nome (parcial, até 10 resultados) — substitui a busca por CPF
+   * nas telas de Gestão de Dados agora que CPF é opcional (ver
+   * docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md). Ao contrário de findByCPF, não
+   * lança 404: retorna lista vazia quando não há match, já que o objetivo
+   * aqui é alimentar um dropdown de candidatos (0, 1 ou N resultados são
+   * todos estados válidos pro chamador tratar).
+   */
+  buscarPorNome = async (nome: string): Promise<UsuarioDTO[]> => {
+    console.log("🟣 UsuarioService.buscarPorNome()");
+    const usuarios = await this.#usuarioDAO.searchByNome(nome);
+    return usuarios.map((usuario) => this.toDTO(usuario));
+  };
+
   updateUsuario = async (UsuarioGUID: string, jsonUsuario: Record<string, unknown>): Promise<UsuarioDTO> => {
     console.log("🟣 UsuarioService.updateUsuario()");
 
@@ -374,6 +388,74 @@ export default class UsuarioService {
    * @param enviarEmails - Se true, envia emails automaticamente
    * @returns BatchCreateResponse com resultados detalhados
    */
+  /**
+   * Resolve a pessoa por prioridade — GUID já resolvido pelo cliente (busca
+   * por nome na tela) > CPF exato > nome único > cria conta nova. Se o nome
+   * bater em mais de uma pessoa sem CPF pra desempatar, lança erro em vez
+   * de adivinhar (ver docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md — CPF virou
+   * opcional). Espelha ProfessorService#resolverOuCriarUsuario.
+   */
+  async #resolverOuCriarUsuario(
+    dados: Record<string, unknown>
+  ): Promise<{ usuario: Usuario; jaExistia: boolean; senhaTemporaria?: string }> {
+    const usuarioGUID = dados.UsuarioGUID as string | undefined;
+    const cpf = dados.UsuarioCPF as string | undefined;
+    const nome = this.normalizeNomeCompleto(dados);
+
+    if (usuarioGUID) {
+      const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+      if (!usuario) {
+        throw new Error('Usuário informado não encontrado');
+      }
+      return { usuario, jaExistia: true };
+    }
+
+    if (cpf) {
+      const usuarioPorCPF = await this.#usuarioDAO.findByCPF(cpf);
+      if (usuarioPorCPF) {
+        return { usuario: usuarioPorCPF, jaExistia: true };
+      }
+    } else if (nome) {
+      const candidatos = await this.#usuarioDAO.searchByNome(nome, 5);
+      const exatos = candidatos.filter((c) => c.UsuarioNome.trim().toLowerCase() === nome.trim().toLowerCase());
+      if (exatos.length === 1) {
+        return { usuario: exatos[0], jaExistia: true };
+      }
+      if (exatos.length > 1) {
+        throw new Error(
+          `Nome "${nome}" corresponde a ${exatos.length} usuários diferentes — cadastre pelo formulário individual pra escolher a pessoa certa.`
+        );
+      }
+    }
+
+    if (!nome) {
+      throw new Error('Nome é obrigatório');
+    }
+
+    // Ninguém encontrado — cria conta nova (CPF agora é opcional)
+    const senhaTemporaria = gerarSenhaTemporaria(nome);
+    const novoUsuario = new Usuario();
+    novoUsuario.UsuarioGUID = gerarGUIDUsuario();
+    novoUsuario.UsuarioCPF = cpf || null;
+    novoUsuario.UsuarioNome = nome;
+    novoUsuario.UsuarioEmail = (dados.UsuarioEmail as string | null) ?? null;
+    novoUsuario.UsuarioId = (dados.UsuarioId as string | null) ?? null;
+    novoUsuario.UsuarioTelefone = (dados.UsuarioTelefone as string | null) ?? null;
+    novoUsuario.UsuarioEmailVerificado = false;
+    novoUsuario.UsuarioStatus = 'Ativo';
+
+    if (dados.UsuarioDataNascimento) {
+      novoUsuario.UsuarioDataNascimento = new Date(dados.UsuarioDataNascimento as string);
+    }
+
+    const senhaHash = await bcrypt.hash(senhaTemporaria, this.SALT_ROUNDS);
+    novoUsuario.UsuarioSenha = senhaHash;
+
+    await this.#usuarioDAO.create(novoUsuario);
+
+    return { usuario: novoUsuario, jaExistia: false, senhaTemporaria };
+  }
+
   async criarUsuariosEmMassa(
     usuarios: Record<string, unknown>[],
     escolaNome: string,
@@ -388,90 +470,61 @@ export default class UsuarioService {
 
     for (const dados of usuarios) {
       try {
-        const cpf = dados.UsuarioCPF as string;
-
-        if (!cpf) {
+        if (!this.normalizeNomeCompleto(dados)) {
           resultados.push({
             item: dados,
             sucesso: false,
-            mensagem: 'CPF é obrigatório',
+            mensagem: 'Nome é obrigatório',
             tipo: 'erro'
           });
           erros++;
           continue;
         }
 
-        // Verificar se usuário já existe
-        const usuarioExistente = await this.#usuarioDAO.findByCPF(cpf);
+        const { usuario, jaExistia, senhaTemporaria } = await this.#resolverOuCriarUsuario(dados);
 
-        if (usuarioExistente) {
-          // Usuário já cadastrado
+        if (jaExistia) {
           resultados.push({
             item: dados,
             sucesso: true,
             mensagem: 'Usuário já cadastrado',
-            dados: this.toDTO(usuarioExistente),
+            dados: this.toDTO(usuario),
             tipo: 'existente'
           });
           existentes++;
 
           // Email de usuário existente (se fornecido email e envio habilitado)
-          if (enviarEmails && usuarioExistente.UsuarioEmail) {
+          if (enviarEmails && usuario.UsuarioEmail) {
             emailsParaEnviar.push({
               tipo: 'existente',
               dados: {
-                para: usuarioExistente.UsuarioEmail,
-                nomeAluno: usuarioExistente.UsuarioNome,
+                para: usuario.UsuarioEmail,
+                nomeAluno: usuario.UsuarioNome,
                 nomeEscola: escolaNome,
                 nomeTurma: (dados.TurmaNome as string) || 'Não especificada'
               }
             });
           }
         } else {
-          // Criar novo usuário
-          // Gerar senha temporária
-          const senhaTemporaria = gerarSenhaTemporaria(dados.UsuarioNome as string);
-
-          // Criar usuário
-          const novoUsuario = new Usuario();
-          novoUsuario.UsuarioGUID = gerarGUIDUsuario();
-          novoUsuario.UsuarioCPF = cpf;
-          novoUsuario.UsuarioNome = this.normalizeNomeCompleto(dados);
-          novoUsuario.UsuarioEmail = (dados.UsuarioEmail as string | null) ?? null;
-          novoUsuario.UsuarioId = (dados.UsuarioId as string | null) ?? null;
-          novoUsuario.UsuarioTelefone = (dados.UsuarioTelefone as string | null) ?? null;
-          novoUsuario.UsuarioEmailVerificado = false;
-          novoUsuario.UsuarioStatus = 'Ativo';
-
-          if (dados.UsuarioDataNascimento) {
-            novoUsuario.UsuarioDataNascimento = new Date(dados.UsuarioDataNascimento as string);
-          }
-
-          // Hash da senha
-          const senhaHash = await bcrypt.hash(senhaTemporaria, this.SALT_ROUNDS);
-          novoUsuario.UsuarioSenha = senhaHash;
-
-          await this.#usuarioDAO.create(novoUsuario);
-
           resultados.push({
             item: dados,
             sucesso: true,
             mensagem: 'Usuário criado com sucesso',
-            dados: this.toDTO(novoUsuario),
+            dados: this.toDTO(usuario),
             senhaTemporaria: senhaTemporaria,
             tipo: 'criado'
           });
           criados++;
 
           // Email de boas-vindas (se fornecido email e envio habilitado)
-          if (enviarEmails && novoUsuario.UsuarioEmail) {
+          if (enviarEmails && usuario.UsuarioEmail) {
             emailsParaEnviar.push({
               tipo: 'novo',
               dados: {
-                para: novoUsuario.UsuarioEmail,
-                nomeAluno: novoUsuario.UsuarioNome,
+                para: usuario.UsuarioEmail,
+                nomeAluno: usuario.UsuarioNome,
                 nomeEscola: escolaNome,
-                cpf: novoUsuario.UsuarioCPF,
+                cpf: usuario.UsuarioCPF,
                 senhaTemporaria: senhaTemporaria,
                 linkLogin: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : 'http://localhost:3000/login'
               }
