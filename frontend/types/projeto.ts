@@ -11,7 +11,7 @@ export type ConviteStatus = 'Pendente' | 'Aceito' | 'Recusado';
 export interface Projeto {
   ProjetoGUID: string;
   EscolaGUID: string;
-  UsuarioCPFCriador: string;
+  UsuarioGUIDCriador: string;
   NomeCriador?: string;
   ProjetoTitulo: string;
   ProjetoDescricao: string;
@@ -52,7 +52,7 @@ export interface ProjetoUpdateDTO {
 }
 
 export interface MembroGrupoProjeto {
-  UsuarioCPF: string;
+  UsuarioGUID: string;
   UsuarioNome: string;
   DataEntrada: string;
   IsLider: boolean;
@@ -61,7 +61,7 @@ export interface MembroGrupoProjeto {
 export interface GrupoProjeto {
   GrupoProjetoGUID: string;
   ProjetoGUID: string;
-  UsuarioCPFLider: string;
+  UsuarioGUIDLider: string;
   NomeLider: string;
   GrupoProjetoNome: string | null;
   GrupoProjetoProposta: string;
@@ -85,9 +85,9 @@ export interface ConviteGrupoProjeto {
   ConviteGUID: string;
   GrupoProjetoGUID: string;
   GrupoProjetoNome: string | null;
-  LiderCPF: string;
+  LiderGUID: string;
   LiderNome: string;
-  UsuarioCPFConvidado: string;
+  UsuarioGUIDConvidado: string;
   NomeConvidado: string;
   ConviteTipo: ConviteTipo;
   ConviteStatus: ConviteStatus;

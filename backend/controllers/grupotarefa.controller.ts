@@ -124,7 +124,7 @@ export default class GrupoTarefaController {
   };
 
   /**
-   * DELETE /api/grupotarefa/:grupoGUID/membros/:cpf
+   * DELETE /api/grupotarefa/:grupoGUID/membros/:membroGUID
    * Expulsar membro do grupo (apenas líder)
    */
   expulsarMembro = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -140,11 +140,11 @@ export default class GrupoTarefaController {
         return;
       }
 
-      const { grupoGUID, cpf } = req.params;
+      const { grupoGUID, membroGUID } = req.params;
 
       const resultado = await this.#grupoTarefaService.expulsarMembro(
         grupoGUID,
-        cpf,
+        membroGUID,
         usuarioGUID
       );
 
@@ -178,11 +178,11 @@ export default class GrupoTarefaController {
       }
 
       const { grupoGUID } = req.params;
-      const { NovoLiderCPF } = req.body;
+      const { NovoLiderGUID } = req.body;
 
       const resultado = await this.#grupoTarefaService.transferirLideranca(
         grupoGUID,
-        NovoLiderCPF,
+        NovoLiderGUID,
         usuarioGUID
       );
 

@@ -55,7 +55,7 @@
  *        propósito — não dá pra rodar --apply "sem querer".
  */
 
-import { gerarGUID } from "../../utils/helpers/guid.helper";
+import { gerarGUIDUsuario as gerarGUID } from "../../utils/helpers/guid.helper";
 import MysqlDatabase from "../MysqlDatabase";
 
 interface FkInfo {

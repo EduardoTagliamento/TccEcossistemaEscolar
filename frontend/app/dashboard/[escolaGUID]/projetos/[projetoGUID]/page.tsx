@@ -53,8 +53,8 @@ export default function ProjetoDetalhePage() {
   }, [projetoQuery.error]);
 
   const loading = projetoQuery.isLoading || gruposQuery.isLoading;
-  const meuGrupo = grupos.find((g) => g.Membros.some((m) => m.UsuarioCPF === usuario?.UsuarioCPF));
-  const souCriador = projeto?.UsuarioCPFCriador === usuario?.UsuarioCPF;
+  const meuGrupo = grupos.find((g) => g.Membros.some((m) => m.UsuarioGUID === usuario?.UsuarioGUID));
+  const souCriador = projeto?.UsuarioGUIDCriador === usuario?.UsuarioGUID;
   const projetoEncerrado = projeto?.ProjetoStatus === 'Encerrado';
   const prazoVencido = projeto ? new Date(projeto.ProjetoInscricaoPrazoData) < new Date() : false;
 
@@ -130,7 +130,7 @@ export default function ProjetoDetalhePage() {
             {projeto.ProjetoStatus}
           </span>
         </div>
-        <p className={styles.criador}>Criado por {projeto.NomeCriador || projeto.UsuarioCPFCriador}</p>
+        <p className={styles.criador}>Criado por {projeto.NomeCriador || projeto.UsuarioGUIDCriador}</p>
         <p className={styles.descricao}>{projeto.ProjetoDescricao}</p>
 
         {projeto.ProjetoMecanicaPontuacao && (
@@ -217,7 +217,7 @@ export default function ProjetoDetalhePage() {
         ) : (
           <div className={styles.gruposGrid}>
             {grupos.map((grupo) => {
-              const souMembro = grupo.Membros.some((m) => m.UsuarioCPF === usuario?.UsuarioCPF);
+              const souMembro = grupo.Membros.some((m) => m.UsuarioGUID === usuario?.UsuarioGUID);
               return (
                 <div key={grupo.GrupoProjetoGUID} className={styles.grupoCard}>
                   <Link href={`/dashboard/${escolaGUID}/projetos/${projetoGUID}/grupos/${grupo.GrupoProjetoGUID}`}>

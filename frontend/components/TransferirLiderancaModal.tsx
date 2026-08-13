@@ -10,7 +10,7 @@ interface TransferirLiderancaModalProps {
   onClose: () => void;
   grupoGUID: string;
   membros: MembroGrupo[];
-  liderAtualCPF: string;
+  liderAtualGUID: string;
   onTransferido: () => void;
 }
 
@@ -19,10 +19,10 @@ export default function TransferirLiderancaModal({
   onClose,
   grupoGUID,
   membros,
-  liderAtualCPF,
+  liderAtualGUID,
   onTransferido
 }: TransferirLiderancaModalProps) {
-  const [cpfSelecionado, setCpfSelecionado] = useState<string | null>(null);
+  const [guidSelecionado, setGuidSelecionado] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const transferirLiderancaMutation = useTransferirLideranca();
   const transferindo = transferirLiderancaMutation.isPending;
@@ -30,7 +30,7 @@ export default function TransferirLiderancaModal({
   const membrosDisponiveis = membros.filter(m => !m.IsLider);
 
   const confirmarTransferencia = async () => {
-    if (!cpfSelecionado) {
+    if (!guidSelecionado) {
       setErro('Selecione um membro para transferir a liderança');
       return;
     }
@@ -42,7 +42,7 @@ export default function TransferirLiderancaModal({
     setErro(null);
 
     try {
-      await transferirLiderancaMutation.mutateAsync({ grupoGUID, novoCPFLider: cpfSelecionado });
+      await transferirLiderancaMutation.mutateAsync({ grupoGUID, novoLiderGUID: guidSelecionado });
       alert('Liderança transferida com sucesso!');
       onTransferido();
       onClose();
@@ -77,15 +77,15 @@ export default function TransferirLiderancaModal({
               <div className={styles.membrosList}>
                 {membrosDisponiveis.map((membro) => (
                   <label
-                    key={membro.UsuarioCPF}
-                    className={`${styles.membroCard} ${cpfSelecionado === membro.UsuarioCPF ? styles.selected : ''}`}
+                    key={membro.UsuarioGUID}
+                    className={`${styles.membroCard} ${guidSelecionado === membro.UsuarioGUID ? styles.selected : ''}`}
                   >
                     <input
                       type="radio"
                       name="novoLider"
-                      value={membro.UsuarioCPF}
-                      checked={cpfSelecionado === membro.UsuarioCPF}
-                      onChange={(e) => setCpfSelecionado(e.target.value)}
+                      value={membro.UsuarioGUID}
+                      checked={guidSelecionado === membro.UsuarioGUID}
+                      onChange={(e) => setGuidSelecionado(e.target.value)}
                       className={styles.radio}
                     />
                     <div className={styles.membroInfo}>
@@ -116,7 +116,7 @@ export default function TransferirLiderancaModal({
           </button>
           <button
             onClick={confirmarTransferencia}
-            disabled={transferindo || !cpfSelecionado || membrosDisponiveis.length === 0}
+            disabled={transferindo || !guidSelecionado || membrosDisponiveis.length === 0}
             className={styles.btnConfirmar}
           >
             {transferindo ? 'Transferindo...' : 'Confirmar Transferência'}

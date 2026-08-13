@@ -38,6 +38,11 @@ export interface DisparoNotificacaoInput {
 }
 
 export default class NotificacaoService {
+  /** Delay entre envios de WhatsApp (anti-ban — ver seção 7 da spec de WhatsApp) */
+  static readonly #WHATSAPP_DELAY_MS = 1800;
+  /** Falhas seguidas de envio antes de abrir o circuito e parar de tentar */
+  static readonly #WHATSAPP_MAX_FALHAS_CONSECUTIVAS = 5;
+
   #notificacaoDAO: NotificacaoDAO;
   #tipoDAO: NotificacaoTipoDAO;
   #preferenciaDAO: UsuarioNotificacaoPreferenciaDAO;
@@ -46,6 +51,15 @@ export default class NotificacaoService {
   #emailChannel: NotificacaoEmailChannel;
   #whatsappChannel: NotificacaoWhatsappChannel;
   #catalogoPorSlug: Map<string, NotificacaoTipo> | null = null;
+  /**
+   * Fila serializada só pra WhatsApp — todo #despacharWhatsapp() encadeia
+   * aqui, garantindo que nunca duas mensagens saiam em paralelo (risco de
+   * ban num número novo, ver seção 7 da spec de WhatsApp). É por instância,
+   * e a instância é um singleton (getNotificacaoService()), então serializa
+   * de verdade em toda a aplicação, não só dentro de um disparar() só.
+   */
+  #whatsappFila: Promise<void> = Promise.resolve();
+  #whatsappFalhasConsecutivas = 0;
 
   constructor(
     notificacaoDAO: NotificacaoDAO,
@@ -136,8 +150,7 @@ export default class NotificacaoService {
       await this.#despacharEmail(notificacao);
     }
     if (preferencia.whatsapp) {
-      const usuario = await this.#usuarioDAO.findByGUID(notificacao.UsuarioGUID);
-      await this.#whatsappChannel.enviar(usuario?.UsuarioTelefone ?? null, notificacao);
+      await this.#despacharWhatsapp(notificacao);
     }
   }
 
@@ -159,6 +172,51 @@ export default class NotificacaoService {
       await this.#envioDAO.marcarEnviado(envioId, resultado.id);
     } catch (error: any) {
       await this.#envioDAO.marcarFalhou(envioId, error?.message ?? String(error));
+    }
+  }
+
+  /**
+   * Encadeia o envio na fila global de WhatsApp (nunca dois envios em
+   * paralelo) e nunca deixa uma falha quebrar a fila pra próxima notificação.
+   */
+  async #despacharWhatsapp(notificacao: Notificacao): Promise<void> {
+    const tarefa = this.#whatsappFila.then(() => this.#despacharWhatsappSerializado(notificacao));
+    this.#whatsappFila = tarefa.catch(() => {});
+    return tarefa;
+  }
+
+  async #despacharWhatsappSerializado(notificacao: Notificacao): Promise<void> {
+    const envioId = await this.#envioDAO.criarPendente(notificacao.NotificacaoGUID, "Whatsapp");
+    if (envioId === null) {
+      // Já existe um envio registrado pra essa notificação+canal (idempotência)
+      return;
+    }
+
+    const usuario = await this.#usuarioDAO.findByGUID(notificacao.UsuarioGUID);
+    if (!usuario?.UsuarioTelefone) {
+      await this.#envioDAO.marcarFalhou(envioId, "Usuário sem telefone cadastrado");
+      return;
+    }
+
+    if (this.#whatsappFalhasConsecutivas >= NotificacaoService.#WHATSAPP_MAX_FALHAS_CONSECUTIVAS) {
+      console.error(
+        `🔴 NotificacaoService.#despacharWhatsappSerializado() - circuito de WhatsApp aberto ` +
+          `(${this.#whatsappFalhasConsecutivas} falhas seguidas), envio pulado. Verifique a sessão da Evolution API.`
+      );
+      await this.#envioDAO.marcarFalhou(envioId, "Circuito de WhatsApp aberto (muitas falhas consecutivas) — envio pulado");
+      return;
+    }
+
+    try {
+      const resultado = await this.#whatsappChannel.enviar(usuario.UsuarioTelefone, notificacao);
+      await this.#envioDAO.marcarEnviado(envioId, resultado.id);
+      this.#whatsappFalhasConsecutivas = 0;
+    } catch (error: any) {
+      this.#whatsappFalhasConsecutivas++;
+      await this.#envioDAO.marcarFalhou(envioId, error?.message ?? String(error));
+    } finally {
+      // Anti-ban: nunca dispara o próximo WhatsApp da fila antes desse delay.
+      await new Promise((resolve) => setTimeout(resolve, NotificacaoService.#WHATSAPP_DELAY_MS));
     }
   }
 

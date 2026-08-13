@@ -317,7 +317,7 @@ export default class GrupoTarefaService {
    */
   async transferirLideranca(
     grupoGUID: string,
-    novoLiderCPF: string,
+    novoLiderGUID: string,
     liderAtualGUID: string
   ): Promise<{ mensagem: string }> {
     console.log('🟣 GrupoTarefaService.transferirLideranca()');
@@ -338,14 +338,6 @@ export default class GrupoTarefaService {
       if (grupo.UsuarioGUIDLider !== liderAtualGUID) {
         throw new ErrorResponse(403, 'Apenas o líder pode transferir a liderança');
       }
-
-      // O cliente identifica o novo líder por CPF (UX de "transferir por
-      // CPF") — resolver CPF -> GUID antes de qualquer operação.
-      const novoLider = await this.#usuarioDAO.findByCPF(novoLiderCPF);
-      if (!novoLider) {
-        throw new ErrorResponse(404, 'Usuário com este CPF não encontrado');
-      }
-      const novoLiderGUID = novoLider.UsuarioGUID;
 
       // 3. Validar se novo líder é membro do grupo
       const isMembroNaoLider = await this.#usuarioXGrupoDAO.isMembroNaoLider(novoLiderGUID, grupoGUID);
@@ -383,7 +375,7 @@ export default class GrupoTarefaService {
 
       await connection.commit();
 
-      this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', liderAtualGUID, `Liderança transferida para ${novoLiderCPF}`).catch((error) => {
+      this.#registrarAuditoriaGrupo(grupo.TurmaGUID, grupoGUID, 'Update', liderAtualGUID, `Liderança transferida para ${novoLiderGUID}`).catch((error) => {
         console.error('🔴 GrupoTarefaService.#registrarAuditoriaGrupo() falhou:', error);
       });
 

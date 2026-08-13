@@ -89,28 +89,28 @@ export async function sairGrupo(grupoGUID: string): Promise<void> {
   await tratarResposta(response);
 }
 
-export async function adicionarMembro(grupoGUID: string, usuarioCPF: string): Promise<void> {
+export async function adicionarMembro(grupoGUID: string, usuarioGUID: string): Promise<void> {
   const response = await fetch(`${API_URL}/grupoprojeto/${grupoGUID}/membros`, {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ UsuarioCPF: usuarioCPF })
+    body: JSON.stringify({ UsuarioGUID: usuarioGUID })
   });
   await tratarResposta(response);
 }
 
-export async function expulsarMembro(grupoGUID: string, cpf: string): Promise<void> {
-  const response = await fetch(`${API_URL}/grupoprojeto/${grupoGUID}/membros/${cpf}`, {
+export async function expulsarMembro(grupoGUID: string, membroGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/grupoprojeto/${grupoGUID}/membros/${membroGUID}`, {
     method: 'DELETE',
     headers: getHeaders()
   });
   await tratarResposta(response);
 }
 
-export async function transferirLideranca(grupoGUID: string, novoLiderCPF: string): Promise<void> {
+export async function transferirLideranca(grupoGUID: string, novoLiderGUID: string): Promise<void> {
   const response = await fetch(`${API_URL}/grupoprojeto/${grupoGUID}/transferir-lider`, {
     method: 'PATCH',
     headers: getHeaders(),
-    body: JSON.stringify({ NovoLiderCPF: novoLiderCPF })
+    body: JSON.stringify({ NovoLiderGUID: novoLiderGUID })
   });
   await tratarResposta(response);
 }

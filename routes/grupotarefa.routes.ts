@@ -7,7 +7,7 @@
  * - GET    /api/grupotarefa/:tarefaGUID                       - Listar grupos de uma tarefa
  * - GET    /api/grupotarefa/grupo/:grupoGUID                  - Buscar grupo específico
  * - PATCH  /api/grupotarefa/:grupoGUID/nome                   - Atualizar nome do grupo
- * - DELETE /api/grupotarefa/:grupoGUID/membros/:cpf           - Expulsar membro
+ * - DELETE /api/grupotarefa/:grupoGUID/membros/:membroGUID           - Expulsar membro
  * - PATCH  /api/grupotarefa/:grupoGUID/transferir-lider       - Transferir liderança
  */
 
@@ -106,12 +106,12 @@ export function grupoTarefaRoutes(): Router {
   );
 
   /**
-   * DELETE /api/grupotarefa/:grupoGUID/membros/:cpf
+   * DELETE /api/grupotarefa/:grupoGUID/membros/:membroGUID
    * Expulsar membro do grupo
    * Requer: Autenticação + Líder do grupo
    */
   router.delete(
-    '/:grupoGUID/membros/:cpf',
+    '/:grupoGUID/membros/:membroGUID',
     AuthMiddleware.authenticate,
     grupoTarefaMiddleware.validateGrupoAndMembroParams,
     grupoTarefaController.expulsarMembro

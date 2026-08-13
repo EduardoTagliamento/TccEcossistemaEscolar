@@ -11,7 +11,7 @@
  * - PATCH  /api/grupoprojeto/:grupoGUID/pontuacao        - Atribuir pontuação (só criador do projeto)
  * - POST   /api/grupoprojeto/:grupoGUID/entrar           - Entrar diretamente (só se Aberto)
  * - DELETE /api/grupoprojeto/:grupoGUID/sair             - Sair do próprio grupo
- * - DELETE /api/grupoprojeto/:grupoGUID/membros/:cpf     - Expulsar membro (líder ou criador do projeto)
+ * - DELETE /api/grupoprojeto/:grupoGUID/membros/:membroGUID - Expulsar membro (líder ou criador do projeto)
  * - POST   /api/grupoprojeto/:grupoGUID/membros          - Adicionar membro direto (só criador do projeto)
  * - PATCH  /api/grupoprojeto/:grupoGUID/transferir-lider - Transferir liderança (só líder)
  */
@@ -122,7 +122,7 @@ export function grupoProjetoRoutes(): Router {
   );
 
   router.delete(
-    '/:grupoGUID/membros/:cpf',
+    '/:grupoGUID/membros/:membroGUID',
     AuthMiddleware.authenticate,
     grupoProjetoMiddleware.validateGrupoAndMembroParams,
     grupoProjetoController.expulsarMembro

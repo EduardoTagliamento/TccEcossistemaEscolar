@@ -100,7 +100,7 @@ export default function SolicitarEntradaModal({
                         </p>
                         <div className={styles.membrosList}>
                           {grupo.Membros.slice(0, 3).map(m => (
-                            <span key={m.UsuarioCPF} className={styles.membroAvatar}>
+                            <span key={m.UsuarioGUID} className={styles.membroAvatar}>
                               {m.UsuarioNome.charAt(0)}
                             </span>
                           ))}

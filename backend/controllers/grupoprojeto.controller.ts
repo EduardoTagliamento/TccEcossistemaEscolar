@@ -167,8 +167,8 @@ export default class GrupoProjetoController {
         return;
       }
 
-      const { grupoGUID, cpf } = req.params;
-      const resultado = await this.#grupoProjetoService.expulsarMembro(grupoGUID, cpf, usuarioGUID);
+      const { grupoGUID, membroGUID } = req.params;
+      const resultado = await this.#grupoProjetoService.expulsarMembro(grupoGUID, membroGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -191,8 +191,8 @@ export default class GrupoProjetoController {
       }
 
       const { grupoGUID } = req.params;
-      const { UsuarioCPF } = req.body;
-      const resultado = await this.#grupoProjetoService.adicionarMembro(grupoGUID, UsuarioCPF, usuarioGUID);
+      const { UsuarioGUID } = req.body;
+      const resultado = await this.#grupoProjetoService.adicionarMembro(grupoGUID, UsuarioGUID, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {
@@ -211,8 +211,8 @@ export default class GrupoProjetoController {
       }
 
       const { grupoGUID } = req.params;
-      const { NovoLiderCPF } = req.body;
-      const resultado = await this.#grupoProjetoService.transferirLideranca(grupoGUID, NovoLiderCPF, usuarioGUID);
+      const { NovoLiderGUID } = req.body;
+      const resultado = await this.#grupoProjetoService.transferirLideranca(grupoGUID, NovoLiderGUID, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {
