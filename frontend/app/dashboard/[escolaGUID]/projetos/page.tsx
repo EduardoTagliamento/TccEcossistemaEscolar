@@ -12,6 +12,9 @@ import styles from './page.module.css';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 const FUNCOES_CRIACAO = [3, 6]; // Professor, Direção
 
+/** Cores decorativas do banner dos cards — sem campo de cor no modelo de Projeto, alterna por posição. */
+const PALETA_BANNER = ['#3F37C9', '#17C077', '#F5A623', '#12A063', '#5B54E8'];
+
 export default function ProjetosPage() {
   const params = useParams();
   const router = useRouter();
@@ -79,11 +82,14 @@ export default function ProjetosPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1><Icon name="award" size={22} /> Projetos</h1>
+        <div className={styles.headerTitulo}>
+          <h1><Icon name="award" size={22} /> Projetos</h1>
+          <p className={styles.headerSubtitulo}>Feira técnica, hackathons e desafios da escola</p>
+        </div>
         <div className={styles.headerActions}>
           {podeCriar && (
             <Link href={`/dashboard/${escolaGUID}/crud-projeto`} className={styles.criarBtn}>
-              + Criar Projeto
+              + Novo Projeto
             </Link>
           )}
         </div>
@@ -97,9 +103,12 @@ export default function ProjetosPage() {
         </div>
       ) : (
         <div className={styles.projetosGrid}>
-          {projetos.map((projeto) => {
-            const prazo = new Date(projeto.ProjetoInscricaoPrazoData);
+          {projetos.map((projeto, index) => {
+            const temEntrega = !!projeto.ProjetoEntregaPrazoData;
+            const prazo = new Date(temEntrega ? projeto.ProjetoEntregaPrazoData! : projeto.ProjetoInscricaoPrazoData);
+            const prazoLabel = temEntrega ? 'Entrega' : 'Inscrição até';
             const encerrado = projeto.ProjetoStatus === 'Encerrado';
+            const corBanner = PALETA_BANNER[index % PALETA_BANNER.length];
 
             return (
               <Link
@@ -107,27 +116,25 @@ export default function ProjetosPage() {
                 href={`/dashboard/${escolaGUID}/projetos/${projeto.ProjetoGUID}`}
                 className={`${styles.projetoCard} ${encerrado ? styles.cardEncerrado : ''}`}
               >
-                <div className={styles.cardHeader}>
-                  <h3>{projeto.ProjetoTitulo}</h3>
-                  <span className={`${styles.statusBadge} ${encerrado ? styles.statusEncerrado : styles.statusAberto}`}>
+                <div className={styles.cardBanner} style={{ backgroundColor: corBanner }}>
+                  <span className={`${styles.statusBadge} ${encerrado ? styles.statusEncerrado : ''}`}>
                     {projeto.ProjetoStatus}
                   </span>
                 </div>
-                <p className={styles.descricao}>
-                  {projeto.ProjetoDescricao.substring(0, 150)}
-                  {projeto.ProjetoDescricao.length > 150 ? '...' : ''}
-                </p>
-                <div className={styles.cardFooter}>
-                  <span className={styles.publico}>
-                    {projeto.ProjetoPublicoAlvo === 'Escola' ? (
-                      <><Icon name="grid" size={14} /> Escola inteira</>
-                    ) : (
-                      <><Icon name="users" size={14} /> Turmas específicas</>
-                    )}
-                  </span>
-                  <span className={styles.prazo}>
-                    <Icon name="calendar" size={14} /> Inscrições até {prazo.toLocaleDateString('pt-BR')}
-                  </span>
+                <div className={styles.cardCorpo}>
+                  <h3>{projeto.ProjetoTitulo}</h3>
+                  <p className={styles.descricao}>
+                    {projeto.ProjetoDescricao.substring(0, 150)}
+                    {projeto.ProjetoDescricao.length > 150 ? '...' : ''}
+                  </p>
+                  <div className={styles.cardFooter}>
+                    <span className={styles.publico}>
+                      <Icon name="users" size={14} /> {projeto.TotalGrupos ?? 0} {projeto.TotalGrupos === 1 ? 'grupo' : 'grupos'}
+                    </span>
+                    <span className={styles.prazo}>
+                      <Icon name="calendar" size={14} /> {prazoLabel} {prazo.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                    </span>
+                  </div>
                 </div>
               </Link>
             );

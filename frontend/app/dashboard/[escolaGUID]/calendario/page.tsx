@@ -393,6 +393,16 @@ export default function CalendarioAlunoPage() {
     return tipo === 'prova' ? '#0F1D17' : '#FFFFFF';
   };
 
+  const obterIconeTipo = (tipo: AvisoCalendario['TipoAviso']): 'check-square' | 'award' | 'message-circle' | 'edit' => {
+    switch (tipo) {
+      case 'tarefa': return 'check-square';
+      case 'prova': return 'award';
+      case 'evento': return 'message-circle';
+      case 'anotacao': return 'edit';
+      default: return 'edit';
+    }
+  };
+
   const obterClasseBadgeTipo = (tipo: AvisoCalendario['TipoAviso']) => {
     switch (tipo) {
       case 'tarefa': return styles.badgeTarefa;
@@ -580,6 +590,7 @@ export default function CalendarioAlunoPage() {
                           style={obterEstiloFita(aviso)}
                           title={aviso.Titulo}
                         >
+                          <Icon name={obterIconeTipo(aviso.TipoAviso)} size={10} className={styles.avisoFitaIcone} />
                           <span className={styles.avisoTitulo}>{aviso.Titulo}</span>
                         </div>
                       ))}

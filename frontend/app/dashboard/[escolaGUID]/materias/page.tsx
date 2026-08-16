@@ -161,6 +161,7 @@ export default function MateriasPage() {
       </div>
 
       <div className={styles.filtro}>
+        <span className={styles.filtroIcone}><Icon name="search" size={16} /></span>
         <input
           className={styles.inputFiltro}
           placeholder="Buscar por matéria ou professor..."

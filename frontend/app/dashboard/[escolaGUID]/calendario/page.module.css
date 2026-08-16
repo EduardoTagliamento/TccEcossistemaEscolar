@@ -296,22 +296,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-6);
-  padding: var(--space-4) var(--space-6);
-  background: var(--surface-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-4);
+  padding: 0 var(--space-2);
 }
 
 .navButton {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  background-color: var(--white);
+  padding: 8px 14px;
+  background-color: transparent;
   color: var(--color-primary, var(--green-700));
-  border: 1.5px solid var(--color-primary, var(--green-500));
+  border: none;
   border-radius: var(--radius-pill);
   cursor: pointer;
   font-size: var(--text-sm);
@@ -475,13 +471,20 @@
 }
 
 .avisoFita {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 3px var(--space-2);
   border-radius: var(--radius-xs);
   font-size: var(--text-2xs);
   font-weight: var(--weight-semibold);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.avisoFitaIcone {
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .avisoTitulo {

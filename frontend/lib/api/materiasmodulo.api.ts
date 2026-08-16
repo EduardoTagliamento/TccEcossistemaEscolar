@@ -284,8 +284,9 @@ export interface TarefaPendenteAluno {
   TurmaNome: string;
 }
 
-export async function listarPendentesAluno(): Promise<TarefaPendenteAluno[]> {
-  const response = await fetch(`${API_URL}/tarefa/pendentes-aluno`, { headers: getHeaders() });
+export async function listarPendentesAluno(escolaGUID?: string): Promise<TarefaPendenteAluno[]> {
+  const query = escolaGUID ? `?EscolaGUID=${encodeURIComponent(escolaGUID)}` : '';
+  const response = await fetch(`${API_URL}/tarefa/pendentes-aluno${query}`, { headers: getHeaders() });
   const dados = await extrairDados(response, 'Erro ao listar pendentes');
   return dados.pendentes;
 }
@@ -301,8 +302,9 @@ export interface TarefaPendenteAvaliacao {
   AlunoNome: string;
 }
 
-export async function listarPendentesAvaliacaoProfessor(): Promise<TarefaPendenteAvaliacao[]> {
-  const response = await fetch(`${API_URL}/tarefa/pendentes-avaliacao-professor`, { headers: getHeaders() });
+export async function listarPendentesAvaliacaoProfessor(escolaGUID?: string): Promise<TarefaPendenteAvaliacao[]> {
+  const query = escolaGUID ? `?EscolaGUID=${encodeURIComponent(escolaGUID)}` : '';
+  const response = await fetch(`${API_URL}/tarefa/pendentes-avaliacao-professor${query}`, { headers: getHeaders() });
   const dados = await extrairDados(response, 'Erro ao listar pendentes de avaliação');
   return dados.pendentes;
 }

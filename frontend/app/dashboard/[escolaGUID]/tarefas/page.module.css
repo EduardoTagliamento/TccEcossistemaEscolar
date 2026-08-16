@@ -119,19 +119,59 @@
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-8);
+  align-items: flex-start;
+  margin-bottom: var(--space-6);
+  gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
-.header h1 {
+.titulo {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-family: var(--font-display), 'Poppins', sans-serif;
   font-weight: 800;
   color: var(--ink-900);
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.tituloIcone {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: color-mix(in oklch, var(--color-primary, var(--green-500)) 14%, var(--white));
+  color: var(--color-primary, var(--green-500));
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.subtitulo {
+  font-size: 1rem;
+  color: var(--slate-500);
+  margin: 0.25rem 0 0;
+}
+
+.botaoNovo {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 0.4rem;
+  background: var(--color-primary, var(--green-500));
+  color: var(--white);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.7rem 1.25rem;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+  transition: filter 0.15s, transform 0.15s;
+  white-space: nowrap;
+}
+
+.botaoNovo:hover {
+  filter: brightness(0.94);
+  transform: translateY(-1px);
 }
 
 .backLink {
@@ -147,11 +187,73 @@
   background: var(--green-50);
 }
 
+/* Cards de estatística */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.statIcone {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.statIconeTotal {
+  background: color-mix(in oklch, var(--color-primary, var(--green-500)) 14%, var(--white));
+  color: var(--color-primary, var(--green-500));
+}
+
+.statIconeAVencer {
+  background: color-mix(in oklch, var(--gold-500) 22%, var(--white));
+  color: #9A6B00;
+}
+
+.statIconeGrupo {
+  background: color-mix(in oklch, var(--color-secondary, var(--green-700)) 14%, var(--white));
+  color: var(--color-secondary, var(--green-700));
+}
+
+.statIconeAtrasada {
+  background: var(--danger-50);
+  color: var(--danger-500);
+}
+
+.statNumero {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--ink-900);
+  line-height: 1.2;
+}
+
+.statLabel {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--slate-500);
+}
+
 /* Filtros */
 .filtros {
   display: flex;
   gap: var(--space-3);
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-6);
   flex-wrap: wrap;
 }
 
@@ -179,165 +281,139 @@
   border-color: var(--color-primary, var(--green-500));
 }
 
-/* Grupos de Tarefas */
-.grupoTarefas {
-  margin-bottom: var(--space-8);
-}
-
-.grupoTitulo {
-  font-size: 1.5rem;
-  margin-bottom: var(--space-4);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--ink-900);
-  font-family: var(--font-display), 'Poppins', sans-serif;
-  font-weight: 700;
-}
-
-.contador {
-  font-size: 1rem;
-  color: var(--slate-500);
-  font-weight: normal;
-}
-
-.tarefasGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: var(--space-4);
-}
-
-/* Card de Tarefa */
-.tarefaCard {
-  background: var(--white);
-  border: 1px solid var(--line-100);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  text-decoration: none;
-  color: var(--slate-600);
+/* Lista de tarefas (linhas com borda colorida à esquerda) */
+.listaTarefas {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
 }
 
-.tarefaCard:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-  border-color: var(--color-primary, var(--green-500));
-}
-
-.cardAtrasada {
-  border-left: 6px solid var(--danger-500);
-  background: linear-gradient(to right, var(--danger-50), var(--white));
-}
-
-/* Verde fixo intencional (não a cor da escola): contraste com o vermelho de
-   .cardAtrasada no mesmo sistema de status (atrasada/pendente/rascunho). */
-.cardPendente {
-  border-left: 6px solid var(--green-500);
-}
-
-.cardHeader {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-}
-
-.materiaIcone {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary, var(--green-500)), var(--color-secondary, var(--green-700)));
-  color: var(--white);
+.linhaTarefa {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: bold;
-  flex-shrink: 0;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-left: 4px solid var(--line-200);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s, transform 0.15s;
 }
 
-.cardInfo {
+.linhaTarefa:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.linhaPendente {
+  border-left-color: var(--green-500);
+}
+
+.linhaAtrasada {
+  border-left-color: var(--danger-500);
+}
+
+.linhaInfo {
   flex: 1;
+  min-width: 0;
 }
 
-.cardInfo h3 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
+.linhaTituloRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.linhaTitulo {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
   color: var(--ink-900);
 }
 
-.materia {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--slate-500);
-}
-
-.badgeCompartilhada {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--color-primary, var(--green-500));
-  color: var(--white);
-  padding: 0.25rem 0.75rem;
+.badgeStatus {
+  padding: 0.2rem 0.6rem;
   border-radius: var(--radius-pill);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
-.cardBody {
-  flex: 1;
+.badgeAVencer {
+  background: color-mix(in oklch, var(--gold-500) 28%, var(--white));
+  color: #7A5400;
 }
 
-.conteudo {
-  margin: 0;
-  font-size: 0.875rem;
-  color: var(--slate-500);
-  line-height: 1.5;
+.badgeAtrasada {
+  background: var(--danger-50);
+  color: var(--danger-500);
 }
 
-.cardFooter {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--line-100);
-}
-
-.prazo {
+.badgeGrupo {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.875rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--slate-500);
+  white-space: nowrap;
+}
+
+.linhaMateria {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
   color: var(--slate-500);
 }
 
-.statusBadge {
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.75rem;
+.linhaAcao {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.linhaPrazo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.3;
+}
+
+.prazoLabel {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slate-400);
+}
+
+.prazoData {
+  font-size: 0.8125rem;
   font-weight: 600;
+  color: var(--slate-600);
 }
 
-.statusAtrasada {
-  background: var(--danger-500);
+.botaoAbrir {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  background: var(--color-primary, var(--green-500));
   color: var(--white);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  transition: filter 0.15s;
 }
 
-.statusPendente {
-  background: var(--green-500);
-  color: var(--white);
-}
-
-.statusRascunho {
-  background: var(--gold-500);
-  color: var(--ink-900);
+.botaoAbrir:hover {
+  filter: brightness(0.94);
 }
 
 /* Estados */

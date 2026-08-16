@@ -15,7 +15,10 @@ export type IconName =
   | 'trash'
   | 'calendar'
   | 'clock'
-  | 'alert-triangle';
+  | 'alert-triangle'
+  | 'check-square'
+  | 'award'
+  | 'message-circle';
 
 export function Icon({ name, size = 18, className }: { name: IconName; size?: number; className?: string }) {
   const common: React.SVGProps<SVGSVGElement> = {
@@ -107,6 +110,26 @@ export function Icon({ name, size = 18, className }: { name: IconName; size?: nu
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
           <line x1="12" y1="9" x2="12" y2="13" />
           <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      );
+    case 'check-square':
+      return (
+        <svg {...common} aria-hidden="true">
+          <polyline points="9 11 12 14 22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+      );
+    case 'award':
+      return (
+        <svg {...common} aria-hidden="true">
+          <circle cx="12" cy="8" r="7" />
+          <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
+        </svg>
+      );
+    case 'message-circle':
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
         </svg>
       );
     default:

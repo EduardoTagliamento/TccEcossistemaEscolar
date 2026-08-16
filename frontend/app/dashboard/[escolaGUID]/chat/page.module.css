@@ -139,9 +139,8 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  padding: 1rem 1.5rem;
-  background: var(--white);
-  border-bottom: 1px solid var(--line-200);
+  padding: 1.5rem 1.5rem 1.25rem;
+  background: var(--surface-50);
   flex-wrap: wrap;
 }
 
@@ -161,8 +160,24 @@
 }
 
 .pageTitle {
-  font-size: 1.25rem;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.75rem;
   font-weight: 800;
+  color: var(--ink-900);
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.tituloIcone {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: color-mix(in oklch, var(--color-primary, var(--green-500)) 14%, var(--white));
+  color: var(--color-primary, var(--green-500));
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
 }
 
 .statusOffline {
@@ -181,7 +196,12 @@
   display: grid;
   grid-template-columns: 320px 1fr;
   min-height: 0;
-  height: calc(100vh - 65px);
+  height: calc(100vh - 130px);
+  margin: 0 1.5rem 1.5rem;
+  border: 1px solid var(--line-200);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 /* ---------- Sidebar (lista de conversas) ---------- */
@@ -231,7 +251,7 @@
   flex-shrink: 0;
   border: none;
   border-radius: var(--radius-md);
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
   color: #fff;
   display: inline-flex;
   align-items: center;
@@ -262,7 +282,7 @@
 }
 
 .abaAtiva {
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
   color: #fff;
 }
 
@@ -317,8 +337,8 @@
 }
 
 .avatarGrupo {
-  background: var(--green-100);
-  color: var(--green-700);
+  background: var(--color-primary, var(--green-500));
+  color: #fff;
 }
 
 .conversaInfo {
@@ -986,6 +1006,8 @@
 @media (max-width: 860px) {
   .chatShell {
     grid-template-columns: 1fr;
+    margin: 0 0.75rem 0.75rem;
+    height: calc(100vh - 110px);
   }
 
   .sidebar {
