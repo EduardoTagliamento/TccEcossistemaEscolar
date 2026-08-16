@@ -847,6 +847,21 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
             <p>{tarefaDetalhe.TarefaConteudo}</p>
             <p className={styles.dataProva}>Prazo: {new Date(tarefaDetalhe.TarefaPrazoData).toLocaleString('pt-BR')}</p>
 
+            {(tarefaDetalhe.AnexosDescricao || []).length > 0 && (
+              <div className={styles.anexosMaterialLista}>
+                {tarefaDetalhe.AnexosDescricao.map((anexo: any) => (
+                  <button
+                    key={anexo.AnexoGUID}
+                    type="button"
+                    className={styles.anexoEntregado}
+                    onClick={() => AnexoAPI.baixarAnexo(anexo.AnexoGUID, anexo.AnexoNomeOriginal || undefined)}
+                  >
+                    <Icon name="paperclip" size={14} /> {anexo.AnexoNomeOriginal || 'Arquivo'}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {!ehProfessor && tarefaDetalhe.TarefaCompartilhada && (
               <Link href={`/dashboard/${escolaGUID}/tarefas/${item.ItemGUID}`} className={styles.linkGrupo}>
                 <Icon name="users" size={16} /> Gerenciar grupo (convidar, transferir liderança...)

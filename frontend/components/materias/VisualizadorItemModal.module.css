@@ -634,6 +634,13 @@
   text-align: left;
 }
 
+.anexosMaterialLista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
 /* Tarefa "lista" (quiz estilo Forms) — visão do aluno */
 .listaQuestoesAluno {
   margin-top: 1rem;

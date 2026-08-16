@@ -319,16 +319,16 @@ export class TarefaAcademicaDAO {
    */
   buscarAnexosEntregaPorMatricula = async (
     tarefaMatriculaGUIDs: string[]
-  ): Promise<Map<string, Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; CreatedAt: Date | null }>>> => {
+  ): Promise<Map<string, Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; AnexoCaminho: string; CreatedAt: Date | null }>>> => {
     console.log("🟢 TarefaAcademicaDAO.buscarAnexosEntregaPorMatricula()");
 
     const unicos = Array.from(new Set(tarefaMatriculaGUIDs));
-    const mapa = new Map<string, Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; CreatedAt: Date | null }>>();
+    const mapa = new Map<string, Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; AnexoCaminho: string; CreatedAt: Date | null }>>();
     if (unicos.length === 0) return mapa;
 
     const placeholders = unicos.map(() => "?").join(", ");
     const SQL = `
-      SELECT rat.TarefaMatriculaGUID, a.AnexoGUID, a.AnexoNomeOriginal, a.AnexoTamanho, a.CreatedAt
+      SELECT rat.TarefaMatriculaGUID, a.AnexoGUID, a.AnexoNomeOriginal, a.AnexoTamanho, a.AnexoCaminho, a.CreatedAt
       FROM relacaoanexostarefa rat
       INNER JOIN anexo a ON a.AnexoGUID = rat.AnexoGUID
       WHERE rat.TarefaMatriculaGUID IN (${placeholders}) AND rat.AnexoTipo = 'entrega'
@@ -342,9 +342,49 @@ export class TarefaAcademicaDAO {
         AnexoGUID: row.AnexoGUID,
         AnexoNomeOriginal: row.AnexoNomeOriginal,
         AnexoTamanho: row.AnexoTamanho,
+        AnexoCaminho: row.AnexoCaminho,
         CreatedAt: row.CreatedAt ?? null,
       });
       mapa.set(row.TarefaMatriculaGUID, lista);
+    }
+    return mapa;
+  };
+
+  /**
+   * Anexos de material de apoio (AnexoTipo='descricao') por TarefaGUID, em
+   * lote — mesmo princípio de buscarAnexosEntregaPorMatricula, mas pro
+   * material que o professor anexa na própria tarefa (compartilhado pela
+   * turma inteira, por isso agrupado por TarefaGUID e não por matrícula).
+   */
+  buscarAnexosDescricaoPorTarefa = async (
+    tarefaGUIDs: string[]
+  ): Promise<Map<string, Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; AnexoCaminho: string; CreatedAt: Date | null }>>> => {
+    console.log("🟢 TarefaAcademicaDAO.buscarAnexosDescricaoPorTarefa()");
+
+    const unicos = Array.from(new Set(tarefaGUIDs));
+    const mapa = new Map<string, Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; AnexoCaminho: string; CreatedAt: Date | null }>>();
+    if (unicos.length === 0) return mapa;
+
+    const placeholders = unicos.map(() => "?").join(", ");
+    const SQL = `
+      SELECT rat.TarefaGUID, a.AnexoGUID, a.AnexoNomeOriginal, a.AnexoTamanho, a.AnexoCaminho, a.CreatedAt
+      FROM relacaoanexostarefa rat
+      INNER JOIN anexo a ON a.AnexoGUID = rat.AnexoGUID
+      WHERE rat.TarefaGUID IN (${placeholders}) AND rat.AnexoTipo = 'descricao'
+      ORDER BY a.CreatedAt ASC;
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(SQL, unicos);
+    for (const row of rows as any[]) {
+      const lista = mapa.get(row.TarefaGUID) ?? [];
+      lista.push({
+        AnexoGUID: row.AnexoGUID,
+        AnexoNomeOriginal: row.AnexoNomeOriginal,
+        AnexoTamanho: row.AnexoTamanho,
+        AnexoCaminho: row.AnexoCaminho,
+        CreatedAt: row.CreatedAt ?? null,
+      });
+      mapa.set(row.TarefaGUID, lista);
     }
     return mapa;
   };

@@ -152,6 +152,11 @@ function LoginPageContent() {
       return;
     }
 
+    if (senha.length < 6) {
+      setError('A senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+
     try {
       await login(identifier, senha);
 

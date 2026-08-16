@@ -376,8 +376,39 @@ export default class TarefaAcademicaControl {
   };
 
   /**
+   * POST /api/tarefa/:TarefaGUID/anexo-material
+   * Professor anexa material de apoio a uma tarefa já existente
+   *
+   * Body: { AnexoGUID: string }
+   */
+  adicionarAnexoMaterial = async (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.adicionarAnexoMaterial()");
+    try {
+      const { TarefaGUID } = request.params;
+      const { AnexoGUID } = request.body;
+      const usuarioGUID = request.user?.UsuarioGUID;
+
+      await this.#tarefaService.adicionarAnexoMaterial(TarefaGUID, AnexoGUID, usuarioGUID);
+
+      response.status(200).json({
+        success: true,
+        message: "Material de apoio anexado com sucesso",
+        data: null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * DELETE /api/tarefa/:TarefaGUID/anexo-entrega/:AnexoGUID
-   * Remover vínculo de um anexo da tarefa
+   * Remover vínculo de um anexo da tarefa (funciona tanto pra material de
+   * apoio quanto pra entrega — o service decide a regra de permissão
+   * conforme o AnexoTipo do vínculo).
    */
   removerAnexo = async (
     request: Request,

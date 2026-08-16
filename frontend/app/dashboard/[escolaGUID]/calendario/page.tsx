@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { usuarioForaDoBrasil } from '@/lib/timezone-utils';
@@ -17,6 +18,8 @@ interface AvisoCalendario {
   TipoAviso: 'tarefa' | 'prova' | 'evento' | 'anotacao';
   AvisoId: string;
   MatriculaGUID?: string | null;
+  MateriaGUID?: string | null;
+  TurmaGUID?: string | null;
   DataPrazo: string;
   Titulo: string;
   Descricao: string | null;
@@ -835,6 +838,17 @@ export default function CalendarioAlunoPage() {
                                 Entrega: {aviso.TipoEntrega === 'digital' ? 'Digital' : 'Física'}
                               </span>
                             )}
+                            {(aviso.TipoAviso === 'tarefa' || aviso.TipoAviso === 'prova') &&
+                              aviso.MateriaGUID &&
+                              aviso.TurmaGUID && (
+                                <Link
+                                  href={`/dashboard/${escolaGUID}/materias/${aviso.MateriaGUID}/turmas/${aviso.TurmaGUID}?abrirItem=${aviso.AvisoId}`}
+                                  className={styles.avisoLinkMateria}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Icon name="external-link" size={12} /> Ir para a matéria
+                                </Link>
+                              )}
                           </div>
                         </div>
                       )}

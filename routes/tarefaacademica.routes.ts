@@ -140,6 +140,15 @@ export default class TarefaAcademicaRoteador {
       this.#controle.removerAnexo
     );
 
+    // POST /api/tarefa/:TarefaGUID/anexo-material - Professor anexa material de apoio (tarefa já existente)
+    this.#router.post(
+      "/:TarefaGUID/anexo-material",
+      AuthMiddleware.authenticate,
+      this.#middleware.validateIdParam,
+      this.#middleware.validateAnexoEntregaBody,
+      this.#controle.adicionarAnexoMaterial
+    );
+
     // GET /api/tarefa/:TarefaGUID/anexos - Listar anexos (materiais de apoio)
     this.#router.get(
       "/:TarefaGUID/anexos",

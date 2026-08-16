@@ -173,6 +173,37 @@ export async function enviarAnexoEntrega(tarefaGUID: string, anexoGUID: string):
   }
 }
 
+// Professor anexa material de apoio a uma tarefa já existente (edição — na
+// criação, os GUIDs já enviados via POST /api/anexo vão direto no payload
+// como `anexosDescricao`)
+export async function adicionarAnexoMaterial(tarefaGUID: string, anexoGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}/anexo-material`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ AnexoGUID: anexoGUID }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || result.message || 'Erro ao anexar material de apoio');
+  }
+}
+
+// Remove o vínculo de um anexo (material de apoio ou entrega) com a tarefa
+export async function removerAnexoTarefa(tarefaGUID: string, anexoGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}/anexo-entrega/${anexoGUID}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || result.message || 'Erro ao remover anexo');
+  }
+}
+
 // Marcar tarefa como feita/desfeita para a matrícula do aluno autenticado
 export async function marcarComoFeito(tarefaGUID: string, matriculaGUID: string, tarefaFeito: boolean): Promise<void> {
   const response = await fetch(`${API_URL}/tarefa/${tarefaGUID}/marcar-feito`, {

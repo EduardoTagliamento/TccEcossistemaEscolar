@@ -28,15 +28,17 @@ export default class ProvaAgendadaTurmaDAO {
         ProvaAgendadaTurmaGUID,
         ProvaAgendadaGUID,
         TurmaGUID,
-        ProvaDataTurma
-      ) VALUES (?, ?, ?, ?)
+        ProvaDataTurma,
+        CategoriaGUID
+      ) VALUES (?, ?, ?, ?, ?)
     `;
 
     const params = [
       atribuicao.ProvaAgendadaTurmaGUID,
       atribuicao.ProvaAgendadaGUID,
       atribuicao.TurmaGUID,
-      atribuicao.ProvaDataTurma
+      atribuicao.ProvaDataTurma,
+      atribuicao.CategoriaGUID
     ];
 
     const pool = await this.db.getPool();
@@ -62,7 +64,8 @@ export default class ProvaAgendadaTurmaDAO {
         ProvaAgendadaTurmaGUID,
         ProvaAgendadaGUID,
         TurmaGUID,
-        ProvaDataTurma
+        ProvaDataTurma,
+        CategoriaGUID
       ) VALUES ?
     `;
 
@@ -70,7 +73,8 @@ export default class ProvaAgendadaTurmaDAO {
       a.ProvaAgendadaTurmaGUID,
       a.ProvaAgendadaGUID,
       a.TurmaGUID,
-      a.ProvaDataTurma
+      a.ProvaDataTurma,
+      a.CategoriaGUID
     ]);
 
     const pool = await this.db.getPool();
@@ -187,6 +191,7 @@ export default class ProvaAgendadaTurmaDAO {
     atribuicao.ProvaAgendadaGUID = row.ProvaAgendadaGUID;
     atribuicao.TurmaGUID = row.TurmaGUID;
     atribuicao.ProvaDataTurma = row.ProvaDataTurma ? new Date(row.ProvaDataTurma) : null;
+    atribuicao.CategoriaGUID = row.CategoriaGUID ?? null;
     atribuicao.CreatedAt = row.CreatedAt ? new Date(row.CreatedAt) : undefined;
     return atribuicao;
   }
