@@ -5,6 +5,10 @@ import Escola from "../entities/escola.model";
 import { EscolaDAO } from "../repositories/escola.repository";
 import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import { ExclusaoEscolaDAO } from "../repositories/exclusao-escola.repository";
+import ExclusaoEscola from "../entities/exclusao-escola.model";
+import { UsuarioDAO } from "../repositories/usuario.repository";
+import { ResendEmailService } from "../external/ResendEmailService";
 import { getAuditoriaService } from "./auditoria.service";
 import { getNotificacaoService } from "./notificacao.service";
 import { pool } from "../database/mysql";
@@ -35,14 +39,26 @@ export interface EscolaDTO {
 export default class EscolaService {
   #escolaDAO: EscolaDAO;
   #escolaxusuarioxfuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #exclusaoEscolaDAO: ExclusaoEscolaDAO;
+  #usuarioDAO: UsuarioDAO;
+  #emailService: ResendEmailService;
+
+  private readonly EXCLUSAO_CODIGO_LENGTH = 6;
+  private readonly EXCLUSAO_EXPIRATION_MINUTES = 15;
+  private readonly EXCLUSAO_MAX_ATTEMPTS_PER_HOUR = 3;
 
   constructor(
     escolaDAODependency: EscolaDAO,
-    escolaxusuarioxfuncaoDAODependency: EscolaxUsuarioxFuncaoDAO
+    escolaxusuarioxfuncaoDAODependency: EscolaxUsuarioxFuncaoDAO,
+    exclusaoEscolaDAODependency: ExclusaoEscolaDAO,
+    usuarioDAODependency: UsuarioDAO
   ) {
     console.log("⬆️  EscolaService.constructor()");
     this.#escolaDAO = escolaDAODependency;
     this.#escolaxusuarioxfuncaoDAO = escolaxusuarioxfuncaoDAODependency;
+    this.#exclusaoEscolaDAO = exclusaoEscolaDAODependency;
+    this.#usuarioDAO = usuarioDAODependency;
+    this.#emailService = ResendEmailService.getInstance();
   }
 
   createEscola = async (
@@ -250,6 +266,31 @@ export default class EscolaService {
     return this.toDTO(escola);
   };
 
+  /**
+   * Exclusão definitiva por inatividade (30 dias desde confirmarExclusao,
+   * sem reativação) — disparada pelo CleanupScheduler (job diário), não por
+   * uma requisição de usuário. Sem checagem de permissão de Direção (não
+   * tem usuário logado nesse fluxo) — a autorização já aconteceu quando a
+   * exclusão foi confirmada com o código por email; isso só executa depois
+   * que o prazo de reversão passou.
+   */
+  excluirDefinitivamentePorInatividade = async (EscolaGUID: string): Promise<boolean> => {
+    console.log("🟣 EscolaService.excluirDefinitivamentePorInatividade()");
+
+    await this.#escolaxusuarioxfuncaoDAO.deleteByEscolaGUID(EscolaGUID);
+    const deletado = await this.#escolaDAO.delete(EscolaGUID);
+
+    // Sem registro em `registroauditoria` aqui — a coluna do ator
+    // (`UsuarioGUIDAtor`) tem FK pra `usuario`, e não existe um usuário
+    // "SYSTEM" real pra apontar (o insert quebraria a FK). O log do
+    // scheduler abaixo já deixa rastro durável (logs do Railway).
+    if (deletado) {
+      console.log(`[SCHEDULER] 🗑️ Escola ${EscolaGUID} excluída definitivamente (30 dias inativa sem reativação)`);
+    }
+
+    return deletado;
+  };
+
   deleteEscola = async (EscolaGUID: string, usuarioGUIDAtor?: string): Promise<boolean> => {
     console.log("🟣 EscolaService.deleteEscola()");
 
@@ -271,6 +312,113 @@ export default class EscolaService {
 
     return deletado;
   };
+
+  /**
+   * Solicita a exclusão da escola — envia um código de 6 dígitos pro email
+   * do próprio usuário que está pedindo (não pra todos os Direção da
+   * escola). Só desativa de fato em confirmarExclusao(), depois do código
+   * validado. Mesmo padrão de VerificacaoEmailService.solicitarVerificacao.
+   */
+  solicitarExclusao = async (EscolaGUID: string, usuarioGUIDAtor?: string): Promise<{ message: string }> => {
+    console.log("🟣 EscolaService.solicitarExclusao()");
+
+    await this.validarPermissaoDirecao(usuarioGUIDAtor, EscolaGUID);
+
+    const escola = await this.#escolaDAO.findById(EscolaGUID);
+    if (!escola) {
+      throw new ErrorResponse(404, "Escola não encontrada", {
+        message: `Não existe escola com id ${EscolaGUID}`,
+      });
+    }
+
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUIDAtor!);
+    if (!usuario || !usuario.UsuarioEmail) {
+      throw new ErrorResponse(400, "Email não cadastrado", {
+        message: "Você precisa ter um email cadastrado na sua conta para excluir a escola.",
+      });
+    }
+
+    const tentativasRecentes = await this.#exclusaoEscolaDAO.countRecentAttempts(EscolaGUID, 1);
+    if (tentativasRecentes >= this.EXCLUSAO_MAX_ATTEMPTS_PER_HOUR) {
+      throw new ErrorResponse(429, "Muitas tentativas", {
+        message: `Você excedeu o limite de ${this.EXCLUSAO_MAX_ATTEMPTS_PER_HOUR} solicitações por hora. Tente novamente mais tarde.`,
+      });
+    }
+
+    await this.#exclusaoEscolaDAO.invalidateOldCodes(EscolaGUID);
+
+    const codigo = this.gerarCodigoExclusao();
+
+    const exclusao = new ExclusaoEscola();
+    exclusao.EscolaGUID = EscolaGUID;
+    exclusao.UsuarioGUIDSolicitante = usuarioGUIDAtor!;
+    exclusao.ExclusaoCodigo = codigo;
+    exclusao.ExclusaoExpiresAt = this.calcularExpiracaoExclusao();
+
+    await this.#exclusaoEscolaDAO.create(exclusao);
+
+    try {
+      await this.#emailService.sendSchoolDeletionCode(
+        usuario.UsuarioEmail,
+        usuario.UsuarioNome,
+        escola.EscolaNome ?? "sua escola",
+        codigo
+      );
+    } catch (error: any) {
+      console.error("❌ EscolaService.solicitarExclusao(): falha ao enviar email:", error?.message ?? error);
+      throw new ErrorResponse(500, "Erro ao enviar email", {
+        message: "Não foi possível enviar o código de confirmação. Tente novamente mais tarde.",
+      });
+    }
+
+    return { message: `Código de confirmação enviado para ${usuario.UsuarioEmail}` };
+  };
+
+  /**
+   * Confirma a exclusão com o código recebido por email — desativa a escola
+   * (EscolaStatus='Inativa' + EscolaInativadaEm=NOW()). Exclusão definitiva
+   * só acontece depois de 30 dias inativa, via job diário (CleanupScheduler).
+   */
+  confirmarExclusao = async (EscolaGUID: string, codigo: string, usuarioGUIDAtor?: string): Promise<{ message: string }> => {
+    console.log("🟣 EscolaService.confirmarExclusao()");
+
+    await this.validarPermissaoDirecao(usuarioGUIDAtor, EscolaGUID);
+
+    const exclusao = await this.#exclusaoEscolaDAO.findValidCode(EscolaGUID, usuarioGUIDAtor!, codigo);
+    if (!exclusao) {
+      throw new ErrorResponse(400, "Código inválido", {
+        message: "O código informado é inválido, já foi usado ou expirou.",
+      });
+    }
+
+    await this.#exclusaoEscolaDAO.markAsUsed(exclusao.ExclusaoId!);
+    await this.#escolaDAO.marcarInativa(EscolaGUID);
+
+    void getAuditoriaService().registrar({
+      EscolaGUID,
+      UsuarioGUIDAtor: usuarioGUIDAtor!,
+      AcaoTipo: "Delete",
+      EntidadeTipo: "escola",
+      EntidadeGUID: EscolaGUID,
+      EntidadeDescricao: "Escola desativada (exclusão solicitada) — exclusão definitiva em 30 dias se não reativada",
+      CategoriaAuditoriaId: 2, // Operacional
+    });
+
+    return { message: "Escola desativada. Se não for reativada em 30 dias, os dados serão excluídos definitivamente." };
+  };
+
+  private gerarCodigoExclusao(): string {
+    const min = Math.pow(10, this.EXCLUSAO_CODIGO_LENGTH - 1);
+    const max = Math.pow(10, this.EXCLUSAO_CODIGO_LENGTH) - 1;
+    const codigo = Math.floor(Math.random() * (max - min + 1)) + min;
+    return codigo.toString();
+  }
+
+  private calcularExpiracaoExclusao(): Date {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + this.EXCLUSAO_EXPIRATION_MINUTES);
+    return now;
+  }
 
   /**
    * Elege um Coordenação ativo da escola para assumir a Direção — troca

@@ -99,6 +99,39 @@ export default class EscolaControl {
     }
   };
 
+  solicitarExclusao = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("🔵 EscolaControl.solicitarExclusao()");
+    try {
+      const { EscolaGUID } = request.params;
+      const usuarioGUIDAtor = request.user?.UsuarioGUID;
+      const resultado = await this.#escolaService.solicitarExclusao(EscolaGUID, usuarioGUIDAtor);
+
+      return response.status(200).json({
+        success: true,
+        message: resultado.message,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  };
+
+  confirmarExclusao = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("🔵 EscolaControl.confirmarExclusao()");
+    try {
+      const { EscolaGUID } = request.params;
+      const { Codigo } = request.body;
+      const usuarioGUIDAtor = request.user?.UsuarioGUID;
+      const resultado = await this.#escolaService.confirmarExclusao(EscolaGUID, Codigo, usuarioGUIDAtor);
+
+      return response.status(200).json({
+        success: true,
+        message: resultado.message,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  };
+
   transferirDirecao = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 EscolaControl.transferirDirecao()");
     try {

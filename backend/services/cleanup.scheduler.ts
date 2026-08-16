@@ -12,11 +12,19 @@ import { ConversaDAO } from "../repositories/conversa.repository";
 import { ConversaGrupoDAO } from "../repositories/conversa-grupo.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
+import EscolaService from "./escola.service";
+import { EscolaDAO } from "../repositories/escola.repository";
+import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import { ExclusaoEscolaDAO } from "../repositories/exclusao-escola.repository";
 import MysqlDatabase from "../database/MysqlDatabase";
+
+const DIAS_ATE_EXCLUSAO_DEFINITIVA = 30;
 
 export class CleanupScheduler {
     #tasks: cron.ScheduledTask[] = [];
     #conversaGrupoService: ConversaGrupoService;
+    #escolaDAO: EscolaDAO;
+    #escolaService: EscolaService;
 
     constructor() {
         const db = new MysqlDatabase();
@@ -24,6 +32,13 @@ export class CleanupScheduler {
             new ConversaDAO(db),
             new ConversaGrupoDAO(db),
             new MatriculaDAO(db),
+            new UsuarioDAO(db)
+        );
+        this.#escolaDAO = new EscolaDAO(db);
+        this.#escolaService = new EscolaService(
+            this.#escolaDAO,
+            new EscolaxUsuarioxFuncaoDAO(db),
+            new ExclusaoEscolaDAO(db),
             new UsuarioDAO(db)
         );
     }
@@ -39,6 +54,9 @@ export class CleanupScheduler {
 
         // Encerrar grupos de tarefa com prazo expirado às 00:05
         this.#scheduleExpiredTaskGroupsCleanup();
+
+        // Excluir definitivamente escolas inativas há 30+ dias às 4h
+        this.#scheduleEscolaExclusaoDefinitiva();
 
         console.log(`[SCHEDULER] ✅ ${this.#tasks.length} agendamentos iniciados com sucesso.`);
     }
@@ -115,6 +133,33 @@ export class CleanupScheduler {
         );
         this.#tasks.push(task);
         console.log("[SCHEDULER] ✓ Encerramento de grupos de tarefa: Diariamente às 00:05 (GMT-3)");
+    }
+
+    /**
+     * Exclui definitivamente escolas desativadas (EscolaStatus='Inativa')
+     * há mais de 30 dias sem reativação — ver EscolaService.confirmarExclusao
+     * (o que marca EscolaInativadaEm) e excluirDefinitivamentePorInatividade
+     * (o que efetivamente apaga). Execução: todos os dias às 4h da manhã.
+     */
+    #scheduleEscolaExclusaoDefinitiva(): void {
+        const task = cron.schedule(
+            "0 4 * * *",
+            async () => {
+                console.log("\n[SCHEDULER] 🏫 Verificando escolas inativas há 30+ dias...");
+                try {
+                    const elegiveis = await this.#escolaDAO.findElegiveisParaExclusaoDefinitiva(DIAS_ATE_EXCLUSAO_DEFINITIVA);
+                    for (const escolaGUID of elegiveis) {
+                        await this.#escolaService.excluirDefinitivamentePorInatividade(escolaGUID);
+                    }
+                    console.log(`[SCHEDULER] ✅ ${elegiveis.length} escola(s) excluída(s) definitivamente\n`);
+                } catch (error) {
+                    console.error("[SCHEDULER] ❌ Erro na exclusão definitiva de escolas:", error);
+                }
+            },
+            { scheduled: true, timezone: "America/Sao_Paulo" }
+        );
+        this.#tasks.push(task);
+        console.log("[SCHEDULER] ✓ Exclusão definitiva de escolas inativas: Diariamente às 4h (GMT-3)");
     }
 
     /**

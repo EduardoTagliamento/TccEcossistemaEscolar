@@ -105,6 +105,40 @@ export class EscolaDAO {
     return (resultado as { affectedRows: number }).affectedRows > 0;
   };
 
+  /**
+   * Desativa a escola (soft-delete) e marca o instante da inativação —
+   * usado pelo relógio de 30 dias que decide quando o CleanupScheduler pode
+   * fazer a exclusão definitiva (ver findElegiveisParaExclusaoDefinitiva).
+   */
+  marcarInativa = async (EscolaGUID: string): Promise<boolean> => {
+    console.log("🟢 EscolaDAO.marcarInativa()");
+
+    const SQL = `UPDATE escola SET EscolaStatus = 'Inativa', EscolaInativadaEm = NOW() WHERE EscolaGUID = ?;`;
+    const pool = await this.#database.getPool();
+    const [resultado] = await pool.execute(SQL, [EscolaGUID]);
+
+    return (resultado as { affectedRows: number }).affectedRows > 0;
+  };
+
+  /**
+   * Escolas inativas há mais de `diasInatividade` dias — candidatas à
+   * exclusão definitiva pelo job diário (CleanupScheduler).
+   */
+  findElegiveisParaExclusaoDefinitiva = async (diasInatividade: number): Promise<string[]> => {
+    console.log("🟢 EscolaDAO.findElegiveisParaExclusaoDefinitiva()");
+
+    const SQL = `
+      SELECT EscolaGUID FROM escola
+      WHERE EscolaStatus = 'Inativa'
+        AND EscolaInativadaEm IS NOT NULL
+        AND EscolaInativadaEm < DATE_SUB(NOW(), INTERVAL ? DAY)
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL, [diasInatividade]);
+
+    return (rows as { EscolaGUID: string }[]).map((r) => r.EscolaGUID);
+  };
+
   findAll = async (nome?: string): Promise<Escola[]> => {
     console.log("🟢 EscolaDAO.findAll()");
 

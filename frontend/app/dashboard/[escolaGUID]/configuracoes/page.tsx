@@ -59,6 +59,14 @@ export default function ConfiguracoesEscolaPage() {
   const [salvandoIdentidade, setSalvandoIdentidade] = useState(false);
   const [erroIdentidade, setErroIdentidade] = useState('');
 
+  // ===== Seção "Zona de Perigo" — exclusão da escola (apenas Direção) =====
+  const [etapaExclusao, setEtapaExclusao] = useState<'inicial' | 'codigo-enviado'>('inicial');
+  const [codigoExclusao, setCodigoExclusao] = useState('');
+  const [enviandoCodigoExclusao, setEnviandoCodigoExclusao] = useState(false);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState('');
+  const [mensagemExclusao, setMensagemExclusao] = useState('');
+
   const [minutosPorAula, setMinutosPorAula] = useState(50);
   const [diasSemana, setDiasSemana] = useState<DiaSemana[]>(['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta']);
   const [periodoManhaInicio, setPeriodoManhaInicio] = useState('07:00');
@@ -226,6 +234,45 @@ export default function ConfiguracoesEscolaPage() {
     } finally {
       setSalvandoIdentidade(false);
     }
+  };
+
+  const handleSolicitarExclusao = async () => {
+    try {
+      setEnviandoCodigoExclusao(true);
+      setErroExclusao('');
+      const resultado = await EscolaAPI.solicitarExclusaoEscola(escolaGUID);
+      setMensagemExclusao(resultado.message);
+      setEtapaExclusao('codigo-enviado');
+    } catch (err: any) {
+      setErroExclusao(err.message || 'Erro ao solicitar exclusão da escola');
+    } finally {
+      setEnviandoCodigoExclusao(false);
+    }
+  };
+
+  const handleConfirmarExclusao = async () => {
+    if (!codigoExclusao.trim()) {
+      setErroExclusao('Informe o código recebido por email.');
+      return;
+    }
+    try {
+      setConfirmandoExclusao(true);
+      setErroExclusao('');
+      const resultado = await EscolaAPI.confirmarExclusaoEscola(escolaGUID, codigoExclusao.trim());
+      alert(resultado.message);
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setErroExclusao(err.message || 'Erro ao confirmar exclusão da escola');
+    } finally {
+      setConfirmandoExclusao(false);
+    }
+  };
+
+  const cancelarExclusao = () => {
+    setEtapaExclusao('inicial');
+    setCodigoExclusao('');
+    setErroExclusao('');
+    setMensagemExclusao('');
   };
 
   const carregarConfiguracao = async () => {
@@ -700,6 +747,95 @@ export default function ConfiguracoesEscolaPage() {
           {salvando ? 'Salvando...' : 'Salvar Configurações'}
         </button>
       </div>
+
+      {isDirecao && (
+        <div className={styles.secao} style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 8 }}>
+          <div className={styles.secaoTituloLinha}>
+            <h2 className={styles.secaoTitulo} style={{ color: '#DC2626' }}>⚠️ Zona de Perigo</h2>
+            <span className={styles.secaoNota}>Visível apenas para a Direção</span>
+          </div>
+
+          <p style={{ color: '#7F1D1D', fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
+            Excluir a escola a desativa imediatamente — ninguém mais consegue acessá-la. Os dados ficam
+            preservados por 30 dias (dá pra reverter entrando em contato com o suporte); depois disso são
+            excluídos definitivamente e não tem mais como recuperar.
+          </p>
+
+          {erroExclusao && <div className={styles.erro}>{erroExclusao}</div>}
+
+          {etapaExclusao === 'inicial' ? (
+            <button
+              type="button"
+              onClick={handleSolicitarExclusao}
+              disabled={enviandoCodigoExclusao}
+              style={{
+                padding: '10px 20px',
+                background: '#DC2626',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                cursor: enviandoCodigoExclusao ? 'default' : 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              {enviandoCodigoExclusao ? 'Enviando código...' : 'Excluir esta escola'}
+            </button>
+          ) : (
+            <div>
+              {mensagemExclusao && (
+                <p style={{ color: '#166534', fontSize: 14, marginBottom: 12 }}>✅ {mensagemExclusao}</p>
+              )}
+              <div className={styles.campoContainer}>
+                <label className={styles.label}>Código de confirmação (recebido por email)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  className={styles.input}
+                  style={{ maxWidth: 160, letterSpacing: 4, textAlign: 'center', fontSize: 20 }}
+                  value={codigoExclusao}
+                  onChange={(e) => setCodigoExclusao(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  disabled={confirmandoExclusao}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={handleConfirmarExclusao}
+                  disabled={confirmandoExclusao}
+                  style={{
+                    padding: '10px 20px',
+                    background: '#DC2626',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: confirmandoExclusao ? 'default' : 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  {confirmandoExclusao ? 'Confirmando...' : 'Confirmar exclusão'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelarExclusao}
+                  disabled={confirmandoExclusao}
+                  style={{
+                    padding: '10px 20px',
+                    background: '#fff',
+                    color: '#374151',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

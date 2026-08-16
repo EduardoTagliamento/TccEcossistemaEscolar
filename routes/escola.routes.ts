@@ -5,6 +5,8 @@ import EscolaMiddleware from "../backend/middlewares/escola.middleware";
 import EscolaService from "../backend/services/escola.service";
 import { EscolaDAO } from "../backend/repositories/escola.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { ExclusaoEscolaDAO } from "../backend/repositories/exclusao-escola.repository";
+import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class EscolaRoteador {
@@ -44,6 +46,24 @@ export default class EscolaRoteador {
       this.#escolaControle.destroy
     );
 
+    // POST /api/escola/:EscolaGUID/solicitar-exclusao — envia código de 6
+    // dígitos pro email de quem está pedindo (só Direção da escola).
+    this.#router.post(
+      "/:EscolaGUID/solicitar-exclusao",
+      AuthMiddleware.authenticate,
+      this.#escolaMiddleware.validateIdParam,
+      this.#escolaControle.solicitarExclusao
+    );
+
+    // POST /api/escola/:EscolaGUID/confirmar-exclusao — valida o código e
+    // desativa a escola (soft-delete; exclusão definitiva em 30 dias).
+    this.#router.post(
+      "/:EscolaGUID/confirmar-exclusao",
+      AuthMiddleware.authenticate,
+      this.#escolaMiddleware.validateIdParam,
+      this.#escolaControle.confirmarExclusao
+    );
+
     // PUT /api/escola/:EscolaGUID/transferir-direcao — elege um Coordenação
     // ativo para assumir a Direção; quem chama (Direção atual) passa a
     // Coordenação (troca simétrica, ver EscolaService.transferirDirecao).
@@ -72,7 +92,9 @@ export const escolaRouterFactory = () => {
   const database = new MysqlDatabase();
   const escolaDAO = new EscolaDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
-  const escolaService = new EscolaService(escolaDAO, escolaxUsuarioxFuncaoDAO);
+  const exclusaoEscolaDAO = new ExclusaoEscolaDAO(database);
+  const usuarioDAO = new UsuarioDAO(database);
+  const escolaService = new EscolaService(escolaDAO, escolaxUsuarioxFuncaoDAO, exclusaoEscolaDAO, usuarioDAO);
   const escolaControle = new EscolaControl(escolaService);
   const escolaMiddleware = new EscolaMiddleware();
   const roteador = new EscolaRoteador(escolaMiddleware, escolaControle);
