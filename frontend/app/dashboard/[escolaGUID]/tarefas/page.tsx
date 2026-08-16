@@ -112,9 +112,6 @@ export default function TarefasPage() {
           </h1>
           <p className={styles.subtitulo}>Acompanhe suas entregas e prazos</p>
         </div>
-        <Link href={`/dashboard/${escolaGUID}/cadastro?aba=tarefa`} className={styles.botaoNovo}>
-          <Icon name="plus" size={16} /> Novo cadastro
-        </Link>
       </header>
 
       <div className={styles.statsRow}>
