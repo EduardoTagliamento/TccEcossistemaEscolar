@@ -23,6 +23,7 @@ export interface TurmaResumo {
 export interface ProvaAgendada {
   ProvaAgendadaGUID: string;
   MateriaGUID: string;
+  ProvaTitulo: string;
   ProvaData: string;
   ProvaDescricao: string | null;
   ProvaStatus: 'Agendada' | 'Realizada' | 'Cancelada';
@@ -36,6 +37,7 @@ export interface ProvaAgendada {
 export interface CriarProvaDados {
   TurmasGUID: string[];
   MateriaGUID: string;
+  ProvaTitulo: string;
   ProvaData: string;
   ProvaDescricao?: string;
   anexosDescricao?: string[];
@@ -44,6 +46,7 @@ export interface CriarProvaDados {
 }
 
 export interface AtualizarProvaDados {
+  ProvaTitulo?: string;
   ProvaData?: string;
   ProvaDescricao?: string;
   ProvaStatus?: 'Agendada' | 'Realizada' | 'Cancelada';

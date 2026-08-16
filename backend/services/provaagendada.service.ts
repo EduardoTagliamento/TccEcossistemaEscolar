@@ -36,6 +36,7 @@ export interface TurmaResumoDTO {
 export interface ProvaAgendadaDTO {
   ProvaAgendadaGUID: string;
   MateriaGUID: string;
+  ProvaTitulo: string;
   ProvaData: string;
   ProvaDescricao: string | null;
   ProvaStatus: "Agendada" | "Realizada" | "Cancelada";
@@ -55,6 +56,7 @@ export interface ProvaAgendadaDTO {
 export interface ProvaAgendadaCreateDTO {
   TurmasGUID: string[]; // Array de turmas para atribuir
   MateriaGUID: string;
+  ProvaTitulo: string;
   ProvaData: Date;
   ProvaDescricao?: string;
   anexosDescricao?: string[];
@@ -69,6 +71,7 @@ export interface ProvaAgendadaCreateDTO {
 }
 
 export interface ProvaAgendadaUpdateDTO {
+  ProvaTitulo?: string;
   ProvaData?: Date;
   ProvaDescricao?: string;
   ProvaStatus?: "Agendada" | "Realizada" | "Cancelada";
@@ -305,6 +308,7 @@ export default class ProvaAgendadaService {
     const prova = new ProvaAgendada();
     prova.ProvaAgendadaGUID = gerarGUID();
     prova.MateriaGUID = data.MateriaGUID;
+    prova.ProvaTitulo = data.ProvaTitulo.trim();
     prova.ProvaData = dataProva;
     prova.ProvaDescricao = data.ProvaDescricao ? data.ProvaDescricao.trim() : null;
     prova.ProvaStatus = "Agendada";
@@ -353,7 +357,7 @@ export default class ProvaAgendadaService {
         AcaoTipo: "Create",
         EntidadeTipo: "provaagendada",
         EntidadeGUID: provaCriada.ProvaAgendadaGUID,
-        EntidadeDescricao: provaCriada.ProvaDescricao,
+        EntidadeDescricao: provaCriada.ProvaTitulo,
         CategoriaAuditoriaId: 2,
       });
     }
@@ -384,7 +388,7 @@ export default class ProvaAgendadaService {
       tipoSlug: "prova_postada",
       destinatarios,
       escolaGUID,
-      titulo: "Nova prova agendada",
+      titulo: `Nova prova agendada: ${prova.ProvaTitulo}`,
       conteudo: prova.ProvaDescricao,
       entidadeTipo: "prova",
       entidadeGUID: prova.ProvaAgendadaGUID,
@@ -456,8 +460,10 @@ export default class ProvaAgendadaService {
     await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioGUID);
 
     const updates: Partial<
-      Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus" | "MaterialDidaticoCapituloGUID">
+      Pick<ProvaAgendada, "ProvaTitulo" | "ProvaData" | "ProvaDescricao" | "ProvaStatus" | "MaterialDidaticoCapituloGUID">
     > = {};
+
+    if (data.ProvaTitulo !== undefined) updates.ProvaTitulo = data.ProvaTitulo.trim();
 
     if (data.ProvaData !== undefined) {
       const dataProva = new Date(data.ProvaData);
@@ -518,7 +524,7 @@ export default class ProvaAgendadaService {
           AcaoTipo: "Update",
           EntidadeTipo: "provaagendada",
           EntidadeGUID: provaAtualizada.ProvaAgendadaGUID,
-          EntidadeDescricao: provaAtualizada.ProvaDescricao,
+          EntidadeDescricao: provaAtualizada.ProvaTitulo,
           CategoriaAuditoriaId: 2,
         });
       }
@@ -579,7 +585,7 @@ export default class ProvaAgendadaService {
         AcaoTipo: "Delete",
         EntidadeTipo: "provaagendada",
         EntidadeGUID: prova.ProvaAgendadaGUID,
-        EntidadeDescricao: prova.ProvaDescricao,
+        EntidadeDescricao: prova.ProvaTitulo,
         CategoriaAuditoriaId: 2,
       });
     }
@@ -637,7 +643,7 @@ export default class ProvaAgendadaService {
         AcaoTipo: "Delete",
         EntidadeTipo: "provaagendada",
         EntidadeGUID: ProvaAgendadaGUID,
-        EntidadeDescricao: `${prova.ProvaDescricao ?? 'Prova'} — removida da turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
+        EntidadeDescricao: `${prova.ProvaTitulo} — removida da turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
         CategoriaAuditoriaId: 2,
       });
     }
@@ -666,6 +672,7 @@ export default class ProvaAgendadaService {
     return {
       ProvaAgendadaGUID: prova.ProvaAgendadaGUID,
       MateriaGUID: prova.MateriaGUID,
+      ProvaTitulo: prova.ProvaTitulo,
       ProvaData: prova.ProvaData.toISOString(),
       ProvaDescricao: prova.ProvaDescricao,
       ProvaStatus: prova.ProvaStatus,

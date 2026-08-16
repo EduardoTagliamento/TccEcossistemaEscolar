@@ -11,10 +11,9 @@
  * todas as turmas) — futuramente, categorias criadas por representantes de
  * turma serão por-turma e não aparecerão nesta tela.
  *
- * Itens de conteúdo/prova aparecem condensados numa linha só quando estão em
- * 2+ turmas (mesmo item, fan-out); o que só 1 turma tem fica de fora — é
- * organização daquela turma específica, não "geral" (ver tela de categorias
- * da própria turma). Tarefa é sempre de 1 turma só, então continua aparecendo
+ * Itens de conteúdo/prova aparecem condensados numa linha só por item (mesmo
+ * quando estão em várias turmas, fan-out) — inclusive os que existem em só 1
+ * turma. Tarefa é sempre de 1 turma só, então continua aparecendo
  * normalmente, sem condensar.
  */
 

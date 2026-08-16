@@ -315,6 +315,12 @@
   margin-bottom: 0.5rem;
 }
 
+.descricaoProva {
+  line-height: 1.6;
+  color: var(--ink-900, #0F1D17);
+  margin-bottom: 1rem;
+}
+
 .hintFuturo {
   color: var(--slate-400, #8A968E);
   font-style: italic;

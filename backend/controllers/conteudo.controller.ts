@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import ConteudoService, { ConteudoCreateDTO } from "../services/conteudo.service";
 import ErrorResponse from "../utils/ErrorResponse";
+import { parseDataBrasil } from "../utils/timezone.util";
 
 export class ConteudoController {
   #conteudoService: ConteudoService;
@@ -38,7 +39,7 @@ export class ConteudoController {
         try {
           const parsed = JSON.parse(body.DatasPorTurma) as Record<string, string>;
           datasPorTurma = Object.fromEntries(
-            Object.entries(parsed).map(([turmaGUID, data]) => [turmaGUID, new Date(data)])
+            Object.entries(parsed).map(([turmaGUID, data]) => [turmaGUID, parseDataBrasil(data)])
           );
         } catch {
           throw new ErrorResponse(400, "DatasPorTurma inválido", {
@@ -64,7 +65,7 @@ export class ConteudoController {
         ConteudoTipo: body.ConteudoTipo,
         ConteudoDescricao: body.ConteudoDescricao || undefined,
         TurmasGUID: turmasGUID,
-        ConteudoDataPublicacao: new Date(body.ConteudoDataPublicacao),
+        ConteudoDataPublicacao: parseDataBrasil(body.ConteudoDataPublicacao),
         DatasPorTurma: datasPorTurma,
         CategoriasPorTurma: categoriasPorTurma,
         OrigemTipo: body.OrigemTipo || undefined,

@@ -76,6 +76,7 @@ export default function TarefasPage() {
           </div>
           <p className={styles.linhaMateria}>
             {tarefa.MateriaNome || 'Sem matéria'}{tarefa.TurmaNome ? ` · ${tarefa.TurmaNome}` : ''}
+            {tarefa.ProfessorNome ? ` · ${tarefa.ProfessorNome}` : ''}
           </p>
         </div>
         <div className={styles.linhaAcao}>

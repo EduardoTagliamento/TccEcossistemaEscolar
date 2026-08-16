@@ -27,6 +27,9 @@ import { getAuditoriaService } from "./auditoria.service";
 export interface TarefaAcademicaDTO {
   TarefaGUID: string;
   matXprofXturxescGUID: string;
+  MateriaNome?: string;
+  TurmaNome?: string;
+  ProfessorNome?: string;
   TarefaTitulo: string;
   TarefaConteudo: string | null;
   TarefaPostagemData: string;
@@ -1285,10 +1288,14 @@ export default class TarefaAcademicaService {
     const anexosPorMatricula = await this.#tarefaDAO.buscarAnexosEntregaPorMatricula(
       atribuicoes.map((atrib) => atrib.TarefaMatriculaGUID)
     );
+    const alocacao = await this.#alocacaoDAO.findByIdComNomes(tarefa.matXprofXturxescGUID);
 
     const dto = {
       TarefaGUID: tarefa.TarefaGUID,
       matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
+      MateriaNome: alocacao?.MateriaNome,
+      TurmaNome: alocacao?.TurmaNome,
+      ProfessorNome: alocacao?.UsuarioNome,
       TarefaTitulo: tarefa.TarefaTitulo,
       TarefaConteudo: tarefa.TarefaConteudo,
       TarefaPostagemData: tarefa.TarefaPostagemData.toISOString(),

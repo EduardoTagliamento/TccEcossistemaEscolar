@@ -20,6 +20,11 @@ export const ProvaIdParamSchema = z.object({
 const ProvaPayloadBaseSchema = z.object({
   TurmasGUID: z.array(guid("TurmasGUID")).min(1, "É necessário selecionar pelo menos uma turma."),
   MateriaGUID: guid("MateriaGUID"),
+  ProvaTitulo: z
+    .string()
+    .trim()
+    .min(1, "O campo 'ProvaTitulo' é obrigatório.")
+    .max(128, "O campo 'ProvaTitulo' deve ter entre 1 e 128 caracteres."),
   ProvaData: dataValida("ProvaData"),
   ProvaDescricao: z.string().max(1024, "O campo 'ProvaDescricao' deve ter no máximo 1024 caracteres.").optional().nullable(),
   anexosDescricao: z.array(guid("anexosDescricao")).optional(),
@@ -51,6 +56,11 @@ export const ProvaCreateBodySchema = z
 export const ProvaUpdateBodySchema = z.object({
   prova: z
     .object({
+      ProvaTitulo: z
+        .string()
+        .trim()
+        .min(1, "O campo 'ProvaTitulo' é obrigatório.")
+        .max(128, "O campo 'ProvaTitulo' deve ter entre 1 e 128 caracteres."),
       ProvaData: dataValida("ProvaData"),
       ProvaDescricao: z.string().max(1024, "O campo 'ProvaDescricao' deve ter no máximo 1024 caracteres.").optional().nullable(),
       ProvaStatus: z.enum(STATUS_VALID, { message: "O campo 'ProvaStatus' deve ser 'Agendada', 'Realizada' ou 'Cancelada'." }),
@@ -60,7 +70,7 @@ export const ProvaUpdateBodySchema = z.object({
     .partial()
     .refine((obj) => Object.values(obj).some((v) => v !== undefined), {
       message:
-        "É necessário fornecer ao menos um campo para atualização: ProvaData, ProvaDescricao, ProvaStatus, AssuntoGUIDs, MaterialDidaticoCapituloGUID",
+        "É necessário fornecer ao menos um campo para atualização: ProvaTitulo, ProvaData, ProvaDescricao, ProvaStatus, AssuntoGUIDs, MaterialDidaticoCapituloGUID",
     }),
 });
 

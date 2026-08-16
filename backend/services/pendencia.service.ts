@@ -21,6 +21,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.
 import ErrorResponse from "../utils/ErrorResponse";
 import { getNotificacaoService } from "./notificacao.service";
 import { getAuditoriaService } from "./auditoria.service";
+import { parseDataBrasil } from "../utils/timezone.util";
 
 /**
  * DTOs
@@ -111,7 +112,7 @@ export default class PendenciaService {
     }
 
     // 5. Validar prazo é futuro
-    const prazoData = new Date(data.PendenciaPrazoData);
+    const prazoData = parseDataBrasil(data.PendenciaPrazoData);
     if (prazoData <= new Date()) {
       throw new ErrorResponse(400, "Prazo deve ser uma data futura");
     }
@@ -242,7 +243,7 @@ export default class PendenciaService {
     }
 
     if (data.PendenciaPrazoData) {
-      const novoPrazo = new Date(data.PendenciaPrazoData);
+      const novoPrazo = parseDataBrasil(data.PendenciaPrazoData);
       if (novoPrazo <= new Date()) {
         throw new ErrorResponse(400, "Prazo deve ser uma data futura");
       }

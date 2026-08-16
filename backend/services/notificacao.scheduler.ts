@@ -23,6 +23,7 @@ interface DestinatarioRow extends RowDataPacket {
   EscolaGUID: string;
   EntidadeGUID: string;
   Titulo: string;
+  Descricao?: string | null;
   Compartilhada?: number;
 }
 
@@ -136,7 +137,7 @@ export class NotificacaoScheduler {
   async #executarProvaPrazoAmanha(): Promise<void> {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(`
-      SELECT DISTINCT m.UsuarioGUID, t.EscolaGUID, pa.ProvaAgendadaGUID AS EntidadeGUID, pa.ProvaDescricao AS Titulo
+      SELECT DISTINCT m.UsuarioGUID, t.EscolaGUID, pa.ProvaAgendadaGUID AS EntidadeGUID, pa.ProvaTitulo AS Titulo, pa.ProvaDescricao AS Descricao
       FROM provaagendada_turma pat
       INNER JOIN provaagendada pa ON pa.ProvaAgendadaGUID = pat.ProvaAgendadaGUID
       INNER JOIN turma t ON t.TurmaGUID = pat.TurmaGUID
@@ -146,8 +147,8 @@ export class NotificacaoScheduler {
     `);
 
     await this.#dispararPorEntidade("prova_prazo_amanha", rows as DestinatarioRow[], (row) => ({
-      titulo: "Lembrete: prova amanhã",
-      conteudo: row.Titulo ?? undefined,
+      titulo: `Lembrete: prova "${row.Titulo}" amanhã`,
+      conteudo: row.Descricao ?? undefined,
     }));
   }
 

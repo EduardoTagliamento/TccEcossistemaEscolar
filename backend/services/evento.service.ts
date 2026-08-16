@@ -19,6 +19,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.
 import ErrorResponse from "../utils/ErrorResponse";
 import { getNotificacaoService } from "./notificacao.service";
 import { getAuditoriaService } from "./auditoria.service";
+import { parseDataBrasil } from "../utils/timezone.util";
 
 /** Coordenacao, Secretaria, Professor, Aluno, Direcao — ver docs/PLANO_IMPLEMENTACAO_NOTIFICACOES.md, seção 2.6 */
 const FUNCOES_EVENTO_CRIADO = [1, 2, 3, 5, 6];
@@ -88,7 +89,7 @@ export default class EventoService {
     }
 
     // 3. Validar data futura
-    const eventoData = new Date(data.EventoData);
+    const eventoData = parseDataBrasil(data.EventoData);
     if (eventoData <= new Date()) {
       throw new ErrorResponse(400, "Data do evento deve ser futura");
     }
@@ -228,7 +229,7 @@ export default class EventoService {
     }
 
     if (data.EventoData) {
-      const novaData = new Date(data.EventoData);
+      const novaData = parseDataBrasil(data.EventoData);
       if (novaData <= new Date()) {
         throw new ErrorResponse(400, "Data do evento deve ser futura");
       }

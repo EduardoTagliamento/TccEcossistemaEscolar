@@ -6,6 +6,17 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 /**
  * Filtros para consulta de alocações
  */
+export interface AlocacaoComNomesDTO {
+  MatProfTurGUID: string;
+  MateriaGUID: string;
+  MateriaNome: string;
+  TurmaGUID: string;
+  TurmaNome: string;
+  TurmaSerie: string;
+  UsuarioGUID: string;
+  UsuarioNome: string;
+}
+
 export interface AlocacaoFilters {
   MateriaGUID?: string;
   TurmaGUID?: string;
@@ -138,6 +149,44 @@ export class MaterialProfessorTurmaDAO {
     }
 
     return this.mapRows(rows as AlocacaoRow[])[0];
+  }
+
+  /**
+   * Buscar alocação por GUID já com o nome da matéria, turma e professor
+   * resolvidos via JOIN — usado por telas que mostram "quem postou" (ex.:
+   * lista de tarefas do aluno), pra não expor só o GUID cru da alocação.
+   */
+  async findByIdComNomes(guid: string): Promise<AlocacaoComNomesDTO | null> {
+    const query = `
+      SELECT
+        mpt.MatProfTurGUID, mpt.MateriaGUID, mat.MateriaNome,
+        mpt.TurmaGUID, tu.TurmaNome, tu.TurmaSerie,
+        mpt.UsuarioGUID, u.UsuarioNome
+      FROM materiaxprofessorxturma mpt
+      INNER JOIN materia mat ON mat.MateriaGUID = mpt.MateriaGUID
+      INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
+      INNER JOIN usuario u ON u.UsuarioGUID = mpt.UsuarioGUID
+      WHERE mpt.MatProfTurGUID = ?
+      LIMIT 1
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [guid]);
+
+    if (!rows || rows.length === 0) {
+      return null;
+    }
+
+    const row = rows[0];
+    return {
+      MatProfTurGUID: row.MatProfTurGUID,
+      MateriaGUID: row.MateriaGUID,
+      MateriaNome: row.MateriaNome,
+      TurmaGUID: row.TurmaGUID,
+      TurmaNome: row.TurmaNome,
+      TurmaSerie: row.TurmaSerie,
+      UsuarioGUID: row.UsuarioGUID,
+      UsuarioNome: row.UsuarioNome,
+    };
   }
 
   /**

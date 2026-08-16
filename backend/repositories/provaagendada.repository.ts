@@ -5,6 +5,7 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 interface ProvaAgendadaRow extends RowDataPacket {
   ProvaAgendadaGUID: string;
   MateriaGUID: string;
+  ProvaTitulo: string;
   ProvaData: Date;
   ProvaDescricao: string | null;
   ProvaStatus: "Agendada" | "Realizada" | "Cancelada";
@@ -43,12 +44,13 @@ export class ProvaAgendadaDAO {
 
     const SQL = `
       INSERT INTO provaagendada
-      (ProvaAgendadaGUID, MateriaGUID, ProvaData, ProvaDescricao, ProvaStatus, MaterialDidaticoCapituloGUID)
-      VALUES (?, ?, ?, ?, ?, ?);
+      (ProvaAgendadaGUID, MateriaGUID, ProvaTitulo, ProvaData, ProvaDescricao, ProvaStatus, MaterialDidaticoCapituloGUID)
+      VALUES (?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       prova.ProvaAgendadaGUID,
       prova.MateriaGUID,
+      prova.ProvaTitulo,
       prova.ProvaData,
       prova.ProvaDescricao,
       prova.ProvaStatus,
@@ -114,13 +116,18 @@ export class ProvaAgendadaDAO {
   update = async (
     ProvaAgendadaGUID: string,
     updates: Partial<
-      Pick<ProvaAgendada, "ProvaData" | "ProvaDescricao" | "ProvaStatus" | "MaterialDidaticoCapituloGUID">
+      Pick<ProvaAgendada, "ProvaTitulo" | "ProvaData" | "ProvaDescricao" | "ProvaStatus" | "MaterialDidaticoCapituloGUID">
     >
   ): Promise<ProvaAgendada | null> => {
     console.log("🟢 ProvaAgendadaDAO.update()");
 
     const fields: string[] = [];
     const values: (string | Date | null)[] = [];
+
+    if (updates.ProvaTitulo !== undefined) {
+      fields.push("ProvaTitulo = ?");
+      values.push(updates.ProvaTitulo);
+    }
 
     if (updates.ProvaData !== undefined) {
       fields.push("ProvaData = ?");
@@ -200,6 +207,7 @@ export class ProvaAgendadaDAO {
     const prova = new ProvaAgendada();
     prova.ProvaAgendadaGUID = row.ProvaAgendadaGUID;
     prova.MateriaGUID = row.MateriaGUID;
+    prova.ProvaTitulo = row.ProvaTitulo;
     prova.ProvaData = row.ProvaData;
     prova.ProvaDescricao = row.ProvaDescricao;
     prova.ProvaStatus = row.ProvaStatus;

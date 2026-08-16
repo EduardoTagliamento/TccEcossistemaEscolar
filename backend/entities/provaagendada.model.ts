@@ -16,6 +16,7 @@
 export default class ProvaAgendada {
   #ProvaAgendadaGUID!: string;
   #MateriaGUID!: string;
+  #ProvaTitulo!: string;
   #ProvaData!: Date;
   #ProvaDescricao: string | null = null;
   #ProvaStatus: "Agendada" | "Realizada" | "Cancelada" = "Agendada";
@@ -57,6 +58,22 @@ export default class ProvaAgendada {
       throw new Error("MateriaGUID deve ter 36 caracteres.");
     }
     this.#MateriaGUID = guid;
+  }
+
+  // ========== ProvaTitulo ==========
+  get ProvaTitulo(): string {
+    return this.#ProvaTitulo;
+  }
+
+  set ProvaTitulo(value: string) {
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("ProvaTitulo deve ser uma string não vazia.");
+    }
+    const titulo = value.trim();
+    if (titulo.length < 1 || titulo.length > 128) {
+      throw new Error("ProvaTitulo deve ter entre 1 e 128 caracteres.");
+    }
+    this.#ProvaTitulo = titulo;
   }
 
   // ========== ProvaData ==========
