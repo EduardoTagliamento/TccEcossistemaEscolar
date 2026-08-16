@@ -7,6 +7,12 @@ import { RowDataPacket } from 'mysql2';
 import { pool } from '../database/mysql';
 import { getNotificacaoService } from './notificacao.service';
 
+export interface MembrosTurmaDTO {
+  ConversaGUID: string;
+  ConversaGrupoRefGUID: string;
+  Membros: Array<{ UsuarioGUID: string; UsuarioNome: string; MembroFuncao: string; MembroEntradaAt: string }>;
+}
+
 export default class ConversaPermissaoService {
   #conversaGrupoDAO: ConversaGrupoDAO;
   #turmaDAO: TurmaDAO;
@@ -57,6 +63,42 @@ export default class ConversaPermissaoService {
         throw new ErrorResponse(403, 'Apenas o Líder pode delegar Vice-Representante neste grupo');
       }
     }
+  }
+
+  /**
+   * Lista os membros do grupo de UMA turma pra Coordenação/Direção poder
+   * escolher o Representante fora do chat (Gestão de Dados → Turmas) — sem
+   * isso, só quem já é membro do grupo (aluno) consegue ver essa lista via
+   * buscarConversa (que exige isParticipante).
+   */
+  async listarMembrosPorTurma(turmaGUID: string, solicitanteGUID: string): Promise<MembrosTurmaDTO> {
+    console.log('🟣 ConversaPermissaoService.listarMembrosPorTurma()');
+
+    const turma = await this.#turmaDAO.findById(turmaGUID);
+    if (!turma) throw new ErrorResponse(404, 'Turma não encontrada');
+
+    const autorizado = await this.#escolaFuncaoDAO.isCoordOuDirecaoEmEscola(solicitanteGUID, turma.EscolaGUID);
+    if (!autorizado) {
+      throw new ErrorResponse(403, 'Apenas Coordenação ou Direção pode ver os membros do grupo desta turma');
+    }
+
+    const grupo = await this.#conversaGrupoDAO.findByRefGUID(turmaGUID);
+    if (!grupo || grupo.ConversaGrupoTipo !== 'Turma') {
+      throw new ErrorResponse(404, 'Esta turma ainda não tem grupo de conversa');
+    }
+
+    const membros = await this.#conversaGrupoDAO.findMembrosComNome(grupo.ConversaGUID);
+
+    return {
+      ConversaGUID: grupo.ConversaGUID,
+      ConversaGrupoRefGUID: turmaGUID,
+      Membros: membros.map((m) => ({
+        UsuarioGUID: m.MembroUsuarioGUID,
+        UsuarioNome: m.UsuarioNome,
+        MembroFuncao: m.MembroFuncao,
+        MembroEntradaAt: m.MembroEntradaAt.toISOString(),
+      })),
+    };
   }
 
   // Turma only: Coordenação/Direção define o Representante

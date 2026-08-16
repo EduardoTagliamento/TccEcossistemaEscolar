@@ -12,14 +12,22 @@ import { Icon } from '@/components/Icon';
 
 import * as TurmaAPI from '@/lib/api/turma.api';
 import * as CursoAPI from '@/lib/api/curso.api';
+import * as ConversaAPI from '@/lib/api/conversa.api';
 import { exportarParaPlanilha } from '@/lib/utils/exportarPlanilha';
+import { useAuth } from '@/lib/auth/AuthContext';
+import GerenciarGrupoModal from '../../chat/GerenciarGrupoModal';
 
 export default function TurmasPage() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
+  const { usuario } = useAuth();
 
   // Estados
   const [turmas, setTurmas] = useState<TurmaAPI.Turma[]>([]);
+  const [turmaRepresentante, setTurmaRepresentante] = useState<TurmaAPI.Turma | null>(null);
+  const [membrosTurma, setMembrosTurma] = useState<ConversaAPI.MembrosTurma | null>(null);
+  const [carregandoMembrosTurma, setCarregandoMembrosTurma] = useState(false);
+  const [erroMembrosTurma, setErroMembrosTurma] = useState('');
   const [cursos, setCursos] = useState<CursoAPI.Curso[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
@@ -217,6 +225,21 @@ export default function TurmasPage() {
     setModalAberto(true);
   };
 
+  const handleAbrirRepresentante = async (turma: TurmaAPI.Turma) => {
+    setTurmaRepresentante(turma);
+    setMembrosTurma(null);
+    setErroMembrosTurma('');
+    setCarregandoMembrosTurma(true);
+    try {
+      const dados = await ConversaAPI.buscarMembrosPorTurma(turma.TurmaGUID);
+      setMembrosTurma(dados);
+    } catch (erro: any) {
+      setErroMembrosTurma(erro?.message || 'Erro ao carregar membros da turma');
+    } finally {
+      setCarregandoMembrosTurma(false);
+    }
+  };
+
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
     console.log('Dados carregados:', dados);
     setDadosImportados(dados);
@@ -356,6 +379,13 @@ export default function TurmasPage() {
               title="Editar"
             >
               <Icon name="edit" size={16} />
+            </button>
+            <button
+              onClick={() => void handleAbrirRepresentante(turma)}
+              className={styles.botaoEditar}
+              title="Selecionar representante de sala"
+            >
+              <Icon name="award" size={16} />
             </button>
             {turma.TurmaStatus === 'Ativa' ? (
               <button
@@ -513,6 +543,44 @@ export default function TurmasPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {turmaRepresentante && (carregandoMembrosTurma || erroMembrosTurma) && (
+        <div className={styles.overlay} onClick={() => setTurmaRepresentante(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <p style={{ padding: '1.5rem' }}>
+              {carregandoMembrosTurma ? 'Carregando membros da turma...' : erroMembrosTurma}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {turmaRepresentante && membrosTurma && (
+        <GerenciarGrupoModal
+          aberto={true}
+          conversa={{
+            ConversaGUID: membrosTurma.ConversaGUID,
+            ConversaTipo: 'Grupo',
+            ConversaGrupoNome: `${turmaRepresentante.TurmaSerie} ${turmaRepresentante.TurmaNome}`,
+            ConversaGrupoTipo: 'Turma',
+            ConversaGrupoRefGUID: membrosTurma.ConversaGrupoRefGUID,
+            Membros: membrosTurma.Membros,
+            ParceiroGUID: null,
+            ParceiroNome: null,
+            TagContextual: null,
+            MensagensFixadas: [],
+            Mensagens: [],
+            HasMore: false,
+          }}
+          meuGUID={usuario?.UsuarioGUID || ''}
+          meuPapelNoGrupo={null}
+          isCoordenacaoOuDirecao={true}
+          onClose={() => {
+            setTurmaRepresentante(null);
+            setMembrosTurma(null);
+          }}
+          onAtualizado={() => void handleAbrirRepresentante(turmaRepresentante)}
+        />
       )}
     </div>
   );

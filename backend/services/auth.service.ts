@@ -42,24 +42,34 @@ export default class AuthService {
   }
 
   /**
-   * Detecta o tipo de identificador (CPF, email ou telefone)
+   * Resolve o usuário a partir do identificador de login — CPF e telefone
+   * têm ambos 11 dígitos quando limpos, então `detectIdentifierType` sozinho
+   * não distingue um do outro (bug real: todo login por CPF caía em
+   * telefone, nunca achava ninguém). Tenta CPF primeiro, telefone depois,
+   * só quando o formato é ambíguo.
    */
-  private detectIdentifierType(identifier: string): 'cpf' | 'email' | 'telefone' {
-    // Remove formatação
-    const cleaned = identifier.replace(/\D/g, '');
-
-    // Se tem @ é email
+  private async resolverUsuarioPorIdentificador(identifier: string) {
     if (identifier.includes('@')) {
-      return 'email';
+      const formatted = this.formatIdentifier(identifier, 'email');
+      console.log(`🔍 [AuthService] Tentativa de login via email: ${formatted}`);
+      return this.#usuarioDAO.findByEmail(formatted);
     }
 
-    // Se tem 11 dígitos sem @ é telefone
-    if (cleaned.length === 11 && !identifier.includes('@')) {
-      return 'telefone';
+    const cleaned = identifier.replace(/\D/g, '');
+    if (cleaned.length !== 11) {
+      const formatted = this.formatIdentifier(identifier, 'cpf');
+      console.log(`🔍 [AuthService] Tentativa de login via cpf: ${formatted}`);
+      return this.#usuarioDAO.findByCPF(formatted);
     }
 
-    // Padrão é CPF
-    return 'cpf';
+    const cpfFormatado = this.formatIdentifier(identifier, 'cpf');
+    console.log(`🔍 [AuthService] Tentativa de login via cpf: ${cpfFormatado}`);
+    const porCPF = await this.#usuarioDAO.findByCPF(cpfFormatado);
+    if (porCPF) return porCPF;
+
+    const telefoneFormatado = this.formatIdentifier(identifier, 'telefone');
+    console.log(`🔍 [AuthService] CPF não encontrado, tentando telefone: ${telefoneFormatado}`);
+    return this.#usuarioDAO.findByTelefone(telefoneFormatado);
   }
 
   /**
@@ -92,22 +102,12 @@ export default class AuthService {
     try {
       const { identifier, senha } = credentials;
 
-      // 1. Detectar tipo de identificador
-      const type = this.detectIdentifierType(identifier);
-      const formattedIdentifier = this.formatIdentifier(identifier, type);
-
-      console.log(`🔍 [AuthService] Tentativa de login via ${type}: ${formattedIdentifier}`);
-
-      // 2. Buscar usuário no banco
-      let usuario;
-
-      if (type === 'cpf') {
-        usuario = await this.#usuarioDAO.findByCPF(formattedIdentifier);
-      } else if (type === 'email') {
-        usuario = await this.#usuarioDAO.findByEmail(formattedIdentifier);
-      } else {
-        usuario = await this.#usuarioDAO.findByTelefone(formattedIdentifier);
-      }
+      // 1. Buscar usuário no banco — CPF e telefone têm os dois exatamente
+      // 11 dígitos quando limpos (XXX.XXX.XXX-XX = 9+2, (XX) XXXXX-XXXX =
+      // 2+9), então contar dígitos não distingue um do outro. Tenta CPF
+      // primeiro, cai pra telefone só se não achar — cobre os dois sem
+      // depender de adivinhar qual é qual.
+      const usuario = await this.resolverUsuarioPorIdentificador(identifier);
 
       if (!usuario) {
         throw new ErrorResponse(401, 'Credenciais inválidas', {

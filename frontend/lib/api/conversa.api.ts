@@ -147,6 +147,24 @@ export async function listarConversas(escolaGUID?: string): Promise<ConversaList
   return tratarResposta<ConversaListItem[]>(response, 'Erro ao listar conversas');
 }
 
+export interface MembrosTurma {
+  ConversaGUID: string;
+  ConversaGrupoRefGUID: string;
+  Membros: ConversaMembro[];
+}
+
+/**
+ * Membros do grupo de uma turma, pra Coordenação/Direção escolher o
+ * Representante fora do chat (Gestão de Dados → Turmas) — diferente de
+ * buscarConversa(), não exige que quem chama seja membro do grupo.
+ */
+export async function buscarMembrosPorTurma(turmaGUID: string): Promise<MembrosTurma> {
+  const response = await fetch(`${API_URL}/conversa/turma/${turmaGUID}/membros`, {
+    headers: getHeaders(),
+  });
+  return tratarResposta<MembrosTurma>(response, 'Erro ao listar membros da turma');
+}
+
 /** Detalhe da conversa: membros (se grupo), últimas mensagens e fixadas. */
 export async function buscarConversa(conversaGUID: string): Promise<ConversaDetalhe> {
   const response = await fetch(`${API_URL}/conversa/${conversaGUID}`, {
