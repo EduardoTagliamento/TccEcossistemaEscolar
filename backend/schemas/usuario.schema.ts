@@ -40,6 +40,19 @@ function desembrulharUsuario(body: unknown): unknown {
   return body;
 }
 
+/**
+ * Campo opcional deixado em branco no formulário chega como string vazia
+ * (`''`), não `undefined` — `.optional()` do Zod só pula validação pra
+ * `undefined`, então `''` ainda batia no `.regex()`/`.refine()` de formato e
+ * era rejeitado como "formato inválido" mesmo sendo um campo que o usuário
+ * nem tentou preencher (ex.: UsuarioDataNascimento, UsuarioCPF, UsuarioTelefone
+ * em branco na tela de "adicionar aluno"). Normaliza '' -> undefined ANTES da
+ * validação de formato rodar.
+ */
+function vazioParaUndefined(v: unknown): unknown {
+  return v === "" ? undefined : v;
+}
+
 function normalizarCPF(v: string): string {
   const digitos = v.replace(/\D/g, "");
   if (digitos.length === 11) {
@@ -70,18 +83,24 @@ const campoId = () =>
     .optional();
 
 const campoTelefone = () =>
-  z
-    .string({ message: "O campo 'UsuarioTelefone' deve ser string." })
-    .transform(normalizarTelefone)
-    .refine((v) => v.length === 15, "O campo 'UsuarioTelefone' deve ter 15 caracteres (formato: (XX) XXXXX-XXXX).")
-    .refine((v) => TELEFONE_FORMATADO_REGEX.test(v), "O campo 'UsuarioTelefone' deve estar no formato (XX) XXXXX-XXXX.")
-    .optional();
+  z.preprocess(
+    vazioParaUndefined,
+    z
+      .string({ message: "O campo 'UsuarioTelefone' deve ser string." })
+      .transform(normalizarTelefone)
+      .refine((v) => v.length === 15, "O campo 'UsuarioTelefone' deve ter 15 caracteres (formato: (XX) XXXXX-XXXX).")
+      .refine((v) => TELEFONE_FORMATADO_REGEX.test(v), "O campo 'UsuarioTelefone' deve estar no formato (XX) XXXXX-XXXX.")
+      .optional()
+  );
 
 const campoDataNascimento = () =>
-  z
-    .string({ message: "O campo 'UsuarioDataNascimento' deve ser string." })
-    .regex(DATA_REGEX, "O campo 'UsuarioDataNascimento' deve estar no formato YYYY-MM-DD.")
-    .optional();
+  z.preprocess(
+    vazioParaUndefined,
+    z
+      .string({ message: "O campo 'UsuarioDataNascimento' deve ser string." })
+      .regex(DATA_REGEX, "O campo 'UsuarioDataNascimento' deve estar no formato YYYY-MM-DD.")
+      .optional()
+  );
 
 const campoStatus = () =>
   z
@@ -94,11 +113,14 @@ const campoEmailVerificado = () =>
 // CPF é sempre opcional (criação e atualização) — nem todo usuário tem CPF
 // cadastrado (ex.: piloto). Quando informado, precisa estar bem formado.
 const campoCPF = () =>
-  z
-    .string({ message: "O campo 'UsuarioCPF' deve ser string." })
-    .transform(normalizarCPF)
-    .refine((v) => v.length === 14, "O campo 'UsuarioCPF' deve ter 14 caracteres (XXX.XXX.XXX-XX).")
-    .optional();
+  z.preprocess(
+    vazioParaUndefined,
+    z
+      .string({ message: "O campo 'UsuarioCPF' deve ser string." })
+      .transform(normalizarCPF)
+      .refine((v) => v.length === 14, "O campo 'UsuarioCPF' deve ter 14 caracteres (XXX.XXX.XXX-XX).")
+      .optional()
+  );
 
 // Campos com regra diferente entre criação (obrigatórios) e atualização (opcionais).
 

@@ -164,6 +164,30 @@ export class TarefaAcademicaDAO {
     return rows.map((row) => this.mapRowToTarefa(row));
   };
 
+  /**
+   * Tarefas individuais (não compartilhada/em grupo) da turma com prazo
+   * ainda no futuro — usado pra atribuir automaticamente ao aluno que acabou
+   * de matricular nessa turma (sem isso, ele só via tarefas criadas DEPOIS
+   * da matrícula dele, já que a atribuição é decidida na criação da tarefa).
+   */
+  findIndividuaisAtivasPorTurma = async (turmaGUID: string): Promise<TarefaAcademica[]> => {
+    console.log("🟢 TarefaAcademicaDAO.findIndividuaisAtivasPorTurma()");
+
+    const SQL = `
+      SELECT DISTINCT tarefaacademica.*
+      FROM tarefaacademica
+      INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = tarefaacademica.matXprofXturxescGUID
+      WHERE mpt.TurmaGUID = ?
+        AND tarefaacademica.TarefaCompartilhada = FALSE
+        AND tarefaacademica.TarefaPrazoData > UTC_TIMESTAMP()
+      ORDER BY tarefaacademica.TarefaPrazoData ASC;
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<TarefaAcademicaRow[]>(SQL, [turmaGUID]);
+
+    return rows.map((row) => this.mapRowToTarefa(row));
+  };
+
   findById = async (TarefaGUID: string): Promise<TarefaAcademica | null> => {
     console.log("🟢 TarefaAcademicaDAO.findById()");
 
