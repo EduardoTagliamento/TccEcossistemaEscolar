@@ -127,6 +127,18 @@ export class ConversaController {
     }
   };
 
+  // GET /api/conversa/turma/:turmaGUID/membros — Coordenação/Direção, fora do chat
+  listarMembrosPorTurma = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log('🔵 ConversaController.listarMembrosPorTurma()');
+    try {
+      const { turmaGUID } = req.params;
+      const dados = await this.#conversaPermissaoService!.listarMembrosPorTurma(turmaGUID, req.user!.UsuarioGUID);
+      res.status(200).json({ success: true, message: 'Membros listados', data: dados });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // PUT /api/conversa/:guid/permissao/representante
   definirRepresentante = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log('🔵 ConversaController.definirRepresentante()');

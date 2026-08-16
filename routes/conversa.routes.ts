@@ -59,6 +59,11 @@ export function conversaRouterFactory(): Router {
   // GET /api/conversa — lista conversas ativas do usuário (grupos + individuais)
   router.get('/', controller.index);
 
+  // GET /api/conversa/turma/:turmaGUID/membros — membros do grupo da turma,
+  // pra Coordenação/Direção escolher o Representante fora do chat (Gestão de
+  // Dados → Turmas). Vem antes de /:guid pelo mesmo motivo de /individual.
+  router.get('/turma/:turmaGUID/membros', controller.listarMembrosPorTurma);
+
   // GET /api/conversa/:guid — detalhes + últimas 30 mensagens + fixadas
   router.get('/:guid', ConversaMiddleware.validarGUID, controller.show);
 
