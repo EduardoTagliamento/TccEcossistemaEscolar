@@ -54,6 +54,17 @@ function obterNomeArquivoDaUrl(url: string): string {
   }
 }
 
+// Paleta de avatar por conversa — hash do nome pra distribuir cor de forma
+// estável (mesma conversa sempre com a mesma cor), imitando a variedade de
+// cores do print de referência do Claude Design (não é dado real, é só
+// decoração visual pra facilitar reconhecer a conversa de relance na lista).
+const PALETA_AVATAR = ['#4F46E5', '#12A063', '#C98A00', '#2F6FED', '#B5487B', '#0E8074'];
+function corAvatar(nome: string): string {
+  let hash = 0;
+  for (let i = 0; i < nome.length; i++) hash = (hash * 31 + nome.charCodeAt(i)) >>> 0;
+  return PALETA_AVATAR[hash % PALETA_AVATAR.length];
+}
+
 function obterIniciais(nome: string): string {
   return nome
     .trim()
@@ -705,11 +716,11 @@ export default function ChatPage() {
                     onClick={() => setConversaAtivaGUID(conversa.ConversaGUID)}
                   >
                     {conversa.ConversaTipo === 'Grupo' ? (
-                      <span className={styles.avatarGrupo}>
+                      <span className={styles.avatarGrupo} style={{ backgroundColor: corAvatar(nome) }}>
                         <Icon name="users" size={18} />
                       </span>
                     ) : (
-                      <span className={styles.avatar}>{obterIniciais(nome)}</span>
+                      <span className={styles.avatar} style={{ backgroundColor: corAvatar(nome) }}>{obterIniciais(nome)}</span>
                     )}
                     <span className={styles.conversaInfo}>
                       <span className={styles.conversaLinhaTopo}>
@@ -760,11 +771,13 @@ export default function ChatPage() {
                   <Icon name="chevron-left" size={20} />
                 </button>
                 {conversaAtiva?.ConversaTipo === 'Grupo' ? (
-                  <span className={styles.avatarGrupo}>
+                  <span className={styles.avatarGrupo} style={{ backgroundColor: corAvatar(tituloConversaAtiva) }}>
                     <Icon name="users" size={18} />
                   </span>
                 ) : (
-                  <span className={styles.avatar}>{obterIniciais(tituloConversaAtiva)}</span>
+                  <span className={styles.avatar} style={{ backgroundColor: corAvatar(tituloConversaAtiva) }}>
+                    {obterIniciais(tituloConversaAtiva)}
+                  </span>
                 )}
                 <div className={styles.painelHeaderInfo}>
                   <span className={styles.painelHeaderNome}>{tituloConversaAtiva}</span>

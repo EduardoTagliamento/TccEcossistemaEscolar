@@ -9,6 +9,9 @@ import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { MateriaCustomizacaoDAO } from "../backend/repositories/materiacustomizacao.repository";
 import { EscolaDAO } from "../backend/repositories/escola.repository";
+import ConversaGrupoService from "../backend/services/conversa-grupo.service";
+import { ConversaDAO } from "../backend/repositories/conversa.repository";
+import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
 import MysqlDatabase from "../backend/database/MysqlDatabase";
 import { ProfessorMiddleware } from "../backend/middlewares/professor.middleware";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
@@ -43,6 +46,12 @@ export function professorRouterFactory(): Router {
   const usuarioDAO = new UsuarioDAO(database);
   const customizacaoDAO = new MateriaCustomizacaoDAO(database);
   const escolaDAO = new EscolaDAO(database);
+  const conversaGrupoService = new ConversaGrupoService(
+    new ConversaDAO(database),
+    new ConversaGrupoDAO(database),
+    matriculaDAO,
+    usuarioDAO
+  );
 
   const professorService = new ProfessorService(
     alocacaoDAO,
@@ -52,7 +61,8 @@ export function professorRouterFactory(): Router {
     matriculaDAO,
     usuarioDAO,
     customizacaoDAO,
-    escolaDAO
+    escolaDAO,
+    conversaGrupoService
   );
 
   const professorController = new ProfessorController(professorService);

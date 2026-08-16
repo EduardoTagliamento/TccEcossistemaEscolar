@@ -36,7 +36,13 @@
   --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
   --shadow-md: 0 8px 20px -8px rgba(15, 29, 23, 0.14);
 
-  min-height: 100vh;
+  /* 68px = altura fixa da navbar sticky (DashboardNavbar.module.css .navbar)
+     — container preenche exatamente o resto da viewport e não deixa a
+     página "de fora" rolar, senão o scroll do mouse fica ambíguo entre
+     rolar a página inteira e rolar a lista/painel internos (ver bug
+     reportado: scroll misturado entre sidebar e conversa). */
+  height: calc(100vh - 68px);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--surface-50);
@@ -196,7 +202,6 @@
   display: grid;
   grid-template-columns: 320px 1fr;
   min-height: 0;
-  height: calc(100vh - 130px);
   margin: 0 1.5rem 1.5rem;
   border: 1px solid var(--line-200);
   border-radius: 20px;
@@ -300,8 +305,9 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px;
+  padding: 10px 10px 10px 7px;
   border: none;
+  border-left: 3px solid transparent;
   background: transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -314,7 +320,8 @@
 
 .conversaItemAtiva,
 .conversaItemAtiva:hover {
-  background: var(--green-50);
+  background: color-mix(in oklch, var(--color-primary, var(--green-500)) 10%, var(--white));
+  border-left-color: var(--color-primary, var(--green-500));
 }
 
 .avatar,
@@ -331,13 +338,8 @@
   font-size: 0.8125rem;
 }
 
-.avatar {
-  background: var(--color-primary, var(--green-500));
-  color: #fff;
-}
-
+.avatar,
 .avatarGrupo {
-  background: var(--color-primary, var(--green-500));
   color: #fff;
 }
 
@@ -1007,7 +1009,6 @@
   .chatShell {
     grid-template-columns: 1fr;
     margin: 0 0.75rem 0.75rem;
-    height: calc(100vh - 110px);
   }
 
   .sidebar {
