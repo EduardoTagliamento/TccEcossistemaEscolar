@@ -26,10 +26,10 @@ export default function TarefasPage() {
   }, [usuario, authLoading, router]);
 
   const filters = useMemo(() => {
-    if (filtroTipo === 'individual') return { TarefaCompartilhada: false };
-    if (filtroTipo === 'compartilhada') return { TarefaCompartilhada: true };
-    return undefined;
-  }, [filtroTipo]);
+    if (filtroTipo === 'individual') return { TarefaCompartilhada: false, EscolaGUID: escolaGUID };
+    if (filtroTipo === 'compartilhada') return { TarefaCompartilhada: true, EscolaGUID: escolaGUID };
+    return { EscolaGUID: escolaGUID };
+  }, [filtroTipo, escolaGUID]);
 
   const { data: tarefasBrutas, isLoading, error } = useTarefas(usuario ? filters : undefined);
   const erro = error instanceof Error ? error.message : null;

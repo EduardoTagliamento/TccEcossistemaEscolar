@@ -23,6 +23,14 @@ export interface TarefaAcademicaFilters {
   DataInicio?: Date;
   DataFim?: Date;
   TarefaCompartilhada?: boolean;
+  /** Restringe às tarefas ligadas a este usuário — como aluno (atribuído via
+   * matrícula) OU como professor (dono da alocação que postou a tarefa).
+   * GET /api/tarefa era usado por "Minhas Tarefas" (aluno) e "Tarefas
+   * cadastradas" (professor) sem NENHUM filtro de usuário — devolvia
+   * literalmente toda tarefa de todo mundo, de todas as escolas. */
+  UsuarioGUID?: string;
+  /** Restringe às tarefas cuja turma pertence a esta escola. */
+  EscolaGUID?: string;
 }
 
 /**
@@ -91,30 +99,64 @@ export class TarefaAcademicaDAO {
   findAll = async (filters?: TarefaAcademicaFilters): Promise<TarefaAcademica[]> => {
     console.log("🟢 TarefaAcademicaDAO.findAll()");
 
-    let SQL = "SELECT * FROM tarefaacademica WHERE 1=1";
+    // O JOIN de alocação (mpt) é sempre necessário quando há UsuarioGUID
+    // (lado professor) ou EscolaGUID (turma->escola) — feito uma vez só,
+    // LEFT porque o lado aluno (matrícula) não deve excluir tarefas onde só
+    // o professor bate.
+    const precisaAlocacao = !!filters?.UsuarioGUID || !!filters?.EscolaGUID;
+
+    let SQL = "SELECT DISTINCT tarefaacademica.* FROM tarefaacademica";
     const params: any[] = [];
 
+    if (filters?.UsuarioGUID) {
+      SQL += `
+        LEFT JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = tarefaacademica.TarefaGUID
+        LEFT JOIN matricula m ON m.MatriculaGUID = tm.MatriculaGUID
+      `;
+    }
+
+    if (precisaAlocacao) {
+      SQL += `
+        LEFT JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = tarefaacademica.matXprofXturxescGUID
+      `;
+    }
+
+    if (filters?.EscolaGUID) {
+      SQL += `
+        INNER JOIN turma t ON t.TurmaGUID = mpt.TurmaGUID AND t.EscolaGUID = ?
+      `;
+      params.push(filters.EscolaGUID);
+    }
+
+    SQL += " WHERE 1=1";
+
+    if (filters?.UsuarioGUID) {
+      // Aluno atribuído (via matrícula) OU professor dono da alocação.
+      SQL += " AND (m.UsuarioGUID = ? OR mpt.UsuarioGUID = ?)";
+      params.push(filters.UsuarioGUID, filters.UsuarioGUID);
+    }
+
     if (filters?.matXprofXturxescGUID) {
-      SQL += " AND matXprofXturxescGUID = ?";
+      SQL += " AND tarefaacademica.matXprofXturxescGUID = ?";
       params.push(filters.matXprofXturxescGUID);
     }
 
     if (filters?.DataInicio) {
-      SQL += " AND TarefaPrazoData >= ?";
+      SQL += " AND tarefaacademica.TarefaPrazoData >= ?";
       params.push(filters.DataInicio);
     }
 
     if (filters?.DataFim) {
-      SQL += " AND TarefaPrazoData <= ?";
+      SQL += " AND tarefaacademica.TarefaPrazoData <= ?";
       params.push(filters.DataFim);
     }
 
     if (filters?.TarefaCompartilhada !== undefined) {
-      SQL += " AND TarefaCompartilhada = ?";
+      SQL += " AND tarefaacademica.TarefaCompartilhada = ?";
       params.push(filters.TarefaCompartilhada);
     }
 
-    SQL += " ORDER BY TarefaPrazoData ASC;";
+    SQL += " ORDER BY tarefaacademica.TarefaPrazoData ASC;";
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<TarefaAcademicaRow[]>(SQL, params);

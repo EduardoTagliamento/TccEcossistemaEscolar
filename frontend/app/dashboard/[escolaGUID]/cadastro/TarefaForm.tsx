@@ -211,7 +211,7 @@ export default function TarefaForm({
   }, []);
 
   const queryClient = useQueryClient();
-  const tarefasQuery = useTarefas(undefined, !!usuario);
+  const tarefasQuery = useTarefas({ EscolaGUID: escolaGUID }, !!usuario);
   const tarefas = tarefasQuery.data ?? [];
 
   const [materias, setMaterias] = useState<MateriaOption[]>([]);
