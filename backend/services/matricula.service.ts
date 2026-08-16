@@ -353,6 +353,13 @@ export default class MatriculaService {
       // fica sem acesso na escola nova mesmo com a matrícula criada.
       await this.garantirVinculoAluno(aluno.UsuarioGUID, turmaDestino.EscolaGUID);
 
+      // Mover no grupo de conversa: sai do grupo da turma de origem, entra
+      // no grupo da turma de destino — transferirAluno nunca fazia isso.
+      if (this.#conversaGrupoService) {
+        await this.#conversaGrupoService.removerMembroTurma(turmaOrigem.TurmaGUID, aluno.UsuarioGUID);
+        await this.#conversaGrupoService.adicionarMembroTurma(turmaDestino.TurmaGUID, aluno.UsuarioGUID);
+      }
+
       void getAuditoriaService().registrar({
         EscolaGUID: turmaOrigem.EscolaGUID,
         UsuarioGUIDAtor: usuarioGUIDAtor,
@@ -810,6 +817,12 @@ export default class MatriculaService {
         // individual (ver criarMatricula): sem isso, checagens de "vínculo
         // ativo com a escola" (pendência, aviso, etc.) bloqueiam o aluno.
         await this.garantirVinculoAluno(aluno.UsuarioGUID, escolaGUID);
+
+        // Adicionar ao grupo de conversa da turma — mesmo motivo do fluxo
+        // individual (ver criarMatricula); em massa nunca fazia isso.
+        if (this.#conversaGrupoService) {
+          await this.#conversaGrupoService.adicionarMembroTurma(turmaGUID, aluno.UsuarioGUID);
+        }
 
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
