@@ -10,6 +10,9 @@ import { gerarGUID } from "../utils/helpers/guid.helper";
 import ConversaGrupoService from "./conversa-grupo.service";
 import { getNotificacaoService } from "./notificacao.service";
 import { getAuditoriaService } from "./auditoria.service";
+import { TarefaAcademicaDAO } from "../repositories/tarefaacademica.repository";
+import { TarefaAcademicaMatriculaDAO } from "../repositories/tarefaacademica-matricula.repository";
+import TarefaAcademicaMatricula from "../entities/tarefaacademica-matricula.model";
 
 /**
  * DTOs para transferência de dados
@@ -83,6 +86,8 @@ export default class MatriculaService {
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
   #database: MysqlDatabase;
   #conversaGrupoService?: ConversaGrupoService;
+  #tarefaDAO?: TarefaAcademicaDAO;
+  #tarefaMatriculaDAO?: TarefaAcademicaMatriculaDAO;
 
   constructor(
     matriculaDAO: MatriculaDAO,
@@ -90,7 +95,9 @@ export default class MatriculaService {
     usuarioDAO: UsuarioDAO,
     escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO,
     database: MysqlDatabase,
-    conversaGrupoService?: ConversaGrupoService
+    conversaGrupoService?: ConversaGrupoService,
+    tarefaDAO?: TarefaAcademicaDAO,
+    tarefaMatriculaDAO?: TarefaAcademicaMatriculaDAO
   ) {
     this.#matriculaDAO = matriculaDAO;
     this.#turmaDAO = turmaDAO;
@@ -98,7 +105,42 @@ export default class MatriculaService {
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAO;
     this.#database = database;
     this.#conversaGrupoService = conversaGrupoService;
+    this.#tarefaDAO = tarefaDAO;
+    this.#tarefaMatriculaDAO = tarefaMatriculaDAO;
   }
+
+  /**
+   * Atribui ao aluno recém-matriculado as tarefas individuais (não em grupo)
+   * já existentes na turma com prazo futuro — sem isso, quem entra na turma
+   * depois de uma tarefa criada nunca a vê (a atribuição é decidida na
+   * criação da tarefa, via lista fixa de matrículas). Tarefas em grupo ficam
+   * de fora (entrar num grupo já formado não é uma decisão automática) e
+   * tarefas com prazo vencido também (não faz sentido cobrar uma entrega que
+   * já fechou).
+   */
+  #atribuirTarefasExistentes = async (matriculaGUID: string, turmaGUID: string): Promise<void> => {
+    if (!this.#tarefaDAO || !this.#tarefaMatriculaDAO) return;
+
+    try {
+      const tarefas = await this.#tarefaDAO.findIndividuaisAtivasPorTurma(turmaGUID);
+      if (tarefas.length === 0) return;
+
+      const atribuicoes = tarefas.map((tarefa) => {
+        const atrib = new TarefaAcademicaMatricula();
+        atrib.TarefaMatriculaGUID = gerarGUID();
+        atrib.TarefaGUID = tarefa.TarefaGUID;
+        atrib.MatriculaGUID = matriculaGUID;
+        atrib.TarefaPrazoDataMatricula = null;
+        atrib.TarefaFeito = false;
+        atrib.TarefaRealizacaoData = null;
+        return atrib;
+      });
+
+      await this.#tarefaMatriculaDAO.createBatch(atribuicoes);
+    } catch (error) {
+      console.error("🔴 MatriculaService.#atribuirTarefasExistentes() falhou:", error);
+    }
+  };
 
   /**
    * Criar nova matrícula
@@ -201,6 +243,10 @@ export default class MatriculaService {
         usuario.UsuarioGUID
       );
     }
+
+    // 8.1 Atribuir tarefas individuais já existentes na turma (com prazo
+    // futuro) — sem isso, quem entra depois nunca vê tarefas criadas antes.
+    await this.#atribuirTarefasExistentes(matriculaCriada.MatriculaGUID, matriculaCriada.TurmaGUID);
 
     // 9. Notificar o aluno (tipo `matricula_nova_turma`) — não bloqueia a resposta
     getNotificacaoService().disparar({
@@ -359,6 +405,10 @@ export default class MatriculaService {
         await this.#conversaGrupoService.removerMembroTurma(turmaOrigem.TurmaGUID, aluno.UsuarioGUID);
         await this.#conversaGrupoService.adicionarMembroTurma(turmaDestino.TurmaGUID, aluno.UsuarioGUID);
       }
+
+      // Atribuir tarefas individuais já existentes na turma de destino —
+      // mesmo motivo do fluxo individual (ver criarMatricula).
+      await this.#atribuirTarefasExistentes(novaMatricula.MatriculaGUID, turmaDestino.TurmaGUID);
 
       void getAuditoriaService().registrar({
         EscolaGUID: turmaOrigem.EscolaGUID,
@@ -823,6 +873,10 @@ export default class MatriculaService {
         if (this.#conversaGrupoService) {
           await this.#conversaGrupoService.adicionarMembroTurma(turmaGUID, aluno.UsuarioGUID);
         }
+
+        // Atribuir tarefas individuais já existentes na turma — mesmo motivo
+        // do fluxo individual (ver criarMatricula).
+        await this.#atribuirTarefasExistentes(novaMatricula.MatriculaGUID, turmaGUID);
 
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
