@@ -33,6 +33,20 @@ const aulasPorSemanaCampo = () =>
     )
     .optional();
 
+/**
+ * `POST /api/professor/alocacao` aceita tanto o corpo individual
+ * (`{alocacao: {...}}`, GUIDs obrigatórios) quanto o em massa
+ * (`{alocacoes: [...], EscolaGUID}`, aceita MateriaNome/TurmaNome —
+ * `ProfessorService.criarAlocacoesEmMassa` resolve nome→GUID item a item).
+ * Mesmo padrão de `ehCorpoEmMassa` em usuario.schema.ts: sem essa checagem,
+ * `CriarAlocacaoBodySchema` (que só conhece `body.alocacao` singular)
+ * rejeitava todo corpo em massa com "Dados da alocação inválidos" antes de
+ * chegar no controller, que já tem tratamento próprio pro array.
+ */
+export function ehCorpoEmMassaAlocacao(body: unknown): boolean {
+  return !!body && typeof body === "object" && !Array.isArray(body) && Array.isArray((body as Record<string, unknown>).alocacoes);
+}
+
 export const CriarAlocacaoBodySchema = z.object({
   alocacao: z.object(
     {
