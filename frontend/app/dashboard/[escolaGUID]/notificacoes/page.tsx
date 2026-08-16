@@ -60,11 +60,12 @@ export default function NotificacoesPage() {
   const [temMais, setTemMais] = useState(false);
   const [erro, setErro] = useState('');
   const [filtro, setFiltro] = useState<'todas' | 'nao-lidas'>('todas');
+  const [verTodasEscolas, setVerTodasEscolas] = useState(false);
 
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtro]);
+  }, [filtro, verTodasEscolas]);
 
   useEffect(() => {
     NotificacaoAPI.listarTipos()
@@ -78,6 +79,7 @@ export default function NotificacoesPage() {
       setErro('');
       const lista = await NotificacaoAPI.listarNotificacoes({
         ...(filtro === 'nao-lidas' ? { lida: false } : {}),
+        ...(verTodasEscolas ? {} : { EscolaGUID: escolaGUID }),
         limit: TAMANHO_PAGINA,
         offset: 0,
       });
@@ -95,6 +97,7 @@ export default function NotificacoesPage() {
       setCarregandoMais(true);
       const proximas = await NotificacaoAPI.listarNotificacoes({
         ...(filtro === 'nao-lidas' ? { lida: false } : {}),
+        ...(verTodasEscolas ? {} : { EscolaGUID: escolaGUID }),
         limit: TAMANHO_PAGINA,
         offset: notificacoes.length,
       });
@@ -128,7 +131,7 @@ export default function NotificacoesPage() {
 
   const handleMarcarTodasComoLidas = async () => {
     try {
-      await NotificacaoAPI.marcarTodasComoLidas();
+      await NotificacaoAPI.marcarTodasComoLidas(verTodasEscolas ? undefined : escolaGUID);
       setNotificacoes((prev) => prev.map((n) => ({ ...n, NotificacaoLida: true })));
     } catch (e: any) {
       setErro(e.message || 'Erro ao marcar notificações como lidas');
@@ -168,6 +171,14 @@ export default function NotificacoesPage() {
           onClick={() => setFiltro('nao-lidas')}
         >
           Não lidas
+        </button>
+        <span style={{ flex: 1 }} />
+        <button
+          className={verTodasEscolas ? styles.filtroAtivo : styles.filtro}
+          onClick={() => setVerTodasEscolas((v) => !v)}
+          title={verTodasEscolas ? 'Mostrando notificações de todas as suas escolas' : 'Mostrando só as notificações desta escola'}
+        >
+          {verTodasEscolas ? 'Todas as escolas' : 'Só esta escola'}
         </button>
       </div>
 

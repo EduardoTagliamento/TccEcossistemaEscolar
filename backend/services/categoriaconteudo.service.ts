@@ -199,7 +199,7 @@ export default class CategoriaConteudoService {
 
     const categorias = await this.#categoriaDAO.findAll({ MateriaGUID: materiaGUID, TurmaGUID: turmaGUID });
 
-    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID) : null;
+    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuarioETurma(usuarioGUID, turmaGUID) : null;
     const matriculaGUID = matricula?.MatriculaGUID ?? null;
 
     const mapaItens = new Map<string, ItemCategoriaDTO[]>();
@@ -1095,7 +1095,7 @@ export default class CategoriaConteudoService {
       return rows.length > 0;
     }
 
-    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID) : null;
+    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuarioETurma(usuarioGUID, turmaGUID) : null;
     if (!matricula) return false;
 
     const [rows] = await pool.execute<RowDataPacket[]>(
@@ -1133,18 +1133,22 @@ export default class CategoriaConteudoService {
       return rows.length > 0;
     }
 
-    const matricula = this.#matriculaDAO ? await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID) : null;
-    if (!matricula) return false;
+    // Agregado de verdade agora — um aluno pode ter uma matrícula ativa POR
+    // ESCOLA (ver findMatriculaAtivaByUsuarioEEscola), então "qualquer
+    // pendência" precisa olhar todas as matrículas ativas do usuário, não só
+    // a mais recente.
+    const matriculas = this.#matriculaDAO ? await this.#matriculaDAO.findAllMatriculasAtivasByUsuario(usuarioGUID) : [];
+    if (matriculas.length === 0) return false;
 
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT 1
        FROM tarefaacademica t
        INNER JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = t.matXprofXturxescGUID
        INNER JOIN tarefaacademica_matricula tm ON tm.TarefaGUID = t.TarefaGUID
-       WHERE tm.MatriculaGUID = ?
+       WHERE tm.MatriculaGUID IN (?)
          AND tm.TarefaFeito = FALSE AND tm.TarefaNota IS NULL
        LIMIT 1`,
-      [matricula.MatriculaGUID]
+      [matriculas.map((m) => m.MatriculaGUID)]
     );
     return rows.length > 0;
   };

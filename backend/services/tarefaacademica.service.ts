@@ -1132,12 +1132,11 @@ export default class TarefaAcademicaService {
     // Enviar o anexo É a entrega da tarefa digital — marca automaticamente
     // como feito (mesmo efeito de marcarComoFeito(true)), sem exigir que o
     // aluno também clique num checkbox separado depois de já ter enviado.
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
-    if (matricula) {
-      const atribuicao = await this.#tarefaMatriculaDAO.findByTarefaAndMatricula(TarefaGUID, matricula.MatriculaGUID);
-      if (atribuicao && !atribuicao.TarefaFeito) {
-        await this.#tarefaMatriculaDAO.update(atribuicao.TarefaMatriculaGUID, { TarefaFeito: true });
-      }
+    // `minhaAtribuicao` (acima) já é a atribuição certa — não precisa buscar
+    // "a" matrícula ativa do usuário de novo (isso nem faz sentido quando o
+    // aluno pode ter matrícula ativa em mais de uma escola).
+    if (!minhaAtribuicao.TarefaFeito) {
+      await this.#tarefaMatriculaDAO.update(minhaAtribuicao.TarefaMatriculaGUID, { TarefaFeito: true });
     }
 
     this.#notificarTarefaRespostaRecebida(tarefa, usuarioGUID).catch((error) => {
@@ -1827,10 +1826,17 @@ export default class TarefaAcademicaService {
       });
     }
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(alunoGUID);
+    const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
+    if (!alocacao) {
+      throw new ErrorResponse(404, "Alocação não encontrada", {
+        message: `Não existe alocação com id ${tarefa.matXprofXturxescGUID}`,
+      });
+    }
+
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuarioETurma(alunoGUID, alocacao.TurmaGUID);
     if (!matricula) {
       throw new ErrorResponse(403, "Sem permissão", {
-        message: "Você não tem matrícula ativa.",
+        message: "Você não tem matrícula ativa nesta turma.",
       });
     }
 
@@ -2025,9 +2031,16 @@ export default class TarefaAcademicaService {
       });
     }
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(alunoGUID);
+    const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
+    if (!alocacao) {
+      throw new ErrorResponse(404, "Alocação não encontrada", {
+        message: `Não existe alocação com id ${tarefa.matXprofXturxescGUID}`,
+      });
+    }
+
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuarioETurma(alunoGUID, alocacao.TurmaGUID);
     if (!matricula) {
-      throw new ErrorResponse(403, "Sem permissão", { message: "Você não tem matrícula ativa." });
+      throw new ErrorResponse(403, "Sem permissão", { message: "Você não tem matrícula ativa nesta turma." });
     }
     const atribuicao = await this.#tarefaMatriculaDAO.findByTarefaAndMatricula(TarefaGUID, matricula.MatriculaGUID);
     if (!atribuicao) {

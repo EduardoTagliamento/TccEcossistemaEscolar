@@ -12,6 +12,10 @@ export interface NotificacaoFilters {
   lida?: boolean;
   limit?: number;
   offset?: number;
+  /** Sem isso, o feed mistura notificações de TODAS as escolas do usuário —
+   * o dropdown/`/notificacoes` da escola precisa filtrar por ela; a opção
+   * "ver de todas as escolas" em `/notificacoes` é o único caso que omite. */
+  EscolaGUID?: string;
 }
 
 export class NotificacaoDAO {
@@ -91,6 +95,11 @@ export class NotificacaoDAO {
     `;
     const params: any[] = [usuarioGUID];
 
+    if (filters.EscolaGUID) {
+      query += ` AND EscolaGUID = ?`;
+      params.push(filters.EscolaGUID);
+    }
+
     if (filters.lida !== undefined) {
       query += ` AND NotificacaoLida = ?`;
       params.push(filters.lida ? 1 : 0);
@@ -115,13 +124,18 @@ export class NotificacaoDAO {
     return rows.map((row) => this.#mapRowToNotificacao(row));
   }
 
-  async contarNaoLidas(usuarioGUID: string): Promise<number> {
+  async contarNaoLidas(usuarioGUID: string, escolaGUID?: string): Promise<number> {
     console.log("🟢 NotificacaoDAO.contarNaoLidas()");
 
-    const query = `SELECT COUNT(*) as total FROM notificacao WHERE UsuarioGUID = ? AND NotificacaoLida = 0`;
+    let query = `SELECT COUNT(*) as total FROM notificacao WHERE UsuarioGUID = ? AND NotificacaoLida = 0`;
+    const params: any[] = [usuarioGUID];
+    if (escolaGUID) {
+      query += ` AND EscolaGUID = ?`;
+      params.push(escolaGUID);
+    }
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioGUID]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, params);
 
     return (rows as any)[0]?.total || 0;
   }
@@ -170,17 +184,22 @@ export class NotificacaoDAO {
     return (rows as any[]).map((row) => row.UsuarioGUID);
   }
 
-  async marcarTodasComoLidas(usuarioGUID: string): Promise<number> {
+  async marcarTodasComoLidas(usuarioGUID: string, escolaGUID?: string): Promise<number> {
     console.log("🟢 NotificacaoDAO.marcarTodasComoLidas()");
 
-    const query = `
+    let query = `
       UPDATE notificacao
       SET NotificacaoLida = 1, NotificacaoLidaData = NOW()
       WHERE UsuarioGUID = ? AND NotificacaoLida = 0
     `;
+    const params: any[] = [usuarioGUID];
+    if (escolaGUID) {
+      query += ` AND EscolaGUID = ?`;
+      params.push(escolaGUID);
+    }
 
     const pool = await this.#database.getPool();
-    const [result] = await pool.execute<ResultSetHeader>(query, [usuarioGUID]);
+    const [result] = await pool.execute<ResultSetHeader>(query, params);
 
     return result.affectedRows;
   }

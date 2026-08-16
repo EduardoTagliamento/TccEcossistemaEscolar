@@ -166,7 +166,7 @@ export class AvisoService {
     if (aviso.AvisoAbrangencia === 'Escola') return;
 
     const turmaGUIDs = await this.avisoDAO.findTurmaGUIDsByAviso(aviso.AvisoGUID);
-    const minhaMatricula = await this.matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
+    const minhaMatricula = await this.matriculaDAO.findMatriculaAtivaByUsuarioEEscola(usuarioGUID, aviso.EscolaGUID);
     if (!minhaMatricula || !turmaGUIDs.includes(minhaMatricula.TurmaGUID)) {
       throw new ErrorResponse(403, 'Este aviso não é destinado a você');
     }
@@ -174,7 +174,7 @@ export class AvisoService {
 
   // READ (aviso mais recente não visto pelo usuário — banner de destaque na home)
   async buscarNaoVisualizadoMaisRecente(escolaGUID: string, usuarioGUID: string): Promise<AvisoDTO | null> {
-    const minhaMatricula = await this.matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
+    const minhaMatricula = await this.matriculaDAO.findMatriculaAtivaByUsuarioEEscola(usuarioGUID, escolaGUID);
     const turmaGUIDs = minhaMatricula ? [minhaMatricula.TurmaGUID] : [];
 
     const aviso = await this.avisoDAO.findNaoVisualizadoMaisRecente(escolaGUID, usuarioGUID, turmaGUIDs);

@@ -5,6 +5,7 @@ import { ConteudoProgressoDAO } from "../repositories/conteudoprogresso.reposito
 import { ConteudoDAO } from "../repositories/conteudo.repository";
 import { ConteudoPaginadoArquivoDAO } from "../repositories/conteudopaginadoarquivo.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
+import ConteudoTurmaDAO from "../repositories/conteudoturma.repository";
 
 const LIMIAR_VIDEO_CONCLUIDO = 95; // >=95% assistido conta como 100%
 
@@ -21,26 +22,40 @@ export default class ConteudoProgressoService {
   #conteudoDAO: ConteudoDAO;
   #paginadoDAO: ConteudoPaginadoArquivoDAO;
   #matriculaDAO: MatriculaDAO;
+  #conteudoTurmaDAO: ConteudoTurmaDAO;
 
   constructor(
     progressoDAO: ConteudoProgressoDAO,
     conteudoDAO: ConteudoDAO,
     paginadoDAO: ConteudoPaginadoArquivoDAO,
-    matriculaDAO: MatriculaDAO
+    matriculaDAO: MatriculaDAO,
+    conteudoTurmaDAO: ConteudoTurmaDAO
   ) {
     console.log("⬆️  ConteudoProgressoService.constructor()");
     this.#progressoDAO = progressoDAO;
     this.#conteudoDAO = conteudoDAO;
     this.#paginadoDAO = paginadoDAO;
     this.#matriculaDAO = matriculaDAO;
+    this.#conteudoTurmaDAO = conteudoTurmaDAO;
   }
 
-  /** Resolve a matrícula ATIVA do usuário autenticado — progresso é sempre por matrícula, não pelo usuário direto. */
-  #resolverMatriculaAtiva = async (usuarioGUID: string): Promise<string> => {
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
+  /**
+   * Resolve a matrícula ATIVA do usuário autenticado NA TURMA em que este
+   * conteúdo foi atribuído — progresso é sempre por matrícula, não pelo
+   * usuário direto. Um aluno pode ter uma matrícula ativa por escola (ver
+   * MatriculaDAO.findMatriculaAtivaByUsuarioEEscola), então não dá mais pra
+   * pegar "a" matrícula ativa sem saber qual turma — um conteúdo é atribuído
+   * a N turmas (ConteudoTurma), então cruza com as turmas do aluno.
+   */
+  #resolverMatriculaAtiva = async (usuarioGUID: string, conteudoGUID: string): Promise<string> => {
+    const atribuicoes = await this.#conteudoTurmaDAO.findByConteudo(conteudoGUID);
+    const turmaGUIDs = new Set(atribuicoes.map((a) => a.TurmaGUID));
+
+    const matriculas = await this.#matriculaDAO.findAllMatriculasAtivasByUsuario(usuarioGUID);
+    const matricula = matriculas.find((m) => turmaGUIDs.has(m.TurmaGUID));
     if (!matricula) {
       throw new ErrorResponse(404, "Matrícula não encontrada", {
-        message: "Usuário não possui matrícula ativa.",
+        message: "Usuário não possui matrícula ativa na turma deste conteúdo.",
       });
     }
     return matricula.MatriculaGUID;
@@ -59,7 +74,7 @@ export default class ConteudoProgressoService {
       throw new ErrorResponse(404, "Conteúdo não encontrado");
     }
 
-    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID);
+    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID, conteudoGUID);
 
     let percentual = duracaoTotalSegundos > 0 ? Math.round((segundosAssistidos / duracaoTotalSegundos) * 100) : 0;
     percentual = Math.min(100, Math.max(0, percentual));
@@ -89,7 +104,7 @@ export default class ConteudoProgressoService {
       throw new ErrorResponse(404, "Página não encontrada");
     }
 
-    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID);
+    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID, pagina.ConteudoGUID);
 
     await this.#progressoDAO.registrarPaginaVista(conteudoPaginadoArquivoGUID, matriculaGUID, gerarGUID());
 
@@ -117,7 +132,7 @@ export default class ConteudoProgressoService {
       throw new ErrorResponse(404, "Conteúdo não encontrado");
     }
 
-    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID);
+    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID, conteudoGUID);
 
     const progresso = new ConteudoProgresso();
     progresso.ConteudoProgressoGUID = gerarGUID();
@@ -134,7 +149,7 @@ export default class ConteudoProgressoService {
   buscarProgresso = async (conteudoGUID: string, usuarioGUID: string): Promise<ConteudoProgressoDTO> => {
     console.log("🟣 ConteudoProgressoService.buscarProgresso()");
 
-    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID);
+    const matriculaGUID = await this.#resolverMatriculaAtiva(usuarioGUID, conteudoGUID);
     const progresso = await this.#progressoDAO.findByConteudoEMatricula(conteudoGUID, matriculaGUID);
 
     if (!progresso) {

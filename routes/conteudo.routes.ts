@@ -104,7 +104,7 @@ export const conteudoRouterFactory = () => {
 
   const progressoDAO = new ConteudoProgressoDAO(database);
   const matriculaDAO = new MatriculaDAO(database);
-  const progressoService = new ConteudoProgressoService(progressoDAO, conteudoDAO, paginadoDAO, matriculaDAO);
+  const progressoService = new ConteudoProgressoService(progressoDAO, conteudoDAO, paginadoDAO, matriculaDAO, conteudoTurmaDAO);
   const progressoController = new ConteudoProgressoController(progressoService);
 
   const roteador = new ConteudoRoteador(controller, progressoController);

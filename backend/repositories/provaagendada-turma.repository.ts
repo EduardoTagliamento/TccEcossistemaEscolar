@@ -112,6 +112,26 @@ export default class ProvaAgendadaTurmaDAO {
   }
 
   /**
+   * Busca uma atribuição pelo próprio GUID (prova→turma)
+   */
+  async findById(ProvaAgendadaTurmaGUID: string): Promise<ProvaAgendadaTurma | null> {
+    const sql = `
+      SELECT * FROM provaagendada_turma
+      WHERE ProvaAgendadaTurmaGUID = ?
+      LIMIT 1
+    `;
+
+    const pool = await this.db.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(sql, [ProvaAgendadaTurmaGUID]);
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    return this.mapRowToEntity(rows[0]);
+  }
+
+  /**
    * Busca uma atribuição específica (prova + turma)
    */
   async findByProvaAndTurma(ProvaAgendadaGUID: string, TurmaGUID: string): Promise<ProvaAgendadaTurma | null> {

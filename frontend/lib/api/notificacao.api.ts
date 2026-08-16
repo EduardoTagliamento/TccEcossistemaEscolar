@@ -63,11 +63,12 @@ export interface NotificacaoPreferencia {
 
 // ==================== FEED ====================
 
-export async function listarNotificacoes(filtro?: { lida?: boolean; limit?: number; offset?: number }): Promise<Notificacao[]> {
+export async function listarNotificacoes(filtro?: { lida?: boolean; limit?: number; offset?: number; EscolaGUID?: string }): Promise<Notificacao[]> {
   const query = new URLSearchParams();
   if (filtro?.lida !== undefined) query.set('lida', String(filtro.lida));
   if (filtro?.limit) query.set('limit', String(filtro.limit));
   if (filtro?.offset) query.set('offset', String(filtro.offset));
+  if (filtro?.EscolaGUID) query.set('EscolaGUID', filtro.EscolaGUID);
 
   const response = await fetch(`${API_URL}/notificacao?${query.toString()}`, {
     headers: getHeaders(),
@@ -77,8 +78,9 @@ export async function listarNotificacoes(filtro?: { lida?: boolean; limit?: numb
   return result.data.notificacoes;
 }
 
-export async function contarNaoLidas(): Promise<number> {
-  const response = await fetch(`${API_URL}/notificacao/contador`, {
+export async function contarNaoLidas(escolaGUID?: string): Promise<number> {
+  const query = escolaGUID ? `?EscolaGUID=${encodeURIComponent(escolaGUID)}` : '';
+  const response = await fetch(`${API_URL}/notificacao/contador${query}`, {
     headers: getHeaders(),
   });
   const result = await response.json();
@@ -95,8 +97,9 @@ export async function marcarComoLida(notificacaoGUID: string): Promise<void> {
   if (!response.ok) throw new Error(result.message || 'Erro ao marcar notificação como lida');
 }
 
-export async function marcarTodasComoLidas(): Promise<number> {
-  const response = await fetch(`${API_URL}/notificacao/lidas`, {
+export async function marcarTodasComoLidas(escolaGUID?: string): Promise<number> {
+  const query = escolaGUID ? `?EscolaGUID=${encodeURIComponent(escolaGUID)}` : '';
+  const response = await fetch(`${API_URL}/notificacao/lidas${query}`, {
     method: 'PATCH',
     headers: getHeaders(),
   });
