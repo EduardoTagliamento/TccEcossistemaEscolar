@@ -221,7 +221,7 @@ export default function DashboardPage() {
     setCarregandoTarefas(true);
     setErroTarefas('');
     try {
-      const dados = await MateriasModuloAPI.listarPendentesAluno();
+      const dados = await MateriasModuloAPI.listarPendentesAluno(escolaGUID);
       setTarefasTotal(dados.length);
       setTarefas(dados.slice(0, 5));
     } catch (erro: any) {
@@ -235,7 +235,7 @@ export default function DashboardPage() {
     setCarregandoAvaliacoes(true);
     setErroAvaliacoes('');
     try {
-      const dados = await MateriasModuloAPI.listarPendentesAvaliacaoProfessor();
+      const dados = await MateriasModuloAPI.listarPendentesAvaliacaoProfessor(escolaGUID);
       setAvaliacoesTotal(dados.length);
       setAvaliacoesPendentes(dados.slice(0, 5));
     } catch (erro: any) {
@@ -250,7 +250,7 @@ export default function DashboardPage() {
     setErroAvisos('');
     try {
       const [lista, tipos] = await Promise.all([
-        NotificacaoAPI.listarNotificacoes({ limit: 20 }),
+        NotificacaoAPI.listarNotificacoes({ limit: 20, EscolaGUID: escolaGUID }),
         NotificacaoAPI.listarTipos(),
       ]);
       const categoriaPorTipo = new Map(tipos.map((tipo) => [tipo.NotificacaoTipoId, tipo.NotificacaoTipoCategoria]));

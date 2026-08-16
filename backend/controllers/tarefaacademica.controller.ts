@@ -291,7 +291,8 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.pendentesAluno()");
     try {
       const usuarioGUID = (request.query.UsuarioGUID as string) || request.user?.UsuarioGUID || "";
-      const pendentes = await this.#tarefaService.listarPendentesAluno(usuarioGUID);
+      const escolaGUID = request.query.EscolaGUID as string | undefined;
+      const pendentes = await this.#tarefaService.listarPendentesAluno(usuarioGUID, escolaGUID);
       response.status(200).json({ success: true, message: "Pendentes listadas com sucesso", data: { pendentes } });
     } catch (error) {
       next(error);
@@ -305,7 +306,8 @@ export default class TarefaAcademicaControl {
     console.log("🔵 TarefaAcademicaControl.pendentesAvaliacaoProfessor()");
     try {
       const usuarioGUID = (request.query.UsuarioGUID as string) || request.user?.UsuarioGUID || "";
-      const pendentes = await this.#tarefaService.listarPendentesAvaliacaoProfessor(usuarioGUID);
+      const escolaGUID = request.query.EscolaGUID as string | undefined;
+      const pendentes = await this.#tarefaService.listarPendentesAvaliacaoProfessor(usuarioGUID, escolaGUID);
       response.status(200).json({ success: true, message: "Pendentes listadas com sucesso", data: { pendentes } });
     } catch (error) {
       next(error);

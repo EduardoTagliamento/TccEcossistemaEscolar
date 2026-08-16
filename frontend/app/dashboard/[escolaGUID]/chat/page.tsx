@@ -638,7 +638,9 @@ export default function ChatPage() {
   return (
     <div className={styles.container}>
       <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Conversas</h1>
+        <h1 className={styles.pageTitle}>
+          <span className={styles.tituloIcone}><Icon name="message-circle" size={20} /></span> Conversas
+        </h1>
         {!conectado && <span className={styles.statusOffline}>Reconectando ao chat…</span>}
       </header>
 

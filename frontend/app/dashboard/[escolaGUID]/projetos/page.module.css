@@ -103,10 +103,16 @@
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: var(--space-8);
   flex-wrap: wrap;
   gap: var(--space-4);
+}
+
+.headerTitulo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .header h1 {
@@ -115,6 +121,15 @@
   font-family: var(--font-display), 'Poppins', sans-serif;
   font-weight: 800;
   color: var(--ink-900);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.headerSubtitulo {
+  margin: 0;
+  color: var(--slate-500);
+  font-size: 0.95rem;
 }
 
 .headerActions {
@@ -125,16 +140,16 @@
 
 .criarBtn {
   text-decoration: none;
-  background: var(--green-500);
+  background: var(--color-primary, var(--green-500));
   color: var(--white);
-  padding: 0.6rem 1.25rem;
+  padding: 0.7rem 1.4rem;
   border-radius: var(--radius-pill);
   font-weight: 700;
-  transition: background 0.2s;
+  transition: filter 0.2s;
 }
 
 .criarBtn:hover {
-  background: var(--green-600);
+  filter: brightness(0.92);
 }
 
 .backLink {
@@ -164,70 +179,91 @@
 
 .projetosGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-6);
+}
+
+@media (max-width: 900px) {
+  .projetosGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .projetosGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .projetoCard {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-6);
   background: var(--white);
   border: 1px solid var(--line-100);
   border-radius: var(--radius-lg);
+  overflow: hidden;
   text-decoration: none;
   color: var(--slate-600);
   box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s, transform 0.2s;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 
 .projetoCard:hover {
   border-color: var(--color-primary, var(--green-500));
   transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 29, 23, 0.12);
 }
 
 .cardEncerrado {
   opacity: 0.7;
 }
 
-.cardHeader {
+.cardBanner {
+  position: relative;
+  min-height: 110px;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-3);
+  align-items: flex-end;
+  padding: var(--space-3);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.35) 1px, transparent 1px);
+  background-size: 16px 16px;
 }
 
-.cardHeader h3 {
+.cardCorpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+
+.cardCorpo h3 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   color: var(--ink-900);
 }
 
 .statusBadge {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 0.2rem 0.6rem;
+  padding: 0.25rem 0.7rem;
   border-radius: var(--radius-pill);
   white-space: nowrap;
-}
-
-/* Verde fixo intencional: status "aberto" do projeto (sinalização, não marca). */
-.statusAberto {
-  background: var(--green-500);
-  color: var(--white);
+  background: var(--white);
+  color: var(--ink-900);
 }
 
 .statusEncerrado {
-  background: var(--slate-400);
-  color: var(--white);
+  color: var(--slate-500);
 }
 
 .descricao {
   margin: 0;
   color: var(--slate-500);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cardFooter {
@@ -235,8 +271,8 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--space-3);
-  margin-top: auto;
-  font-size: 0.85rem;
+  margin-top: var(--space-2);
+  font-size: 0.8rem;
   color: var(--slate-500);
   flex-wrap: wrap;
 }

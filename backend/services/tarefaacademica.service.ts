@@ -958,7 +958,7 @@ export default class TarefaAcademicaService {
    * Dashboard do aluno: tarefas com prazo no futuro e ainda não feitas.
    * Explicitamente NÃO inclui atrasadas nem já enviadas/marcadas.
    */
-  listarPendentesAluno = async (usuarioGUID: string): Promise<Array<{
+  listarPendentesAluno = async (usuarioGUID: string, escolaGUID?: string): Promise<Array<{
     TarefaGUID: string;
     TarefaTitulo: string;
     TarefaPrazoData: string;
@@ -968,6 +968,13 @@ export default class TarefaAcademicaService {
     TurmaNome: string;
   }>> => {
     console.log("🟣 TarefaAcademicaService.listarPendentesAluno()");
+
+    const params: any[] = [usuarioGUID];
+    let filtroEscola = "";
+    if (escolaGUID) {
+      filtroEscola = " AND tu.EscolaGUID = ?";
+      params.push(escolaGUID);
+    }
 
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT t.TarefaGUID, t.TarefaTitulo,
@@ -981,9 +988,9 @@ export default class TarefaAcademicaService {
        INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
        WHERE m.UsuarioGUID = ?
          AND tm.TarefaFeito = FALSE
-         AND COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) > NOW()
+         AND COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) > NOW()${filtroEscola}
        ORDER BY TarefaPrazoData ASC`,
-      [usuarioGUID]
+      params
     );
 
     return rows.map((row: any) => ({
@@ -1000,7 +1007,7 @@ export default class TarefaAcademicaService {
   /**
    * Dashboard do professor: entregas já feitas/marcadas, ainda sem nota.
    */
-  listarPendentesAvaliacaoProfessor = async (usuarioGUID: string): Promise<Array<{
+  listarPendentesAvaliacaoProfessor = async (usuarioGUID: string, escolaGUID?: string): Promise<Array<{
     TarefaMatriculaGUID: string;
     TarefaGUID: string;
     TarefaTitulo: string;
@@ -1011,6 +1018,13 @@ export default class TarefaAcademicaService {
     AlunoNome: string;
   }>> => {
     console.log("🟣 TarefaAcademicaService.listarPendentesAvaliacaoProfessor()");
+
+    const params: any[] = [usuarioGUID];
+    let filtroEscola = "";
+    if (escolaGUID) {
+      filtroEscola = " AND tu.EscolaGUID = ?";
+      params.push(escolaGUID);
+    }
 
     const [rows] = await pool.execute<RowDataPacket[]>(
       `SELECT tm.TarefaMatriculaGUID, t.TarefaGUID, t.TarefaTitulo,
@@ -1024,9 +1038,9 @@ export default class TarefaAcademicaService {
        INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
        WHERE mpt.UsuarioGUID = ?
          AND tm.TarefaFeito = TRUE
-         AND tm.TarefaNota IS NULL
+         AND tm.TarefaNota IS NULL${filtroEscola}
        ORDER BY tm.TarefaRealizacaoData ASC`,
-      [usuarioGUID]
+      params
     );
 
     return rows.map((row: any) => ({

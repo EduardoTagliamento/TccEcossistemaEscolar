@@ -107,24 +107,49 @@
 }
 
 .filtro {
+  position: relative;
   display: flex;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
+  max-width: 400px;
+}
+
+.filtroIcone {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--slate-500, #647268);
+  display: flex;
+  pointer-events: none;
 }
 
 .inputFiltro {
   flex: 1;
-  max-width: 400px;
-  padding: 0.65rem 1rem;
+  padding: 0.65rem 1rem 0.65rem 2.5rem;
   border: 1.5px solid var(--line-200, #E2EAE5);
   border-radius: 8px;
   font-size: 0.95rem;
+  background: var(--white, #fff);
+  color: var(--ink-900, #0F1D17);
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.25rem;
+}
+
+@media (max-width: 1100px) {
+  .grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 800px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .grid { grid-template-columns: 1fr; }
 }
 
 .loadingContainer {

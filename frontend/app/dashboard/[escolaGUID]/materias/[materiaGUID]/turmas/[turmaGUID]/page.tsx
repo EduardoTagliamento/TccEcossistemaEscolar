@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Icon, IconName } from '@/components/Icon';
@@ -29,6 +30,51 @@ const ICONE_POR_TIPO: Record<ItemCategoria['Tipo'], IconName> = {
   conteudo_texto: 'file-text',
   conteudo_imagem: 'layers',
 };
+
+type AbaFiltro = 'tudo' | 'conteudos' | 'provas' | 'tarefas';
+
+const GRUPO_POR_TIPO: Record<ItemCategoria['Tipo'], AbaFiltro> = {
+  prova: 'provas',
+  tarefa_digital: 'tarefas',
+  tarefa_presencial: 'tarefas',
+  tarefa_lista: 'tarefas',
+  conteudo_video: 'conteudos',
+  conteudo_texto: 'conteudos',
+  conteudo_imagem: 'conteudos',
+};
+
+const COR_ICONE_POR_TIPO: Record<ItemCategoria['Tipo'], string> = {
+  prova: '#F5A524',
+  tarefa_digital: '#F5A524',
+  tarefa_presencial: '#F5A524',
+  tarefa_lista: '#F5A524',
+  conteudo_video: '#7C6FF0',
+  conteudo_texto: '#17C077',
+  conteudo_imagem: '#7C6FF0',
+};
+
+const ABAS: { chave: AbaFiltro; label: string; icone: IconName }[] = [
+  { chave: 'tudo', label: 'Tudo', icone: 'layers' },
+  { chave: 'conteudos', label: 'Conteúdos', icone: 'file-text' },
+  { chave: 'provas', label: 'Provas', icone: 'award' },
+  { chave: 'tarefas', label: 'Tarefas', icone: 'list' },
+];
+
+function textoEstado(estado: ItemCategoria['Estado'], percentual: number | null): { texto: string; cor: string } {
+  switch (estado) {
+    case 'concluido':
+      return { texto: 'Concluído', cor: '#17C077' };
+    case 'atrasado':
+      return { texto: 'Atrasado', cor: '#E5484D' };
+    case 'aguardando_avaliacao':
+      return { texto: 'Aguardando', cor: '#F5A524' };
+    case 'avaliado':
+    case 'parcial':
+      return { texto: `${percentual ?? 0}%`, cor: '#647268' };
+    default:
+      return { texto: '', cor: '#647268' };
+  }
+}
 
 function CategoriaPageConteudo() {
   const params = useParams();

@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -48,108 +48,46 @@ export default function TarefasPage() {
     return comStatus;
   }, [tarefasBrutas]);
 
-  // Agrupar tarefas por período
-  const agruparTarefasPorPeriodo = () => {
-    const agora = new Date();
-    const amanha = new Date(agora);
-    amanha.setDate(amanha.getDate() + 1);
-    amanha.setHours(23, 59, 59, 999);
+  const totalCount = tarefas.length;
+  const aVencerCount = tarefas.filter((t) => t.Status === 'Pendente').length;
+  const atrasadaCount = tarefas.filter((t) => t.Status === 'Atrasada').length;
+  const compartilhadasCount = tarefas.filter((t) => t.TarefaCompartilhada).length;
 
-    const fimSemana = new Date(agora);
-    fimSemana.setDate(fimSemana.getDate() + (7 - fimSemana.getDay()));
-    fimSemana.setHours(23, 59, 59, 999);
-
-    const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
-    fimMes.setHours(23, 59, 59, 999);
-
-    const fimProximoMes = new Date(agora.getFullYear(), agora.getMonth() + 2, 0);
-    fimProximoMes.setHours(23, 59, 59, 999);
-
-    return {
-      atrasadas: tarefas.filter(t => t.Status === 'Atrasada'),
-      amanha: tarefas.filter(t => {
-        const prazo = new Date(t.TarefaPrazoData);
-        return t.Status !== 'Atrasada' && prazo <= amanha;
-      }),
-      estaSemana: tarefas.filter(t => {
-        const prazo = new Date(t.TarefaPrazoData);
-        return t.Status !== 'Atrasada' && prazo > amanha && prazo <= fimSemana;
-      }),
-      esteMes: tarefas.filter(t => {
-        const prazo = new Date(t.TarefaPrazoData);
-        return t.Status !== 'Atrasada' && prazo > fimSemana && prazo <= fimMes;
-      }),
-      proximoMes: tarefas.filter(t => {
-        const prazo = new Date(t.TarefaPrazoData);
-        return t.Status !== 'Atrasada' && prazo > fimMes && prazo <= fimProximoMes;
-      }),
-      futuro: tarefas.filter(t => {
-        const prazo = new Date(t.TarefaPrazoData);
-        return t.Status !== 'Atrasada' && prazo > fimProximoMes;
-      })
-    };
-  };
-
-  const grupos = agruparTarefasPorPeriodo();
-
-  const renderTarefaCard = (tarefa: TarefaListItem) => {
+  const renderLinhaTarefa = (tarefa: TarefaListItem) => {
     const prazo = new Date(tarefa.TarefaPrazoData);
-    const statusClass = tarefa.Status === 'Atrasada' ? styles.cardAtrasada : styles.cardPendente;
+    const atrasada = tarefa.Status === 'Atrasada';
 
     return (
-      <Link
+      <div
         key={tarefa.TarefaGUID}
-        href={`/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`}
-        className={`${styles.tarefaCard} ${statusClass}`}
+        className={`${styles.linhaTarefa} ${atrasada ? styles.linhaAtrasada : styles.linhaPendente}`}
       >
-        <div className={styles.cardHeader}>
-          <div className={styles.materiaIcone}>
-            {tarefa.MateriaNome?.charAt(0) || 'T'}
-          </div>
-          <div className={styles.cardInfo}>
-            <h3>{tarefa.TarefaTitulo}</h3>
-            <p className={styles.materia}>{tarefa.MateriaNome || 'Sem matéria'}</p>
-          </div>
-          {tarefa.TarefaCompartilhada && (
-            <span className={styles.badgeCompartilhada}>
-              <Icon name="users" size={14} color="#FFFFFF" /> Compartilhada
+        <div className={styles.linhaInfo}>
+          <div className={styles.linhaTituloRow}>
+            <h3 className={styles.linhaTitulo}>{tarefa.TarefaTitulo}</h3>
+            <span className={`${styles.badgeStatus} ${atrasada ? styles.badgeAtrasada : styles.badgeAVencer}`}>
+              {atrasada ? 'Atrasada' : 'A vencer'}
             </span>
-          )}
+            {tarefa.TarefaCompartilhada && (
+              <span className={styles.badgeGrupo}>
+                <Icon name="users" size={12} /> Em grupo
+              </span>
+            )}
+          </div>
+          <p className={styles.linhaMateria}>
+            {tarefa.MateriaNome || 'Sem matéria'}{tarefa.TurmaNome ? ` · ${tarefa.TurmaNome}` : ''}
+          </p>
         </div>
-
-        <div className={styles.cardBody}>
-          {tarefa.TarefaConteudo && (
-            <p className={styles.conteudo}>
-              {tarefa.TarefaConteudo.substring(0, 150)}
-              {tarefa.TarefaConteudo.length > 150 ? '...' : ''}
-            </p>
-          )}
-        </div>
-
-        <div className={styles.cardFooter}>
-          <span className={styles.prazo}>
-            <Icon name="calendar" size={14} /> {prazo.toLocaleDateString('pt-BR')} às {prazo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+        <div className={styles.linhaAcao}>
+          <span className={styles.linhaPrazo}>
+            <span className={styles.prazoLabel}>Prazo</span>
+            <span className={styles.prazoData}>{prazo.toLocaleDateString('pt-BR')} {prazo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
           </span>
-          <span className={`${styles.statusBadge} ${styles[`status${tarefa.Status}`]}`}>
-            {tarefa.Status}
-          </span>
+          <Link href={`/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`} className={styles.botaoAbrir}>
+            {tarefa.TarefaCompartilhada ? 'Ver grupos' : 'Abrir'}
+          </Link>
         </div>
-      </Link>
-    );
-  };
-
-  const renderGrupo = (titulo: ReactNode, tarefas: TarefaListItem[]) => {
-    if (tarefas.length === 0) return null;
-
-    return (
-      <section className={styles.grupoTarefas}>
-        <h2 className={styles.grupoTitulo}>
-          {titulo} <span className={styles.contador}>({tarefas.length})</span>
-        </h2>
-        <div className={styles.tarefasGrid}>
-          {tarefas.map(renderTarefaCard)}
-        </div>
-      </section>
+      </div>
     );
   };
 
@@ -167,8 +105,47 @@ export default function TarefasPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1><Icon name="book-open" size={24} /> Minhas Tarefas</h1>
+        <div>
+          <h1 className={styles.titulo}>
+            <span className={styles.tituloIcone}><Icon name="list" size={20} /></span> Minhas Tarefas
+          </h1>
+          <p className={styles.subtitulo}>Acompanhe suas entregas e prazos</p>
+        </div>
+        <Link href={`/dashboard/${escolaGUID}/cadastro?aba=tarefa`} className={styles.botaoNovo}>
+          <Icon name="plus" size={16} /> Novo cadastro
+        </Link>
       </header>
+
+      <div className={styles.statsRow}>
+        <div className={styles.statCard}>
+          <span className={`${styles.statIcone} ${styles.statIconeTotal}`}><Icon name="book-open" size={18} /></span>
+          <div>
+            <p className={styles.statNumero}>{totalCount}</p>
+            <p className={styles.statLabel}>Total</p>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <span className={`${styles.statIcone} ${styles.statIconeAVencer}`}><Icon name="clock" size={18} /></span>
+          <div>
+            <p className={styles.statNumero}>{aVencerCount}</p>
+            <p className={styles.statLabel}>A vencer</p>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <span className={`${styles.statIcone} ${styles.statIconeGrupo}`}><Icon name="users" size={18} /></span>
+          <div>
+            <p className={styles.statNumero}>{compartilhadasCount}</p>
+            <p className={styles.statLabel}>Em grupo</p>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <span className={`${styles.statIcone} ${styles.statIconeAtrasada}`}><Icon name="alert-triangle" size={18} /></span>
+          <div>
+            <p className={styles.statNumero}>{atrasadaCount}</p>
+            <p className={styles.statLabel}>Atrasada</p>
+          </div>
+        </div>
+      </div>
 
       {/* Filtros */}
       <div className={styles.filtros}>
@@ -199,14 +176,9 @@ export default function TarefasPage() {
           <p><Icon name="check-circle" size={20} color="var(--green-500)" /> Você não tem tarefas pendentes!</p>
         </div>
       ) : (
-        <>
-          {renderGrupo(<><Icon name="alert-triangle" size={20} color="var(--danger-500)" /> Atrasadas</>, grupos.atrasadas)}
-          {renderGrupo(<><Icon name="clock" size={20} /> Amanhã</>, grupos.amanha)}
-          {renderGrupo(<><Icon name="calendar" size={20} /> Esta Semana</>, grupos.estaSemana)}
-          {renderGrupo(<><Icon name="calendar" size={20} /> Este Mês</>, grupos.esteMes)}
-          {renderGrupo(<><Icon name="calendar" size={20} /> Próximo Mês</>, grupos.proximoMes)}
-          {renderGrupo(<><Icon name="layers" size={20} /> Futuro</>, grupos.futuro)}
-        </>
+        <div className={styles.listaTarefas}>
+          {tarefas.map(renderLinhaTarefa)}
+        </div>
       )}
     </div>
   );
