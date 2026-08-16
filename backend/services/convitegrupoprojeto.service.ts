@@ -332,8 +332,8 @@ export default class ConviteGrupoProjetoService {
   /**
    * LISTAR CONVITES/SOLICITAÇÕES PENDENTES do usuário
    */
-  listarPendentes = async (usuarioGUID: string): Promise<ConviteGrupoProjetoDTO[]> => {
+  listarPendentes = async (usuarioGUID: string, escolaGUID?: string): Promise<ConviteGrupoProjetoDTO[]> => {
     console.log('🟣 ConviteGrupoProjetoService.listarPendentes()');
-    return await this.#conviteDAO.findAllComDetalhes(usuarioGUID);
+    return await this.#conviteDAO.findAllComDetalhes(usuarioGUID, escolaGUID);
   };
 }

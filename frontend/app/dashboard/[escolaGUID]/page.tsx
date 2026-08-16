@@ -384,27 +384,27 @@ export default function DashboardPage() {
           )}
 
           <section className={styles.widgetsGrid}>
-            <div className={styles.widgetCard}>
-              <div className={styles.widgetHeader}>
-                <h3>Pendências</h3>
+            {(carregandoPendencias || !!erroPendencias || pendencias.length > 0) && (
+              <div className={styles.widgetCard}>
+                <div className={styles.widgetHeader}>
+                  <h3>Pendências</h3>
+                </div>
+                {carregandoPendencias ? (
+                  <p className={styles.widgetEstado}>Carregando...</p>
+                ) : erroPendencias ? (
+                  <p className={styles.widgetErro}>{erroPendencias}</p>
+                ) : (
+                  <ul className={styles.widgetLista}>
+                    {pendencias.map((pendencia) => (
+                      <li key={pendencia.PendenciaGUID} className={styles.widgetItem}>
+                        <span className={styles.widgetItemTitulo}>{pendencia.PendenciaTitulo}</span>
+                        <span className={styles.widgetItemData}>Prazo: {formatarData(pendencia.PendenciaPrazoData)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              {carregandoPendencias ? (
-                <p className={styles.widgetEstado}>Carregando...</p>
-              ) : erroPendencias ? (
-                <p className={styles.widgetErro}>{erroPendencias}</p>
-              ) : pendencias.length === 0 ? (
-                <p className={styles.widgetEstado}>Nenhuma pendência em aberto.</p>
-              ) : (
-                <ul className={styles.widgetLista}>
-                  {pendencias.map((pendencia) => (
-                    <li key={pendencia.PendenciaGUID} className={styles.widgetItem}>
-                      <span className={styles.widgetItemTitulo}>{pendencia.PendenciaTitulo}</span>
-                      <span className={styles.widgetItemData}>Prazo: {formatarData(pendencia.PendenciaPrazoData)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            )}
 
             {isAluno && (
               <div className={styles.widgetCard}>

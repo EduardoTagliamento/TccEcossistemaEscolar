@@ -9,7 +9,7 @@ import { useChatUI } from '@/lib/chat/ChatUIContext';
 import * as ConversaAPI from '@/lib/api/conversa.api';
 import * as UploadAPI from '@/lib/api/upload.api';
 import { Icon } from './icons';
-import NovaConversaModal from './NovaConversaModal';
+import Loader from '@/components/Loader';
 import GerenciarGrupoModal from './GerenciarGrupoModal';
 import styles from './page.module.css';
 
@@ -121,7 +121,8 @@ export default function ChatPage() {
   const [erroConversas, setErroConversas] = useState('');
   const [aba, setAba] = useState<AbaFiltro>('todas');
   const [buscaConversas, setBuscaConversas] = useState('');
-  const [modalNovaConversaAberto, setModalNovaConversaAberto] = useState(false);
+  const [membrosModalAberto, setMembrosModalAberto] = useState(false);
+  const [iniciandoConversaComGUID, setIniciandoConversaComGUID] = useState<string | null>(null);
 
   // Estado inicial lido do ChatUIContext: se o usuário chegou aqui clicando
   // em "Expandir" na bolha flutuante minimizada (MinimizedChatBubble), a
@@ -348,6 +349,14 @@ export default function ChatPage() {
       void carregarConversaAtiva(payload.ConversaGUID);
     };
 
+    // Alguém iniciou uma conversa individual comigo agora — como ainda não
+    // existe mensagem, o evento normal de nova mensagem não dispara; sem
+    // isso eu só veria a conversa recarregando a tela inteira.
+    const handleConversaIniciadaPorOutro = () => {
+      void carregarConversas();
+    };
+
+    socket.on('conversa_iniciada', handleConversaIniciadaPorOutro);
     socket.on('nova_mensagem', handleNovaMensagem);
     socket.on('mensagem_editada', handleMensagemEditada);
     socket.on('mensagem_deletada', handleMensagemDeletada);
@@ -361,6 +370,7 @@ export default function ChatPage() {
     socket.on('erro', handleErro);
 
     return () => {
+      socket.off('conversa_iniciada', handleConversaIniciadaPorOutro);
       socket.off('nova_mensagem', handleNovaMensagem);
       socket.off('mensagem_editada', handleMensagemEditada);
       socket.off('mensagem_deletada', handleMensagemDeletada);
@@ -624,6 +634,23 @@ export default function ChatPage() {
     setConversaAtivaGUID(novaConversaGUID);
   };
 
+  // Iniciar conversa com um membro do MESMO grupo — por privacidade, essa é
+  // a única forma de começar uma conversa individual (não existe mais busca
+  // livre por qualquer pessoa da escola).
+  const handleConversarComMembro = async (membroGUID: string) => {
+    if (iniciandoConversaComGUID) return;
+    setIniciandoConversaComGUID(membroGUID);
+    try {
+      const resultado = await ConversaAPI.iniciarConversaIndividual(membroGUID);
+      await handleConversaIniciada(resultado.ConversaGUID);
+      setMembrosModalAberto(false);
+    } catch (erro: any) {
+      setErroConversaAtiva(erro?.message || 'Erro ao iniciar conversa');
+    } finally {
+      setIniciandoConversaComGUID(null);
+    }
+  };
+
   // ---------- Derivados de UI ----------
   const conversasFiltradas = useMemo(() => {
     return conversas.filter((c) => {
@@ -668,15 +695,6 @@ export default function ChatPage() {
                 onChange={(e) => setBuscaConversas(e.target.value)}
               />
             </div>
-            <button
-              type="button"
-              className={styles.novaConversaButton}
-              onClick={() => setModalNovaConversaAberto(true)}
-              aria-label="Nova conversa"
-              title="Nova conversa"
-            >
-              <Icon name="plus" size={18} />
-            </button>
           </div>
 
           <div className={styles.abas}>
@@ -791,6 +809,17 @@ export default function ChatPage() {
                       : 'Conversa individual'}
                   </span>
                 </div>
+                {conversaAtiva?.ConversaTipo === 'Grupo' && (
+                  <button
+                    type="button"
+                    className={styles.gerenciarGrupoButton}
+                    onClick={() => setMembrosModalAberto(true)}
+                    aria-label="Ver membros"
+                    title="Ver membros"
+                  >
+                    <Icon name="users" size={18} />
+                  </button>
+                )}
                 {podeGerenciarGrupo && (
                   <button
                     type="button"
@@ -1078,13 +1107,49 @@ export default function ChatPage() {
         </section>
       </div>
 
-      <NovaConversaModal
-        aberto={modalNovaConversaAberto}
-        escolaGUID={escolaGUID}
-        meuGUID={usuario?.UsuarioGUID || ''}
-        onClose={() => setModalNovaConversaAberto(false)}
-        onConversaIniciada={(guid) => void handleConversaIniciada(guid)}
-      />
+      {membrosModalAberto && conversaAtiva?.ConversaTipo === 'Grupo' && (
+        <div className={styles.overlay} onClick={() => setMembrosModalAberto(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div className={styles.header}>
+              <h3>Membros do grupo</h3>
+              <button
+                type="button"
+                className={styles.closeButton}
+                onClick={() => setMembrosModalAberto(false)}
+                aria-label="Fechar"
+              >
+                <Icon name="x" size={18} />
+              </button>
+            </div>
+            <div className={styles.lista}>
+              {(conversaAtiva.Membros || [])
+                .filter((m) => m.UsuarioGUID !== usuario?.UsuarioGUID)
+                .map((membro) => (
+                  <button
+                    type="button"
+                    key={membro.UsuarioGUID}
+                    className={styles.pessoaItem}
+                    onClick={() => void handleConversarComMembro(membro.UsuarioGUID)}
+                    disabled={iniciandoConversaComGUID !== null}
+                  >
+                    <span className={styles.avatar} style={{ backgroundColor: corAvatar(membro.UsuarioNome) }}>
+                      {obterIniciais(membro.UsuarioNome)}
+                    </span>
+                    <span className={styles.pessoaInfo}>
+                      <span className={styles.pessoaNome}>{membro.UsuarioNome}</span>
+                      <span className={styles.pessoaPapel}>{membro.MembroFuncao}</span>
+                    </span>
+                    {iniciandoConversaComGUID === membro.UsuarioGUID ? (
+                      <Loader size={16} inline />
+                    ) : (
+                      <Icon name="message-circle" size={16} />
+                    )}
+                  </button>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {conversaAtiva && conversaAtivaGUID && (
         <GerenciarGrupoModal

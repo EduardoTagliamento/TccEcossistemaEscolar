@@ -32,6 +32,7 @@ export interface MateriaDoAluno {
   MateriaGUID: string;
   MateriaNome: string;
   TurmaGUID: string;
+  ProfessorGUID: string;
   ProfessorCPF: string;
   ProfessorNome: string;
   ProfessorFotoUrl: string | null;

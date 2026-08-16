@@ -66,6 +66,7 @@ export interface MateriaDoAlunoDTO {
   MateriaGUID: string;
   MateriaNome: string;
   TurmaGUID: string;
+  ProfessorGUID: string;
   ProfessorCPF: string;
   ProfessorNome: string;
   ProfessorFotoUrl: string | null;
@@ -137,6 +138,7 @@ export default class MateriaService {
         MateriaGUID: materia.MateriaGUID,
         MateriaNome: materia.MateriaNome || "",
         TurmaGUID: matricula.TurmaGUID,
+        ProfessorGUID: alocacao.UsuarioGUID,
         ProfessorCPF: professor?.UsuarioCPF ?? "",
         ProfessorNome: professor?.UsuarioNome ?? "Professor",
         ProfessorFotoUrl: professor?.UsuarioFotoUrl ?? null,

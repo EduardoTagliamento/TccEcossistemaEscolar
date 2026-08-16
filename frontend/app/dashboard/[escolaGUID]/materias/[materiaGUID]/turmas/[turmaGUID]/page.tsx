@@ -9,10 +9,13 @@ import ItemProgressoBar from '@/components/materias/ItemProgressoBar';
 import VisualizadorItemModal from '@/components/materias/VisualizadorItemModal';
 import EditarItemModal from '@/components/materias/EditarItemModal';
 import NovoItemModal, { NovoItemAba } from '@/components/materias/NovoItemModal';
+import { useRouter } from 'next/navigation';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
 import * as MateriaAPI from '@/lib/api/materia.api';
+import * as ConversaAPI from '@/lib/api/conversa.api';
+import { useChatUI } from '@/lib/chat/ChatUIContext';
 import type { ItemCategoria } from '@/lib/api/materiasmodulo.api';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -87,17 +90,21 @@ function textoEstado(estado: ItemCategoria['Estado'], percentual: number | null)
 function CategoriaPageConteudo() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const escolaGUID = (params?.escolaGUID as string) || '';
   const materiaGUID = (params?.materiaGUID as string) || '';
   const turmaGUID = (params?.turmaGUID as string) || '';
   const { usuario, token } = useAuth();
+  const { definirConversaAberta } = useChatUI();
 
   const [ehProfessor, setEhProfessor] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [materiaNome, setMateriaNome] = useState('');
   const [turmaLabel, setTurmaLabel] = useState('');
+  const [professorGUID, setProfessorGUID] = useState('');
   const [professorNome, setProfessorNome] = useState('');
   const [professorFotoUrl, setProfessorFotoUrl] = useState<string | null>(null);
+  const [iniciandoConversa, setIniciandoConversa] = useState(false);
   const [imagemFundo, setImagemFundo] = useState<string | null>(null);
   const [corFundo, setCorFundo] = useState('#17C077');
   const [mensagem, setMensagem] = useState<string | null>(null);
@@ -170,6 +177,7 @@ function CategoriaPageConteudo() {
         const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioGUID, escolaGUID);
         const materiaAtual = materias.find((m) => m.MateriaGUID === materiaGUID);
         setMateriaNome(materiaAtual?.MateriaNome || 'Matéria');
+        setProfessorGUID(materiaAtual?.ProfessorGUID || '');
         setProfessorNome(materiaAtual?.ProfessorNome || '');
         setProfessorFotoUrl(materiaAtual?.ProfessorFotoUrl || null);
         setMensagem(materiaAtual?.MensagemBoasVindas || null);
@@ -180,6 +188,20 @@ function CategoriaPageConteudo() {
       console.error('Erro ao inicializar tela de categoria:', erro);
     } finally {
       setCarregando(false);
+    }
+  };
+
+  const handleConversarComProfessor = async () => {
+    if (!professorGUID || iniciandoConversa) return;
+    try {
+      setIniciandoConversa(true);
+      const { ConversaGUID } = await ConversaAPI.iniciarConversaIndividual(professorGUID);
+      definirConversaAberta(ConversaGUID);
+      router.push(`/dashboard/${escolaGUID}/chat`);
+    } catch (erro) {
+      console.error('Erro ao iniciar conversa com o professor:', erro);
+    } finally {
+      setIniciandoConversa(false);
     }
   };
 
@@ -397,6 +419,17 @@ function CategoriaPageConteudo() {
                 <span className={styles.heroProfessorAvatar}>{iniciais(professorNome)}</span>
               )}
               <span>{professorNome}</span>
+              {!ehProfessor && professorGUID && (
+                <button
+                  type="button"
+                  onClick={handleConversarComProfessor}
+                  disabled={iniciandoConversa}
+                  className={styles.heroProfessorConversar}
+                >
+                  <Icon name="message-circle" size={14} />
+                  {iniciandoConversa ? 'Abrindo...' : 'Conversar'}
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -115,8 +115,15 @@ export class ConviteGrupoProjetoDAO {
   }
 
   // READ - FIND ALL COM DETALHES (pendentes relevantes ao usuário)
-  async findAllComDetalhes(usuarioGUID: string): Promise<ConviteGrupoProjetoDTO[]> {
+  async findAllComDetalhes(usuarioGUID: string, escolaGUID?: string): Promise<ConviteGrupoProjetoDTO[]> {
     console.log('🟢 ConviteGrupoProjetoDAO.findAllComDetalhes()');
+
+    const params: any[] = [usuarioGUID, usuarioGUID];
+    let filtroEscola = '';
+    if (escolaGUID) {
+      filtroEscola = ' AND p.EscolaGUID = ?';
+      params.push(escolaGUID);
+    }
 
     const query = `
       SELECT
@@ -130,6 +137,7 @@ export class ConviteGrupoProjetoDAO {
         gp.UsuarioGUIDLider AS LiderGUID,
         u_lider.UsuarioNome AS LiderNome,
         u_convidado.UsuarioNome AS NomeConvidado,
+        p.EscolaGUID,
         p.ProjetoTitulo,
         p.ProjetoInscricaoPrazoData,
         p.ProjetoGrupoMaxPessoas AS MaxPessoas,
@@ -144,13 +152,13 @@ export class ConviteGrupoProjetoDAO {
         AND (
           (c.ConviteTipo = 'Convite' AND c.UsuarioGUIDConvidado = ?)
           OR (c.ConviteTipo = 'Solicitacao' AND gp.UsuarioGUIDLider = ?)
-        )
+        )${filtroEscola}
       GROUP BY c.ConviteGUID
       ORDER BY c.CreatedAt DESC
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [usuarioGUID, usuarioGUID]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query, params);
 
     return rows.map((row) => this.mapDetalhes(row));
   }
@@ -188,6 +196,7 @@ export class ConviteGrupoProjetoDAO {
       ConviteGUID: row.ConviteGUID,
       GrupoProjetoGUID: row.GrupoProjetoGUID,
       GrupoProjetoNome: row.GrupoProjetoNome,
+      EscolaGUID: row.EscolaGUID,
       LiderGUID: row.LiderGUID,
       LiderNome: row.LiderNome,
       UsuarioGUIDConvidado: row.UsuarioGUIDConvidado,

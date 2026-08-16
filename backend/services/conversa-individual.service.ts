@@ -44,6 +44,12 @@ export default class ConversaIndividualService {
     await this.#conversaDAO.create(conversaGUID, 'Individual');
     await this.#conversaIndividualDAO.create(conversaGUID, guidMin, guidMax);
 
+    // Avisa o destinatário em tempo real — sem isso, ele só via a conversa
+    // nova recarregando a tela de chat (nenhuma mensagem foi enviada ainda,
+    // então o evento normal de nova mensagem não dispara).
+    const { SocketServer } = await import('../websocket/SocketServer');
+    SocketServer.emit(`usuario:${destinatarioGUID}`, 'conversa_iniciada', { ConversaGUID: conversaGUID });
+
     return { ConversaGUID: conversaGUID, isNova: true };
   }
 }

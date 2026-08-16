@@ -85,6 +85,7 @@ export interface ConviteGrupoProjeto {
   ConviteGUID: string;
   GrupoProjetoGUID: string;
   GrupoProjetoNome: string | null;
+  EscolaGUID: string;
   LiderGUID: string;
   LiderNome: string;
   UsuarioGUIDConvidado: string;

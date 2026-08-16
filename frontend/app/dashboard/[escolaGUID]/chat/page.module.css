@@ -1035,3 +1035,119 @@
     max-width: 82%;
   }
 }
+
+/* ============================================================
+   Modal "Membros do grupo" — mesmo padrão visual do modal que existia em
+   NovaConversaModal.module.css (removido junto com a busca livre de
+   qualquer pessoa da escola, por privacidade). Tokens (--green-500,
+   --ink-900, --slate-500, --line-200, --surface-50, --white, --radius-md,
+   --shadow-md) herdados de .container, não precisam ser redeclarados aqui.
+   ============================================================ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 29, 23, 0.42);
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+}
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 1.5rem;
+  font-family: var(--font-body), 'Figtree', system-ui, sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.header h3 {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.closeButton {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--surface-50);
+  color: var(--slate-500);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.closeButton:hover {
+  background: var(--line-100);
+}
+
+.lista {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pessoaItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body), 'Figtree', sans-serif;
+}
+
+.pessoaItem:hover:not(:disabled) {
+  background: var(--surface-50);
+}
+
+.pessoaItem:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pessoaInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.pessoaNome {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--ink-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pessoaPapel {
+  font-size: 0.75rem;
+  color: var(--slate-500);
+}
