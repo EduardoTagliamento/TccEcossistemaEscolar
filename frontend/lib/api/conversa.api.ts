@@ -139,8 +139,9 @@ async function tratarResposta<T>(response: Response, mensagemErroPadrao: string)
 // ==================== CONVERSAS ====================
 
 /** Lista todas as conversas (grupo + individuais) em que o usuário participa. */
-export async function listarConversas(): Promise<ConversaListItem[]> {
-  const response = await fetch(`${API_URL}/conversa`, {
+export async function listarConversas(escolaGUID?: string): Promise<ConversaListItem[]> {
+  const query = escolaGUID ? `?EscolaGUID=${encodeURIComponent(escolaGUID)}` : '';
+  const response = await fetch(`${API_URL}/conversa${query}`, {
     headers: getHeaders(),
   });
   return tratarResposta<ConversaListItem[]>(response, 'Erro ao listar conversas');

@@ -197,7 +197,7 @@ export default function ChatPage() {
     setCarregandoConversas(true);
     setErroConversas('');
     try {
-      const lista = await ConversaAPI.listarConversas();
+      const lista = await ConversaAPI.listarConversas(escolaGUID);
       setConversas(lista);
     } catch (erro: any) {
       setErroConversas(erro?.message || 'Erro ao carregar conversas');

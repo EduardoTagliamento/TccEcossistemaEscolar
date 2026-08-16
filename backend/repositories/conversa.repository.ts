@@ -39,22 +39,59 @@ export class ConversaDAO {
     return this.#mapRow(list[0]);
   }
 
-  async findAllByUsuarioGUID(usuarioGUID: string): Promise<Conversa[]> {
+  /**
+   * @param escolaGUID Quando informado, restringe às conversas da escola:
+   * grupos de Turma (via turma.EscolaGUID) ou Tarefa (via
+   * grupotarefa->tarefaacademica->materiaxprofessorxturma->turma), e
+   * individuais só quando o OUTRO participante também tem vínculo ativo
+   * nessa escola. Sem isso, um usuário com turma/vínculo em mais de uma
+   * escola via cross-escola (ver findMatriculaAtivaByUsuarioEEscola) via
+   * todas as conversas de todas as escolas misturadas.
+   */
+  async findAllByUsuarioGUID(usuarioGUID: string, escolaGUID?: string): Promise<Conversa[]> {
     console.log('🟢 ConversaDAO.findAllByUsuarioGUID()');
     const pool = await this.#database.getPool();
+
+    const filtroGrupo = escolaGUID
+      ? `
+        INNER JOIN conversa_grupo cg ON cg.ConversaGUID = c.ConversaGUID
+        LEFT JOIN turma t_direct ON cg.ConversaGrupoTipo = 'Turma' AND t_direct.TurmaGUID = cg.ConversaGrupoRefGUID
+        LEFT JOIN grupotarefa gt ON cg.ConversaGrupoTipo = 'Tarefa' AND gt.GrupoTarefaGUID = cg.ConversaGrupoRefGUID
+        LEFT JOIN tarefaacademica ta ON ta.TarefaGUID = gt.TarefaGUID
+        LEFT JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = ta.matXprofXturxescGUID
+        LEFT JOIN turma t_tarefa ON t_tarefa.TurmaGUID = mpt.TurmaGUID
+      `
+      : '';
+    const ondeGrupo = escolaGUID ? ' AND COALESCE(t_direct.EscolaGUID, t_tarefa.EscolaGUID) = ?' : '';
+
+    const ondeIndividual = escolaGUID
+      ? ` AND EXISTS (
+            SELECT 1 FROM escolaxusuarioxfuncao e
+            WHERE e.EscolaGUID = ?
+              AND e.Status = 'Ativo'
+              AND e.UsuarioGUID = IF(ci.ConversaIndUsr1GUID = ?, ci.ConversaIndUsr2GUID, ci.ConversaIndUsr1GUID)
+          )`
+      : '';
+
+    const params: any[] = [usuarioGUID];
+    if (escolaGUID) params.push(escolaGUID);
+    params.push(usuarioGUID, usuarioGUID);
+    if (escolaGUID) params.push(escolaGUID, usuarioGUID);
+
     const [rows] = await pool.execute(
       `SELECT c.* FROM conversa c
        INNER JOIN conversa_grupo_membro cgm ON cgm.ConversaGUID = c.ConversaGUID
+       ${filtroGrupo}
        WHERE cgm.MembroUsuarioGUID = ?
          AND cgm.MembroStatus = 'Ativo'
-         AND c.ConversaStatus = 'Ativa'
+         AND c.ConversaStatus = 'Ativa'${ondeGrupo}
        UNION
        SELECT c.* FROM conversa c
        INNER JOIN conversa_individual ci ON ci.ConversaGUID = c.ConversaGUID
        WHERE (ci.ConversaIndUsr1GUID = ? OR ci.ConversaIndUsr2GUID = ?)
-         AND c.ConversaStatus = 'Ativa'
+         AND c.ConversaStatus = 'Ativa'${ondeIndividual}
        ORDER BY ConversaUpdatedAt DESC`,
-      [usuarioGUID, usuarioGUID, usuarioGUID]
+      params
     );
     return (rows as ConversaRow[]).map((r) => this.#mapRow(r));
   }

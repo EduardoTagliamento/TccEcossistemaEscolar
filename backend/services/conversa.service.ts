@@ -84,9 +84,9 @@ export default class ConversaService {
     this.#usuarioDAO = usuarioDAO;
   }
 
-  async listarConversas(usuarioGUID: string): Promise<ConversaListItemDTO[]> {
+  async listarConversas(usuarioGUID: string, escolaGUID?: string): Promise<ConversaListItemDTO[]> {
     console.log('🟣 ConversaService.listarConversas()');
-    const conversas = await this.#conversaDAO.findAllByUsuarioGUID(usuarioGUID);
+    const conversas = await this.#conversaDAO.findAllByUsuarioGUID(usuarioGUID, escolaGUID);
     const result: ConversaListItemDTO[] = [];
 
     for (const c of conversas) {
