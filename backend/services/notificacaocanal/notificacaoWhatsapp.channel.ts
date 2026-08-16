@@ -15,11 +15,17 @@ export interface EnvioWhatsappResultado {
 }
 
 /**
- * `usuario.UsuarioTelefone` é guardado como `(XX) XXXXX-XXXX`; a Evolution
- * API espera dígitos puros com DDI (55 + DDD + número, sem símbolos).
+ * `usuario.UsuarioTelefone` é guardado como `(XX) XXXXX-XXXX` (sem DDI); a
+ * Evolution API espera dígitos puros com DDI (55 + DDD + número). Já
+ * `TEST_WHATSAPP_TO`/`WHATSAPP_NUMBER` no `.env` seguem o formato `+55DDNNNNNNNNN`
+ * (DDI já incluso, ver `.env.example`) — sem essa checagem, prefixar "55" de
+ * novo duplicaria o DDI (`555512988493959`) e o envio falharia.
  */
-function paraFormatoEvolutionApi(telefoneFormatado: string): string {
-  const digitos = telefoneFormatado.replace(/\D/g, "");
+function paraFormatoEvolutionApi(telefone: string): string {
+  const digitos = telefone.replace(/\D/g, "");
+  if (digitos.startsWith("55") && (digitos.length === 12 || digitos.length === 13)) {
+    return digitos;
+  }
   return `55${digitos}`;
 }
 
