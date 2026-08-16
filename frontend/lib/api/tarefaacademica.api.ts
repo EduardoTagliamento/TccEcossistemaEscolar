@@ -66,13 +66,18 @@ export async function listarTarefas(filters?: {
   DataInicio?: string;
   DataFim?: string;
   TarefaCompartilhada?: boolean;
+  EscolaGUID?: string;
 }): Promise<TarefaListItem[]> {
   const params = new URLSearchParams();
-  
+
+  if (filters?.EscolaGUID) {
+    params.append('EscolaGUID', filters.EscolaGUID);
+  }
+
   if (filters?.matXprofXturxescGUID) {
     params.append('matXprofXturxescGUID', filters.matXprofXturxescGUID);
   }
-  
+
   if (filters?.DataInicio) {
     params.append('DataInicio', filters.DataInicio);
   }

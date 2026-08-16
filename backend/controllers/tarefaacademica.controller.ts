@@ -130,7 +130,13 @@ export default class TarefaAcademicaControl {
   index = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 TarefaAcademicaControl.index()");
     try {
+      // UsuarioGUID SEMPRE aplicado (nunca opcional) — sem isso a listagem
+      // devolvia toda tarefa de todo mundo, de todas as escolas (ver
+      // TarefaAcademicaDAO.findAll). Escopa como aluno (matrícula) OU
+      // professor (dono da alocação), o que fizer sentido pra cada chamador.
       const filters: TarefaAcademicaFilters = {
+        UsuarioGUID: request.user?.UsuarioGUID,
+        EscolaGUID: request.query.EscolaGUID as string | undefined,
         matXprofXturxescGUID: request.query.matXprofXturxescGUID as string | undefined,
         DataInicio: request.query.DataInicio
           ? new Date(request.query.DataInicio as string)
