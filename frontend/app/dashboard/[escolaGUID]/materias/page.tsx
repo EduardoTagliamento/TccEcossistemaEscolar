@@ -7,6 +7,7 @@ import { Icon } from '@/components/Icon';
 import MateriaTurmaCard from '@/components/materias/MateriaTurmaCard';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import Loader from '@/components/Loader';
+import { useCoresEscola } from '@/lib/theme/useCoresEscola';
 import styles from './page.module.css';
 
 interface EscolaComFuncoes {
@@ -19,6 +20,7 @@ export default function MateriasPage() {
   const router = useRouter();
   const escolaGUID = (params?.escolaGUID as string) || '';
   const { usuario, token } = useAuth();
+  const paletaEscola = useCoresEscola();
 
   const [carregando, setCarregando] = useState(true);
   const [ehProfessor, setEhProfessor] = useState(false);
@@ -172,14 +174,14 @@ export default function MateriasPage() {
 
       {modo === 'aluno' && ehAluno && (
         <div className={styles.grid}>
-          {materiasAlunoFiltradas.map((materia) => (
+          {materiasAlunoFiltradas.map((materia, indice) => (
             <MateriaTurmaCard
               key={materia.MateriaGUID}
               href={`/dashboard/${escolaGUID}/materias/${materia.MateriaGUID}/turmas/${materia.TurmaGUID}`}
               titulo={materia.MateriaNome}
               subtitulo={materia.ProfessorNome}
               imagemUrl={materia.ImagemUrl}
-              corFundo={materia.CorFundo}
+              corFundo={materia.CorFundo || paletaEscola[indice % paletaEscola.length]}
               temPendencia={pendencias[materia.MateriaGUID]}
               avatarFotoUrl={materia.ProfessorFotoUrl}
             />
@@ -192,13 +194,13 @@ export default function MateriasPage() {
 
       {modo === 'professor' && ehProfessor && (
         <div className={styles.grid}>
-          {materiasProfessorFiltradas.map((materia) => (
+          {materiasProfessorFiltradas.map((materia, indice) => (
             <MateriaTurmaCard
               key={materia.MateriaGUID}
               href={`/dashboard/${escolaGUID}/materias/${materia.MateriaGUID}/turmas`}
               titulo={materia.MateriaNome}
               imagemUrl={materia.ImagemUrl}
-              corFundo={materia.CorFundo}
+              corFundo={materia.CorFundo || paletaEscola[indice % paletaEscola.length]}
               temPendencia={pendencias[materia.MateriaGUID]}
             />
           ))}

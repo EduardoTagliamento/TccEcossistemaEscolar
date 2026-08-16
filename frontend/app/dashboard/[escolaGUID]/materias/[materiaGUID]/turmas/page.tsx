@@ -8,12 +8,14 @@ import NovoItemModal, { NovoItemAba } from '@/components/materias/NovoItemModal'
 import GerenciarCategoriasModal from '@/components/materias/GerenciarCategoriasModal';
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import Loader from '@/components/Loader';
+import { useCoresEscola } from '@/lib/theme/useCoresEscola';
 import styles from './page.module.css';
 
 export default function TurmasDaMateriaPage() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
   const materiaGUID = (params?.materiaGUID as string) || '';
+  const paletaEscola = useCoresEscola();
 
   const [turmas, setTurmas] = useState<MateriasModuloAPI.TurmaComCapa[]>([]);
   const [pendencias, setPendencias] = useState<Record<string, boolean>>({});
@@ -178,13 +180,13 @@ export default function TurmasDaMateriaPage() {
       </div>
 
       <div className={styles.grid}>
-        {turmasFiltradas.map((turma) => (
+        {turmasFiltradas.map((turma, indice) => (
           <MateriaTurmaCard
             key={turma.TurmaGUID}
             href={`/dashboard/${escolaGUID}/materias/${materiaGUID}/turmas/${turma.TurmaGUID}`}
             titulo={`${turma.TurmaSerie} ${turma.TurmaNome}`}
             imagemUrl={turma.ImagemUrl}
-            corFundo={turma.CorFundo}
+            corFundo={turma.CorFundo || paletaEscola[indice % paletaEscola.length]}
             temPendencia={pendencias[turma.TurmaGUID]}
           />
         ))}
