@@ -11,7 +11,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil } from '@/lib/timezone-utils';
+import { converterParaBrasil, converterDoBrasil, usuarioForaDoBrasil, formatarParaCalendario } from '@/lib/timezone-utils';
 import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
 import * as AssuntoAPI from '@/lib/api/assunto.api';
@@ -23,6 +23,7 @@ import styles from './ProvaAgendadaForm.module.css';
 interface Prova {
   ProvaAgendadaGUID: string;
   MateriaGUID: string;
+  ProvaTitulo: string;
   ProvaData: string;
   ProvaDescricao: string | null;
   ProvaStatus: 'Agendada' | 'Realizada' | 'Cancelada';
@@ -136,6 +137,7 @@ export default function ProvaAgendadaForm({
     MateriaGUID: '',
     MatProfTurGUID: '', // Para buscar turmas
     CategoriaNome: '',
+    ProvaTitulo: '',
     ProvaData: '',
     ProvaDescricao: '',
     ProvaStatus: 'Agendada' as 'Agendada' | 'Realizada' | 'Cancelada',
@@ -603,6 +605,7 @@ export default function ProvaAgendadaForm({
       MateriaGUID: materiasUnicas.length === 1 ? materiasUnicas[0].MateriaGUID : '',
       MatProfTurGUID: materiasUnicas.length === 1 ? materiasUnicas[0].MatProfTurGUID : '',
       CategoriaNome: '',
+      ProvaTitulo: '',
       ProvaData: obterDataPadraoFimDoDia(),
       ProvaDescricao: '',
       ProvaStatus: 'Agendada',
@@ -622,6 +625,12 @@ export default function ProvaAgendadaForm({
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
+
+    if (!form.ProvaTitulo.trim()) {
+      setErro('Informe um título para a prova.');
+      return;
+    }
+
     setSubmitting(true);
     setErro(null);
 
@@ -630,6 +639,7 @@ export default function ProvaAgendadaForm({
       if (editingGUID) {
         const payload = {
           prova: {
+            ProvaTitulo: form.ProvaTitulo.trim(),
             ProvaData: converterParaBrasil(form.ProvaData), // Converte do timezone do usuário para GMT-3
             ProvaDescricao: form.ProvaDescricao || undefined,
             ProvaStatus: form.ProvaStatus,
@@ -704,6 +714,7 @@ export default function ProvaAgendadaForm({
         prova: {
           TurmasGUID: turmasSelecionadas,
           MateriaGUID: form.MateriaGUID,
+          ProvaTitulo: form.ProvaTitulo.trim(),
           ProvaData: provaDataParaEnvio, // Já em GMT-3 (manual: convertido do navegador; automático: calculado no servidor)
           ProvaDescricao: form.ProvaDescricao || undefined,
           DatasPorTurma: datasPorTurma,
@@ -745,6 +756,7 @@ export default function ProvaAgendadaForm({
       MateriaGUID: prova.MateriaGUID,
       MatProfTurGUID: '', // Não precisa para edição
       CategoriaNome: '',
+      ProvaTitulo: prova.ProvaTitulo || '',
       ProvaData: converterDoBrasil(prova.ProvaData), // Converte GMT-3 para timezone do usuário
       ProvaDescricao: prova.ProvaDescricao || '',
       ProvaStatus: prova.ProvaStatus,
@@ -1102,6 +1114,15 @@ export default function ProvaAgendadaForm({
           </div>
         )}
 
+        <input
+          type="text"
+          placeholder="Título da prova"
+          value={form.ProvaTitulo}
+          onChange={(e) => setForm((prev) => ({ ...prev, ProvaTitulo: e.target.value }))}
+          maxLength={128}
+          required
+        />
+
         {!agendamentoAutomatico && (
           <input
             type="datetime-local"
@@ -1239,8 +1260,8 @@ export default function ProvaAgendadaForm({
             {provas.map((prova) => (
               <li key={prova.ProvaAgendadaGUID} className={styles.card}>
                 <div>
-                  <strong>Prova - {new Date(prova.ProvaData).toLocaleDateString('pt-BR')}</strong>
-                  <p>Data/Hora: {new Date(prova.ProvaData).toLocaleString('pt-BR')}</p>
+                  <strong>{prova.ProvaTitulo}</strong>
+                  <p>Data/Hora: {formatarParaCalendario(prova.ProvaData)}</p>
                   {prova.ProvaDescricao && <p>Descrição: {prova.ProvaDescricao}</p>}
                   <p>Status: {prova.ProvaStatus}</p>
                   <p>Turmas: {prova.TurmasAtribuidas?.length || 0}</p>

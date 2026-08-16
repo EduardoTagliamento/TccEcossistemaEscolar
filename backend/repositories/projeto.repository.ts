@@ -1,6 +1,7 @@
 import MysqlDatabase from '../database/MysqlDatabase';
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { gerarGUID } from "../utils/helpers/guid.helper";
+import { parseDataBrasil } from "../utils/timezone.util";
 import {
   Projeto,
   ProjetoCreateDTO,
@@ -73,8 +74,8 @@ export class ProjetoDAO {
       data.ProjetoPublicoAlvo,
       data.ProjetoGrupoMinPessoas,
       data.ProjetoGrupoMaxPessoas,
-      new Date(data.ProjetoInscricaoPrazoData),
-      data.ProjetoEntregaPrazoData ? new Date(data.ProjetoEntregaPrazoData) : null
+      parseDataBrasil(data.ProjetoInscricaoPrazoData),
+      data.ProjetoEntregaPrazoData ? parseDataBrasil(data.ProjetoEntregaPrazoData) : null
     ]);
 
     const projetoCriado = await this.findById(projetoGUID);
@@ -264,11 +265,11 @@ export class ProjetoDAO {
     }
     if (data.ProjetoInscricaoPrazoData !== undefined) {
       updates.push('ProjetoInscricaoPrazoData = ?');
-      params.push(new Date(data.ProjetoInscricaoPrazoData));
+      params.push(parseDataBrasil(data.ProjetoInscricaoPrazoData));
     }
     if (data.ProjetoEntregaPrazoData !== undefined) {
       updates.push('ProjetoEntregaPrazoData = ?');
-      params.push(data.ProjetoEntregaPrazoData ? new Date(data.ProjetoEntregaPrazoData) : null);
+      params.push(data.ProjetoEntregaPrazoData ? parseDataBrasil(data.ProjetoEntregaPrazoData) : null);
     }
 
     if (updates.length === 0) {

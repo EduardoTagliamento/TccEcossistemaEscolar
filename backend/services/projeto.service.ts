@@ -7,6 +7,7 @@ import ErrorResponse from '../utils/ErrorResponse';
 import { getNotificacaoService } from './notificacao.service';
 import { getAuditoriaService } from './auditoria.service';
 import { UsuarioDAO } from '../repositories/usuario.repository';
+import { parseDataBrasil } from '../utils/timezone.util';
 import {
   Projeto,
   ProjetoCreateDTO,
@@ -57,13 +58,13 @@ export default class ProjetoService {
       throw new ErrorResponse(400, 'ProjetoGrupoMaxPessoas deve ser >= ProjetoGrupoMinPessoas');
     }
 
-    const prazoInscricao = new Date(data.ProjetoInscricaoPrazoData);
+    const prazoInscricao = parseDataBrasil(data.ProjetoInscricaoPrazoData);
     if (isNaN(prazoInscricao.getTime()) || prazoInscricao < new Date()) {
       throw new ErrorResponse(400, 'ProjetoInscricaoPrazoData não pode ser no passado');
     }
 
     if (data.ProjetoEntregaPrazoData) {
-      const prazoEntrega = new Date(data.ProjetoEntregaPrazoData);
+      const prazoEntrega = parseDataBrasil(data.ProjetoEntregaPrazoData);
       if (isNaN(prazoEntrega.getTime()) || prazoEntrega < prazoInscricao) {
         throw new ErrorResponse(400, 'ProjetoEntregaPrazoData deve ser posterior ao prazo de inscrição');
       }

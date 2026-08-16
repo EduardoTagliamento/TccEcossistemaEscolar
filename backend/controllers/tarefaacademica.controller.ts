@@ -10,6 +10,7 @@ import TarefaAcademicaService, {
 import { TarefaAcademicaFilters } from "../repositories/tarefaacademica.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import RelacaoAnexosService from "../services/relacaoanexos.service";
+import { parseDataBrasil } from "../utils/timezone.util";
 
 /**
  * Controller para endpoints de TarefaAcademica (MODELO NORMALIZADO)
@@ -51,7 +52,7 @@ export default class TarefaAcademicaControl {
       const datasPorMatricula: Record<string, Date> | undefined = tarefa.DatasPorMatricula
         ? Object.fromEntries(
             Object.entries(tarefa.DatasPorMatricula as Record<string, string>).map(
-              ([matriculaGUID, data]) => [matriculaGUID, new Date(data)]
+              ([matriculaGUID, data]) => [matriculaGUID, parseDataBrasil(data)]
             )
           )
         : undefined;
@@ -61,7 +62,7 @@ export default class TarefaAcademicaControl {
         matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
         TarefaTitulo: tarefa.TarefaTitulo,
         TarefaConteudo: tarefa.TarefaConteudo,
-        TarefaPrazoData: new Date(tarefa.TarefaPrazoData),
+        TarefaPrazoData: parseDataBrasil(tarefa.TarefaPrazoData),
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
         CategoriaGUID: tarefa.CategoriaGUID,
         anexosDescricao: tarefa.anexosDescricao,
@@ -101,7 +102,7 @@ export default class TarefaAcademicaControl {
         matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
         TarefaTitulo: tarefa.TarefaTitulo,
         TarefaConteudo: tarefa.TarefaConteudo,
-        TarefaPrazoData: new Date(tarefa.TarefaPrazoData),
+        TarefaPrazoData: parseDataBrasil(tarefa.TarefaPrazoData),
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
         CategoriaGUID: tarefa.CategoriaGUID,
         anexosDescricao: tarefa.anexosDescricao,
@@ -202,7 +203,7 @@ export default class TarefaAcademicaControl {
       const updateData: TarefaAcademicaUpdateDTO = {
         TarefaTitulo: tarefa.TarefaTitulo,
         TarefaConteudo: tarefa.TarefaConteudo,
-        TarefaPrazoData: tarefa.TarefaPrazoData ? new Date(tarefa.TarefaPrazoData) : undefined,
+        TarefaPrazoData: tarefa.TarefaPrazoData ? parseDataBrasil(tarefa.TarefaPrazoData) : undefined,
         TarefaTipoEntrega: tarefa.TarefaTipoEntrega,
         CategoriaGUID: tarefa.CategoriaGUID,
         TarefaMinPessoas: tarefa.TarefaMinPessoas,

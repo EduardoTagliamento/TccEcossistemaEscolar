@@ -9,6 +9,7 @@ import * as AnexoAPI from '@/lib/api/anexo.api';
 import type { ItemCategoria } from '@/lib/api/materiasmodulo.api';
 import type { Questao } from '@/types/tarefaacademica';
 import { carregarYoutubeIframeAPI, YOUTUBE_PLAYER_STATE } from '@/lib/youtube/youtubeIframeApi';
+import { formatarParaCalendario } from '@/lib/timezone-utils';
 import { exportarParaExcel } from '@/lib/exportarExcel';
 import { tarefaKeys } from '@/lib/tarefas/queryKeys';
 import {
@@ -490,7 +491,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
     if (!estatisticas) return;
     // Sanitiza pro nome do arquivo — qualquer caractere fora de a-Z0-9 (acento,
     // espaço, símbolo) já cai fora, não precisa de um passo separado de acento.
-    const tituloItem = tarefaDetalhe?.TarefaTitulo || conteudo?.ConteudoTitulo || provaDetalhe?.ProvaDescricao || 'estatisticas';
+    const tituloItem = tarefaDetalhe?.TarefaTitulo || conteudo?.ConteudoTitulo || provaDetalhe?.ProvaTitulo || 'estatisticas';
     const nomeBase = tituloItem.replace(/[^a-zA-Z0-9]+/g, '-');
 
     if (item.Tipo === 'tarefa_lista' && estatisticasPorQuestao) {
@@ -740,8 +741,11 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
 
         {!carregando && provaDetalhe && (
           <div>
-            <h2 className={styles.titulo}><Icon name="award" size={20} /> {provaDetalhe.ProvaDescricao || 'Prova'}</h2>
-            <p className={styles.dataProva}>Data: {new Date(provaDetalhe.ProvaData).toLocaleString('pt-BR')}</p>
+            <h2 className={styles.titulo}><Icon name="award" size={20} /> {provaDetalhe.ProvaTitulo}</h2>
+            <p className={styles.dataProva}>Data: {formatarParaCalendario(provaDetalhe.ProvaData)}</p>
+            {provaDetalhe.ProvaDescricao && (
+              <p className={styles.descricaoProva}>{provaDetalhe.ProvaDescricao}</p>
+            )}
 
             {recomendacao?.StatusGeracao === 'Concluida' &&
               (recomendacao.Resumo || recomendacao.Videos.length > 0 || recomendacao.PaginaLivro || recomendacao.SubMateriaGlobalGUID) && (

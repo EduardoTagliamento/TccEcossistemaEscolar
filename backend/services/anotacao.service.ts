@@ -4,6 +4,7 @@ import { EscolaxUsuarioxFuncaoDAO } from '../repositories/escolaxusuarioxfuncao.
 import { Anotacao, AnotacaoEntity, AnotacaoCreateDTO, AnotacaoUpdateDTO } from '../entities/anotacao.model';
 import ErrorResponse from '../utils/ErrorResponse';
 import { getAuditoriaService } from './auditoria.service';
+import { parseDataBrasil } from '../utils/timezone.util';
 
 export class AnotacaoService {
   constructor(
@@ -30,7 +31,7 @@ export class AnotacaoService {
       AnotacaoGUID: gerarGUID(),
       UsuarioGUID: data.UsuarioGUID,
       EscolaGUID: data.EscolaGUID,
-      AnotacaoData: new Date(data.AnotacaoData),
+      AnotacaoData: parseDataBrasil(data.AnotacaoData),
       AnotacaoTitulo: data.AnotacaoTitulo.trim(),
       AnotacaoDescricao: data.AnotacaoDescricao?.trim() || null,
       AnotacaoIsFeito: false,
@@ -143,7 +144,7 @@ export class AnotacaoService {
     const updateData: Partial<Anotacao> = {};
 
     if (updates.AnotacaoData) {
-      updateData.AnotacaoData = new Date(updates.AnotacaoData);
+      updateData.AnotacaoData = parseDataBrasil(updates.AnotacaoData);
     }
 
     if (updates.AnotacaoTitulo !== undefined) {

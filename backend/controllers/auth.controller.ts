@@ -38,11 +38,10 @@ export default class AuthController {
         });
       }
 
-      if (senha.length < 6) {
-        throw new ErrorResponse(400, 'Senha inválida', {
-          message: 'A senha deve ter pelo menos 6 caracteres',
-        });
-      }
+      // Sem validação de tamanho mínimo aqui — é login, não definição de
+      // senha. Senhas já existentes (ex.: setadas antes de uma regra de
+      // tamanho mínimo, ou por script de reset) precisam continuar
+      // logando; quem decide se está certa é o bcrypt.compare, não isso.
 
       // Executar login
       const result = await this.#authService.login({ identifier, senha });

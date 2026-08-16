@@ -5,6 +5,7 @@ import ProvaAgendadaService, {
 } from "../services/provaagendada.service";
 import { ProvaAgendadaFilters } from "../repositories/provaagendada.repository";
 import { getProvaAgendadaRecomendacaoService } from "../services/provaagendadarecomendacao.service";
+import { parseDataBrasil } from "../utils/timezone.util";
 
 /**
  * Controller para endpoints de ProvaAgendada (REFATORADO - N:N NORMALIZADO)
@@ -38,7 +39,7 @@ export default class ProvaAgendadaControl {
         ? Object.fromEntries(
             Object.entries(prova.DatasPorTurma as Record<string, string>).map(([turmaGUID, data]) => [
               turmaGUID,
-              new Date(data),
+              parseDataBrasil(data),
             ])
           )
         : undefined;
@@ -46,7 +47,8 @@ export default class ProvaAgendadaControl {
       const createData: ProvaAgendadaCreateDTO = {
         TurmasGUID: prova.TurmasGUID, // Array de turmas
         MateriaGUID: prova.MateriaGUID,
-        ProvaData: new Date(prova.ProvaData), // Formato: "2026-05-20T15:00:00"
+        ProvaTitulo: prova.ProvaTitulo,
+        ProvaData: parseDataBrasil(prova.ProvaData), // Formato: "2026-05-20T15:00:00"
         ProvaDescricao: prova.ProvaDescricao,
         anexosDescricao: prova.anexosDescricao,
         DatasPorTurma: datasPorTurma,
@@ -170,7 +172,8 @@ export default class ProvaAgendadaControl {
       const usuarioGUID = request.user?.UsuarioGUID;
 
       const updateData: ProvaAgendadaUpdateDTO = {
-        ProvaData: prova.ProvaData ? new Date(prova.ProvaData) : undefined, // Formato: "2026-05-20T15:00:00"
+        ProvaTitulo: prova.ProvaTitulo,
+        ProvaData: prova.ProvaData ? parseDataBrasil(prova.ProvaData) : undefined, // Formato: "2026-05-20T15:00:00"
         ProvaDescricao: prova.ProvaDescricao,
         ProvaStatus: prova.ProvaStatus,
         AssuntoGUIDs: prova.AssuntoGUIDs,

@@ -313,7 +313,7 @@ export default class CategoriaConteudoService {
 
     // ---- Provas ----
     const [provaRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT p.ProvaAgendadaGUID, p.ProvaDescricao, pt.CategoriaGUID, pt.ItemOrdem, pt.ProvaAgendadaTurmaGUID, pv.ProvaAgendadaVisualizacaoGUID
+      `SELECT p.ProvaAgendadaGUID, p.ProvaTitulo, p.ProvaDescricao, pt.CategoriaGUID, pt.ItemOrdem, pt.ProvaAgendadaTurmaGUID, pv.ProvaAgendadaVisualizacaoGUID
        FROM provaagendada p
        INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
        LEFT JOIN provaagendadavisualizacao pv ON pv.ProvaAgendadaTurmaGUID = pt.ProvaAgendadaTurmaGUID AND pv.MatriculaGUID = ?
@@ -325,7 +325,7 @@ export default class CategoriaConteudoService {
       adicionar(row.CategoriaGUID, {
         ItemGUID: row.ProvaAgendadaGUID,
         Tipo: "prova",
-        Titulo: row.ProvaDescricao || "Prova",
+        Titulo: row.ProvaTitulo || row.ProvaDescricao || "Prova",
         Percentual: visto ? 100 : null,
         Estado: visto ? "concluido" : "sem_progresso",
         Nota: null,
@@ -744,9 +744,8 @@ export default class CategoriaConteudoService {
    *
    * Tarefa é sempre de 1 turma só — aparece como está, sem condensar.
    * Conteúdo/Prova são fan-out (1 item → N turmas): aqui são condensados numa
-   * única linha por item, com a lista de turmas onde existem — e só entram
-   * na tela se estiverem em 2+ turmas (o que só 1 turma tem fica de fora,
-   * por ser organização específica daquela turma, não "geral").
+   * única linha por item, com a lista de turmas onde existem — inclusive
+   * quando existem em só 1 turma.
    */
   buscarBoardGeral = async (usuarioGUID: string, materiaGUID: string): Promise<BoardGeralDTO> => {
     console.log("🟣 CategoriaConteudoService.buscarBoardGeral()");
@@ -827,7 +826,6 @@ export default class CategoriaConteudoService {
       grupo.Categorias.push(row.CategoriaNome ?? null);
     }
     for (const [conteudoGUID, grupo] of gruposConteudo) {
-      if (grupo.Turmas.length < 2) continue; // só 1 turma tem — não entra na tela geral
       adicionar(this.#nomeMaisFrequente(grupo.Categorias), {
         ItemGUID: conteudoGUID,
         Tipo: grupo.Tipo,
@@ -838,7 +836,7 @@ export default class CategoriaConteudoService {
     }
 
     const [provaRows] = await pool.execute<RowDataPacket[]>(
-      `SELECT p.ProvaAgendadaGUID, p.ProvaDescricao, pt.ItemOrdem,
+      `SELECT p.ProvaAgendadaGUID, p.ProvaTitulo, p.ProvaDescricao, pt.ItemOrdem,
               pt.TurmaGUID, tu.TurmaNome, tu.TurmaSerie, cc.CategoriaNome
        FROM provaagendada p
        INNER JOIN provaagendada_turma pt ON pt.ProvaAgendadaGUID = p.ProvaAgendadaGUID
@@ -856,14 +854,13 @@ export default class CategoriaConteudoService {
     for (const row of provaRows as any[]) {
       let grupo = gruposProva.get(row.ProvaAgendadaGUID);
       if (!grupo) {
-        grupo = { Titulo: row.ProvaDescricao || "Prova", ItemOrdem: row.ItemOrdem ?? 0, Turmas: [], Categorias: [] };
+        grupo = { Titulo: row.ProvaTitulo || row.ProvaDescricao || "Prova", ItemOrdem: row.ItemOrdem ?? 0, Turmas: [], Categorias: [] };
         gruposProva.set(row.ProvaAgendadaGUID, grupo);
       }
       grupo.Turmas.push({ TurmaGUID: row.TurmaGUID, TurmaNome: row.TurmaNome, TurmaSerie: row.TurmaSerie });
       grupo.Categorias.push(row.CategoriaNome ?? null);
     }
     for (const [provaGUID, grupo] of gruposProva) {
-      if (grupo.Turmas.length < 2) continue; // só 1 turma tem — não entra na tela geral
       adicionar(this.#nomeMaisFrequente(grupo.Categorias), {
         ItemGUID: provaGUID,
         Tipo: "prova",
