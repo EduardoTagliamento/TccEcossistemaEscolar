@@ -96,6 +96,28 @@ export class ConversaDAO {
     return (rows as ConversaRow[]).map((r) => this.#mapRow(r));
   }
 
+  /**
+   * GUIDs de todos os participantes ativos da conversa (grupo ou individual)
+   * — usado pra fan-out de eventos em tempo real (ex.: badge de mensagem
+   * nova na navbar), que precisa alcançar quem não está com a sala da
+   * conversa aberta (só entra na room via `join_conversa`, então não dá pra
+   * confiar em `io.to(ConversaGUID)` sozinho pra isso).
+   */
+  async listarParticipantesGUID(conversaGUID: string): Promise<string[]> {
+    console.log('🟢 ConversaDAO.listarParticipantesGUID()');
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(
+      `SELECT MembroUsuarioGUID AS UsuarioGUID FROM conversa_grupo_membro
+       WHERE ConversaGUID = ? AND MembroStatus = 'Ativo'
+       UNION
+       SELECT ConversaIndUsr1GUID AS UsuarioGUID FROM conversa_individual WHERE ConversaGUID = ?
+       UNION
+       SELECT ConversaIndUsr2GUID AS UsuarioGUID FROM conversa_individual WHERE ConversaGUID = ?`,
+      [conversaGUID, conversaGUID, conversaGUID]
+    );
+    return (rows as RowDataPacket[]).map((r) => r.UsuarioGUID as string);
+  }
+
   // Verificação unificada de participação — cobre grupos e conversas individuais
   async isParticipante(conversaGUID: string, usuarioGUID: string): Promise<boolean> {
     console.log('🟢 ConversaDAO.isParticipante()');

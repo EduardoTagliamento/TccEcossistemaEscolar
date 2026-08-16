@@ -24,6 +24,7 @@ import type { Notificacao } from '@/lib/api/notificacao.api';
 import { useContadorPendencias } from '@/lib/pendencia/usePendenciaQueries';
 import { useConvitesPendentes } from '@/lib/convitegrupoprojeto/useConviteGrupoProjetoQueries';
 import { verificarPendenciaAgregada } from '@/lib/api/categoriaconteudo.api';
+import { listarConversas } from '@/lib/api/conversa.api';
 import styles from './DashboardNavbar.module.css';
 
 interface Escola {
@@ -261,6 +262,7 @@ export default function DashboardNavbar() {
   const pendenciasPendentesCount = useContadorPendencias(escolaGUID, !!usuario).data ?? 0;
   const convitesProjetoPendentesCount = (useConvitesPendentes(escolaGUID, !!usuario).data ?? []).length;
   const [temPendenciaMaterias, setTemPendenciaMaterias] = useState(false);
+  const [temMensagemNaoLida, setTemMensagemNaoLida] = useState(false);
 
   // Setas de rolagem da nav de módulos — só aparecem quando os itens não
   // cabem na largura disponível (ex. usuário com muitos papéis/módulos
@@ -338,6 +340,33 @@ export default function DashboardNavbar() {
     return () => {
       socket.off('notificacao:nova', handleNotificacaoNova);
     };
+  }, [socket, escolaGUID]);
+
+  // Bolinha de "mensagem nova" no ícone Conversas — busca o estado real (soma
+  // de NaoLidas já escopada pela escola atual) e mantém em tempo real via
+  // WebSocket `mensagem_nao_lida` (emitido pra cada participante, não só pra
+  // quem está com a conversa aberta — ver conversa.handler.ts). O evento não
+  // carrega EscolaGUID (mensagem não tem essa noção direta), então só
+  // reconsulta a lista já escopada em vez de tentar filtrar no cliente.
+  const atualizarBadgeMensagens = () => {
+    if (!escolaGUID) return;
+    listarConversas(escolaGUID)
+      .then((lista) => setTemMensagemNaoLida(lista.some((c) => c.NaoLidas > 0)))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (usuario && escolaGUID) atualizarBadgeMensagens();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario, escolaGUID, pathname]);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('mensagem_nao_lida', atualizarBadgeMensagens);
+    return () => {
+      socket.off('mensagem_nao_lida', atualizarBadgeMensagens);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, escolaGUID]);
 
   // Badge vermelho agregado no ícone "Matérias" — mesma regra usada por
@@ -609,6 +638,9 @@ export default function DashboardNavbar() {
                   <span className={styles.moduleIconWrap}>
                     <Icon name={modulo.icon} size={20} />
                     {modulo.key === 'materias' && temPendenciaMaterias && <span className={styles.moduleItemDot} />}
+                    {modulo.key === 'chat' && temMensagemNaoLida && (
+                      <span className={`${styles.moduleItemDot} ${styles.moduleItemDotPrimary}`} />
+                    )}
                   </span>
                   <span>{modulo.label}</span>
                 </Link>
