@@ -183,10 +183,17 @@ export default class ProvaAgendadaService {
   registrarVisualizacao = async (provaAgendadaTurmaGUID: string, usuarioGUID: string): Promise<void> => {
     console.log("🟣 ProvaAgendadaService.registrarVisualizacao()");
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
+    const atribuicao = await this.#provaTurmaDAO.findById(provaAgendadaTurmaGUID);
+    if (!atribuicao) {
+      throw new ErrorResponse(404, "Atribuição de prova não encontrada", {
+        message: "Esta prova não está atribuída a nenhuma turma com esse identificador.",
+      });
+    }
+
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuarioETurma(usuarioGUID, atribuicao.TurmaGUID);
     if (!matricula) {
       throw new ErrorResponse(404, "Matrícula não encontrada", {
-        message: "Usuário não possui matrícula ativa.",
+        message: "Usuário não possui matrícula ativa nesta turma.",
       });
     }
 

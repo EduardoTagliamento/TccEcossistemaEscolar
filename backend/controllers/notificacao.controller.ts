@@ -40,6 +40,9 @@ export default class NotificacaoController {
         lida: lidaParam === "true" ? true : lidaParam === "false" ? false : undefined,
         limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
         offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined,
+        // Sem EscolaGUID = "ver de todas as escolas" (opção explícita em
+        // /notificacoes); o dropdown da escola sempre manda EscolaGUID.
+        EscolaGUID: req.query.EscolaGUID ? String(req.query.EscolaGUID) : undefined,
       };
 
       const notificacoes = await this.#notificacaoService.listar(usuarioGUID, filters);
@@ -63,7 +66,8 @@ export default class NotificacaoController {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
-      const total = await this.#notificacaoService.contarNaoLidas(usuarioGUID);
+      const escolaGUID = req.query.EscolaGUID ? String(req.query.EscolaGUID) : undefined;
+      const total = await this.#notificacaoService.contarNaoLidas(usuarioGUID, escolaGUID);
 
       res.status(200).json({
         success: true,
@@ -106,7 +110,8 @@ export default class NotificacaoController {
         return next(new ErrorResponse(401, "Não autenticado"));
       }
 
-      const total = await this.#notificacaoService.marcarTodasComoLidas(usuarioGUID);
+      const escolaGUID = req.query.EscolaGUID ? String(req.query.EscolaGUID) : undefined;
+      const total = await this.#notificacaoService.marcarTodasComoLidas(usuarioGUID, escolaGUID);
 
       res.status(200).json({
         success: true,

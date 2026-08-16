@@ -118,7 +118,7 @@ export default class MateriaService {
       });
     }
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuario(usuarioGUID);
+    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuarioEEscola(usuarioGUID, escolaGUID);
     if (!matricula) return [];
 
     const alocacoes = await this.#alocacaoDAO.findByTurma(matricula.TurmaGUID);

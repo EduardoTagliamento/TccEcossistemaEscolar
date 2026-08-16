@@ -150,9 +150,12 @@ export default class MatriculaService {
       });
     }
 
-    // 4. Validar se aluno já possui matrícula ativa
-    const matriculaAtiva = await this.#matriculaDAO.findMatriculaAtivaByUsuario(
-      usuario.UsuarioGUID
+    // 4. Validar se aluno já possui matrícula ativa NESTA escola — cada
+    // escola é um tenant independente, então uma matrícula ativa noutra
+    // escola não deve bloquear (ex.: ensino médio regular + técnico).
+    const matriculaAtiva = await this.#matriculaDAO.findMatriculaAtivaByUsuarioEEscola(
+      usuario.UsuarioGUID,
+      turma.EscolaGUID
     );
     if (matriculaAtiva) {
       throw new ErrorResponse(409, 'Aluno já possui matrícula ativa', {
@@ -612,9 +615,11 @@ export default class MatriculaService {
       mapaTurmaNomeParaGUID.set(chave, turma.TurmaGUID);
     }
 
-    // 3. Buscar matrículas ativas existentes (para detecção de duplicatas)
+    // 3. Buscar matrículas ativas existentes NESTA escola (para detecção de
+    // duplicatas) — matrícula ativa noutra escola não conta como duplicata.
     const matriculasAtivas = await this.#matriculaDAO.findAll({
-      MatriculaStatus: 'Ativa'
+      MatriculaStatus: 'Ativa',
+      EscolaGUID: escolaGUID
     });
 
     // Criar Set de alunos com matrícula ativa (por UsuarioGUID)

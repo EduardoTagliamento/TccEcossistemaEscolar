@@ -311,26 +311,32 @@ export default function DashboardNavbar() {
   }, [usuario, escolaGUID]);
 
   useEffect(() => {
-    if (!usuario) return;
-    NotificacaoAPI.contarNaoLidas()
+    if (!usuario || !escolaGUID) return;
+    NotificacaoAPI.contarNaoLidas(escolaGUID)
       .then(setNaoLidas)
       .catch(() => setNaoLidas(0));
     NotificacaoAPI.listarTipos()
       .then((tipos) => setCategoriaPorTipo(new Map(tipos.map((t) => [t.NotificacaoTipoId, t.NotificacaoTipoCategoria]))))
       .catch(() => {});
-  }, [usuario]);
+  }, [usuario, escolaGUID]);
 
   // Mantém o badge do sino em tempo real (WebSocket `notificacao:nova`) —
   // a lista em si (`notificacoes`) só é buscada de novo ao abrir o dropdown
-  // (abrirNotificacoes), não precisa ser mantida sincronizada aqui.
+  // (abrirNotificacoes), não precisa ser mantida sincronizada aqui. Só conta
+  // pro badge se for da escola atual (o evento chega pra todas as escolas
+  // do usuário, mas o dropdown é escopado a uma escola por vez).
   useEffect(() => {
     if (!socket) return;
-    const handleNotificacaoNova = () => setNaoLidas((atual) => atual + 1);
+    const handleNotificacaoNova = (notificacao: Notificacao) => {
+      if (notificacao?.EscolaGUID === escolaGUID) {
+        setNaoLidas((atual) => atual + 1);
+      }
+    };
     socket.on('notificacao:nova', handleNotificacaoNova);
     return () => {
       socket.off('notificacao:nova', handleNotificacaoNova);
     };
-  }, [socket]);
+  }, [socket, escolaGUID]);
 
   // Badge vermelho agregado no ícone "Matérias" — mesma regra usada por
   // matéria/turma (ver categoriaconteudo.service.ts), só que sem escopo.
@@ -447,7 +453,7 @@ export default function DashboardNavbar() {
     if (abrindo) {
       setCarregandoNotif(true);
       try {
-        const lista = await NotificacaoAPI.listarNotificacoes({ limit: 5 });
+        const lista = await NotificacaoAPI.listarNotificacoes({ limit: 5, EscolaGUID: escolaGUID });
         setNotificacoes(lista);
       } catch (erro) {
         console.error('Erro ao carregar notificações:', erro);
@@ -477,7 +483,7 @@ export default function DashboardNavbar() {
 
   const handleMarcarTodasComoLidas = async () => {
     try {
-      await NotificacaoAPI.marcarTodasComoLidas();
+      await NotificacaoAPI.marcarTodasComoLidas(escolaGUID);
       setNotificacoes((prev) => prev.map((n) => ({ ...n, NotificacaoLida: true })));
       setNaoLidas(0);
     } catch (erro) {

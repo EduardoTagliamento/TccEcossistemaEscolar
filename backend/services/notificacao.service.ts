@@ -248,9 +248,9 @@ export default class NotificacaoService {
     return this.#notificacaoDAO.findAllByUsuario(usuarioGUID, filters);
   }
 
-  async contarNaoLidas(usuarioGUID: string): Promise<number> {
+  async contarNaoLidas(usuarioGUID: string, escolaGUID?: string): Promise<number> {
     console.log("🔔 NotificacaoService.contarNaoLidas()");
-    return this.#notificacaoDAO.contarNaoLidas(usuarioGUID);
+    return this.#notificacaoDAO.contarNaoLidas(usuarioGUID, escolaGUID);
   }
 
   async marcarComoLida(notificacaoGUID: string, usuarioGUID: string): Promise<Notificacao> {
@@ -258,9 +258,9 @@ export default class NotificacaoService {
     return this.#notificacaoDAO.marcarComoLida(notificacaoGUID, usuarioGUID);
   }
 
-  async marcarTodasComoLidas(usuarioGUID: string): Promise<number> {
+  async marcarTodasComoLidas(usuarioGUID: string, escolaGUID?: string): Promise<number> {
     console.log("🔔 NotificacaoService.marcarTodasComoLidas()");
-    return this.#notificacaoDAO.marcarTodasComoLidas(usuarioGUID);
+    return this.#notificacaoDAO.marcarTodasComoLidas(usuarioGUID, escolaGUID);
   }
 
   /**

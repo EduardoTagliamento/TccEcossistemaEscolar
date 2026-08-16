@@ -124,26 +124,51 @@ export class MatriculaDAO {
   }
 
   /**
-   * Busca matrícula ATIVA do aluno
-   * CRÍTICO: Um aluno só pode ter UMA matrícula ativa
+   * Busca matrícula ATIVA do aluno DENTRO DE UMA ESCOLA específica.
+   * A plataforma é multi-tenant — cada escola é independente, e um aluno
+   * pode ter uma matrícula ativa por escola (ex.: ensino médio regular numa
+   * escola + curso técnico noutra, simultaneamente). `matricula` não tem
+   * `EscolaGUID` própria, só via `TurmaGUID -> turma.EscolaGUID`.
    */
-  async findMatriculaAtivaByUsuario(usuarioGUID: string): Promise<Matricula | null> {
+  async findMatriculaAtivaByUsuarioEEscola(usuarioGUID: string, escolaGUID: string): Promise<Matricula | null> {
     const query = `
-      SELECT * FROM matricula
-      WHERE UsuarioGUID = ?
-        AND MatriculaStatus = 'Ativa'
-      ORDER BY MatriculaDataEntrada DESC
+      SELECT m.* FROM matricula m
+      INNER JOIN turma t ON t.TurmaGUID = m.TurmaGUID
+      WHERE m.UsuarioGUID = ?
+        AND t.EscolaGUID = ?
+        AND m.MatriculaStatus = 'Ativa'
+      ORDER BY m.MatriculaDataEntrada DESC
       LIMIT 1
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(query, [usuarioGUID]);
+    const [rows] = await pool.execute(query, [usuarioGUID, escolaGUID]);
 
     if (!rows || (rows as MatriculaRow[]).length === 0) {
       return null;
     }
 
     return this.mapRows(rows as MatriculaRow[])[0];
+  }
+
+  /**
+   * Busca TODAS as matrículas ativas do aluno, uma por escola no máximo
+   * (ver findMatriculaAtivaByUsuarioEEscola). Usado por indicadores
+   * agregados (ex. badge de pendências) que precisam iterar todas as
+   * escolas do aluno, não só a mais recente.
+   */
+  async findAllMatriculasAtivasByUsuario(usuarioGUID: string): Promise<Matricula[]> {
+    const query = `
+      SELECT * FROM matricula
+      WHERE UsuarioGUID = ?
+        AND MatriculaStatus = 'Ativa'
+      ORDER BY MatriculaDataEntrada DESC
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(query, [usuarioGUID]);
+
+    return this.mapRows(rows as MatriculaRow[]);
   }
 
   /**
