@@ -254,6 +254,20 @@
   color: var(--ink-900);
 }
 
+.linkMateria {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  color: var(--color-primary, var(--green-700));
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.linkMateria:hover {
+  text-decoration: underline;
+}
+
 .prazoAtrasado {
   color: var(--danger-500) !important;
 }

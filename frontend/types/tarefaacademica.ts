@@ -13,8 +13,10 @@ export interface AnexoTarefaResumo {
 export interface TarefaAcademica {
   TarefaGUID: string;
   matXprofXturxescGUID: string;
+  MateriaGUID?: string;
   MateriaNome?: string;
   ProfessorNome?: string;
+  TurmaGUID?: string;
   TurmaNome?: string;
   TarefaTitulo: string;
   TarefaConteudo: string | null;
