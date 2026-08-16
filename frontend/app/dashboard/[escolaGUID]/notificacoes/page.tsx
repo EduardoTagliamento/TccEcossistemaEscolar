@@ -81,7 +81,7 @@ export default function NotificacoesPage() {
   const escolaGUID = (params?.escolaGUID as string) || '';
 
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
-  const [categoriaPorTipo, setCategoriaPorTipo] = useState<Map<number, 'Aviso' | 'Lembrete'>>(new Map());
+  const [categoriaPorTipo, setCategoriaPorTipo] = useState<Map<number, { categoria: 'Aviso' | 'Lembrete'; slug: string }>>(new Map());
   const [carregando, setCarregando] = useState(true);
   const [carregandoMais, setCarregandoMais] = useState(false);
   const [temMais, setTemMais] = useState(false);
@@ -96,7 +96,7 @@ export default function NotificacoesPage() {
 
   useEffect(() => {
     NotificacaoAPI.listarTipos()
-      .then((tipos) => setCategoriaPorTipo(new Map(tipos.map((t) => [t.NotificacaoTipoId, t.NotificacaoTipoCategoria]))))
+      .then((tipos) => setCategoriaPorTipo(new Map(tipos.map((t) => [t.NotificacaoTipoId, { categoria: t.NotificacaoTipoCategoria, slug: t.NotificacaoTipoSlug }]))))
       .catch(() => {});
   }, []);
 
@@ -218,15 +218,15 @@ export default function NotificacoesPage() {
       ) : (
         <ul className={styles.lista}>
           {notificacoes.map((n) => {
-            const categoria = categoriaPorTipo.get(n.NotificacaoTipoId);
+            const tipo = categoriaPorTipo.get(n.NotificacaoTipoId);
             return (
               <li key={n.NotificacaoGUID}>
                 <button
                   className={n.NotificacaoLida ? styles.item : `${styles.item} ${styles.itemNaoLido}`}
                   onClick={() => handleClicarNotificacao(n)}
                 >
-                  <span className={categoria === 'Lembrete' ? `${styles.itemIcone} ${styles.itemIconeLembrete}` : styles.itemIcone}>
-                    <IconePorCategoria categoria={categoria} />
+                  <span className={tipo?.categoria === 'Lembrete' ? `${styles.itemIcone} ${styles.itemIconeLembrete}` : styles.itemIcone}>
+                    <IconePorTipo categoria={tipo?.categoria} slug={tipo?.slug} />
                   </span>
                   <div className={styles.itemConteudo}>
                     <span className={styles.itemTituloRow}>
