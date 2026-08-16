@@ -140,7 +140,7 @@ export async function criarProfessor(
   dados: ProfessorCreateDTO,
   escolaGUID: string,
   escolaNome: string
-): Promise<{ professor: Professor }> {
+): Promise<{ professor: Professor; senhaTemporaria?: string }> {
   // 1. Criar professor (usuário + vínculo)
   const responseProfessor = await fetch(`${API_URL}/professor`, {
     method: 'POST',
@@ -165,7 +165,8 @@ export async function criarProfessor(
     throw new Error(erro?.mensagem || 'Erro ao criar professor');
   }
 
-  const professorCriado: Professor = resultadoProfessor.data.resultados[0].dados;
+  const itemResultado = resultadoProfessor.data.resultados[0];
+  const professorCriado: Professor = itemResultado.dados;
 
   // 2. Se fornecidas matérias e turmas, criar alocações — materiaxprofessorxturma
   // é GUID nativamente, então funciona mesmo pra professor sem CPF.
@@ -192,7 +193,8 @@ export async function criarProfessor(
   }
 
   return {
-    professor: professorCriado
+    professor: professorCriado,
+    senhaTemporaria: itemResultado.senhaTemporaria
   };
 }
 

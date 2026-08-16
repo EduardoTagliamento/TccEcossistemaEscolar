@@ -25,6 +25,7 @@ import * as VinculoAPI from '@/lib/api/escolaxusuarioxfuncao.api';
 import { UsuarioBusca } from '@/lib/api/usuario.api';
 import { useBuscaUsuarioPorNome } from '@/lib/usuario/useBuscaUsuarioPorNome';
 import { formatarCPF } from '@/lib/validators/cpf';
+import { exportarParaPlanilha } from '@/lib/utils/exportarPlanilha';
 
 const FUNCAO_ID_SECRETARIA = 2;
 
@@ -218,6 +219,20 @@ export default function SecretariaPage() {
         <div className={styles.acoes}>
           <button onClick={() => setMostrarInativos((v) => !v)} className={styles.botaoUpload}>
             {mostrarInativos ? 'Ver ativos' : 'Ver histórico (inativos)'}
+          </button>
+          <button
+            onClick={() => {
+              const linhas = vinculosExibidos.map((v) => ({
+                'Nome Completo': v.UsuarioNome || '',
+                CPF: v.UsuarioCPF || '',
+                Email: '' // não disponível na listagem de vínculos — só cadastro tem o email
+              }));
+              exportarParaPlanilha(linhas, 'secretaria.xlsx');
+            }}
+            disabled={vinculosExibidos.length === 0}
+            className={styles.botaoUpload}
+          >
+            <Icon name="download" size={16} /> Exportar Planilha
           </button>
           <button onClick={() => setModalUploadAberto(true)} className={styles.botaoUpload}>
             <Icon name="upload" size={16} /> Importar Planilha

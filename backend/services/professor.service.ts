@@ -12,6 +12,7 @@ import { gerarGUID, gerarGUIDUsuario } from "../utils/helpers/guid.helper";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
 import { normalizarTelefone } from "../utils/helpers/telefone.helper";
 import { EmailAlunoService } from "./email-aluno.service";
+import { WhatsappCredenciaisService } from "./whatsapp-credenciais.service";
 import bcrypt from "bcrypt";
 import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
@@ -603,6 +604,7 @@ export default class ProfessorService {
     let erros = 0;
 
     const emailsParaEnviar: Array<{ tipo: 'novo' | 'existente'; dados: any }> = [];
+    const whatsappParaEnviar: Array<{ para: string; nomeUsuario: string; nomeEscola: string; senhaTemporaria: string; linkLogin: string }> = [];
 
     for (const dados of professores) {
       try {
@@ -652,6 +654,8 @@ export default class ProfessorService {
             });
           }
         } else {
+          const linkLogin = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : 'http://localhost:3000/login';
+
           // Email de boas-vindas (se fornecido email e envio habilitado)
           if (enviarEmails && usuario.UsuarioEmail) {
             emailsParaEnviar.push({
@@ -662,8 +666,21 @@ export default class ProfessorService {
                 nomeEscola: escolaNome,
                 cpf: usuario.UsuarioCPF,
                 senhaTemporaria: senhaTemporaria,
-                linkLogin: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : 'http://localhost:3000/login'
+                linkLogin
               }
+            });
+          }
+
+          // Credenciais por WhatsApp (se fornecido telefone) — cobre o caso
+          // de professor sem e-mail cadastrado, que senão não teria nenhuma
+          // forma de descobrir a senha temporária gerada.
+          if (usuario.UsuarioTelefone && senhaTemporaria) {
+            whatsappParaEnviar.push({
+              para: usuario.UsuarioTelefone,
+              nomeUsuario: usuario.UsuarioNome,
+              nomeEscola: escolaNome,
+              senhaTemporaria,
+              linkLogin
             });
           }
         }
@@ -710,6 +727,13 @@ export default class ProfessorService {
     if (enviarEmails && emailsParaEnviar.length > 0) {
       EmailAlunoService.enviarEmailsEmLote(emailsParaEnviar).catch(erro => {
         console.error('Erro ao enviar emails em lote:', erro);
+      });
+    }
+
+    // Enviar credenciais por WhatsApp em lote (não bloqueia se falhar)
+    if (whatsappParaEnviar.length > 0) {
+      WhatsappCredenciaisService.enviarCredenciaisEmLote(whatsappParaEnviar).catch(erro => {
+        console.error('Erro ao enviar credenciais por WhatsApp em lote:', erro);
       });
     }
 

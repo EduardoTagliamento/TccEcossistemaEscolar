@@ -19,3 +19,18 @@ export function normalizarTelefone(telefone: string): string {
   }
   return telefone;
 }
+
+/**
+ * Converte um telefone pro formato que a Evolution API espera (dígitos
+ * puros com DDI 55). Aceita tanto `(XX) XXXXX-XXXX` (sem DDI, formato do
+ * banco) quanto `+55XX9XXXXXXXX` (com DDI, formato de `TEST_WHATSAPP_TO`/
+ * `WHATSAPP_NUMBER` no `.env`) — sem essa checagem, prefixar "55" de novo
+ * num número que já tem DDI duplica o prefixo e o envio falha.
+ */
+export function paraFormatoEvolutionApi(telefone: string): string {
+  const digitos = telefone.replace(/\D/g, "");
+  if (digitos.startsWith("55") && (digitos.length === 12 || digitos.length === 13)) {
+    return digitos;
+  }
+  return `55${digitos}`;
+}

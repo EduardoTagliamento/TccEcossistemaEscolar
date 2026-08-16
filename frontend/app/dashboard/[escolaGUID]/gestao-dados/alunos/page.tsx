@@ -14,6 +14,7 @@ import * as EscolaAPI from '@/lib/api/escola.api';
 import { UsuarioBusca } from '@/lib/api/usuario.api';
 import { useBuscaUsuarioPorNome } from '@/lib/usuario/useBuscaUsuarioPorNome';
 import ListaCandidatosUsuario from '@/components/gestao-dados/ListaCandidatosUsuario';
+import { exportarParaPlanilha } from '@/lib/utils/exportarPlanilha';
 
 export default function AlunosPage() {
   const params = useParams();
@@ -377,6 +378,26 @@ export default function AlunosPage() {
           </p>
         </div>
         <div className={styles.acoes}>
+          <button
+            onClick={() => {
+              const linhas = alunos.map(({ usuario, matricula }) => {
+                const turma = turmas.find(t => t.TurmaGUID === matricula.TurmaGUID);
+                return {
+                  Nome: usuario.UsuarioNome,
+                  CPF: usuario.UsuarioCPF || '',
+                  Email: usuario.UsuarioEmail || '',
+                  Telefone: usuario.UsuarioTelefone || '',
+                  'Data de Nascimento': usuario.UsuarioDataNascimento ? String(usuario.UsuarioDataNascimento).split('T')[0] : '',
+                  Turma: turma ? `${turma.TurmaSerie} ${turma.TurmaNome}` : ''
+                };
+              });
+              exportarParaPlanilha(linhas, 'alunos.xlsx');
+            }}
+            disabled={alunos.length === 0}
+            className={styles.botaoUpload}
+          >
+            <Icon name="download" size={16} /> Exportar Planilha
+          </button>
           <button
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}

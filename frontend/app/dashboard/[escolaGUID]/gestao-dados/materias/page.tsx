@@ -12,6 +12,7 @@ import { Icon } from '@/components/Icon';
 
 import * as MateriaAPI from '@/lib/api/materia.api';
 import * as CursoAPI from '@/lib/api/curso.api';
+import { exportarParaPlanilha } from '@/lib/utils/exportarPlanilha';
 
 export default function MateriasPage() {
   const params = useParams();
@@ -304,6 +305,23 @@ export default function MateriasPage() {
           </p>
         </div>
         <div className={styles.acoes}>
+          <button
+            onClick={() => {
+              const linhas = materias.map((materia) => {
+                const curso = cursos.find(c => c.CursoGUID === materia.CursoGUID);
+                return {
+                  'Nome da Matéria': materia.MateriaNome,
+                  'Nome do Curso': curso?.CursoNome || '',
+                  'É Técnica?': materia.MateriaIsTecnica ? 'Sim' : 'Não'
+                };
+              });
+              exportarParaPlanilha(linhas, 'materias.xlsx');
+            }}
+            disabled={materias.length === 0}
+            className={styles.botaoUpload}
+          >
+            <Icon name="download" size={16} /> Exportar Planilha
+          </button>
           <button
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}
