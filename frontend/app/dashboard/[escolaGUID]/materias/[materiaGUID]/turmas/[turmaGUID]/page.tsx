@@ -12,6 +12,7 @@ import NovoItemModal, { NovoItemAba } from '@/components/materias/NovoItemModal'
 import * as MateriasModuloAPI from '@/lib/api/materiasmodulo.api';
 import * as CategoriaConteudoAPI from '@/lib/api/categoriaconteudo.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
+import * as MateriaAPI from '@/lib/api/materia.api';
 import type { ItemCategoria } from '@/lib/api/materiasmodulo.api';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -60,6 +61,13 @@ const ABAS: { chave: AbaFiltro; label: string; icone: IconName }[] = [
   { chave: 'tarefas', label: 'Tarefas', icone: 'list' },
 ];
 
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  const primeira = partes[0]?.[0] || '';
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : '';
+  return (primeira + ultima).toUpperCase();
+}
+
 function textoEstado(estado: ItemCategoria['Estado'], percentual: number | null): { texto: string; cor: string } {
   switch (estado) {
     case 'concluido':
@@ -86,11 +94,18 @@ function CategoriaPageConteudo() {
 
   const [ehProfessor, setEhProfessor] = useState(false);
   const [carregando, setCarregando] = useState(true);
-  const [nomeTitulo, setNomeTitulo] = useState('');
+  const [materiaNome, setMateriaNome] = useState('');
+  const [turmaLabel, setTurmaLabel] = useState('');
+  const [professorNome, setProfessorNome] = useState('');
+  const [professorFotoUrl, setProfessorFotoUrl] = useState<string | null>(null);
   const [imagemFundo, setImagemFundo] = useState<string | null>(null);
   const [corFundo, setCorFundo] = useState('#17C077');
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [mensagemVisivel, setMensagemVisivel] = useState(true);
+  const [abaFiltro, setAbaFiltro] = useState<AbaFiltro>('tudo');
+  const [popoverGerenciarAberto, setPopoverGerenciarAberto] = useState(false);
+  const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
+  const [criandoCategoria, setCriandoCategoria] = useState(false);
   const [categorias, setCategorias] = useState<MateriasModuloAPI.CategoriaCompleta[]>([]);
   const [itensSemCategoria, setItensSemCategoria] = useState<ItemCategoria[]>([]);
   const [itemSelecionado, setItemSelecionado] = useState<ItemCategoria | null>(null);
@@ -141,17 +156,22 @@ function CategoriaPageConteudo() {
       const professor = funcoesAtivas.includes(3);
       setEhProfessor(professor);
 
+      const turma = await TurmaAPI.buscarTurma(turmaGUID);
+      setTurmaLabel(`${turma.TurmaSerie} ${turma.TurmaNome}`.trim());
+      setImagemFundo(turma.TurmaImagemUrl || null);
+      setCorFundo(turma.TurmaCorFundo || '#17C077');
+
       if (professor) {
-        const turma = await TurmaAPI.buscarTurma(turmaGUID);
-        setNomeTitulo(`${turma.TurmaSerie} ${turma.TurmaNome}`);
-        setImagemFundo(turma.TurmaImagemUrl || null);
-        setCorFundo(turma.TurmaCorFundo || '#17C077');
+        const materia = await MateriaAPI.buscarMateria(materiaGUID);
+        setMateriaNome(materia.MateriaNome);
+        setProfessorNome(usuario.UsuarioNome);
+        setProfessorFotoUrl(usuario.UsuarioFotoUrl || null);
       } else {
         const materias = await MateriasModuloAPI.listarMateriasDoAluno(usuario.UsuarioGUID, escolaGUID);
         const materiaAtual = materias.find((m) => m.MateriaGUID === materiaGUID);
-        setNomeTitulo(materiaAtual?.MateriaNome || 'Matéria');
-        setImagemFundo(materiaAtual?.ImagemUrl || null);
-        setCorFundo(materiaAtual?.CorFundo || '#17C077');
+        setMateriaNome(materiaAtual?.MateriaNome || 'Matéria');
+        setProfessorNome(materiaAtual?.ProfessorNome || '');
+        setProfessorFotoUrl(materiaAtual?.ProfessorFotoUrl || null);
         setMensagem(materiaAtual?.MensagemBoasVindas || null);
       }
 
@@ -220,6 +240,22 @@ function CategoriaPageConteudo() {
       await carregarCategorias();
     } catch (erro: any) {
       alert(erro?.message || 'Erro ao processar categoria');
+    }
+  };
+
+  const criarNovaCategoria = async () => {
+    const nome = novaCategoriaNome.trim();
+    if (!nome) return;
+    try {
+      setCriandoCategoria(true);
+      await CategoriaConteudoAPI.criarCategoria(materiaGUID, turmaGUID, nome);
+      setNovaCategoriaNome('');
+      setPopoverGerenciarAberto(false);
+      await carregarCategorias();
+    } catch (erro: any) {
+      alert(erro?.message || 'Erro ao criar categoria');
+    } finally {
+      setCriandoCategoria(false);
     }
   };
 
@@ -329,8 +365,20 @@ function CategoriaPageConteudo() {
     );
   }
 
+  const passaFiltro = (item: ItemCategoria) => abaFiltro === 'tudo' || GRUPO_POR_TIPO[item.Tipo] === abaFiltro;
+  const categoriasFiltradas = categorias
+    .map((c) => ({ ...c, Itens: c.Itens.filter(passaFiltro) }))
+    .filter((c) => abaFiltro === 'tudo' || c.Itens.length > 0);
+  const itensSemCategoriaFiltrados = itensSemCategoria.filter(passaFiltro);
+
   return (
     <div className={styles.container}>
+      <div className={styles.topoWrap}>
+        <Link href={`/dashboard/${escolaGUID}/materias`} className={styles.voltarLink}>
+          <Icon name="chevron-left" size={16} /> Matérias
+        </Link>
+      </div>
+
       <div className={styles.hero}>
         {imagemFundo ? (
           <div className={styles.heroFundo} style={{ backgroundImage: `url(${imagemFundo})` }} />
@@ -339,18 +387,75 @@ function CategoriaPageConteudo() {
         )}
         <div className={styles.heroConteudo}>
           {mensagem && mensagemVisivel && <div className={styles.heroMensagem}>{mensagem}</div>}
-          <h1 className={styles.heroTitulo}>{nomeTitulo}</h1>
+          {turmaLabel && <span className={styles.heroTurmaLabel}>Turma {turmaLabel}</span>}
+          <h1 className={styles.heroTitulo}>{materiaNome}</h1>
+          {professorNome && (
+            <div className={styles.heroProfessor}>
+              {professorFotoUrl ? (
+                <img src={professorFotoUrl} alt={professorNome} className={styles.heroProfessorFoto} />
+              ) : (
+                <span className={styles.heroProfessorAvatar}>{iniciais(professorNome)}</span>
+              )}
+              <span>{professorNome}</span>
+            </div>
+          )}
         </div>
       </div>
 
+      <div className={styles.abasBar}>
+        <div className={styles.abas}>
+          {ABAS.map((aba) => (
+            <button
+              key={aba.chave}
+              className={abaFiltro === aba.chave ? styles.abaAtiva : styles.aba}
+              onClick={() => setAbaFiltro(aba.chave)}
+            >
+              <Icon name={aba.icone} size={15} /> {aba.label}
+            </button>
+          ))}
+        </div>
+        {ehProfessor && (
+          <div className={styles.acoesWrapper}>
+            <button
+              className={styles.botaoGerenciarCategorias}
+              onClick={() => setPopoverGerenciarAberto((v) => !v)}
+            >
+              <Icon name="folder" size={15} /> Gerenciar categorias
+            </button>
+            {popoverGerenciarAberto && (
+              <div className={styles.popoverGerenciar}>
+                <label className={styles.popoverGerenciarLabel}>Nova categoria</label>
+                <div className={styles.popoverGerenciarForm}>
+                  <input
+                    className={styles.popoverGerenciarInput}
+                    value={novaCategoriaNome}
+                    onChange={(e) => setNovaCategoriaNome(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && criarNovaCategoria()}
+                    placeholder="Ex.: 2º Trimestre 2026"
+                    autoFocus
+                  />
+                  <button onClick={criarNovaCategoria} disabled={criandoCategoria || !novaCategoriaNome.trim()}>
+                    <Icon name="plus" size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className={styles.corpo}>
-        {categorias.length === 0 && itensSemCategoria.length === 0 && (
+        {categoriasFiltradas.length === 0 && itensSemCategoriaFiltrados.length === 0 && (
           <p className={styles.mensagemSemCategoria}>
-            {ehProfessor ? 'Nenhuma categoria criada ainda.' : 'Nenhum conteúdo publicado ainda.'}
+            {categorias.length === 0 && itensSemCategoria.length === 0
+              ? ehProfessor
+                ? 'Nenhuma categoria criada ainda.'
+                : 'Nenhum conteúdo publicado ainda.'
+              : 'Nenhum item nesta aba.'}
           </p>
         )}
 
-        {categorias.map((categoria) => (
+        {categoriasFiltradas.map((categoria) => (
           <div
             key={categoria.CategoriaGUID}
             className={styles.categoria}
@@ -360,21 +465,27 @@ function CategoriaPageConteudo() {
             onDrop={() => ehProfessor && handleDrop(categoria.CategoriaGUID)}
           >
             <div className={styles.categoriaHeader}>
-              {editandoCategoriaGUID === categoria.CategoriaGUID ? (
-                <input
-                  className={styles.inputRenomearCategoria}
-                  defaultValue={categoria.CategoriaNome}
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
-                  onBlur={(e) => salvarRenomeCategoria(categoria.CategoriaGUID, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                    if (e.key === 'Escape') setEditandoCategoriaGUID(null);
-                  }}
-                />
-              ) : (
-                <span className={styles.categoriaNome}>{categoria.CategoriaNome}</span>
-              )}
+              <div className={styles.categoriaNomeGrupo}>
+                <span className={styles.categoriaIconeFolder}><Icon name="folder" size={15} /></span>
+                {editandoCategoriaGUID === categoria.CategoriaGUID ? (
+                  <input
+                    className={styles.inputRenomearCategoria}
+                    defaultValue={categoria.CategoriaNome}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    onBlur={(e) => salvarRenomeCategoria(categoria.CategoriaGUID, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                      if (e.key === 'Escape') setEditandoCategoriaGUID(null);
+                    }}
+                  />
+                ) : (
+                  <span className={styles.categoriaNome}>{categoria.CategoriaNome}</span>
+                )}
+              </div>
+              <span className={styles.categoriaContagem}>
+                {categoria.Itens.length} {categoria.Itens.length === 1 ? 'item' : 'itens'}
+              </span>
               {ehProfessor && (
                 <div className={styles.categoriaAcoes}>
                   <div className={styles.acoesWrapper}>
@@ -457,10 +568,19 @@ function CategoriaPageConteudo() {
                     }}
                   >
                     <div className={styles.itemEsquerda}>
-                      <Icon name={ICONE_POR_TIPO[item.Tipo]} size={16} />
+                      <span className={styles.itemIconeQuadrado} style={{ backgroundColor: COR_ICONE_POR_TIPO[item.Tipo] }}>
+                        <Icon name={ICONE_POR_TIPO[item.Tipo]} size={15} color="#fff" />
+                      </span>
                       <span className={styles.itemTitulo}>{item.Titulo}</span>
                     </div>
-                    {!ehProfessor && <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />}
+                    {!ehProfessor && (
+                      <div className={styles.itemDireita}>
+                        <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />
+                        <span className={styles.itemStatusTexto} style={{ color: textoEstado(item.Estado, item.Percentual).cor }}>
+                          {textoEstado(item.Estado, item.Percentual).texto}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -468,13 +588,19 @@ function CategoriaPageConteudo() {
           </div>
         ))}
 
-        {itensSemCategoria.length > 0 && (
+        {itensSemCategoriaFiltrados.length > 0 && (
           <div className={styles.categoria}>
             <div className={styles.categoriaHeader}>
-              <span className={styles.categoriaNome}>Sem categoria</span>
+              <div className={styles.categoriaNomeGrupo}>
+                <span className={styles.categoriaIconeFolder}><Icon name="folder" size={15} /></span>
+                <span className={styles.categoriaNome}>Sem categoria</span>
+              </div>
+              <span className={styles.categoriaContagem}>
+                {itensSemCategoriaFiltrados.length} {itensSemCategoriaFiltrados.length === 1 ? 'item' : 'itens'}
+              </span>
             </div>
             <div className={styles.categoriaItens}>
-              {itensSemCategoria.map((item) => (
+              {itensSemCategoriaFiltrados.map((item) => (
                 <div
                   key={item.ItemGUID}
                   className={styles.itemLinha}
@@ -484,10 +610,19 @@ function CategoriaPageConteudo() {
                   onDragEnd={() => setItemArrastando(null)}
                 >
                   <div className={styles.itemEsquerda}>
-                    <Icon name={ICONE_POR_TIPO[item.Tipo]} size={16} />
+                    <span className={styles.itemIconeQuadrado} style={{ backgroundColor: COR_ICONE_POR_TIPO[item.Tipo] }}>
+                      <Icon name={ICONE_POR_TIPO[item.Tipo]} size={15} color="#fff" />
+                    </span>
                     <span className={styles.itemTitulo}>{item.Titulo}</span>
                   </div>
-                  {!ehProfessor && <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />}
+                  {!ehProfessor && (
+                    <div className={styles.itemDireita}>
+                      <ItemProgressoBar estado={item.Estado} percentual={item.Percentual} />
+                      <span className={styles.itemStatusTexto} style={{ color: textoEstado(item.Estado, item.Percentual).cor }}>
+                        {textoEstado(item.Estado, item.Percentual).texto}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
