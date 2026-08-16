@@ -59,6 +59,20 @@ export function registerConversaHandlers(
           MensagemTipo || 'Texto'
         );
         io.to(ConversaGUID).emit('nova_mensagem', mensagem);
+
+        // Além da room da conversa (só quem tem a tela de chat aberta nela,
+        // via join_conversa), avisa cada participante na sua room pessoal —
+        // é o que permite um badge de "mensagem nova" fora da tela de chat
+        // (ex.: navbar), sem exigir estar com a conversa aberta.
+        const participantes = await conversaDAO.listarParticipantesGUID(ConversaGUID);
+        for (const participanteGUID of participantes) {
+          if (participanteGUID !== usuario.UsuarioGUID) {
+            io.to(`usuario:${participanteGUID}`).emit('mensagem_nao_lida', {
+              ConversaGUID,
+              MensagemRemetenteGUID: mensagem.MensagemRemetenteGUID,
+            });
+          }
+        }
       } catch (err: any) {
         socket.emit('erro', { message: err.message || 'Erro ao enviar mensagem' });
       }

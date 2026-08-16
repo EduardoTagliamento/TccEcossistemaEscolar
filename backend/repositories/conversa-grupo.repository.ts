@@ -120,12 +120,12 @@ export class ConversaGrupoDAO {
   // Rows cruas com nome do usuário via JOIN — só para exibição (não é a entidade ConversaGrupoMembro,
   // que espelha 1:1 a tabela conversa_grupo_membro e não tem coluna de nome).
   async findMembrosComNome(conversaGUID: string): Promise<
-    { MembroUsuarioGUID: string; UsuarioNome: string; MembroFuncao: MembroFuncaoType; MembroEntradaAt: Date }[]
+    { MembroUsuarioGUID: string; UsuarioNome: string; UsuarioFotoUrl: string | null; MembroFuncao: MembroFuncaoType; MembroEntradaAt: Date }[]
   > {
     console.log('🟢 ConversaGrupoDAO.findMembrosComNome()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
-      `SELECT cgm.MembroUsuarioGUID, u.UsuarioNome, cgm.MembroFuncao, cgm.MembroEntradaAt
+      `SELECT cgm.MembroUsuarioGUID, u.UsuarioNome, u.UsuarioFotoUrl, cgm.MembroFuncao, cgm.MembroEntradaAt
        FROM conversa_grupo_membro cgm
        INNER JOIN usuario u ON u.UsuarioGUID = cgm.MembroUsuarioGUID
        WHERE cgm.ConversaGUID = ? AND cgm.MembroStatus = 'Ativo'

@@ -331,6 +331,12 @@
   border: 2px solid var(--white);
 }
 
+/* Mensagem nova é informativa, não "requer ação" — usa a cor da própria
+   escola em vez do vermelho de pendência/alerta. */
+.moduleItemDotPrimary {
+  background: var(--color-primary);
+}
+
 .navActions {
   display: flex;
   align-items: center;

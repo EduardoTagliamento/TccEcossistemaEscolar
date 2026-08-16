@@ -40,6 +40,7 @@ export interface ConversaListItemDTO {
 export interface MembroDTO {
   UsuarioGUID: string;
   UsuarioNome: string;
+  UsuarioFotoUrl: string | null;
   MembroFuncao: 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante';
   MembroEntradaAt: string;
 }
@@ -87,42 +88,54 @@ export default class ConversaService {
   async listarConversas(usuarioGUID: string, escolaGUID?: string): Promise<ConversaListItemDTO[]> {
     console.log('🟣 ConversaService.listarConversas()');
     const conversas = await this.#conversaDAO.findAllByUsuarioGUID(usuarioGUID, escolaGUID);
-    const result: ConversaListItemDTO[] = [];
+    // Ordenado por atividade real (última mensagem), não por ConversaUpdatedAt
+    // — esse campo só muda por edição de metadado da conversa (ex.: renomear
+    // grupo), nunca é tocado ao enviar mensagem, então uma conversa recém-
+    // ativa não subia na lista. Sem mensagem ainda, cai pra ConversaCreatedAt.
+    const result: Array<{ dto: ConversaListItemDTO; ordemChave: string }> = [];
 
     for (const c of conversas) {
       const ultimaMensagem = await this.#mensagemDAO.findUltimaMensagem(c.ConversaGUID);
       const naoLidas = await this.#mensagemDAO.countNaoLidas(c.ConversaGUID, usuarioGUID);
+      const ordemChave = ultimaMensagem?.MensagemCreatedAt ?? c.ConversaCreatedAt.toISOString();
 
       if (c.ConversaTipo === 'Grupo') {
         const grupo = await this.#conversaGrupoDAO.findByConversaGUID(c.ConversaGUID);
         result.push({
-          ConversaGUID: c.ConversaGUID,
-          ConversaTipo: 'Grupo',
-          ConversaGrupoNome: grupo?.ConversaGrupoNome ?? null,
-          ConversaGrupoTipo: grupo?.ConversaGrupoTipo ?? null,
-          ParceiroGUID: null,
-          ParceiroNome: null,
-          TagContextual: null,
-          UltimaMensagem: ultimaMensagem,
-          NaoLidas: naoLidas,
+          ordemChave,
+          dto: {
+            ConversaGUID: c.ConversaGUID,
+            ConversaTipo: 'Grupo',
+            ConversaGrupoNome: grupo?.ConversaGrupoNome ?? null,
+            ConversaGrupoTipo: grupo?.ConversaGrupoTipo ?? null,
+            ParceiroGUID: null,
+            ParceiroNome: null,
+            TagContextual: null,
+            UltimaMensagem: ultimaMensagem,
+            NaoLidas: naoLidas,
+          },
         });
       } else {
         const parceiro = await this.#conversaIndividualDAO.getParceiroInfo(c.ConversaGUID, usuarioGUID);
         result.push({
-          ConversaGUID: c.ConversaGUID,
-          ConversaTipo: 'Individual',
-          ConversaGrupoNome: null,
-          ConversaGrupoTipo: null,
-          ParceiroGUID: parceiro?.ParceiroGUID ?? null,
-          ParceiroNome: parceiro?.ParceiroNome ?? null,
-          TagContextual: null,
-          UltimaMensagem: ultimaMensagem,
-          NaoLidas: naoLidas,
+          ordemChave,
+          dto: {
+            ConversaGUID: c.ConversaGUID,
+            ConversaTipo: 'Individual',
+            ConversaGrupoNome: null,
+            ConversaGrupoTipo: null,
+            ParceiroGUID: parceiro?.ParceiroGUID ?? null,
+            ParceiroNome: parceiro?.ParceiroNome ?? null,
+            TagContextual: null,
+            UltimaMensagem: ultimaMensagem,
+            NaoLidas: naoLidas,
+          },
         });
       }
     }
 
-    return result;
+    result.sort((a, b) => (a.ordemChave < b.ordemChave ? 1 : a.ordemChave > b.ordemChave ? -1 : 0));
+    return result.map((r) => r.dto);
   }
 
   async buscarConversa(conversaGUID: string, usuarioGUID: string): Promise<ConversaDetalheDTO> {
@@ -174,6 +187,7 @@ export default class ConversaService {
         Membros: membros.map((m) => ({
           UsuarioGUID: m.MembroUsuarioGUID,
           UsuarioNome: m.UsuarioNome,
+          UsuarioFotoUrl: m.UsuarioFotoUrl,
           MembroFuncao: m.MembroFuncao,
           MembroEntradaAt: m.MembroEntradaAt.toISOString(),
         })),
