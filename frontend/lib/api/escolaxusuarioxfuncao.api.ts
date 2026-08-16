@@ -104,6 +104,8 @@ export interface VinculoEmMassaItem {
   CPF?: string;
   Nome?: string;
   Email?: string;
+  /** Opcional — permite envio de credenciais por WhatsApp quando não há e-mail. */
+  Telefone?: string;
 }
 
 export interface VinculoBatchItemResult {

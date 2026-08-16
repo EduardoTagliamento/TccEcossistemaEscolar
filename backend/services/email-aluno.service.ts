@@ -87,7 +87,7 @@ export class EmailAlunoService {
       `;
 
       await resend.emails.send({
-        from: 'Ecossistema Escolar <noreply@ecossistemaescolar.com>',
+        from: `Ecossistema Escolar <${process.env.EMAIL_FROM || 'noreply@baua.com.br'}>`,
         to: dados.para,
         subject: 'Bem-vindo ao Ecossistema Escolar - Suas credenciais de acesso',
         html
@@ -154,7 +154,7 @@ export class EmailAlunoService {
       `;
 
       await resend.emails.send({
-        from: 'Ecossistema Escolar <noreply@ecossistemaescolar.com>',
+        from: `Ecossistema Escolar <${process.env.EMAIL_FROM || 'noreply@baua.com.br'}>`,
         to: dados.para,
         subject: 'Nova matrícula - Ecossistema Escolar',
         html

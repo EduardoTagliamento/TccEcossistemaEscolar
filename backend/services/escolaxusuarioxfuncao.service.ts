@@ -11,6 +11,7 @@ import { normalizeCPF } from "../utils/helpers/cpf.helper";
 import { gerarGUIDUsuario } from "../utils/helpers/guid.helper";
 import { gerarSenhaTemporaria } from "../utils/helpers/password-generator.helper";
 import { EmailAlunoService } from "./email-aluno.service";
+import { WhatsappCredenciaisService } from "./whatsapp-credenciais.service";
 
 const SALT_ROUNDS = 10;
 
@@ -19,6 +20,8 @@ export interface VinculoEmMassaItem {
   CPF?: string;
   Nome?: string;
   Email?: string;
+  /** Opcional — permite envio de credenciais por WhatsApp quando não há e-mail (ver professor.service.ts). */
+  Telefone?: string;
 }
 
 export interface VinculoBatchItemResult {
@@ -173,6 +176,7 @@ export default class EscolaxUsuarioxFuncaoService {
 
     const resultados: VinculoBatchItemResult[] = [];
     const emailsParaEnviar: Array<{ tipo: "novo"; dados: Record<string, string> }> = [];
+    const whatsappParaEnviar: Array<{ para: string; nomeUsuario: string; nomeEscola: string; senhaTemporaria: string; linkLogin: string }> = [];
     let criados = 0;
     let duplicados = 0;
     let erros = 0;
@@ -255,7 +259,15 @@ export default class EscolaxUsuarioxFuncaoService {
           novoUsuario.UsuarioNome = nome;
           novoUsuario.UsuarioEmail = item.Email || null;
           novoUsuario.UsuarioId = null;
-          novoUsuario.UsuarioTelefone = null;
+          // Setter de UsuarioTelefone exige exatamente "(XX) XXXXX-XXXX" —
+          // normaliza o que vier cru da planilha (só dígitos, com/sem
+          // formatação) em vez de deixar a linha inteira falhar por causa
+          // de um telefone mal formatado nesse campo opcional.
+          const telefoneDigitos = item.Telefone?.replace(/\D/g, "") ?? "";
+          novoUsuario.UsuarioTelefone =
+            telefoneDigitos.length === 11
+              ? `(${telefoneDigitos.slice(0, 2)}) ${telefoneDigitos.slice(2, 7)}-${telefoneDigitos.slice(7)}`
+              : null;
           novoUsuario.UsuarioEmailVerificado = false;
           novoUsuario.UsuarioStatus = "Ativo";
           novoUsuario.UsuarioSenha = senhaHash;
@@ -263,6 +275,7 @@ export default class EscolaxUsuarioxFuncaoService {
           await this.#usuarioDAO.create(novoUsuario);
           usuario = novoUsuario;
 
+          const linkLogin = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : "http://localhost:3000/login";
           if (usuario.UsuarioEmail) {
             emailsParaEnviar.push({
               tipo: "novo",
@@ -272,8 +285,20 @@ export default class EscolaxUsuarioxFuncaoService {
                 nomeEscola: escola.EscolaNome || "Escola",
                 cpf: usuario.UsuarioCPF ?? "",
                 senhaTemporaria,
-                linkLogin: process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : "http://localhost:3000/login",
+                linkLogin,
               },
+            });
+          }
+
+          // Credenciais por WhatsApp (se fornecido telefone) — cobre o caso
+          // de usuário sem e-mail cadastrado (ver professor.service.ts).
+          if (usuario.UsuarioTelefone) {
+            whatsappParaEnviar.push({
+              para: usuario.UsuarioTelefone,
+              nomeUsuario: usuario.UsuarioNome,
+              nomeEscola: escola.EscolaNome || "Escola",
+              senhaTemporaria,
+              linkLogin,
             });
           }
         }
@@ -341,6 +366,12 @@ export default class EscolaxUsuarioxFuncaoService {
     if (emailsParaEnviar.length > 0) {
       EmailAlunoService.enviarEmailsEmLote(emailsParaEnviar as any).catch((erro) => {
         console.error("Erro ao enviar emails em lote (vinculo em massa):", erro);
+      });
+    }
+
+    if (whatsappParaEnviar.length > 0) {
+      WhatsappCredenciaisService.enviarCredenciaisEmLote(whatsappParaEnviar).catch((erro) => {
+        console.error("Erro ao enviar credenciais por WhatsApp em lote (vinculo em massa):", erro);
       });
     }
 

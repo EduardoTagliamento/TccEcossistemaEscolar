@@ -202,6 +202,7 @@ export default function CoordenacaoPage() {
     CPF: (linha['CPF'] || linha.UsuarioCPF || linha.cpf || '').toString().trim() || undefined,
     Nome: (linha['Nome Completo'] || linha.Nome || linha.nome || '').toString().trim() || undefined,
     Email: (linha['Email'] || linha.email || '').toString().trim() || undefined,
+    Telefone: (linha['Telefone'] || linha.UsuarioTelefone || linha.telefone || '').toString().trim() || undefined,
   });
 
   const handleSalvarImportados = async () => {
