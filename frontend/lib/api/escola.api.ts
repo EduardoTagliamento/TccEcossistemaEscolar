@@ -121,6 +121,41 @@ export async function transferirDirecao(
 }
 
 /**
+ * Solicita a exclusão da escola — envia um código de 6 dígitos pro email
+ * do usuário logado (só Direção). Confirmar com confirmarExclusaoEscola().
+ */
+export async function solicitarExclusaoEscola(escolaGUID: string): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/escola/${escolaGUID}/solicitar-exclusao`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erro ao solicitar exclusão da escola');
+  }
+  return data;
+}
+
+/**
+ * Confirma a exclusão com o código recebido por email — desativa a escola
+ * imediatamente (exclusão definitiva só depois de 30 dias sem reativação).
+ */
+export async function confirmarExclusaoEscola(escolaGUID: string, codigo: string): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/escola/${escolaGUID}/confirmar-exclusao`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ Codigo: codigo }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erro ao confirmar exclusão da escola');
+  }
+  return data;
+}
+
+/**
  * Listar todas as escolas (filtros opcionais)
  */
 export async function listarEscolas(filtros?: {

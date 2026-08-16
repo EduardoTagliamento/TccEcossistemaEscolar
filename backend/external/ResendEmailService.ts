@@ -286,7 +286,100 @@ export class ResendEmailService {
         Este código expira em 15 minutos.
         
         Se você não solicitou esta verificação, ignore este email.
-        
+
+        ---
+        Ecossistema Escolar
+        © ${new Date().getFullYear()} Todos os direitos reservados.
+      `
+    });
+  }
+
+  /**
+   * Código de confirmação pra exclusão de escola (Configurações → Direção).
+   * Mesmo padrão visual de sendVerificationEmail, com tom de alerta (vermelho)
+   * por ser uma ação destrutiva.
+   */
+  public async sendSchoolDeletionCode(
+    userEmail: string,
+    userName: string,
+    escolaNome: string,
+    codigo: string
+  ): Promise<ResendEmailResponse> {
+    return this.sendEmail({
+      to: userEmail,
+      subject: `⚠️ Confirmação de exclusão — ${escolaNome}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #DC2626; margin: 0;">Ecossistema Escolar</h1>
+          </div>
+
+          <h2 style="color: #1F2937;">Olá, ${userName}</h2>
+
+          <p style="color: #4B5563; font-size: 16px; line-height: 1.6;">
+            Você solicitou a exclusão da escola <strong>${escolaNome}</strong>. Use o código abaixo pra confirmar:
+          </p>
+
+          <div style="background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+                      border-radius: 12px;
+                      padding: 30px;
+                      text-align: center;
+                      margin: 30px 0;">
+            <div style="background-color: white;
+                        border-radius: 8px;
+                        padding: 20px;
+                        display: inline-block;">
+              <p style="margin: 0 0 10px 0; color: #6B7280; font-size: 14px; font-weight: 500;">
+                CÓDIGO DE CONFIRMAÇÃO
+              </p>
+              <p style="margin: 0;
+                        font-size: 42px;
+                        font-weight: bold;
+                        color: #DC2626;
+                        letter-spacing: 8px;
+                        font-family: 'Courier New', monospace;">
+                ${codigo}
+              </p>
+            </div>
+          </div>
+
+          <div style="background-color: #FEF2F2;
+                      border-left: 4px solid #DC2626;
+                      padding: 16px;
+                      margin: 20px 0;
+                      border-radius: 4px;">
+            <p style="margin: 0; color: #991B1B; font-size: 14px;">
+              ⚠️ <strong>Ao confirmar, a escola fica inativa imediatamente</strong> — ninguém mais consegue
+              acessar. Se ninguém reativar em 30 dias, os dados são excluídos definitivamente.
+            </p>
+          </div>
+
+          <p style="color: #6B7280; font-size: 14px; line-height: 1.6;">
+            Este código expira em 15 minutos. Se você não solicitou esta exclusão, ignore este email —
+            nada será feito sem o código.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 30px 0;">
+
+          <p style="color: #9CA3AF; font-size: 12px; text-align: center;">
+            © ${new Date().getFullYear()} Ecossistema Escolar. Todos os direitos reservados.
+          </p>
+        </div>
+      `,
+      text: `
+        Olá, ${userName}!
+
+        Você solicitou a exclusão da escola "${escolaNome}" no Ecossistema Escolar.
+
+        Seu código de confirmação é: ${codigo}
+
+        Ao confirmar, a escola fica inativa imediatamente. Se ninguém reativar em 30 dias,
+        os dados são excluídos definitivamente.
+
+        Este código expira em 15 minutos.
+
+        Se você não solicitou esta exclusão, ignore este email.
+
         ---
         Ecossistema Escolar
         © ${new Date().getFullYear()} Todos os direitos reservados.
