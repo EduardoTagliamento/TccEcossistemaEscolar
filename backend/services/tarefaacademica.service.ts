@@ -27,7 +27,9 @@ import { getAuditoriaService } from "./auditoria.service";
 export interface TarefaAcademicaDTO {
   TarefaGUID: string;
   matXprofXturxescGUID: string;
+  MateriaGUID?: string;
   MateriaNome?: string;
+  TurmaGUID?: string;
   TurmaNome?: string;
   ProfessorNome?: string;
   TarefaTitulo: string;
@@ -1345,7 +1347,9 @@ export default class TarefaAcademicaService {
     const dto = {
       TarefaGUID: tarefa.TarefaGUID,
       matXprofXturxescGUID: tarefa.matXprofXturxescGUID,
+      MateriaGUID: alocacao?.MateriaGUID,
       MateriaNome: alocacao?.MateriaNome,
+      TurmaGUID: alocacao?.TurmaGUID,
       TurmaNome: alocacao?.TurmaNome,
       ProfessorNome: alocacao?.UsuarioNome,
       TarefaTitulo: tarefa.TarefaTitulo,

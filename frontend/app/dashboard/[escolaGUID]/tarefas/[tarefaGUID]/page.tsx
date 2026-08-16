@@ -181,7 +181,7 @@ export default function TarefaDetalhesPage() {
           <div className={styles.materiaIcone}>T</div>
           <div className={styles.tarefaTitulos}>
             <h1>{tarefa.TarefaTitulo}</h1>
-            <p className={styles.materia}>Matéria • Professor</p>
+            <p className={styles.materia}>{tarefa.MateriaNome || 'Matéria'} • {tarefa.ProfessorNome || 'Professor'}</p>
           </div>
           {tarefa.TarefaCompartilhada && (
             <span className={styles.badgeCompartilhada}>
@@ -206,6 +206,14 @@ export default function TarefaDetalhesPage() {
               <strong>Tamanho do grupo:</strong>
               <span>{tarefa.TarefaMinPessoas} - {tarefa.TarefaMaxPessoas} pessoas</span>
             </div>
+          )}
+          {tarefa.MateriaGUID && tarefa.TurmaGUID && (
+            <Link
+              href={`/dashboard/${escolaGUID}/materias/${tarefa.MateriaGUID}/turmas/${tarefa.TurmaGUID}?abrirItem=${tarefa.TarefaGUID}`}
+              className={styles.linkMateria}
+            >
+              <Icon name="arrow-right" size={16} /> Ir para a matéria
+            </Link>
           )}
         </div>
 
