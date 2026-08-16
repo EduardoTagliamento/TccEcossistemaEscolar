@@ -16,7 +16,6 @@ import { WhatsappCredenciaisService } from "./whatsapp-credenciais.service";
 import bcrypt from "bcrypt";
 import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
-import ConversaGrupoService from "./conversa-grupo.service";
 
 /**
  * DTOs para transferência de dados
@@ -131,7 +130,6 @@ export default class ProfessorService {
   #usuarioDAO: UsuarioDAO;
   #customizacaoDAO?: MateriaCustomizacaoDAO;
   #escolaDAO?: EscolaDAO;
-  #conversaGrupoService?: ConversaGrupoService;
 
   constructor(
     alocacaoDAO: MaterialProfessorTurmaDAO,
@@ -141,8 +139,7 @@ export default class ProfessorService {
     matriculaDAO: MatriculaDAO,
     usuarioDAO: UsuarioDAO,
     customizacaoDAO?: MateriaCustomizacaoDAO,
-    escolaDAO?: EscolaDAO,
-    conversaGrupoService?: ConversaGrupoService
+    escolaDAO?: EscolaDAO
   ) {
     this.#alocacaoDAO = alocacaoDAO;
     this.#materiaDAO = materiaDAO;
@@ -152,25 +149,7 @@ export default class ProfessorService {
     this.#usuarioDAO = usuarioDAO;
     this.#customizacaoDAO = customizacaoDAO;
     this.#escolaDAO = escolaDAO;
-    this.#conversaGrupoService = conversaGrupoService;
   }
-
-  /**
-   * Remove o professor do grupo de conversa da turma SE ele não tiver mais
-   * nenhuma outra alocação ativa nessa turma (pode lecionar 2+ matérias na
-   * mesma turma — só sai do grupo quando a última alocação lá se encerra).
-   */
-  #removerDoGrupoSeSemOutraAlocacao = async (professorGUID: string, turmaGUID: string): Promise<void> => {
-    if (!this.#conversaGrupoService) return;
-    const restantes = await this.#alocacaoDAO.findAll({
-      UsuarioGUID: professorGUID,
-      TurmaGUID: turmaGUID,
-      AlocacaoStatus: 'Ativa',
-    });
-    if (restantes.length === 0) {
-      await this.#conversaGrupoService.removerMembroTurma(turmaGUID, professorGUID);
-    }
-  };
 
   /** Grid de seleção de matéria (professor) — matérias que ele leciona, já com a capa/cor. */
   async buscarMateriasComCapaProfessor(usuarioGUID: string, escolaGUID: string): Promise<Array<{
@@ -403,10 +382,6 @@ export default class ProfessorService {
         AulasPorSemana: data.AulasPorSemana ?? existente.AulasPorSemana,
       });
 
-      if (this.#conversaGrupoService) {
-        await this.#conversaGrupoService.adicionarMembroTurma(data.TurmaGUID!, professorGUID);
-      }
-
       return await this.toAlocacaoDTO(reativada!);
     }
 
@@ -424,10 +399,6 @@ export default class ProfessorService {
     alocacao.validar();
 
     const alocacaoCriada = await this.#alocacaoDAO.create(alocacao);
-
-    if (this.#conversaGrupoService) {
-      await this.#conversaGrupoService.adicionarMembroTurma(data.TurmaGUID!, professorGUID);
-    }
 
     return await this.toAlocacaoDTO(alocacaoCriada);
   }
@@ -498,10 +469,6 @@ export default class ProfessorService {
       });
     }
 
-    if (data.AlocacaoStatus === 'Inativa' && alocacaoExistente.AlocacaoStatus === 'Ativa') {
-      await this.#removerDoGrupoSeSemOutraAlocacao(alocacaoExistente.UsuarioGUID, alocacaoExistente.TurmaGUID);
-    }
-
     return await this.toAlocacaoDTO(alocacaoAtualizada);
   }
 
@@ -536,8 +503,6 @@ export default class ProfessorService {
         message: 'Não foi possível excluir a alocação',
       });
     }
-
-    await this.#removerDoGrupoSeSemOutraAlocacao(alocacao.UsuarioGUID, alocacao.TurmaGUID);
   }
 
   /**
@@ -977,9 +942,6 @@ export default class ProfessorService {
           const reativada = await this.#alocacaoDAO.update(existente.MatProfTurGUID, {
             AlocacaoStatus: 'Ativa',
           });
-          if (this.#conversaGrupoService) {
-            await this.#conversaGrupoService.adicionarMembroTurma(turmaGUID, professorGUIDLote);
-          }
           resultados.push({
             item: dados,
             sucesso: true,
@@ -1004,10 +966,6 @@ export default class ProfessorService {
         alocacao.validar();
 
         const alocacaoCriada = await this.#alocacaoDAO.create(alocacao);
-
-        if (this.#conversaGrupoService) {
-          await this.#conversaGrupoService.adicionarMembroTurma(turmaGUID, professorGUIDLote);
-        }
 
         resultados.push({
           item: dados,

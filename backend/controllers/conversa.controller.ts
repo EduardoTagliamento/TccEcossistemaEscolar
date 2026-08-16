@@ -29,7 +29,8 @@ export class ConversaController {
     console.log('🔵 ConversaController.index()');
     try {
       const usuarioGUID = req.user!.UsuarioGUID;
-      const conversas = await this.#conversaService.listarConversas(usuarioGUID);
+      const escolaGUID = req.query.EscolaGUID as string | undefined;
+      const conversas = await this.#conversaService.listarConversas(usuarioGUID, escolaGUID);
       res.status(200).json({ success: true, message: 'Conversas listadas', data: conversas });
     } catch (error) {
       next(error);
