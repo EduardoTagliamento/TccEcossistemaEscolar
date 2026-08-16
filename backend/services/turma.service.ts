@@ -350,6 +350,12 @@ export default class TurmaService {
         turma.validar();
         await this.#turmaDAO.create(turma);
 
+        // Criar grupo de conversa da turma — em massa nunca fazia isso, só
+        // a criação individual (ver criarTurma).
+        if (this.#conversaGrupoService) {
+          await this.#conversaGrupoService.criarGrupoTurma(turma.TurmaGUID, turma.TurmaNome);
+        }
+
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
           UsuarioGUIDAtor: usuarioGUID,
