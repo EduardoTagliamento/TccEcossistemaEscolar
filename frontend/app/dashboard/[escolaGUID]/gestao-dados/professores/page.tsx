@@ -14,6 +14,7 @@ import { UsuarioBusca } from '@/lib/api/usuario.api';
 import { useBuscaUsuarioPorNome } from '@/lib/usuario/useBuscaUsuarioPorNome';
 import ListaCandidatosUsuario from '@/components/gestao-dados/ListaCandidatosUsuario';
 import { useProfessores, useAlocacoesProfessor } from '@/lib/professor/useProfessorQueries';
+import { exportarParaPlanilha } from '@/lib/utils/exportarPlanilha';
 import {
   useCriarProfessor,
   useAtualizarProfessor,
@@ -54,6 +55,7 @@ export default function ProfessoresPage() {
     turmaNome: string;
     confirmar: () => void;
   } | null>(null);
+  const [credenciaisCriadas, setCredenciaisCriadas] = useState<{ nome: string; senhaTemporaria: string } | null>(null);
 
   // Estados do formulário
   const [valoresFormulario, setValoresFormulario] = useState<Record<string, any>>({
@@ -81,6 +83,21 @@ export default function ProfessoresPage() {
 
   const professoresQuery = useProfessores(escolaGUID);
   const professores = professoresQuery.data?.professores ?? [];
+
+  // Colunas idênticas ao mapeamento de importação (colunasEsperadas do
+  // BaseUploadPlanilha abaixo) — dá pra exportar e reimportar sem ajustar nada.
+  const handleExportarPlanilha = () => {
+    const linhas = professores.map((professor) => ({
+      Nome: professor.UsuarioNome,
+      CPF: professor.UsuarioCPF || '',
+      Email: professor.UsuarioEmail || '',
+      Telefone: professor.UsuarioTelefone || '',
+      'Data de Nascimento': professor.UsuarioDataNascimento
+        ? String(professor.UsuarioDataNascimento).split('T')[0]
+        : ''
+    }));
+    exportarParaPlanilha(linhas, 'professores.xlsx');
+  };
   const alocacoesQuery = useAlocacoesProfessor(professorEditando?.UsuarioGUID ?? undefined, escolaGUID, !!professorEditando);
   const alocacoesProfessor = (alocacoesQuery.data?.alocacoes ?? []).filter((a) => a.AlocacaoStatus === 'Ativa');
   const carregandoAlocacoes = alocacoesQuery.isLoading;
@@ -287,7 +304,7 @@ export default function ProfessoresPage() {
         alert('Professor atualizado com sucesso!');
       } else {
         // Criar novo professor (ou só vincular, se a pessoa já foi encontrada pela busca por nome)
-        await criarProfessorMutation.mutateAsync({
+        const resultado = await criarProfessorMutation.mutateAsync({
           dados: {
             UsuarioGUID: usuarioExistente?.UsuarioGUID,
             UsuarioCPF: valoresFormulario.UsuarioCPF || undefined,
@@ -301,11 +318,17 @@ export default function ProfessoresPage() {
           escolaGUID,
           escolaNome: escola?.EscolaNome || 'Escola',
         });
-        alert(
-          usuarioExistente
-            ? 'Professor vinculado à escola com sucesso!'
-            : 'Professor criado com sucesso! Um email foi enviado com as credenciais de acesso.'
-        );
+
+        if (usuarioExistente) {
+          alert('Professor vinculado à escola com sucesso!');
+        } else if (resultado.senhaTemporaria) {
+          // Mostra a senha gerada — se não houver email cadastrado, essa é a
+          // única forma de descobrir a senha (WhatsApp também recebe, se
+          // houver telefone cadastrado).
+          setCredenciaisCriadas({ nome: valoresFormulario.UsuarioNome, senhaTemporaria: resultado.senhaTemporaria });
+        } else {
+          alert('Professor criado com sucesso!');
+        }
       }
 
       setModalAberto(false);
@@ -519,6 +542,13 @@ export default function ProfessoresPage() {
         </div>
         <div className={styles.acoes}>
           <button
+            onClick={handleExportarPlanilha}
+            disabled={professores.length === 0}
+            className={styles.botaoUpload}
+          >
+            <Icon name="download" size={16} /> Exportar Planilha
+          </button>
+          <button
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}
           >
@@ -581,6 +611,40 @@ export default function ProfessoresPage() {
         )}
         mensagemVazia="Nenhum professor cadastrado. Clique em 'Novo Professor' ou importe uma planilha."
       />
+
+      {/* Modal: senha temporária gerada (professor sem email cadastrado) */}
+      {credenciaisCriadas && (
+        <div className={styles.overlay} onClick={() => setCredenciaisCriadas(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div style={{ padding: '1.25rem' }}>
+              <h2 className={styles.modalTitulo}><Icon name="check-circle" size={20} /> Professor criado com sucesso</h2>
+              <p style={{ marginTop: 8 }}>
+                <strong>{credenciaisCriadas.nome}</strong> já pode acessar o sistema. Anote e repasse essa senha temporária:
+              </p>
+              <div style={{ marginTop: 12, padding: 12, background: '#f9f9f9', border: '1px solid #e2e8f0', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <code style={{ fontSize: 18, fontWeight: 600 }}>{credenciaisCriadas.senhaTemporaria}</code>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(credenciaisCriadas.senhaTemporaria)}
+                  style={{ padding: '4px 10px', background: '#e2e8f0', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                >
+                  Copiar
+                </button>
+              </div>
+              <p style={{ marginTop: 12, fontSize: 12, color: '#718096' }}>
+                O login é feito com o CPF ou telefone cadastrado (ou o email, se preenchido) + essa senha. Se um telefone foi informado, essa mesma senha também foi enviada por WhatsApp.
+              </p>
+              <button
+                type="button"
+                onClick={() => setCredenciaisCriadas(null)}
+                style={{ marginTop: 16, width: '100%', padding: '8px', background: '#2f855a', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Cadastro Individual */}
       {modalAberto && (
@@ -935,6 +999,27 @@ export default function ProfessoresPage() {
                             </div>
                           ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Senhas temporárias dos professores criados sem email — sem isso não tem
+                      como descobrir a senha gerada (WhatsApp também recebe, se houver telefone). */}
+                  {resultadoBatch.resultados.some(r => r.tipo === 'criado' && r.senhaTemporaria) && (
+                    <div className={styles.errosContainer}>
+                      <h4 className={styles.errosTitulo}><Icon name="lock" size={18} /> Senhas temporárias geradas:</h4>
+                      <div className={styles.errosLista}>
+                        {resultadoBatch.resultados
+                          .filter(r => r.tipo === 'criado' && r.senhaTemporaria)
+                          .map((r, idx) => (
+                            <div key={idx} className={styles.erroItem} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                              <span>{r.item.UsuarioNome}</span>
+                              <code>{r.senhaTemporaria}</code>
+                            </div>
+                          ))}
+                      </div>
+                      <p style={{ marginTop: 8, fontSize: 12, color: '#718096' }}>
+                        Anote antes de fechar — só aparece aqui. Professores com telefone cadastrado também receberam a senha por WhatsApp.
+                      </p>
                     </div>
                   )}
 

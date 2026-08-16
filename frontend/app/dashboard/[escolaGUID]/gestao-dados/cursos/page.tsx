@@ -10,6 +10,7 @@ import BaseTabelaDados, { Coluna } from '@/components/gestao-dados/BaseTabelaDad
 import { Icon } from '@/components/Icon';
 
 import * as CursoAPI from '@/lib/api/curso.api';
+import { exportarParaPlanilha } from '@/lib/utils/exportarPlanilha';
 
 export default function CursosPage() {
   const params = useParams();
@@ -202,6 +203,16 @@ export default function CursosPage() {
           </p>
         </div>
         <div className={styles.acoes}>
+          <button
+            onClick={() => {
+              const linhas = cursos.map((curso) => ({ 'Nome do Curso': curso.CursoNome }));
+              exportarParaPlanilha(linhas, 'cursos.xlsx');
+            }}
+            disabled={cursos.length === 0}
+            className={styles.botaoUpload}
+          >
+            <Icon name="download" size={16} /> Exportar Planilha
+          </button>
           <button
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}

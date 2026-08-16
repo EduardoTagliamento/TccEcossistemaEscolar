@@ -12,6 +12,7 @@ import { Icon } from '@/components/Icon';
 
 import * as TurmaAPI from '@/lib/api/turma.api';
 import * as CursoAPI from '@/lib/api/curso.api';
+import { exportarParaPlanilha } from '@/lib/utils/exportarPlanilha';
 
 export default function TurmasPage() {
   const params = useParams();
@@ -295,6 +296,24 @@ export default function TurmasPage() {
           </p>
         </div>
         <div className={styles.acoes}>
+          <button
+            onClick={() => {
+              const linhas = turmas.map((turma) => {
+                const curso = cursos.find(c => c.CursoGUID === turma.CursoGUID);
+                return {
+                  'Série': turma.TurmaSerie,
+                  'Nome da Turma': turma.TurmaNome,
+                  'Nome do Curso': curso?.CursoNome || '',
+                  'É Técnica?': turma.TurmaIsTecnico ? 'Sim' : 'Não'
+                };
+              });
+              exportarParaPlanilha(linhas, 'turmas.xlsx');
+            }}
+            disabled={turmas.length === 0}
+            className={styles.botaoUpload}
+          >
+            <Icon name="download" size={16} /> Exportar Planilha
+          </button>
           <button
             onClick={() => setModalUploadAberto(true)}
             className={styles.botaoUpload}
