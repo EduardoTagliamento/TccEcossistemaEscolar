@@ -11,6 +11,7 @@ import * as AvisoAPI from '@/lib/api/aviso.api';
 import MateriaTurmaCard from '@/components/materias/MateriaTurmaCard';
 import Loader from '@/components/Loader';
 import { Icon } from '@/components/Icon';
+import { useCoresEscola } from '@/lib/theme/useCoresEscola';
 import styles from './page.module.css';
 
 interface Escola {
@@ -47,6 +48,7 @@ export default function DashboardPage() {
   const escolaGUIDParam = params?.escolaGUID;
   const escolaGUID = Array.isArray(escolaGUIDParam) ? escolaGUIDParam[0] : escolaGUIDParam || '';
   const { usuario, token, isLoading: authLoading } = useAuth();
+  const paletaEscola = useCoresEscola();
 
   const [escola, setEscola] = useState<Escola | null>(null);
   const [funcoesEscola, setFuncoesEscola] = useState<number[]>([]);
@@ -367,14 +369,14 @@ export default function DashboardPage() {
                 <p className={styles.widgetEstado}>Carregando...</p>
               ) : (
                 <div className={styles.materiasAtalhoGrid}>
-                  {materiasAtalho.map((materia) => (
+                  {materiasAtalho.map((materia, indice) => (
                     <MateriaTurmaCard
                       key={materia.guid}
                       href={materia.href}
                       titulo={materia.titulo}
                       subtitulo={materia.subtitulo}
                       imagemUrl={materia.imagemUrl}
-                      corFundo={materia.corFundo}
+                      corFundo={materia.corFundo || paletaEscola[indice % paletaEscola.length]}
                       avatarFotoUrl={materia.avatarFotoUrl}
                     />
                   ))}

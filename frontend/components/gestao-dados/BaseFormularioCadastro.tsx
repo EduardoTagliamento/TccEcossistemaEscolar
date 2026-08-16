@@ -55,10 +55,14 @@ export default function BaseFormularioCadastro({
       return;
     }
 
-    // Validar formato dos campos com máscara (CPF, telefone) — só quando preenchidos,
-    // já que a checagem de obrigatoriedade acima cobre o caso de campo vazio.
+    // Validar formato dos campos com máscara (CPF, telefone) — só quando preenchidos
+    // e editáveis. Campo desabilitado (ex.: CPF autopreenchido de um usuário já
+    // existente, selecionado por nome) não está sendo digitado agora — é só
+    // informativo, e pode legitimamente ser um CPF placeholder salvo antes de
+    // CPF virar opcional. Re-validar o formato dele bloquearia ações que nem
+    // tocam nesse campo (ex.: só vincular o usuário a uma turma nova).
     const camposFormatoInvalido = campos
-      .filter((c) => valores[c.id] && MASCARAS[c.tipo] && !MASCARAS[c.tipo]!.validar(valores[c.id]))
+      .filter((c) => !c.desabilitado && valores[c.id] && MASCARAS[c.tipo] && !MASCARAS[c.tipo]!.validar(valores[c.id]))
       .map((c) => c.label);
 
     if (camposFormatoInvalido.length > 0) {
