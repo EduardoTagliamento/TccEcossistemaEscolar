@@ -40,6 +40,8 @@ export interface TarefaAcademicaDTO {
   TarefaMinPessoas: number | null;
   TarefaMaxPessoas: number | null;
   MatriculasAtribuidas: MatriculaAtribuidaDTO[]; // Alunos que receberam a tarefa
+  /** Material de apoio anexado pelo professor (AnexoTipo='descricao') — compartilhado por toda a turma. */
+  AnexosDescricao: AnexoEntregaResumoDTO[];
   CreatedAt: string | null;
   UpdatedAt: string | null;
 }
@@ -48,6 +50,7 @@ export interface AnexoEntregaResumoDTO {
   AnexoGUID: string;
   AnexoNomeOriginal: string | null;
   AnexoTamanho: number | null;
+  AnexoCaminho: string;
   CreatedAt: string | null;
 }
 
@@ -1161,6 +1164,53 @@ export default class TarefaAcademicaService {
     });
   };
 
+  /**
+   * Professor anexa material de apoio a uma tarefa já existente (a criação
+   * já aceita `anexosDescricao`; isto cobre adicionar depois, em edição).
+   */
+  adicionarAnexoMaterial = async (
+    TarefaGUID: string,
+    AnexoGUID: string,
+    usuarioGUID?: string
+  ): Promise<void> => {
+    console.log("🟣 TarefaAcademicaService.adicionarAnexoMaterial()");
+
+    if (!usuarioGUID) {
+      throw new ErrorResponse(401, "Usuário não autenticado", {
+        message: "É necessário estar autenticado para anexar material de apoio.",
+      });
+    }
+
+    const tarefa = await this.#tarefaDAO.findById(TarefaGUID);
+    if (!tarefa) {
+      throw new ErrorResponse(404, "Tarefa não encontrada", {
+        message: `Não existe tarefa com id ${TarefaGUID}`,
+      });
+    }
+
+    const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
+    if (!alocacao || alocacao.UsuarioGUID !== usuarioGUID) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Só o professor responsável por esta tarefa pode anexar material de apoio.",
+      });
+    }
+
+    const anexo = await this.#anexoDAO.findById(AnexoGUID);
+    if (!anexo) {
+      throw new ErrorResponse(404, "Anexo não encontrado", {
+        message: `Não existe anexo com id ${AnexoGUID}`,
+      });
+    }
+
+    if (anexo.UsuarioGUID !== usuarioGUID) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você só pode anexar um arquivo que você mesmo enviou.",
+      });
+    }
+
+    await this.#tarefaDAO.vincularAnexo(TarefaGUID, AnexoGUID, "tarefa");
+  };
+
   removerAnexo = async (
     TarefaGUID: string,
     AnexoGUID: string,
@@ -1266,12 +1316,13 @@ export default class TarefaAcademicaService {
   };
 
   #mapAnexosEntrega = (
-    lista: Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; CreatedAt: Date | null }>
+    lista: Array<{ AnexoGUID: string; AnexoNomeOriginal: string | null; AnexoTamanho: number | null; AnexoCaminho: string; CreatedAt: Date | null }>
   ): AnexoEntregaResumoDTO[] =>
     lista.map((anexo) => ({
       AnexoGUID: anexo.AnexoGUID,
       AnexoNomeOriginal: anexo.AnexoNomeOriginal,
       AnexoTamanho: anexo.AnexoTamanho,
+      AnexoCaminho: anexo.AnexoCaminho,
       CreatedAt: anexo.CreatedAt ? new Date(anexo.CreatedAt).toISOString() : null,
     }));
 
@@ -1288,6 +1339,7 @@ export default class TarefaAcademicaService {
     const anexosPorMatricula = await this.#tarefaDAO.buscarAnexosEntregaPorMatricula(
       atribuicoes.map((atrib) => atrib.TarefaMatriculaGUID)
     );
+    const anexosDescricaoPorTarefa = await this.#tarefaDAO.buscarAnexosDescricaoPorTarefa([tarefa.TarefaGUID]);
     const alocacao = await this.#alocacaoDAO.findByIdComNomes(tarefa.matXprofXturxescGUID);
 
     const dto = {
@@ -1319,6 +1371,7 @@ export default class TarefaAcademicaService {
         TarefaAvaliadoEm: atrib.TarefaAvaliadoEm ? atrib.TarefaAvaliadoEm.toISOString() : null,
         TarefaAvaliadoPorGUID: atrib.TarefaAvaliadoPorGUID,
       })),
+      AnexosDescricao: this.#mapAnexosEntrega(anexosDescricaoPorTarefa.get(tarefa.TarefaGUID) ?? []),
       CreatedAt: tarefa.CreatedAt ? tarefa.CreatedAt.toISOString() : null,
       UpdatedAt: tarefa.UpdatedAt ? tarefa.UpdatedAt.toISOString() : null,
     };

@@ -4,6 +4,9 @@ export interface CalendarioAviso {
   TipoAviso: CalendarioTipoAviso;
   AvisoId: string;
   MatriculaGUID: string | null;
+  /** Matéria/turma do item — usado pra montar o link "ir para a página da matéria". */
+  MateriaGUID: string | null;
+  TurmaGUID: string | null;
   DataPrazo: Date;
   Titulo: string;
   Descricao: string | null;

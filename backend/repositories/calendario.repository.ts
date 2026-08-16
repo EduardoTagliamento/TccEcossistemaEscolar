@@ -10,6 +10,8 @@ interface CalendarioAvisoRow extends RowDataPacket {
   TipoAviso: CalendarioTipoAviso;
   AvisoId: string;
   MatriculaGUID: string | null;
+  MateriaGUID: string | null;
+  TurmaGUID: string | null;
   DataPrazo: Date;
   Titulo: string;
   Descricao: string | null;
@@ -46,6 +48,8 @@ export class CalendarioDAO {
         'tarefa' AS TipoAviso,
         t.TarefaGUID AS AvisoId,
         tm.MatriculaGUID AS MatriculaGUID,
+        mpt.MateriaGUID AS MateriaGUID,
+        tur.TurmaGUID AS TurmaGUID,
         COALESCE(tm.TarefaPrazoDataMatricula, t.TarefaPrazoData) AS DataPrazo,
         t.TarefaTitulo COLLATE utf8mb4_0900_ai_ci AS Titulo,
         t.TarefaConteudo COLLATE utf8mb4_0900_ai_ci AS Descricao,
@@ -96,6 +100,8 @@ export class CalendarioDAO {
         'prova' AS TipoAviso,
         p.ProvaAgendadaGUID AS AvisoId,
         NULL AS MatriculaGUID,
+        p.MateriaGUID AS MateriaGUID,
+        pt.TurmaGUID AS TurmaGUID,
         COALESCE(pt.ProvaDataTurma, p.ProvaData) AS DataPrazo,
         COALESCE(mat.MateriaNome, 'Prova agendada') COLLATE utf8mb4_0900_ai_ci AS Titulo,
         p.ProvaDescricao COLLATE utf8mb4_0900_ai_ci AS Descricao,
@@ -187,6 +193,8 @@ export class CalendarioDAO {
       TipoAviso: row.TipoAviso,
       AvisoId: row.AvisoId,
       MatriculaGUID: row.MatriculaGUID,
+      MateriaGUID: row.MateriaGUID,
+      TurmaGUID: row.TurmaGUID,
       DataPrazo: row.DataPrazo,
       Titulo: row.Titulo,
       Descricao: row.Descricao,

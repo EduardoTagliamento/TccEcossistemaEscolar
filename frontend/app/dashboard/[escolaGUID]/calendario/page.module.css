@@ -1002,6 +1002,23 @@
   background-color: var(--info-50);
 }
 
+.avisoLinkMateria {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  color: var(--info-500);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-xs);
+  background-color: var(--info-50);
+  text-decoration: none;
+}
+
+.avisoLinkMateria:hover {
+  text-decoration: underline;
+}
+
 .tarefaCheckboxInline {
   display: inline-flex;
   align-items: center;

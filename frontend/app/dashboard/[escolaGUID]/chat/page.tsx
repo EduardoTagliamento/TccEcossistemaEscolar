@@ -150,6 +150,9 @@ export default function ChatPage() {
   const [enviandoAnexo, setEnviandoAnexo] = useState(false);
   const [erroAnexo, setErroAnexo] = useState('');
 
+  const [imagemZoomUrl, setImagemZoomUrl] = useState<string | null>(null);
+  const [zoomNivel, setZoomNivel] = useState(1);
+
   const [gerenciarGrupoAberto, setGerenciarGrupoAberto] = useState(false);
   const [funcoesEscola, setFuncoesEscola] = useState<number[]>([]);
 
@@ -531,6 +534,31 @@ export default function ChatPage() {
     if (inputArquivoRef.current) inputArquivoRef.current.value = '';
   };
 
+  /** Cola uma imagem copiada (print/área de transferência) direto como anexo
+   * — cai no mesmo staging de handleSelecionarArquivo, sem mexer em texto
+   * colado normalmente (só intercepta quando o clipboard tem um arquivo de
+   * imagem). */
+  const handleColarImagem = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const item = Array.from(e.clipboardData.items).find(
+      (it) => it.kind === 'file' && it.type.startsWith('image/')
+    );
+    if (!item) return;
+    const arquivo = item.getAsFile();
+    if (!arquivo) return;
+    e.preventDefault();
+    handleSelecionarArquivo(arquivo);
+  };
+
+  const handleAbrirZoomImagem = (url: string) => {
+    setImagemZoomUrl(url);
+    setZoomNivel(1);
+  };
+
+  const handleFecharZoomImagem = () => {
+    setImagemZoomUrl(null);
+    setZoomNivel(1);
+  };
+
   // Libera o object URL do preview ao trocar de conversa ou desmontar a página
   useEffect(() => {
     return () => {
@@ -904,13 +932,17 @@ export default function ChatPage() {
                                 ) : apagada ? (
                                   <p className={styles.bolhaTexto}>Mensagem apagada</p>
                                 ) : mensagem.MensagemTipo === 'Imagem' ? (
-                                  <a href={mensagem.MensagemConteudo} target="_blank" rel="noopener noreferrer">
+                                  <button
+                                    type="button"
+                                    className={styles.bolhaImagemBotao}
+                                    onClick={() => handleAbrirZoomImagem(mensagem.MensagemConteudo)}
+                                  >
                                     <img
                                       src={mensagem.MensagemConteudo}
                                       alt="Imagem enviada no chat"
                                       className={styles.bolhaImagem}
                                     />
-                                  </a>
+                                  </button>
                                 ) : mensagem.MensagemTipo === 'Arquivo' ? (
                                   <a
                                     href={mensagem.MensagemConteudo}
@@ -1088,6 +1120,7 @@ export default function ChatPage() {
                   value={textoInput}
                   disabled={!conectado || !!arquivoSelecionado}
                   onChange={(e) => handleTextoInputChange(e.target.value)}
+                  onPaste={handleColarImagem}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') void handleEnviar();
                   }}
@@ -1161,6 +1194,46 @@ export default function ChatPage() {
           onClose={() => setGerenciarGrupoAberto(false)}
           onAtualizado={() => void carregarConversaAtiva(conversaAtivaGUID)}
         />
+      )}
+
+      {imagemZoomUrl && (
+        <div className={styles.zoomOverlay} onClick={handleFecharZoomImagem}>
+          <div className={styles.zoomBarraAcoes} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setZoomNivel((z) => Math.max(0.5, z - 0.25))}
+              aria-label="Diminuir zoom"
+              title="Diminuir zoom"
+            >
+              <Icon name="minus" size={18} />
+            </button>
+            <span className={styles.zoomPercentual}>{Math.round(zoomNivel * 100)}%</span>
+            <button
+              type="button"
+              onClick={() => setZoomNivel((z) => Math.min(4, z + 0.25))}
+              aria-label="Aumentar zoom"
+              title="Aumentar zoom"
+            >
+              <Icon name="plus" size={18} />
+            </button>
+            <button type="button" onClick={handleFecharZoomImagem} aria-label="Fechar" title="Fechar">
+              <Icon name="x" size={18} />
+            </button>
+          </div>
+          <div className={styles.zoomImagemWrap} onClick={(e) => e.stopPropagation()}>
+            <img
+              src={imagemZoomUrl}
+              alt="Imagem em zoom"
+              className={styles.zoomImagem}
+              style={{ transform: `scale(${zoomNivel})` }}
+              onWheel={(e) => {
+                e.preventDefault();
+                setZoomNivel((z) => Math.min(4, Math.max(0.5, z + (e.deltaY < 0 ? 0.15 : -0.15))));
+              }}
+              onDoubleClick={() => setZoomNivel((z) => (z === 1 ? 2 : 1))}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

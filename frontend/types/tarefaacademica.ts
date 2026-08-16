@@ -2,9 +2,20 @@
  * Tipos TypeScript para o sistema de Tarefas Acadêmicas Compartilhadas
  */
 
+export interface AnexoTarefaResumo {
+  AnexoGUID: string;
+  AnexoNomeOriginal: string | null;
+  AnexoTamanho: number | null;
+  AnexoCaminho: string;
+  CreatedAt: string | null;
+}
+
 export interface TarefaAcademica {
   TarefaGUID: string;
   matXprofXturxescGUID: string;
+  MateriaNome?: string;
+  ProfessorNome?: string;
+  TurmaNome?: string;
   TarefaTitulo: string;
   TarefaConteudo: string | null;
   TarefaPostagemData: string; // ISO string
@@ -13,6 +24,8 @@ export interface TarefaAcademica {
   TarefaCompartilhada: boolean;
   TarefaMinPessoas: number | null;
   TarefaMaxPessoas: number | null;
+  /** Material de apoio anexado pelo professor — compartilhado por toda a turma. */
+  AnexosDescricao: AnexoTarefaResumo[];
   CreatedAt: string;
   UpdatedAt: string;
 }
@@ -139,8 +152,5 @@ export interface TarefaCreateResponse {
 }
 
 export interface TarefaListItem extends TarefaAcademica {
-  MateriaNome?: string;
-  ProfessorNome?: string;
-  TurmaNome?: string;
   Status?: 'Atrasada' | 'Pendente' | 'Rascunho' | 'Concluida';
 }

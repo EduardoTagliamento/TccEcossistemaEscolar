@@ -411,6 +411,46 @@ export default function TarefaForm({
     }
   };
 
+  /** Material de apoio da tarefa em si (não de uma questão) — em modo criação
+   * fica só no rascunho local e vai junto no `anexosDescricao` do payload;
+   * em modo edição, a tarefa já existe, então vincula/desvincula na hora. */
+  interface AnexoMaterialRascunho {
+    AnexoGUID: string;
+    AnexoNomeOriginal: string | null;
+    AnexoCaminho: string;
+  }
+  const [anexosMaterial, setAnexosMaterial] = useState<AnexoMaterialRascunho[]>([]);
+  const [enviandoAnexoMaterial, setEnviandoAnexoMaterial] = useState(false);
+
+  const adicionarAnexoMaterial = async (arquivo: File) => {
+    try {
+      setEnviandoAnexoMaterial(true);
+      const anexo = await AnexoAPI.uploadAnexo(arquivo, escolaGUID);
+      if (editingGUID) {
+        await TarefaAcademicaAPI.adicionarAnexoMaterial(editingGUID, anexo.AnexoGUID);
+      }
+      setAnexosMaterial((prev) => [
+        ...prev,
+        { AnexoGUID: anexo.AnexoGUID, AnexoNomeOriginal: anexo.AnexoNomeOriginal, AnexoCaminho: anexo.AnexoCaminho },
+      ]);
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao enviar anexo');
+    } finally {
+      setEnviandoAnexoMaterial(false);
+    }
+  };
+
+  const removerAnexoMaterial = async (anexoGUID: string) => {
+    try {
+      if (editingGUID) {
+        await TarefaAcademicaAPI.removerAnexoTarefa(editingGUID, anexoGUID);
+      }
+      setAnexosMaterial((prev) => prev.filter((a) => a.AnexoGUID !== anexoGUID));
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao remover anexo');
+    }
+  };
+
   /** Modo edição: carrega as questões já cadastradas dessa tarefa lista. */
   const carregarQuestoesParaEdicao = async (tarefaGUID: string) => {
     try {
@@ -983,6 +1023,7 @@ export default function TarefaForm({
     setModoQuestoes('manual');
     setErroQuestoes(null);
     questoesOriginaisGUIDsRef.current = new Set();
+    setAnexosMaterial([]);
   };
 
   const onSubmit = async () => {
@@ -1096,6 +1137,7 @@ export default function TarefaForm({
             TarefaMinPessoas: form.TarefaCompartilhada ? form.TarefaMinPessoas : null,
             TarefaMaxPessoas: form.TarefaCompartilhada ? form.TarefaMaxPessoas : null,
             DatasPorMatricula: datasPorMatricula,
+            anexosDescricao: anexosMaterial.length > 0 ? anexosMaterial.map((a) => a.AnexoGUID) : undefined,
           },
         };
 
@@ -1151,6 +1193,13 @@ export default function TarefaForm({
     setQuestoes([]);
     setErroQuestoes(null);
     questoesOriginaisGUIDsRef.current = new Set();
+    setAnexosMaterial(
+      (tarefa.AnexosDescricao || []).map((a: any) => ({
+        AnexoGUID: a.AnexoGUID,
+        AnexoNomeOriginal: a.AnexoNomeOriginal,
+        AnexoCaminho: a.AnexoCaminho,
+      }))
+    );
     if (tarefa.TarefaTipoEntrega === 'lista') {
       void carregarQuestoesParaEdicao(tarefa.TarefaGUID);
     }
@@ -1266,6 +1315,44 @@ export default function TarefaForm({
           value={form.TarefaConteudo}
           onChange={(e) => setValue('TarefaConteudo', e.target.value)}
         />
+
+        <div className={styles.anexosQuestaoBloco}>
+          <label>Anexo(s) da tarefa (material de apoio)</label>
+          <div className={styles.anexosQuestaoList}>
+            {anexosMaterial.map((anexo) => (
+              <span key={anexo.AnexoGUID} className={styles.anexoQuestaoChip}>
+                {ehImagemAnexo(anexo.AnexoNomeOriginal) ? (
+                  <img src={anexo.AnexoCaminho} alt="" className={styles.anexoQuestaoThumb} />
+                ) : (
+                  <Icon name="paperclip" size={13} />
+                )}
+                {anexo.AnexoNomeOriginal || 'Arquivo'}
+                <button
+                  type="button"
+                  onClick={() => void removerAnexoMaterial(anexo.AnexoGUID)}
+                  title="Remover anexo"
+                >
+                  <Icon name="x" size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <label className={styles.anexoQuestaoInput}>
+            <Icon name="paperclip" size={14} />
+            {enviandoAnexoMaterial ? 'Enviando...' : 'Adicionar anexo'}
+            <input
+              type="file"
+              hidden
+              disabled={enviandoAnexoMaterial}
+              onChange={(e) => {
+                const arquivo = e.target.files?.[0];
+                if (arquivo) void adicionarAnexoMaterial(arquivo);
+                e.target.value = '';
+              }}
+            />
+          </label>
+        </div>
+
         {!editingGUID && (
           <div className={styles.autoAgendamento}>
             <label className={styles.autoAgendamentoChecagem}>
