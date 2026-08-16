@@ -3,6 +3,7 @@ import { MatriculaDAO, MatriculaFilters } from "../repositories/matricula.reposi
 import { TurmaDAO } from "../repositories/turma.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
 import MysqlDatabase from "../database/MysqlDatabase";
 import ErrorResponse from "../utils/ErrorResponse";
 import { gerarGUID } from "../utils/helpers/guid.helper";
@@ -187,6 +188,12 @@ export default class MatriculaService {
     // 7. Persistir
     const matriculaCriada = await this.#matriculaDAO.create(matricula);
 
+    // 7.1 Garantir vínculo de Aluno (FuncaoId=5) na escola — sem isso, o
+    // aluno tem matrícula mas nenhuma checagem de "vínculo ativo com a
+    // escola" (usada em pendência, aviso, etc.) passa, porque essas
+    // checagens olham escolaxusuarioxfuncao, não matricula.
+    await this.garantirVinculoAluno(usuario.UsuarioGUID, turma.EscolaGUID);
+
     // 8. Adicionar ao grupo de conversa da turma
     if (this.#conversaGrupoService) {
       await this.#conversaGrupoService.adicionarMembroTurma(
@@ -340,6 +347,11 @@ export default class MatriculaService {
 
       // COMMIT
       await connection.commit();
+
+      // Garantir vínculo de Aluno (FuncaoId=5) na escola de DESTINO — uma
+      // transferência pode ser entre escolas diferentes; sem isso o aluno
+      // fica sem acesso na escola nova mesmo com a matrícula criada.
+      await this.garantirVinculoAluno(aluno.UsuarioGUID, turmaDestino.EscolaGUID);
 
       void getAuditoriaService().registrar({
         EscolaGUID: turmaOrigem.EscolaGUID,
@@ -522,6 +534,35 @@ export default class MatriculaService {
       EntidadeGUID: matricula.MatriculaGUID,
       CategoriaAuditoriaId: 3, // DadosPessoais
     });
+  }
+
+  /**
+   * Garante um vínculo Ativo de Aluno (FuncaoId=5) do usuário na escola —
+   * cria se não existir, reativa se existir mas estiver Inativo/Finalizado
+   * (ex.: aluno que já teve vínculo antigo com essa escola). Idempotente:
+   * não faz nada se já estiver Ativo.
+   */
+  private async garantirVinculoAluno(usuarioGUID: string, escolaGUID: string): Promise<void> {
+    const existente = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(usuarioGUID, escolaGUID, 5);
+
+    if (!existente) {
+      const vinculo = new EscolaxUsuarioxFuncao();
+      vinculo.UsuarioGUID = usuarioGUID;
+      vinculo.EscolaGUID = escolaGUID;
+      vinculo.FuncaoId = 5;
+      vinculo.DataInicio = new Date();
+      vinculo.DataFim = null;
+      vinculo.Status = 'Ativo';
+      await this.#escolaxUsuarioxFuncaoDAO.create(vinculo);
+      return;
+    }
+
+    if (existente.Status !== 'Ativo') {
+      existente.Status = 'Ativo';
+      existente.DataInicio = new Date();
+      existente.DataFim = null;
+      await this.#escolaxUsuarioxFuncaoDAO.update(existente);
+    }
   }
 
   /**
@@ -736,6 +777,11 @@ export default class MatriculaService {
           // Buscar matrícula ativa do aluno
           const matriculaAtiva = matriculasAtivas.find(m => m.UsuarioGUID === aluno.UsuarioGUID);
 
+          // Backfill: aluno com matrícula de antes deste fix pode não ter
+          // o vínculo de Aluno (FuncaoId=5) — garante mesmo no caminho
+          // "já existe", idempotente.
+          await this.garantirVinculoAluno(aluno.UsuarioGUID, escolaGUID);
+
           resultados.push({
             item: dados,
             sucesso: true,
@@ -759,6 +805,11 @@ export default class MatriculaService {
         novaMatricula.MatriculaUpdatedAt = new Date();
 
         await this.#matriculaDAO.create(novaMatricula);
+
+        // Garantir vínculo de Aluno (FuncaoId=5) — mesmo motivo do fluxo
+        // individual (ver criarMatricula): sem isso, checagens de "vínculo
+        // ativo com a escola" (pendência, aviso, etc.) bloqueiam o aluno.
+        await this.garantirVinculoAluno(aluno.UsuarioGUID, escolaGUID);
 
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
