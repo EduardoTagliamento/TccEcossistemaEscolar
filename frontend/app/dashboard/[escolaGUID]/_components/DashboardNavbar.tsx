@@ -22,6 +22,7 @@ import { useSocket } from '@/lib/socket/SocketContext';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
 import type { Notificacao } from '@/lib/api/notificacao.api';
 import { useContadorPendencias } from '@/lib/pendencia/usePendenciaQueries';
+import { useConvitesPendentes } from '@/lib/convitegrupoprojeto/useConviteGrupoProjetoQueries';
 import { verificarPendenciaAgregada } from '@/lib/api/categoriaconteudo.api';
 import styles from './DashboardNavbar.module.css';
 
@@ -258,6 +259,7 @@ export default function DashboardNavbar() {
   const notifRef = useRef<HTMLDivElement>(null);
 
   const pendenciasPendentesCount = useContadorPendencias(escolaGUID, !!usuario).data ?? 0;
+  const convitesProjetoPendentesCount = (useConvitesPendentes(escolaGUID, !!usuario).data ?? []).length;
   const [temPendenciaMaterias, setTemPendenciaMaterias] = useState(false);
 
   // Setas de rolagem da nav de módulos — só aparecem quando os itens não
@@ -528,7 +530,9 @@ export default function DashboardNavbar() {
       ? [{ key: 'pendencias', href: `/dashboard/${escolaGUID}/pendencias`, label: 'Minhas Pendências', icon: 'bell' as IconName }]
       : []),
     { key: 'calendario', href: `/dashboard/${escolaGUID}/calendario`, label: 'Calendário', icon: 'calendar' },
-    { key: 'projetos', href: `/dashboard/${escolaGUID}/projetos`, label: 'Projetos', icon: 'users' },
+    ...(convitesProjetoPendentesCount > 0
+      ? [{ key: 'projetos', href: `/dashboard/${escolaGUID}/projetos`, label: 'Projetos', icon: 'users' as IconName }]
+      : []),
     { key: 'chat', href: `/dashboard/${escolaGUID}/chat`, label: 'Conversas', icon: 'message-circle' },
     ...(isCoordenacaoOuDirecao
       ? [{ key: 'configuracoes', href: `/dashboard/${escolaGUID}/configuracoes`, label: 'Config. da Escola', icon: 'settings' as IconName }]

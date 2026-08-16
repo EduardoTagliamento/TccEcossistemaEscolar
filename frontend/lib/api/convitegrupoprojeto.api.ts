@@ -45,8 +45,9 @@ export async function solicitarEntrada(grupoGUID: string): Promise<ConviteGrupoP
   return result.data.solicitacao;
 }
 
-export async function listarPendentes(): Promise<ConviteGrupoProjeto[]> {
-  const response = await fetch(`${API_URL}/convitegrupoprojeto/pendentes`, {
+export async function listarPendentes(escolaGUID?: string): Promise<ConviteGrupoProjeto[]> {
+  const query = escolaGUID ? `?EscolaGUID=${encodeURIComponent(escolaGUID)}` : '';
+  const response = await fetch(`${API_URL}/convitegrupoprojeto/pendentes${query}`, {
     headers: getHeaders()
   });
   const result = await tratarResposta(response);

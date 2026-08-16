@@ -78,7 +78,8 @@ export default class ConviteGrupoProjetoController {
         return;
       }
 
-      const convites = await this.#conviteService.listarPendentes(usuarioGUID);
+      const escolaGUID = req.query.EscolaGUID as string | undefined;
+      const convites = await this.#conviteService.listarPendentes(usuarioGUID, escolaGUID);
 
       res.status(200).json({
         success: true,
