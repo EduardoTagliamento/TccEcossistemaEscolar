@@ -10,6 +10,7 @@ import AuthInput from '@/components/auth/AuthInput';
 import AuthButton from '@/components/auth/AuthButton';
 import AuthIcon from '@/components/auth/AuthIcon';
 import BauaLogo from '@/components/auth/BauaLogo';
+import { validarCPF } from '@/lib/validators/cpf';
 import styles from './page.module.css';
 
 // Tipografia da marca Bauá (tokens/fonts.css do design system):
@@ -84,15 +85,17 @@ function LoginPageContent() {
       return 'email';
     }
 
-    // CPF: 11 dígitos
+    // CPF e telefone celular têm os dois 11 dígitos (DDD + 9 dígitos), então
+    // a contagem sozinha não distingue — só dá pra saber com 10 dígitos
+    // (telefone fixo, sem ambiguidade). Com 11, usa o dígito verificador do
+    // CPF pra desempatar: bate com um CPF válido, mostra máscara de CPF;
+    // senão (a grande maioria dos números de celular reais), telefone.
     const digitsOnly = value.replace(/\D/g, '');
-    if (digitsOnly.length === 11) {
-      return 'CPF';
-    }
-
-    // Telefone: 10 ou 11 dígitos (com DDD)
-    if (digitsOnly.length === 10 || digitsOnly.length === 11) {
+    if (digitsOnly.length === 10) {
       return 'telefone';
+    }
+    if (digitsOnly.length === 11) {
+      return validarCPF(digitsOnly) ? 'CPF' : 'telefone';
     }
 
     return 'desconhecido';
