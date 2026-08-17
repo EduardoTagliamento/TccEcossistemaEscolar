@@ -259,7 +259,7 @@ export default function AlunosPage() {
           UsuarioTelefone: valoresFormulario.UsuarioTelefone,
           UsuarioDataNascimento: valoresFormulario.UsuarioDataNascimento,
           TurmaGUID: valoresFormulario.TurmaGUID
-        }, escolaGUID, usuarioExistente?.UsuarioGUID);
+        }, escolaGUID, usuarioExistente?.UsuarioGUID, escola?.EscolaNome);
         alert(
           usuarioExistente
             ? 'Aluno vinculado à turma com sucesso!'
