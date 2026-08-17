@@ -30,6 +30,14 @@ export interface UsuarioDTO {
   // Nota: UsuarioSenha e UsuarioDeletedAt NUNCA são retornados no DTO por questões de segurança
 }
 
+export interface CreateUsuarioResultado {
+  usuario: UsuarioDTO;
+  /** Só presente quando a conta foi criada agora (não em atualização) — o
+   * chamador HTTP não deve depender disso pra exibir a senha; ela já foi
+   * enviada por e-mail/WhatsApp. Devolvida só como fallback de conferência. */
+  senhaTemporaria?: string;
+}
+
 // Interfaces para operações em massa
 export interface BatchItemResult {
   item: Record<string, any>;
@@ -57,7 +65,10 @@ export default class UsuarioService {
     this.#usuarioDAO = usuarioDAODependency;
   }
 
-  createUsuario = async (jsonUsuario: Record<string, unknown>): Promise<UsuarioDTO> => {
+  createUsuario = async (
+    jsonUsuario: Record<string, unknown>,
+    escolaNome: string = "Escola"
+  ): Promise<CreateUsuarioResultado> => {
     console.log("🟣 UsuarioService.createUsuario()");
 
     // Validar CPF único (só se informado — CPF é opcional, ex.: usuário de piloto sem CPF cadastrado)
@@ -96,13 +107,44 @@ export default class UsuarioService {
       usuario.UsuarioDataNascimento = new Date(jsonUsuario.UsuarioDataNascimento as string);
     }
 
-    // Hash da senha com bcrypt
-    const senhaPlana = jsonUsuario.UsuarioSenha as string;
-    const senhaHash = await bcrypt.hash(senhaPlana, this.SALT_ROUNDS);
+    // Senha temporária SEMPRE gerada aqui, nunca confiada do cliente — o
+    // frontend manda um literal placeholder ('senha_temporaria_gerada_
+    // automaticamente', ver aluno.api.ts) esperando que o service substitua
+    // por uma senha de verdade, mas isso nunca foi implementado: a conta
+    // ficava com essa string literal como senha real, e ninguém era
+    // notificado (nem e-mail, nem WhatsApp) — bug real, não só da Maria.
+    const senhaTemporaria = gerarSenhaTemporaria(usuario.UsuarioNome);
+    const senhaHash = await bcrypt.hash(senhaTemporaria, this.SALT_ROUNDS);
     usuario.UsuarioSenha = senhaHash;
 
     await this.#usuarioDAO.create(usuario);
-    return this.toDTO(usuario);
+
+    const linkLogin = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : "http://localhost:3000/login";
+    if (usuario.UsuarioEmail) {
+      EmailAlunoService.enviarEmailNovoAluno({
+        para: usuario.UsuarioEmail,
+        nomeAluno: usuario.UsuarioNome,
+        nomeEscola: escolaNome,
+        cpf: usuario.UsuarioCPF ?? "",
+        senhaTemporaria,
+        linkLogin,
+      }).catch((erro) => {
+        console.error("Erro ao enviar email de boas-vindas (criação individual):", erro);
+      });
+    }
+    if (usuario.UsuarioTelefone) {
+      WhatsappCredenciaisService.enviarCredenciaisNovoUsuario({
+        para: usuario.UsuarioTelefone,
+        nomeUsuario: usuario.UsuarioNome,
+        nomeEscola: escolaNome,
+        senhaTemporaria,
+        linkLogin,
+      }).catch((erro) => {
+        console.error("Erro ao enviar credenciais por WhatsApp (criação individual):", erro);
+      });
+    }
+
+    return { usuario: this.toDTO(usuario), senhaTemporaria };
   };
 
   findAll = async (nome?: string): Promise<UsuarioDTO[]> => {

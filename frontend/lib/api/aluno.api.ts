@@ -96,7 +96,12 @@ function getAuthToken(): string {
  * a matrícula ao GUID já resolvido. Sem isso, o passo 1 tentaria criar uma
  * conta duplicada.
  */
-export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string, usuarioGUIDExistente?: string): Promise<Aluno> {
+export async function criarAluno(
+  dados: AlunoCreateDTO,
+  escolaGUID: string,
+  usuarioGUIDExistente?: string,
+  escolaNome?: string
+): Promise<Aluno> {
   try {
     let dataUsuario: any = null;
     let usuarioGUID = usuarioGUIDExistente;
@@ -116,10 +121,10 @@ export async function criarAluno(dados: AlunoCreateDTO, escolaGUID: string, usua
             UsuarioEmail: dados.UsuarioEmail,
             UsuarioTelefone: dados.UsuarioTelefone,
             UsuarioDataNascimento: dados.UsuarioDataNascimento,
-            UsuarioSenha: 'senha_temporaria_gerada_automaticamente', // Será substituída pelo service
+            UsuarioSenha: 'senha_temporaria_gerada_automaticamente', // Substituída pelo service (gera senha real e envia por email/WhatsApp)
             UsuarioStatus: 'Ativo'
           },
-          escolaNome: 'Escola' // Será buscado automaticamente pelo backend
+          escolaNome: escolaNome || 'Escola'
         })
       });
 

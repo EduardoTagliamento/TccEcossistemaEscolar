@@ -32,12 +32,16 @@ export default class UsuarioControl {
       } else {
         // Cadastro individual
         const jsonUsuario = request.body.usuario;
-        const usuarioCriado = await this.#usuarioService.createUsuario(jsonUsuario);
+        const escolaNome = request.body.escolaNome || undefined;
+        const { usuario: usuarioCriado, senhaTemporaria } = await this.#usuarioService.createUsuario(
+          jsonUsuario,
+          escolaNome
+        );
 
         response.status(201).json({
           success: true,
           message: "Usuário cadastrado com sucesso",
-          data: { usuario: usuarioCriado },
+          data: { usuario: usuarioCriado, senhaTemporaria },
         });
       }
     } catch (error) {
