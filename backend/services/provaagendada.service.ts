@@ -384,6 +384,8 @@ export default class ProvaAgendadaService {
     const destinatarios = (rows as any[]).map((r) => r.UsuarioGUID);
     if (destinatarios.length === 0) return;
 
+    const materia = await this.#materiaDAO.findById(prova.MateriaGUID);
+
     await getNotificacaoService().disparar({
       tipoSlug: "prova_postada",
       destinatarios,
@@ -393,6 +395,9 @@ export default class ProvaAgendadaService {
       entidadeTipo: "prova",
       entidadeGUID: prova.ProvaAgendadaGUID,
       link: `/dashboard/${escolaGUID}/calendario`,
+      metadados: {
+        materiaNome: materia?.MateriaNome,
+      },
     });
   };
 

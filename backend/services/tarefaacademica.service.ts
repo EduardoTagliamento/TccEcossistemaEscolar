@@ -488,6 +488,12 @@ export default class TarefaAcademicaService {
 
     const destinatarios = matriculas.filter((m): m is { UsuarioGUID: string; TurmaGUID: string } => m !== null).map((m) => m.UsuarioGUID);
 
+    const [alocacao, anexosDescricaoPorTarefa] = await Promise.all([
+      this.#alocacaoDAO.findByIdComNomes(tarefa.matXprofXturxescGUID),
+      this.#tarefaDAO.buscarAnexosDescricaoPorTarefa([tarefa.TarefaGUID]),
+    ]);
+    const anexosDescricao = anexosDescricaoPorTarefa.get(tarefa.TarefaGUID) ?? [];
+
     await getNotificacaoService().disparar({
       tipoSlug: "tarefa_postada",
       destinatarios,
@@ -499,6 +505,15 @@ export default class TarefaAcademicaService {
       entidadeTipo: "tarefa",
       entidadeGUID: tarefa.TarefaGUID,
       link: `/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`,
+      metadados: {
+        materiaNome: alocacao?.MateriaNome,
+        professorNome: alocacao?.UsuarioNome,
+        turmaNome: alocacao?.TurmaNome,
+        anexos: anexosDescricao.map((anexo) => ({
+          nome: anexo.AnexoNomeOriginal ?? "Anexo",
+          url: anexo.AnexoCaminho,
+        })),
+      },
     });
   };
 

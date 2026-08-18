@@ -290,6 +290,11 @@ export default class ConteudoService {
     const destinatarios = (rows as any[]).map((r) => r.UsuarioGUID);
     if (destinatarios.length === 0) return;
 
+    const [materia, professor] = await Promise.all([
+      this.#materiaDAO.findById(conteudo.MateriaGUID),
+      this.#usuarioDAO.findByGUID(conteudo.UsuarioGUID),
+    ]);
+
     await getNotificacaoService().disparar({
       tipoSlug: "materia_postada",
       destinatarios,
@@ -298,6 +303,10 @@ export default class ConteudoService {
       conteudo: conteudo.ConteudoDescricao,
       entidadeTipo: "conteudo",
       entidadeGUID: conteudo.ConteudoGUID,
+      metadados: {
+        materiaNome: materia?.MateriaNome,
+        professorNome: professor?.UsuarioNome,
+      },
     });
   };
 

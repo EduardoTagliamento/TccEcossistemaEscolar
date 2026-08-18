@@ -1090,7 +1090,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
               );
             })()}
 
-            {ehProfessor && (() => {
+            {ehProfessor && item.Tipo !== 'tarefa_presencial' && (() => {
               const alunos: any[] = tarefaDetalhe.MatriculasAtribuidas || [];
               const grupos: Record<AbaAvaliacao, any[]> = {
                 pendentes: alunos.filter((m) => categorizarAluno(m) === 'pendentes'),

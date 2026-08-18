@@ -9,6 +9,7 @@
 
 import EvolutionApiService from "../../external/EvolutionApiService";
 import Notificacao from "../../entities/notificacao.model";
+import type { MetadadosNotificacao } from "../notificacao.service";
 import { paraFormatoEvolutionApi } from "../../utils/helpers/telefone.helper";
 
 export interface EnvioWhatsappResultado {
@@ -25,12 +26,28 @@ export interface EnvioWhatsappResultado {
  * conseguir reconstruir número+texto e enfileirar pra reenvio quando o
  * envio falha — ver WhatsappFilaReenvioService.
  */
-export function montarTexto(notificacao: Notificacao): string {
+export function montarTexto(notificacao: Notificacao, metadados?: MetadadosNotificacao): string {
   const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
   const linhas = [`*${notificacao.NotificacaoTitulo}*`];
 
+  const infoLinha = [
+    metadados?.materiaNome ? `📘 ${metadados.materiaNome}` : null,
+    metadados?.professorNome ? `👤 ${metadados.professorNome}` : null,
+    metadados?.turmaNome ? `🏫 ${metadados.turmaNome}` : null,
+  ].filter((valor): valor is string => Boolean(valor));
+  if (infoLinha.length > 0) {
+    linhas.push(infoLinha.join("  ·  "));
+  }
+
   if (notificacao.NotificacaoConteudo) {
     linhas.push(notificacao.NotificacaoConteudo);
+  }
+
+  if (metadados?.anexos && metadados.anexos.length > 0) {
+    linhas.push("", "📎 Anexos:");
+    for (const anexo of metadados.anexos) {
+      linhas.push(`${anexo.nome}: ${anexo.url}`);
+    }
   }
 
   const linkCompleto = notificacao.NotificacaoLink ? `${frontendUrl}${notificacao.NotificacaoLink}` : frontendUrl;
@@ -51,7 +68,11 @@ export function resolverNumeroDestino(destinatarioTelefone: string): string {
 }
 
 export default class NotificacaoWhatsappChannel {
-  async enviar(destinatarioTelefone: string | null, notificacao: Notificacao): Promise<EnvioWhatsappResultado> {
+  async enviar(
+    destinatarioTelefone: string | null,
+    notificacao: Notificacao,
+    metadados?: MetadadosNotificacao
+  ): Promise<EnvioWhatsappResultado> {
     console.log("📵 NotificacaoWhatsappChannel.enviar()");
 
     if (!destinatarioTelefone) {
@@ -63,7 +84,7 @@ export default class NotificacaoWhatsappChannel {
       console.log(`📵 NotificacaoWhatsappChannel.enviar() - TEST_WHATSAPP_TO ativo, interceptando envio pro número de teste`);
     }
 
-    const texto = montarTexto(notificacao);
+    const texto = montarTexto(notificacao, metadados);
 
     return EvolutionApiService.getInstance().sendText(numero, texto);
   }
