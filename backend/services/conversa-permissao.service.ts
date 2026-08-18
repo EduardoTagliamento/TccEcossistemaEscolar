@@ -127,7 +127,7 @@ export default class ConversaPermissaoService {
       NovaFuncao: 'Representante',
     });
 
-    this.#notificarPromocao(conversaGUID, alvoGUID, 'promovido_representante', 'Você foi promovido a representante da turma').catch((error) => {
+    this.#notificarPromocao(conversaGUID, alvoGUID, 'promovido_representante', 'Você foi promovido(a) a representante da turma').catch((error) => {
       console.error('🔴 ConversaPermissaoService.#notificarPromocao() falhou:', error);
     });
   }
@@ -177,7 +177,7 @@ export default class ConversaPermissaoService {
       NovaFuncao: 'Vice-Representante',
     });
 
-    this.#notificarPromocao(conversaGUID, alvoGUID, 'promovido_vice_representante', 'Você foi promovido a vice-representante').catch((error) => {
+    this.#notificarPromocao(conversaGUID, alvoGUID, 'promovido_vice_representante', 'Você foi promovido(a) a vice-representante').catch((error) => {
       console.error('🔴 ConversaPermissaoService.#notificarPromocao() falhou:', error);
     });
   }
@@ -201,7 +201,7 @@ export default class ConversaPermissaoService {
       NovaFuncao: 'Membro',
     });
 
-    this.#notificarPromocao(conversaGUID, alvoGUID, 'removido_vice_representante', 'Você foi removido do cargo de vice-representante').catch((error) => {
+    this.#notificarPromocao(conversaGUID, alvoGUID, 'removido_vice_representante', 'Você foi removido(a) do cargo de vice-representante').catch((error) => {
       console.error('🔴 ConversaPermissaoService.#notificarPromocao() falhou:', error);
     });
   }

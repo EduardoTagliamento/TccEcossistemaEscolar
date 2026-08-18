@@ -253,7 +253,7 @@ export default class MatriculaService {
       tipoSlug: "matricula_nova_turma",
       destinatarios: [usuario.UsuarioGUID],
       escolaGUID: turma.EscolaGUID,
-      titulo: `Você foi matriculado na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
+      titulo: `Você foi matriculado(a) na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
       entidadeTipo: "turma",
       entidadeGUID: turma.TurmaGUID,
     }).catch((error) => {

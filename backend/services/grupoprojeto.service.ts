@@ -573,7 +573,7 @@ export default class GrupoProjetoService {
       tipoSlug: 'removido_grupo_projeto',
       destinatarios: [membroGUID],
       escolaGUID,
-      titulo: `Você foi removido do grupo do projeto "${projetoTitulo}"`,
+      titulo: `Você foi removido(a) do grupo do projeto "${projetoTitulo}"`,
       entidadeTipo: 'grupoprojeto',
       entidadeGUID: grupoGUID
     });

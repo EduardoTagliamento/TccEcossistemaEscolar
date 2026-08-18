@@ -304,7 +304,7 @@ export default class GrupoTarefaService {
       tipoSlug: 'removido_grupo',
       destinatarios: [membroGUID],
       escolaGUID: info.EscolaGUID,
-      titulo: `Você foi removido do grupo da tarefa "${info.TarefaTitulo}"`,
+      titulo: `Você foi removido(a) do grupo da tarefa "${info.TarefaTitulo}"`,
       entidadeTipo: 'tarefa',
       entidadeGUID: tarefaGUID,
     });

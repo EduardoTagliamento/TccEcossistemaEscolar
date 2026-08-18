@@ -22,7 +22,11 @@ import Notificacao from "../entities/notificacao.model";
 import NotificacaoTipo from "../entities/notificacaotipo.model";
 import UsuarioNotificacaoPreferencia from "../entities/usuarionotificacaopreferencia.model";
 import NotificacaoEmailChannel from "./notificacaocanal/notificacaoEmail.channel";
-import NotificacaoWhatsappChannel from "./notificacaocanal/notificacaoWhatsapp.channel";
+import NotificacaoWhatsappChannel, {
+  montarTexto as montarTextoWhatsapp,
+  resolverNumeroDestino,
+} from "./notificacaocanal/notificacaoWhatsapp.channel";
+import { getWhatsappFilaReenvioService } from "./whatsapp-fila-reenvio.service";
 import { SocketServer } from "../websocket/SocketServer";
 import ErrorResponse from "../utils/ErrorResponse";
 
@@ -212,6 +216,7 @@ export default class NotificacaoService {
       if (resultado.entregue === false) {
         this.#whatsappFalhasConsecutivas++;
         await this.#envioDAO.marcarFalhou(envioId, `Mensagem não confirmada como entregue (id ${resultado.id}) mesmo após reenvio automático`);
+        await this.#enfileirarParaReenvio(usuario.UsuarioTelefone, notificacao, `Não confirmada como entregue (id ${resultado.id}) mesmo após retry`);
       } else {
         await this.#envioDAO.marcarEnviado(envioId, resultado.id);
         this.#whatsappFalhasConsecutivas = 0;
@@ -219,9 +224,29 @@ export default class NotificacaoService {
     } catch (error: any) {
       this.#whatsappFalhasConsecutivas++;
       await this.#envioDAO.marcarFalhou(envioId, error?.message ?? String(error));
+      await this.#enfileirarParaReenvio(usuario.UsuarioTelefone, notificacao, error?.message ?? String(error));
     } finally {
       // Anti-ban: nunca dispara o próximo WhatsApp da fila antes desse delay.
       await new Promise((resolve) => setTimeout(resolve, NotificacaoService.#WHATSAPP_DELAY_MS));
+    }
+  }
+
+  /**
+   * Camada de proteção contra a instabilidade do Baileys/Evolution API:
+   * mensagem que falhou (mesmo após o retry embutido em EvolutionApiService)
+   * vai pra fila em vez de ser perdida — ver WhatsappFilaReenvioService.
+   * Nunca lança erro (mesma política de disparar()).
+   */
+  async #enfileirarParaReenvio(telefone: string, notificacao: Notificacao, erro: string): Promise<void> {
+    try {
+      await getWhatsappFilaReenvioService().enfileirar(
+        resolverNumeroDestino(telefone),
+        montarTextoWhatsapp(notificacao),
+        "notificacao",
+        erro
+      );
+    } catch (erroFila: any) {
+      console.error("❌ NotificacaoService.#enfileirarParaReenvio() - falha ao enfileirar:", erroFila?.message ?? erroFila);
     }
   }
 

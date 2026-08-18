@@ -52,6 +52,7 @@ import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { NotificacaoScheduler } from "./services/notificacao.scheduler";
 import { AuditoriaScheduler } from "./services/auditoria.scheduler";
 import { TarefaAcademicaNotaScheduler } from "./services/tarefaacademicanota.scheduler";
+import { WhatsappFilaScheduler } from "./services/whatsapp-fila.scheduler";
 import { pool } from "./database/mysql";
 
 // Captura no logger estruturado o que antes derrubava o processo com um
@@ -90,6 +91,7 @@ export default class Server {
   #notificacaoScheduler: NotificacaoScheduler;
   #auditoriaScheduler: AuditoriaScheduler;
   #tarefaAcademicaNotaScheduler: TarefaAcademicaNotaScheduler;
+  #whatsappFilaScheduler: WhatsappFilaScheduler;
   #nextHandler: ((req: Request, res: Response) => Promise<void>) | null;
   #isFrontendUnified: boolean;
 
@@ -103,6 +105,7 @@ export default class Server {
     this.#notificacaoScheduler = new NotificacaoScheduler();
     this.#auditoriaScheduler = new AuditoriaScheduler();
     this.#tarefaAcademicaNotaScheduler = new TarefaAcademicaNotaScheduler();
+    this.#whatsappFilaScheduler = new WhatsappFilaScheduler();
     this.#nextHandler = null;
     this.#isFrontendUnified = false;
   }
@@ -724,6 +727,9 @@ export default class Server {
       this.#tarefaAcademicaNotaScheduler.start();
       console.log(`✅ Nota automática de tarefa iniciada: ${this.#tarefaAcademicaNotaScheduler.getActiveTasksCount()} tarefa(s) ativa(s)`);
 
+      this.#whatsappFilaScheduler.start();
+      console.log(`✅ Fila de reenvio de WhatsApp iniciada`);
+
       // Configurar graceful shutdown para parar agendamentos
       this.setupGracefulShutdown();
 
@@ -749,6 +755,7 @@ export default class Server {
         this.#notificacaoScheduler.stop();
         this.#auditoriaScheduler.stop();
         this.#tarefaAcademicaNotaScheduler.stop();
+        this.#whatsappFilaScheduler.stop();
 
         // Fechar conexões com banco
         console.log("   🔹 Fechando conexões com banco...");
