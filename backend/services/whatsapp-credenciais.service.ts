@@ -38,8 +38,15 @@ export class WhatsappCredenciaisService {
       const numero = numeroTeste ? paraFormatoEvolutionApi(numeroTeste) : paraFormatoEvolutionApi(dados.para);
       const texto = montarTextoNovoUsuario(dados);
 
-      await EvolutionApiService.getInstance().sendText(numero, texto);
-      console.log(`✅ [WhatsappCredenciaisService] Credenciais enviadas por WhatsApp para ${dados.nomeUsuario}`);
+      const resultado = await EvolutionApiService.getInstance().sendText(numero, texto);
+      if (resultado.entregue === false) {
+        console.error(
+          `⚠️ [WhatsappCredenciaisService] Credenciais NÃO confirmadas como entregues para ${dados.nomeUsuario} ` +
+            `(id ${resultado.id}) mesmo após reenvio automático — envio manual pode ser necessário.`
+        );
+      } else {
+        console.log(`✅ [WhatsappCredenciaisService] Credenciais enviadas por WhatsApp para ${dados.nomeUsuario}`);
+      }
     } catch (erro: any) {
       console.error(`❌ [WhatsappCredenciaisService] Erro ao enviar credenciais para ${dados.nomeUsuario}:`, erro?.message ?? erro);
       // Não lançar erro — mesma política do EmailAlunoService, não bloqueia o cadastro

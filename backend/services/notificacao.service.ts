@@ -209,8 +209,13 @@ export default class NotificacaoService {
 
     try {
       const resultado = await this.#whatsappChannel.enviar(usuario.UsuarioTelefone, notificacao);
-      await this.#envioDAO.marcarEnviado(envioId, resultado.id);
-      this.#whatsappFalhasConsecutivas = 0;
+      if (resultado.entregue === false) {
+        this.#whatsappFalhasConsecutivas++;
+        await this.#envioDAO.marcarFalhou(envioId, `Mensagem não confirmada como entregue (id ${resultado.id}) mesmo após reenvio automático`);
+      } else {
+        await this.#envioDAO.marcarEnviado(envioId, resultado.id);
+        this.#whatsappFalhasConsecutivas = 0;
+      }
     } catch (error: any) {
       this.#whatsappFalhasConsecutivas++;
       await this.#envioDAO.marcarFalhou(envioId, error?.message ?? String(error));
