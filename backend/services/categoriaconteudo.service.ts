@@ -265,7 +265,10 @@ export default class CategoriaConteudoService {
         estado = "avaliado";
         percentual = Math.round((nota / 10) * 100);
       } else if (feito) {
-        estado = "aguardando_avaliacao";
+        // "física" não tem entrega digital pra revisar — marcar como feita já
+        // é o estado terminal (verde). "digital" tem um anexo de verdade
+        // esperando avaliação do professor, então fica "aguardando" até lá.
+        estado = row.TarefaTipoEntrega === "fisica" ? "concluido" : "aguardando_avaliacao";
         percentual = 100;
       } else if (prazoPassou || nota !== null) {
         estado = "atrasado";
