@@ -524,11 +524,25 @@ export default class TarefaAcademicaService {
     console.log("🟣 TarefaAcademicaService.listarTarefas()");
 
     const tarefas = await this.#tarefaDAO.findAll(filters);
-    
-    // Para cada tarefa, buscar atribuições
+
+    // Para cada tarefa, buscar atribuições. Quando o chamador é um aluno
+    // (filters.UsuarioGUID), restringe MatriculasAtribuidas à própria
+    // matrícula — mesmo filtro que buscarTarefa() já faz (evita expor
+    // colegas E permite ao frontend ler o próprio TarefaFeito direto, usado
+    // por "Minhas Tarefas" pra saber se a tarefa já foi concluída).
     const tarefasCompletas = await Promise.all(
       tarefas.map(async (tarefa) => {
-        const atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(tarefa.TarefaGUID);
+        let atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(tarefa.TarefaGUID);
+
+        if (filters?.UsuarioGUID) {
+          const infoPorMatricula = await this.#buscarInfoPorMatricula(
+            atribuicoes.map((atrib) => atrib.MatriculaGUID)
+          );
+          atribuicoes = atribuicoes.filter(
+            (atrib) => infoPorMatricula.get(atrib.MatriculaGUID)?.UsuarioGUID === filters.UsuarioGUID
+          );
+        }
+
         return this.toDTO(tarefa, atribuicoes);
       })
     );

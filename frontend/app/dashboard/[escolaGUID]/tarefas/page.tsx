@@ -38,7 +38,13 @@ export default function TarefasPage() {
     if (!tarefasBrutas) return [];
 
     const agora = new Date();
-    const comStatus = tarefasBrutas.map((tarefa) => {
+    // GET /api/tarefa já restringe MatriculasAtribuidas à própria matrícula
+    // do aluno (ver TarefaAcademicaService.listarTarefas) — [0] é sempre a
+    // atribuição dele mesmo. Sem esse filtro, tarefa marcada como feita
+    // continuava aparecendo aqui como "A vencer" pra sempre.
+    const pendentes = tarefasBrutas.filter((tarefa) => !tarefa.MatriculasAtribuidas?.[0]?.TarefaFeito);
+
+    const comStatus = pendentes.map((tarefa) => {
       const prazo = new Date(tarefa.TarefaPrazoData);
       const status: TarefaListItem['Status'] = prazo < agora ? 'Atrasada' : 'Pendente';
       return { ...tarefa, TarefaCompartilhada: Boolean(tarefa.TarefaCompartilhada), Status: status };

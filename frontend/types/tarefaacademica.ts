@@ -10,6 +10,19 @@ export interface AnexoTarefaResumo {
   CreatedAt: string | null;
 }
 
+export interface MatriculaAtribuida {
+  TarefaMatriculaGUID: string;
+  MatriculaGUID: string;
+  AlunoNome: string | null;
+  AnexosEntrega: AnexoTarefaResumo[];
+  TarefaPrazoData: string; // ISO string — prazo efetivo desta matrícula
+  TarefaFeito: boolean;
+  TarefaRealizacaoData: string | null;
+  TarefaNota: number | null;
+  TarefaAvaliadoEm: string | null;
+  TarefaAvaliadoPorGUID: string | null;
+}
+
 export interface TarefaAcademica {
   TarefaGUID: string;
   matXprofXturxescGUID: string;
@@ -28,6 +41,8 @@ export interface TarefaAcademica {
   TarefaMaxPessoas: number | null;
   /** Material de apoio anexado pelo professor — compartilhado por toda a turma. */
   AnexosDescricao: AnexoTarefaResumo[];
+  /** Restrita à própria matrícula quando consultada como aluno (ver GET /api/tarefa). */
+  MatriculasAtribuidas?: MatriculaAtribuida[];
   CreatedAt: string;
   UpdatedAt: string;
 }
