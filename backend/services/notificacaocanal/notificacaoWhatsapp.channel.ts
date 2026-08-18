@@ -13,6 +13,7 @@ import { paraFormatoEvolutionApi } from "../../utils/helpers/telefone.helper";
 
 export interface EnvioWhatsappResultado {
   id: string;
+  entregue?: boolean;
 }
 
 /**
