@@ -87,7 +87,7 @@ export class EvolutionApiService {
       return primeiraTentativa;
     }
 
-    const statusInicial = await this.#verificarEntrega(numero, primeiraTentativa.id);
+    const statusInicial = await this.#verificarEntrega(primeiraTentativa.id);
     if (statusInicial !== 'ERROR') {
       return { ...primeiraTentativa, entregue: statusInicial === 'DELIVERED' ? true : undefined };
     }
@@ -102,7 +102,7 @@ export class EvolutionApiService {
       return segundaTentativa;
     }
 
-    const statusFinal = await this.#verificarEntrega(numero, segundaTentativa.id);
+    const statusFinal = await this.#verificarEntrega(segundaTentativa.id);
     if (statusFinal === 'ERROR') {
       console.error(`❌ [EvolutionApiService] Reenvio também falhou (ERROR). ID: ${segundaTentativa.id}. Requer envio manual.`);
       return { ...segundaTentativa, entregue: false };
@@ -148,18 +148,22 @@ export class EvolutionApiService {
    * mensagem. `UNKNOWN` (sem registro encontrado ainda) NÃO é tratado como
    * erro — evita reenvio duplicado por falso negativo de timing.
    */
-  async #verificarEntrega(numero: string, messageId: string): Promise<StatusEntrega> {
+  async #verificarEntrega(messageId: string): Promise<StatusEntrega> {
     await new Promise((resolve) => setTimeout(resolve, EvolutionApiService.#VERIFICACAO_DELAY_MS));
 
     try {
-      const remoteJid = `${numero}@s.whatsapp.net`;
+      // Filtra só por key.id (único por mensagem enviada) — NÃO por remoteJid:
+      // o WhatsApp normaliza alguns números (ex.: remove o 9º dígito extra em
+      // DDDs que ainda usam 8 dígitos), então o remoteJid que a gente formatou
+      // pra envio pode não bater com o remoteJid real armazenado, causando
+      // falso "não encontrado" mesmo com a mensagem entregue.
       const response = await fetch(`${this.#baseUrl}/chat/findMessages/${this.#instanceName}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           apikey: this.#apiKey,
         },
-        body: JSON.stringify({ where: { key: { id: messageId, remoteJid } } }),
+        body: JSON.stringify({ where: { key: { id: messageId } } }),
       });
       const data: any = await response.json().catch(() => null);
       const registro = data?.messages?.records?.find((mensagem: any) => mensagem?.key?.id === messageId);
