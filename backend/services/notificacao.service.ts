@@ -30,6 +30,20 @@ import { getWhatsappFilaReenvioService } from "./whatsapp-fila-reenvio.service";
 import { SocketServer } from "../websocket/SocketServer";
 import ErrorResponse from "../utils/ErrorResponse";
 
+/**
+ * Metadados extras, exibidos nos canais de e-mail/whatsapp além do
+ * título/conteúdo — não são persistidos no feed in-app (Notificacao só tem
+ * Titulo/Conteudo): a tela in-app já linka pra entidade, que mostra esses
+ * dados completos; e-mail/whatsapp não têm esse link "vivo", por isso
+ * precisam do contexto embutido na própria mensagem.
+ */
+export interface MetadadosNotificacao {
+  materiaNome?: string | null;
+  professorNome?: string | null;
+  turmaNome?: string | null;
+  anexos?: Array<{ nome: string; url: string }>;
+}
+
 export interface DisparoNotificacaoInput {
   tipoSlug: string;
   destinatarios: string[]; // UsuarioGUID[]
@@ -39,6 +53,7 @@ export interface DisparoNotificacaoInput {
   entidadeTipo?: string | null;
   entidadeGUID?: string | null;
   link?: string | null;
+  metadados?: MetadadosNotificacao;
 }
 
 export default class NotificacaoService {
@@ -131,7 +146,7 @@ export default class NotificacaoService {
 
       // Canais de e-mail/whatsapp: nunca aguardado pelo caller, e qualquer
       // falha fica isolada nessa promise (não deve nem pode subir).
-      this.#despacharCanais(criada, tipo).catch((error) => {
+      this.#despacharCanais(criada, tipo, input.metadados).catch((error) => {
         console.error(`🔴 NotificacaoService.#despacharCanais() falhou para ${usuarioGUID}:`, error);
       });
     } catch (error) {
@@ -147,18 +162,18 @@ export default class NotificacaoService {
     }
   }
 
-  async #despacharCanais(notificacao: Notificacao, tipo: NotificacaoTipo): Promise<void> {
+  async #despacharCanais(notificacao: Notificacao, tipo: NotificacaoTipo, metadados?: MetadadosNotificacao): Promise<void> {
     const preferencia = await this.#resolverPreferencia(notificacao.UsuarioGUID, tipo);
 
     if (preferencia.email) {
-      await this.#despacharEmail(notificacao);
+      await this.#despacharEmail(notificacao, metadados);
     }
     if (preferencia.whatsapp) {
-      await this.#despacharWhatsapp(notificacao);
+      await this.#despacharWhatsapp(notificacao, metadados);
     }
   }
 
-  async #despacharEmail(notificacao: Notificacao): Promise<void> {
+  async #despacharEmail(notificacao: Notificacao, metadados?: MetadadosNotificacao): Promise<void> {
     const envioId = await this.#envioDAO.criarPendente(notificacao.NotificacaoGUID, "Email");
     if (envioId === null) {
       // Já existe um envio registrado pra essa notificação+canal (idempotência)
@@ -172,7 +187,7 @@ export default class NotificacaoService {
         return;
       }
 
-      const resultado = await this.#emailChannel.enviar(usuario.UsuarioEmail, usuario.UsuarioNome, notificacao);
+      const resultado = await this.#emailChannel.enviar(usuario.UsuarioEmail, usuario.UsuarioNome, notificacao, metadados);
       await this.#envioDAO.marcarEnviado(envioId, resultado.id);
     } catch (error: any) {
       await this.#envioDAO.marcarFalhou(envioId, error?.message ?? String(error));
@@ -183,13 +198,13 @@ export default class NotificacaoService {
    * Encadeia o envio na fila global de WhatsApp (nunca dois envios em
    * paralelo) e nunca deixa uma falha quebrar a fila pra próxima notificação.
    */
-  async #despacharWhatsapp(notificacao: Notificacao): Promise<void> {
-    const tarefa = this.#whatsappFila.then(() => this.#despacharWhatsappSerializado(notificacao));
+  async #despacharWhatsapp(notificacao: Notificacao, metadados?: MetadadosNotificacao): Promise<void> {
+    const tarefa = this.#whatsappFila.then(() => this.#despacharWhatsappSerializado(notificacao, metadados));
     this.#whatsappFila = tarefa.catch(() => {});
     return tarefa;
   }
 
-  async #despacharWhatsappSerializado(notificacao: Notificacao): Promise<void> {
+  async #despacharWhatsappSerializado(notificacao: Notificacao, metadados?: MetadadosNotificacao): Promise<void> {
     const envioId = await this.#envioDAO.criarPendente(notificacao.NotificacaoGUID, "Whatsapp");
     if (envioId === null) {
       // Já existe um envio registrado pra essa notificação+canal (idempotência)
@@ -212,11 +227,11 @@ export default class NotificacaoService {
     }
 
     try {
-      const resultado = await this.#whatsappChannel.enviar(usuario.UsuarioTelefone, notificacao);
+      const resultado = await this.#whatsappChannel.enviar(usuario.UsuarioTelefone, notificacao, metadados);
       if (resultado.entregue === false) {
         this.#whatsappFalhasConsecutivas++;
         await this.#envioDAO.marcarFalhou(envioId, `Mensagem não confirmada como entregue (id ${resultado.id}) mesmo após reenvio automático`);
-        await this.#enfileirarParaReenvio(usuario.UsuarioTelefone, notificacao, `Não confirmada como entregue (id ${resultado.id}) mesmo após retry`);
+        await this.#enfileirarParaReenvio(usuario.UsuarioTelefone, notificacao, `Não confirmada como entregue (id ${resultado.id}) mesmo após retry`, metadados);
       } else {
         await this.#envioDAO.marcarEnviado(envioId, resultado.id);
         this.#whatsappFalhasConsecutivas = 0;
@@ -224,7 +239,7 @@ export default class NotificacaoService {
     } catch (error: any) {
       this.#whatsappFalhasConsecutivas++;
       await this.#envioDAO.marcarFalhou(envioId, error?.message ?? String(error));
-      await this.#enfileirarParaReenvio(usuario.UsuarioTelefone, notificacao, error?.message ?? String(error));
+      await this.#enfileirarParaReenvio(usuario.UsuarioTelefone, notificacao, error?.message ?? String(error), metadados);
     } finally {
       // Anti-ban: nunca dispara o próximo WhatsApp da fila antes desse delay.
       await new Promise((resolve) => setTimeout(resolve, NotificacaoService.#WHATSAPP_DELAY_MS));
@@ -237,11 +252,11 @@ export default class NotificacaoService {
    * vai pra fila em vez de ser perdida — ver WhatsappFilaReenvioService.
    * Nunca lança erro (mesma política de disparar()).
    */
-  async #enfileirarParaReenvio(telefone: string, notificacao: Notificacao, erro: string): Promise<void> {
+  async #enfileirarParaReenvio(telefone: string, notificacao: Notificacao, erro: string, metadados?: MetadadosNotificacao): Promise<void> {
     try {
       await getWhatsappFilaReenvioService().enfileirar(
         resolverNumeroDestino(telefone),
-        montarTextoWhatsapp(notificacao),
+        montarTextoWhatsapp(notificacao, metadados),
         "notificacao",
         erro
       );

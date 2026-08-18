@@ -11,6 +11,7 @@
 
 import ResendEmailService from "../../external/ResendEmailService";
 import Notificacao from "../../entities/notificacao.model";
+import type { MetadadosNotificacao } from "../notificacao.service";
 
 export interface EnvioEmailResultado {
   id: string;
@@ -34,7 +35,8 @@ export default class NotificacaoEmailChannel {
   async enviar(
     destinatarioEmail: string,
     destinatarioNome: string,
-    notificacao: Notificacao
+    notificacao: Notificacao,
+    metadados?: MetadadosNotificacao
   ): Promise<EnvioEmailResultado> {
     console.log("📧 NotificacaoEmailChannel.enviar()");
 
@@ -50,6 +52,34 @@ export default class NotificacaoEmailChannel {
     const nome = escaparHtml(destinatarioNome);
     const conteudo = notificacao.NotificacaoConteudo ? escaparHtml(notificacao.NotificacaoConteudo) : null;
     const preview = (notificacao.NotificacaoConteudo || notificacao.NotificacaoTitulo).slice(0, 120);
+
+    const infoLinhas = [
+      metadados?.materiaNome ? { rotulo: "Matéria", valor: metadados.materiaNome } : null,
+      metadados?.professorNome ? { rotulo: "Professor(a)", valor: metadados.professorNome } : null,
+      metadados?.turmaNome ? { rotulo: "Turma", valor: metadados.turmaNome } : null,
+    ].filter((item): item is { rotulo: string; valor: string } => Boolean(item));
+
+    const infoHtml = infoLinhas.length > 0
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px; width:100%;">
+          ${infoLinhas.map((item) => `
+          <tr>
+            <td style="padding:2px 0; font-size:13px; color:#6B7280; width:110px;">${escaparHtml(item.rotulo)}</td>
+            <td style="padding:2px 0; font-size:13px; color:#374151; font-weight:600;">${escaparHtml(item.valor)}</td>
+          </tr>`).join("")}
+        </table>`
+      : "";
+
+    const anexosHtml = metadados?.anexos && metadados.anexos.length > 0
+      ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px; width:100%;">
+          <tr><td style="padding:0 0 6px; font-size:13px; color:#6B7280;">Anexos</td></tr>
+          ${metadados.anexos.map((anexo) => `
+          <tr>
+            <td style="padding:2px 0;">
+              <a href="${escaparHtml(anexo.url)}" style="font-size:14px; color:#148F5A; text-decoration:underline;">📎 ${escaparHtml(anexo.nome)}</a>
+            </td>
+          </tr>`).join("")}
+        </table>`
+      : "";
 
     const emailService = ResendEmailService.getInstance();
     const resultado = await emailService.sendEmail({
@@ -86,7 +116,9 @@ export default class NotificacaoEmailChannel {
               <td style="padding: 32px;">
                 <h1 style="margin:0 0 16px; font-size:20px; line-height:1.3; color:#111827;">${titulo}</h1>
                 <p style="margin:0 0 16px; font-size:15px; color:#374151;">Olá, ${nome}!</p>
+                ${infoHtml}
                 ${conteudo ? `<p style="margin:0 0 24px; font-size:15px; line-height:1.6; color:#4B5563;">${conteudo}</p>` : ""}
+                ${anexosHtml}
                 <table role="presentation" cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="border-radius:8px; background-color:#1cc47b;">
