@@ -116,10 +116,10 @@ export class ResendEmailService {
   public async sendWelcomeEmail(userEmail: string, userName: string): Promise<ResendEmailResponse> {
     return this.sendEmail({
       to: userEmail,
-      subject: 'Bem-vindo ao Ecossistema Escolar! 🎓',
+      subject: 'Bem-vindo(a) ao Ecossistema Escolar! 🎓',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #4F46E5;">Bem-vindo, ${userName}! 🎉</h1>
+          <h1 style="color: #4F46E5;">Bem-vindo(a), ${userName}! 🎉</h1>
           <p>Sua conta foi criada com sucesso no <strong>Ecossistema Escolar</strong>.</p>
           <p>Agora você pode acessar todos os recursos da plataforma educacional.</p>
           <br>

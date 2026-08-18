@@ -1,5 +1,6 @@
 import EvolutionApiService from "../external/EvolutionApiService";
 import { paraFormatoEvolutionApi } from "../utils/helpers/telefone.helper";
+import { getWhatsappFilaReenvioService } from "./whatsapp-fila-reenvio.service";
 
 /**
  * Envio de credenciais de acesso por WhatsApp — alternativa ao
@@ -20,7 +21,7 @@ interface DadosWhatsappNovoUsuario {
 
 function montarTextoNovoUsuario(dados: DadosWhatsappNovoUsuario): string {
   return [
-    `*Bem-vindo ao Ecossistema Escolar*`,
+    `*Bem-vindo(a) ao Ecossistema Escolar*`,
     ``,
     `Olá, ${dados.nomeUsuario}! Sua conta foi criada na escola ${dados.nomeEscola}.`,
     ``,
@@ -42,14 +43,23 @@ export class WhatsappCredenciaisService {
       if (resultado.entregue === false) {
         console.error(
           `⚠️ [WhatsappCredenciaisService] Credenciais NÃO confirmadas como entregues para ${dados.nomeUsuario} ` +
-            `(id ${resultado.id}) mesmo após reenvio automático — envio manual pode ser necessário.`
+            `(id ${resultado.id}) mesmo após reenvio automático — enfileirando pra nova tentativa.`
         );
+        await getWhatsappFilaReenvioService().enfileirar(numero, texto, "credenciais_novo_usuario", "Não confirmada como entregue após retry");
       } else {
         console.log(`✅ [WhatsappCredenciaisService] Credenciais enviadas por WhatsApp para ${dados.nomeUsuario}`);
       }
     } catch (erro: any) {
       console.error(`❌ [WhatsappCredenciaisService] Erro ao enviar credenciais para ${dados.nomeUsuario}:`, erro?.message ?? erro);
-      // Não lançar erro — mesma política do EmailAlunoService, não bloqueia o cadastro
+      // Não lançar erro — mesma política do EmailAlunoService, não bloqueia o cadastro.
+      // Enfileira pra reenvio posterior em vez de perder a mensagem.
+      try {
+        const numeroTeste = process.env.TEST_WHATSAPP_TO;
+        const numero = numeroTeste ? paraFormatoEvolutionApi(numeroTeste) : paraFormatoEvolutionApi(dados.para);
+        await getWhatsappFilaReenvioService().enfileirar(numero, montarTextoNovoUsuario(dados), "credenciais_novo_usuario", erro?.message ?? String(erro));
+      } catch (erroFila: any) {
+        console.error(`❌ [WhatsappCredenciaisService] Falha ao enfileirar credenciais de ${dados.nomeUsuario}:`, erroFila?.message ?? erroFila);
+      }
     }
   }
 

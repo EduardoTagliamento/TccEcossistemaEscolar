@@ -160,7 +160,7 @@ async function runMigration() {
         ('projeto_criado',              'Novo projeto disponível para participar',    'Aviso', 1, 1),
         ('convite_grupo_projeto',       'Convite para grupo de projeto',              'Aviso', 1, 1),
         ('solicitacao_grupo_projeto',   'Solicitação de entrada em grupo de projeto', 'Aviso', 0, 0),
-        ('removido_grupo_projeto',      'Removido de um grupo de projeto',            'Aviso', 0, 0),
+        ('removido_grupo_projeto',      'Removido(a) de um grupo de projeto',         'Aviso', 0, 0),
         ('projeto_pontuacao_atribuida', 'Pontuação do grupo de projeto foi lançada',  'Aviso', 1, 1)
       ON DUPLICATE KEY UPDATE
         NotificacaoTipoDescricao = VALUES(NotificacaoTipoDescricao),

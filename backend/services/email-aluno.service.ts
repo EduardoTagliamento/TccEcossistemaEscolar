@@ -52,7 +52,7 @@ export class EmailAlunoService {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎓 Bem-vindo ao Ecossistema Escolar</h1>
+      <h1>🎓 Bem-vindo(a) ao Ecossistema Escolar</h1>
     </div>
     <div class="content">
       <h2>Olá, ${dados.nomeAluno}!</h2>
@@ -89,7 +89,7 @@ export class EmailAlunoService {
       await resend.emails.send({
         from: `Ecossistema Escolar <${process.env.EMAIL_FROM || 'noreply@baua.com.br'}>`,
         to: dados.para,
-        subject: 'Bem-vindo ao Ecossistema Escolar - Suas credenciais de acesso',
+        subject: 'Bem-vindo(a) ao Ecossistema Escolar - Suas credenciais de acesso',
         html
       });
 
@@ -130,7 +130,7 @@ export class EmailAlunoService {
     <div class="content">
       <h2>Olá, ${dados.nomeAluno}!</h2>
       
-      <p>Você foi matriculado em uma nova turma na escola <strong>${dados.nomeEscola}</strong>.</p>
+      <p>Você foi matriculado(a) em uma nova turma na escola <strong>${dados.nomeEscola}</strong>.</p>
       
       <div class="info-box">
         <h3>📚 Informações da matrícula:</h3>
