@@ -167,7 +167,9 @@ export class AvisoService {
 
     const turmaGUIDs = await this.avisoDAO.findTurmaGUIDsByAviso(aviso.AvisoGUID);
     const minhaMatricula = await this.matriculaDAO.findMatriculaAtivaByUsuarioEEscola(usuarioGUID, aviso.EscolaGUID);
-    if (!minhaMatricula || !turmaGUIDs.includes(minhaMatricula.TurmaGUID)) {
+    // findMatriculaAtivaByUsuarioEEscola faz INNER JOIN turma — nunca retorna
+    // matrícula-sombra de grupo eletivo (TurmaGUID sempre presente aqui).
+    if (!minhaMatricula || !turmaGUIDs.includes(minhaMatricula.TurmaGUID!)) {
       throw new ErrorResponse(403, 'Este aviso não é destinado a você');
     }
   }
@@ -175,7 +177,7 @@ export class AvisoService {
   // READ (aviso mais recente não visto pelo usuário — banner de destaque na home)
   async buscarNaoVisualizadoMaisRecente(escolaGUID: string, usuarioGUID: string): Promise<AvisoDTO | null> {
     const minhaMatricula = await this.matriculaDAO.findMatriculaAtivaByUsuarioEEscola(usuarioGUID, escolaGUID);
-    const turmaGUIDs = minhaMatricula ? [minhaMatricula.TurmaGUID] : [];
+    const turmaGUIDs = minhaMatricula ? [minhaMatricula.TurmaGUID!] : [];
 
     const aviso = await this.avisoDAO.findNaoVisualizadoMaisRecente(escolaGUID, usuarioGUID, turmaGUIDs);
     if (!aviso) return null;

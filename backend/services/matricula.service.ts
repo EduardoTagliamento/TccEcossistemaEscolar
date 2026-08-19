@@ -20,7 +20,9 @@ import TarefaAcademicaMatricula from "../entities/tarefaacademica-matricula.mode
 export interface MatriculaDTO {
   MatriculaGUID: string;
   UsuarioGUID: string;
-  TurmaGUID: string;
+  TurmaGUID: string | null;
+  /** Preenchido só em matrículas-sombra de grupo eletivo (ver docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md) */
+  GrupoEletivoGUID: string | null;
   MatriculaDataEntrada: Date;
   MatriculaDataSaida: Date | null;
   MatriculaStatus: 'Ativa' | 'Transferida' | 'Concluida' | 'Cancelada';
@@ -239,14 +241,14 @@ export default class MatriculaService {
     // 8. Adicionar ao grupo de conversa da turma
     if (this.#conversaGrupoService) {
       await this.#conversaGrupoService.adicionarMembroTurma(
-        matriculaCriada.TurmaGUID,
+        matriculaCriada.TurmaGUID!,
         usuario.UsuarioGUID
       );
     }
 
     // 8.1 Atribuir tarefas individuais já existentes na turma (com prazo
     // futuro) — sem isso, quem entra depois nunca vê tarefas criadas antes.
-    await this.#atribuirTarefasExistentes(matriculaCriada.MatriculaGUID, matriculaCriada.TurmaGUID);
+    await this.#atribuirTarefasExistentes(matriculaCriada.MatriculaGUID, matriculaCriada.TurmaGUID!);
 
     // 9. Notificar o aluno (tipo `matricula_nova_turma`) — não bloqueia a resposta
     getNotificacaoService().disparar({
@@ -435,6 +437,7 @@ export default class MatriculaService {
           MatriculaGUID: matriculaOrigem.MatriculaGUID,
           UsuarioGUID: matriculaOrigem.UsuarioGUID,
           TurmaGUID: matriculaOrigem.TurmaGUID,
+          GrupoEletivoGUID: null,
           MatriculaDataEntrada: matriculaOrigem.MatriculaDataEntrada,
           MatriculaDataSaida: data.DataTransferencia,
           MatriculaStatus: 'Transferida' as const,
@@ -498,8 +501,16 @@ export default class MatriculaService {
       });
     }
 
+    // 1.1 Matrícula-sombra de grupo eletivo não é gerida por aqui — ver
+    // GrupoEletivoService.removerMembro (docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md, §2)
+    if (matriculaExistente.GrupoEletivoGUID) {
+      throw new ErrorResponse(400, 'Matrícula de grupo eletivo', {
+        message: 'Esta matrícula pertence a um grupo eletivo — gerencie pelos endpoints de /api/grupoeletivo.',
+      });
+    }
+
     // 2. Buscar turma para validar permissão
-    const turma = await this.#turmaDAO.findById(matriculaExistente.TurmaGUID);
+    const turma = await this.#turmaDAO.findById(matriculaExistente.TurmaGUID!);
     if (!turma) {
       throw new ErrorResponse(404, 'Turma não encontrada', {
         message: 'Turma vinculada não existe',
@@ -526,7 +537,7 @@ export default class MatriculaService {
       statusSaida.includes(data.MatriculaStatus)
     ) {
       await this.#conversaGrupoService.removerMembroTurma(
-        matriculaAtualizada.TurmaGUID,
+        matriculaAtualizada.TurmaGUID!,
         matriculaAtualizada.UsuarioGUID
       );
     }
@@ -555,8 +566,16 @@ export default class MatriculaService {
       });
     }
 
+    // 1.1 Matrícula-sombra de grupo eletivo não é gerida por aqui — ver
+    // GrupoEletivoService.removerMembro (docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md, §2)
+    if (matricula.GrupoEletivoGUID) {
+      throw new ErrorResponse(400, 'Matrícula de grupo eletivo', {
+        message: 'Esta matrícula pertence a um grupo eletivo — gerencie pelos endpoints de /api/grupoeletivo.',
+      });
+    }
+
     // 2. Buscar turma para validar permissão
-    const turma = await this.#turmaDAO.findById(matricula.TurmaGUID);
+    const turma = await this.#turmaDAO.findById(matricula.TurmaGUID!);
     if (!turma) {
       throw new ErrorResponse(404, 'Turma não encontrada', {
         message: 'Turma vinculada não existe',
@@ -578,7 +597,7 @@ export default class MatriculaService {
     // 5. Remover do grupo de conversa da turma
     if (this.#conversaGrupoService) {
       await this.#conversaGrupoService.removerMembroTurma(
-        matricula.TurmaGUID,
+        matricula.TurmaGUID!,
         matricula.UsuarioGUID
       );
     }
@@ -666,6 +685,7 @@ export default class MatriculaService {
       MatriculaGUID: matricula.MatriculaGUID,
       UsuarioGUID: matricula.UsuarioGUID,
       TurmaGUID: matricula.TurmaGUID,
+      GrupoEletivoGUID: matricula.GrupoEletivoGUID,
       MatriculaDataEntrada: matricula.MatriculaDataEntrada,
       MatriculaDataSaida: matricula.MatriculaDataSaida,
       MatriculaStatus: matricula.MatriculaStatus,

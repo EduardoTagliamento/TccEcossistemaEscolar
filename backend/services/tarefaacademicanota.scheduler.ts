@@ -17,6 +17,8 @@ import { TarefaAcademicaDAO } from "../repositories/tarefaacademica.repository";
 import { TarefaAcademicaRespostaDAO } from "../repositories/tarefaacademica-resposta.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
+import { GrupoEletivoDAO } from "../repositories/grupoeletivo.repository";
+import Matricula from "../entities/matricula.model";
 import { getNotificacaoService } from "./notificacao.service";
 
 export class TarefaAcademicaNotaScheduler {
@@ -26,6 +28,7 @@ export class TarefaAcademicaNotaScheduler {
   #respostaDAO: TarefaAcademicaRespostaDAO;
   #matriculaDAO: MatriculaDAO;
   #turmaDAO: TurmaDAO;
+  #grupoEletivoDAO: GrupoEletivoDAO;
 
   constructor() {
     const db = new MysqlDatabase();
@@ -34,7 +37,24 @@ export class TarefaAcademicaNotaScheduler {
     this.#respostaDAO = new TarefaAcademicaRespostaDAO(db);
     this.#matriculaDAO = new MatriculaDAO(db);
     this.#turmaDAO = new TurmaDAO(db);
+    this.#grupoEletivoDAO = new GrupoEletivoDAO(db);
   }
+
+  /**
+   * Resolve EscolaGUID a partir de uma matrícula, seja de turma normal ou
+   * matrícula-sombra de grupo eletivo (ver docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md, §2).
+   */
+  #resolverEscolaGUID = async (matricula: Matricula): Promise<string | null> => {
+    if (matricula.GrupoEletivoGUID) {
+      const grupo = await this.#grupoEletivoDAO.findById(matricula.GrupoEletivoGUID);
+      return grupo?.EscolaGUID ?? null;
+    }
+    if (matricula.TurmaGUID) {
+      const turma = await this.#turmaDAO.findById(matricula.TurmaGUID);
+      return turma?.EscolaGUID ?? null;
+    }
+    return null;
+  };
 
   public start(): void {
     console.log("[SCHEDULER] 📅 Iniciando agendamento de nota automática de tarefa...");
@@ -91,17 +111,17 @@ export class TarefaAcademicaNotaScheduler {
         const matricula = await this.#matriculaDAO.findById(item.MatriculaGUID);
         if (!tarefa || !matricula) continue;
 
-        const turma = await this.#turmaDAO.findById(matricula.TurmaGUID);
-        if (!turma) continue;
+        const escolaGUID = await this.#resolverEscolaGUID(matricula);
+        if (!escolaGUID) continue;
 
         await getNotificacaoService().disparar({
           tipoSlug: "tarefa_avaliada",
           destinatarios: [item.UsuarioGUID],
-          escolaGUID: turma.EscolaGUID,
+          escolaGUID,
           titulo: `Prazo de "${tarefa.TarefaTitulo}" venceu sem entrega — nota 0 atribuída automaticamente`,
           entidadeTipo: "tarefa",
           entidadeGUID: tarefa.TarefaGUID,
-          link: `/dashboard/${turma.EscolaGUID}/tarefas/${tarefa.TarefaGUID}`,
+          link: `/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`,
         });
 
         // Sem registro em `registroauditoria` aqui — o schema exige um ator
@@ -142,16 +162,16 @@ export class TarefaAcademicaNotaScheduler {
         const tarefa = await this.#tarefaDAO.findById(item.TarefaGUID);
         const matricula = await this.#matriculaDAO.findById(item.MatriculaGUID);
         if (tarefa && matricula) {
-          const turma = await this.#turmaDAO.findById(matricula.TurmaGUID);
-          if (turma) {
+          const escolaGUID = await this.#resolverEscolaGUID(matricula);
+          if (escolaGUID) {
             await getNotificacaoService().disparar({
               tipoSlug: "tarefa_avaliada",
               destinatarios: [item.UsuarioGUID],
-              escolaGUID: turma.EscolaGUID,
+              escolaGUID,
               titulo: `Prazo de "${tarefa.TarefaTitulo}" venceu — as questões em branco foram zeradas automaticamente`,
               entidadeTipo: "tarefa",
               entidadeGUID: tarefa.TarefaGUID,
-              link: `/dashboard/${turma.EscolaGUID}/tarefas/${tarefa.TarefaGUID}`,
+              link: `/dashboard/${escolaGUID}/tarefas/${tarefa.TarefaGUID}`,
             });
           }
         }

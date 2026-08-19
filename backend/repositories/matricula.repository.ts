@@ -8,6 +8,7 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 export interface MatriculaFilters {
   UsuarioGUID?: string;
   TurmaGUID?: string;
+  GrupoEletivoGUID?: string;
   MatriculaStatus?: 'Ativa' | 'Transferida' | 'Concluida' | 'Cancelada';
   EscolaGUID?: string;
 }
@@ -18,7 +19,8 @@ export interface MatriculaFilters {
 interface MatriculaRow extends RowDataPacket {
   MatriculaGUID: string;
   UsuarioGUID: string;
-  TurmaGUID: string;
+  TurmaGUID: string | null;
+  GrupoEletivoGUID: string | null;
   MatriculaDataEntrada: Date;
   MatriculaDataSaida: Date | null;
   MatriculaStatus: 'Ativa' | 'Transferida' | 'Concluida' | 'Cancelada';
@@ -50,18 +52,20 @@ export class MatriculaDAO {
         MatriculaGUID,
         UsuarioGUID,
         TurmaGUID,
+        GrupoEletivoGUID,
         MatriculaDataEntrada,
         MatriculaDataSaida,
         MatriculaStatus,
         MatriculaCreatedAt,
         MatriculaUpdatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       matricula.MatriculaGUID,
       matricula.UsuarioGUID,
       matricula.TurmaGUID,
+      matricula.GrupoEletivoGUID,
       matricula.MatriculaDataEntrada,
       matricula.MatriculaDataSaida,
       matricula.MatriculaStatus,
@@ -72,6 +76,78 @@ export class MatriculaDAO {
     const pool = await this.#database.getPool();
     await pool.execute(query, params);
     return matricula;
+  }
+
+  /**
+   * Cria a matrícula-sombra de um membro de grupo eletivo (TurmaGUID=NULL,
+   * GrupoEletivoGUID preenchido). Nunca passa pela validação de "matrícula
+   * ativa única" — essa regra é específica de matrícula em Turma (ver
+   * docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md, §2) — por isso é um método
+   * separado de `create`, chamado só por GrupoEletivoService.
+   */
+  async criarMatriculaEletiva(matricula: Matricula): Promise<Matricula> {
+    return this.create(matricula);
+  }
+
+  /**
+   * Encerra (soft delete) a matrícula-sombra de um membro removido do grupo
+   * eletivo. Idempotente: não erra se já não houver matrícula ativa.
+   */
+  async removerMatriculaEletiva(usuarioGUID: string, grupoEletivoGUID: string): Promise<boolean> {
+    const query = `
+      UPDATE matricula
+      SET MatriculaStatus = 'Cancelada',
+          MatriculaDataSaida = ?,
+          MatriculaUpdatedAt = ?
+      WHERE UsuarioGUID = ?
+        AND GrupoEletivoGUID = ?
+        AND MatriculaStatus = 'Ativa'
+    `;
+
+    const pool = await this.#database.getPool();
+    const [result] = await pool.execute(query, [new Date(), new Date(), usuarioGUID, grupoEletivoGUID]);
+
+    return (result as ResultSetHeader).affectedRows > 0;
+  }
+
+  /**
+   * Lista os membros ativos (matrículas-sombra) de um grupo eletivo.
+   */
+  async findMembrosByGrupoEletivo(grupoEletivoGUID: string): Promise<Matricula[]> {
+    const query = `
+      SELECT * FROM matricula
+      WHERE GrupoEletivoGUID = ?
+        AND MatriculaStatus = 'Ativa'
+      ORDER BY MatriculaDataEntrada DESC
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(query, [grupoEletivoGUID]);
+
+    return this.mapRows(rows as MatriculaRow[]);
+  }
+
+  /**
+   * Verifica se o usuário já é membro ativo de um grupo eletivo específico
+   * (evita matrícula-sombra duplicada).
+   */
+  async findMatriculaEletivaAtiva(usuarioGUID: string, grupoEletivoGUID: string): Promise<Matricula | null> {
+    const query = `
+      SELECT * FROM matricula
+      WHERE UsuarioGUID = ?
+        AND GrupoEletivoGUID = ?
+        AND MatriculaStatus = 'Ativa'
+      LIMIT 1
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(query, [usuarioGUID, grupoEletivoGUID]);
+
+    if (!rows || (rows as MatriculaRow[]).length === 0) {
+      return null;
+    }
+
+    return this.mapRows(rows as MatriculaRow[])[0];
   }
 
   /**
@@ -89,6 +165,11 @@ export class MatriculaDAO {
     if (filters?.TurmaGUID) {
       query += ` AND TurmaGUID = ?`;
       params.push(filters.TurmaGUID);
+    }
+
+    if (filters?.GrupoEletivoGUID) {
+      query += ` AND GrupoEletivoGUID = ?`;
+      params.push(filters.GrupoEletivoGUID);
     }
 
     if (filters?.MatriculaStatus) {
@@ -321,6 +402,7 @@ export class MatriculaDAO {
       matricula.MatriculaGUID = row.MatriculaGUID;
       matricula.UsuarioGUID = row.UsuarioGUID;
       matricula.TurmaGUID = row.TurmaGUID;
+      matricula.GrupoEletivoGUID = row.GrupoEletivoGUID;
       matricula.MatriculaDataEntrada = row.MatriculaDataEntrada;
       matricula.MatriculaDataSaida = row.MatriculaDataSaida;
       matricula.MatriculaStatus = row.MatriculaStatus;

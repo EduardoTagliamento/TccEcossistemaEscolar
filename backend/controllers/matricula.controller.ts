@@ -157,7 +157,7 @@ export default class MatriculaController {
    */
   index = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { UsuarioGUID, TurmaGUID, MatriculaStatus, EscolaGUID } = req.query;
+      const { UsuarioGUID, TurmaGUID, GrupoEletivoGUID, MatriculaStatus, EscolaGUID } = req.query;
 
       const filters: any = {};
 
@@ -167,6 +167,10 @@ export default class MatriculaController {
 
       if (TurmaGUID && typeof TurmaGUID === "string") {
         filters.TurmaGUID = TurmaGUID;
+      }
+
+      if (GrupoEletivoGUID && typeof GrupoEletivoGUID === "string") {
+        filters.GrupoEletivoGUID = GrupoEletivoGUID;
       }
 
       if (MatriculaStatus && typeof MatriculaStatus === "string") {

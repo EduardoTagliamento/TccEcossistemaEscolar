@@ -18,7 +18,8 @@ export default class Matricula {
   // Campos privados (encapsulamento)
   #MatriculaGUID!: string;
   #UsuarioGUID!: string;
-  #TurmaGUID!: string;
+  #TurmaGUID: string | null = null;
+  #GrupoEletivoGUID: string | null = null;
   #MatriculaDataEntrada!: Date;
   #MatriculaDataSaida!: Date | null;
   #MatriculaStatus!: 'Ativa' | 'Transferida' | 'Concluida' | 'Cancelada';
@@ -35,8 +36,12 @@ export default class Matricula {
     return this.#UsuarioGUID;
   }
 
-  get TurmaGUID(): string {
+  get TurmaGUID(): string | null {
     return this.#TurmaGUID;
+  }
+
+  get GrupoEletivoGUID(): string | null {
+    return this.#GrupoEletivoGUID;
   }
 
   get MatriculaDataEntrada(): Date {
@@ -79,11 +84,33 @@ export default class Matricula {
     this.#UsuarioGUID = value;
   }
 
-  set TurmaGUID(value: string) {
+  set TurmaGUID(value: string | null) {
+    if (value === null || value === undefined) {
+      this.#TurmaGUID = null;
+      return;
+    }
     if (typeof value !== 'string' || value.trim().length !== 36) {
-      throw new Error('TurmaGUID deve ser um UUID válido (36 caracteres)');
+      throw new Error('TurmaGUID deve ser um UUID válido (36 caracteres) ou null');
     }
     this.#TurmaGUID = value.trim();
+  }
+
+  /**
+   * Matrícula-sombra de grupo eletivo: mutuamente exclusiva com TurmaGUID
+   * (ver docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md, §2). Não é exposta como
+   * "matrícula" na UI — existe só pra tarefaacademica_matricula/
+   * conteudoprogresso continuarem funcionando sem mudança pra alunos de
+   * grupo eletivo.
+   */
+  set GrupoEletivoGUID(value: string | null) {
+    if (value === null || value === undefined) {
+      this.#GrupoEletivoGUID = null;
+      return;
+    }
+    if (typeof value !== 'string' || value.trim().length !== 36) {
+      throw new Error('GrupoEletivoGUID deve ser um UUID válido (36 caracteres) ou null');
+    }
+    this.#GrupoEletivoGUID = value.trim();
   }
 
   set MatriculaDataEntrada(value: Date) {
@@ -138,7 +165,12 @@ export default class Matricula {
   validar(): void {
     if (!this.#MatriculaGUID) throw new Error('MatriculaGUID é obrigatório');
     if (!this.#UsuarioGUID) throw new Error('UsuarioGUID é obrigatório');
-    if (!this.#TurmaGUID) throw new Error('TurmaGUID é obrigatório');
+    if (!this.#TurmaGUID && !this.#GrupoEletivoGUID) {
+      throw new Error('Matrícula precisa de TurmaGUID ou GrupoEletivoGUID');
+    }
+    if (this.#TurmaGUID && this.#GrupoEletivoGUID) {
+      throw new Error('Matrícula não pode ter TurmaGUID e GrupoEletivoGUID ao mesmo tempo');
+    }
     if (!this.#MatriculaDataEntrada) throw new Error('MatriculaDataEntrada é obrigatório');
     // MatriculaDataSaida é opcional (nullable)
     if (!this.#MatriculaStatus) throw new Error('MatriculaStatus é obrigatório');
@@ -154,6 +186,7 @@ export default class Matricula {
       MatriculaGUID: this.#MatriculaGUID,
       UsuarioGUID: this.#UsuarioGUID,
       TurmaGUID: this.#TurmaGUID,
+      GrupoEletivoGUID: this.#GrupoEletivoGUID,
       MatriculaDataEntrada: this.#MatriculaDataEntrada,
       MatriculaDataSaida: this.#MatriculaDataSaida,
       MatriculaStatus: this.#MatriculaStatus,
@@ -169,7 +202,8 @@ export default class Matricula {
     const matricula = new Matricula();
     matricula.MatriculaGUID = data.MatriculaGUID;
     matricula.UsuarioGUID = data.UsuarioGUID;
-    matricula.TurmaGUID = data.TurmaGUID;
+    matricula.TurmaGUID = data.TurmaGUID ?? null;
+    matricula.GrupoEletivoGUID = data.GrupoEletivoGUID ?? null;
     matricula.MatriculaDataEntrada = data.MatriculaDataEntrada;
     matricula.MatriculaDataSaida = data.MatriculaDataSaida;
     matricula.MatriculaStatus = data.MatriculaStatus;

@@ -19,7 +19,8 @@ export default class MaterialProfessorTurma {
   // Campos privados (encapsulamento)
   #MatProfTurGUID!: string;
   #MateriaGUID!: string;
-  #TurmaGUID!: string;
+  #TurmaGUID: string | null = null;
+  #GrupoEletivoGUID: string | null = null;
   #UsuarioGUID!: string;
   #AlocacaoStatus!: 'Ativa' | 'Inativa';
   #AulasPorSemana: number | null = null;
@@ -36,8 +37,12 @@ export default class MaterialProfessorTurma {
     return this.#MateriaGUID;
   }
 
-  get TurmaGUID(): string {
+  get TurmaGUID(): string | null {
     return this.#TurmaGUID;
+  }
+
+  get GrupoEletivoGUID(): string | null {
+    return this.#GrupoEletivoGUID;
   }
 
   get UsuarioGUID(): string {
@@ -76,11 +81,27 @@ export default class MaterialProfessorTurma {
     this.#MateriaGUID = value.trim();
   }
 
-  set TurmaGUID(value: string) {
+  set TurmaGUID(value: string | null) {
+    if (value === null || value === undefined) {
+      this.#TurmaGUID = null;
+      return;
+    }
     if (typeof value !== 'string' || value.trim().length !== 36) {
-      throw new Error('TurmaGUID deve ser um UUID válido (36 caracteres)');
+      throw new Error('TurmaGUID deve ser um UUID válido (36 caracteres) ou null');
     }
     this.#TurmaGUID = value.trim();
+  }
+
+  /** Alvo alternativo à Turma — mutuamente exclusivo (ver validar()). */
+  set GrupoEletivoGUID(value: string | null) {
+    if (value === null || value === undefined) {
+      this.#GrupoEletivoGUID = null;
+      return;
+    }
+    if (typeof value !== 'string' || value.trim().length !== 36) {
+      throw new Error('GrupoEletivoGUID deve ser um UUID válido (36 caracteres) ou null');
+    }
+    this.#GrupoEletivoGUID = value.trim();
   }
 
   set UsuarioGUID(value: string) {
@@ -130,7 +151,12 @@ export default class MaterialProfessorTurma {
   validar(): void {
     if (!this.#MatProfTurGUID) throw new Error('MatProfTurGUID é obrigatório');
     if (!this.#MateriaGUID) throw new Error('MateriaGUID é obrigatório');
-    if (!this.#TurmaGUID) throw new Error('TurmaGUID é obrigatório');
+    if (!this.#TurmaGUID && !this.#GrupoEletivoGUID) {
+      throw new Error('Alocação precisa de TurmaGUID ou GrupoEletivoGUID');
+    }
+    if (this.#TurmaGUID && this.#GrupoEletivoGUID) {
+      throw new Error('Alocação não pode ter TurmaGUID e GrupoEletivoGUID ao mesmo tempo');
+    }
     if (!this.#UsuarioGUID) throw new Error('UsuarioGUID é obrigatório');
     if (!this.#AlocacaoStatus) throw new Error('AlocacaoStatus é obrigatório');
     if (!this.#MatProfTurCreatedAt) throw new Error('MatProfTurCreatedAt é obrigatório');
@@ -145,6 +171,7 @@ export default class MaterialProfessorTurma {
       MatProfTurGUID: this.#MatProfTurGUID,
       MateriaGUID: this.#MateriaGUID,
       TurmaGUID: this.#TurmaGUID,
+      GrupoEletivoGUID: this.#GrupoEletivoGUID,
       UsuarioGUID: this.#UsuarioGUID,
       AlocacaoStatus: this.#AlocacaoStatus,
       AulasPorSemana: this.#AulasPorSemana,
@@ -160,7 +187,8 @@ export default class MaterialProfessorTurma {
     const alocacao = new MaterialProfessorTurma();
     alocacao.MatProfTurGUID = data.MatProfTurGUID;
     alocacao.MateriaGUID = data.MateriaGUID;
-    alocacao.TurmaGUID = data.TurmaGUID;
+    alocacao.TurmaGUID = data.TurmaGUID ?? null;
+    alocacao.GrupoEletivoGUID = data.GrupoEletivoGUID ?? null;
     alocacao.UsuarioGUID = data.UsuarioGUID;
     alocacao.AlocacaoStatus = data.AlocacaoStatus;
     alocacao.AulasPorSemana = data.AulasPorSemana ?? null;

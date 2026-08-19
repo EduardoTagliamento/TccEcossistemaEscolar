@@ -186,6 +186,7 @@ export default class ProfessorController {
         const createData: AlocacaoCreateDTO = {
           MateriaGUID: alocacao.MateriaGUID,
           TurmaGUID: alocacao.TurmaGUID,
+          GrupoEletivoGUID: alocacao.GrupoEletivoGUID,
           UsuarioGUID: alocacao.UsuarioGUID,
           AlocacaoStatus: alocacao.AlocacaoStatus,
           AulasPorSemana: alocacao.AulasPorSemana,
@@ -227,7 +228,7 @@ export default class ProfessorController {
    */
   listarAlocacoes = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { MateriaGUID, TurmaGUID, UsuarioGUID, AlocacaoStatus } = req.query;
+      const { MateriaGUID, TurmaGUID, GrupoEletivoGUID, UsuarioGUID, AlocacaoStatus } = req.query;
 
       const filters: any = {};
 
@@ -237,6 +238,10 @@ export default class ProfessorController {
 
       if (TurmaGUID && typeof TurmaGUID === "string") {
         filters.TurmaGUID = TurmaGUID;
+      }
+
+      if (GrupoEletivoGUID && typeof GrupoEletivoGUID === "string") {
+        filters.GrupoEletivoGUID = GrupoEletivoGUID;
       }
 
       if (UsuarioGUID && typeof UsuarioGUID === "string") {
