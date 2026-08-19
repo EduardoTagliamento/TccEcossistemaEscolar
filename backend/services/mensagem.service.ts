@@ -148,6 +148,7 @@ export default class MensagemService {
       titulo: `Nova mensagem de ${remetenteNome} no grupo ${grupo.ConversaGrupoNome}`,
       entidadeTipo: 'conversagrupo',
       entidadeGUID: conversaGUID,
+      link: `/dashboard/${escolaGUID}/chat?conversa=${conversaGUID}`,
     });
   };
 

@@ -147,6 +147,7 @@ export default class PendenciaService {
       conteudo: created.PendenciaConteudo,
       entidadeTipo: "pendencia",
       entidadeGUID: created.PendenciaGUID,
+      link: `/dashboard/${created.EscolaGUID}/pendencias/${created.PendenciaGUID}`,
     }).catch((error) => {
       console.error("🔴 PendenciaService.store() - notificação falhou:", error);
     });

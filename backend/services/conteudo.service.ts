@@ -280,34 +280,46 @@ export default class ConteudoService {
     return this.buscarConteudo(conteudo.ConteudoGUID);
   };
 
-  /** Notifica os alunos matriculados nas turmas atribuídas (tipo `materia_postada`) */
+  /** Notifica os alunos matriculados nas turmas atribuídas (tipo `materia_postada`) — uma
+   * chamada de disparo por turma, já que o link de destino (a página de matéria+turma
+   * onde o item pode de fato ser aberto via `?abrirItem=`) depende de qual turma o
+   * aluno está matriculado, não só da matéria. */
   #notificarMateriaPostada = async (conteudo: Conteudo, turmasGUID: string[], escolaGUID: string): Promise<void> => {
     const placeholders = turmasGUID.map(() => "?").join(", ");
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT DISTINCT UsuarioGUID FROM matricula WHERE TurmaGUID IN (${placeholders}) AND MatriculaStatus = 'Ativa'`,
+      `SELECT DISTINCT TurmaGUID, UsuarioGUID FROM matricula WHERE TurmaGUID IN (${placeholders}) AND MatriculaStatus = 'Ativa'`,
       turmasGUID
     );
-    const destinatarios = (rows as any[]).map((r) => r.UsuarioGUID);
-    if (destinatarios.length === 0) return;
+    if (rows.length === 0) return;
+
+    const destinatariosPorTurma = new Map<string, string[]>();
+    for (const row of rows as any[]) {
+      const lista = destinatariosPorTurma.get(row.TurmaGUID) ?? [];
+      lista.push(row.UsuarioGUID);
+      destinatariosPorTurma.set(row.TurmaGUID, lista);
+    }
 
     const [materia, professor] = await Promise.all([
       this.#materiaDAO.findById(conteudo.MateriaGUID),
       this.#usuarioDAO.findByGUID(conteudo.UsuarioGUID),
     ]);
 
-    await getNotificacaoService().disparar({
-      tipoSlug: "materia_postada",
-      destinatarios,
-      escolaGUID,
-      titulo: `Novo material: ${conteudo.ConteudoTitulo}`,
-      conteudo: conteudo.ConteudoDescricao,
-      entidadeTipo: "conteudo",
-      entidadeGUID: conteudo.ConteudoGUID,
-      metadados: {
-        materiaNome: materia?.MateriaNome,
-        professorNome: professor?.UsuarioNome,
-      },
-    });
+    for (const [turmaGUID, destinatarios] of destinatariosPorTurma) {
+      await getNotificacaoService().disparar({
+        tipoSlug: "materia_postada",
+        destinatarios,
+        escolaGUID,
+        titulo: `Novo material: ${conteudo.ConteudoTitulo}`,
+        conteudo: conteudo.ConteudoDescricao,
+        entidadeTipo: "conteudo",
+        entidadeGUID: conteudo.ConteudoGUID,
+        link: `/dashboard/${escolaGUID}/materias/${conteudo.MateriaGUID}/turmas/${turmaGUID}?abrirItem=${conteudo.ConteudoGUID}`,
+        metadados: {
+          materiaNome: materia?.MateriaNome,
+          professorNome: professor?.UsuarioNome,
+        },
+      });
+    }
   };
 
   private criarCronometrado = async (

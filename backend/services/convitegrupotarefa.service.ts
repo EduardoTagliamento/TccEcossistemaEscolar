@@ -167,6 +167,7 @@ export default class ConviteGrupoTarefaService {
       titulo: `${info.LiderNome} te convidou para o grupo da tarefa "${info.TarefaTitulo}"`,
       entidadeTipo: 'tarefa',
       entidadeGUID: tarefaGUID,
+      link: `/dashboard/${info.EscolaGUID}/tarefas/${tarefaGUID}`,
     });
   };
 

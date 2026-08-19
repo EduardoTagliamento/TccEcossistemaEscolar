@@ -117,7 +117,8 @@ export default class ConviteGrupoProjetoService {
       escolaGUID: projeto.EscolaGUID,
       titulo: `Você recebeu um convite para um grupo do projeto "${projeto.ProjetoTitulo}"`,
       entidadeTipo: 'grupoprojeto',
-      entidadeGUID: grupoGUID
+      entidadeGUID: grupoGUID,
+      link: `/dashboard/${projeto.EscolaGUID}/projetos/${projeto.ProjetoGUID}/grupos/${grupoGUID}`,
     }).catch((error) => {
       console.error('🔴 ConviteGrupoProjetoService.enviarConvite() falhou ao notificar:', error);
     });
@@ -195,7 +196,8 @@ export default class ConviteGrupoProjetoService {
         escolaGUID: projeto.EscolaGUID,
         titulo: `Novo pedido de entrada no seu grupo do projeto "${projeto.ProjetoTitulo}"`,
         entidadeTipo: 'grupoprojeto',
-        entidadeGUID: grupoGUID
+        entidadeGUID: grupoGUID,
+        link: `/dashboard/${projeto.EscolaGUID}/projetos/${projeto.ProjetoGUID}/grupos/${grupoGUID}`,
       }).catch((error) => {
         console.error('🔴 ConviteGrupoProjetoService.solicitarEntrada() falhou ao notificar:', error);
       });

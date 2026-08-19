@@ -475,7 +475,7 @@ export default class GrupoProjetoService {
           await this.#grupoProjetoDAO.delete(grupoGUID);
           await connection.commit();
 
-          this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroGUID, grupo.GrupoProjetoGUID).catch((error) => {
+          this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoGUID, projeto.ProjetoTitulo, membroGUID, grupo.GrupoProjetoGUID).catch((error) => {
             console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
           });
 
@@ -505,7 +505,7 @@ export default class GrupoProjetoService {
 
         await connection.commit();
 
-        this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroGUID, grupoGUID).catch((error) => {
+        this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoGUID, projeto.ProjetoTitulo, membroGUID, grupoGUID).catch((error) => {
           console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
         });
 
@@ -539,7 +539,7 @@ export default class GrupoProjetoService {
 
       await connection.commit();
 
-      this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoTitulo, membroGUID, grupoGUID).catch((error) => {
+      this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoGUID, projeto.ProjetoTitulo, membroGUID, grupoGUID).catch((error) => {
         console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
       });
 
@@ -562,9 +562,12 @@ export default class GrupoProjetoService {
     }
   };
 
-  /** Notifica o membro removido (tipo `removido_grupo_projeto`) */
+  /** Notifica o membro removido (tipo `removido_grupo_projeto`) — link vai pro
+   * projeto (não pro grupo em si) porque o grupo pode já ter sido dissolvido
+   * no momento em que a notificação é disparada. */
   #notificarRemovidoGrupo = async (
     escolaGUID: string,
+    projetoGUID: string,
     projetoTitulo: string,
     membroGUID: string,
     grupoGUID: string
@@ -575,7 +578,8 @@ export default class GrupoProjetoService {
       escolaGUID,
       titulo: `Você foi removido(a) do grupo do projeto "${projetoTitulo}"`,
       entidadeTipo: 'grupoprojeto',
-      entidadeGUID: grupoGUID
+      entidadeGUID: grupoGUID,
+      link: `/dashboard/${escolaGUID}/projetos/${projetoGUID}`,
     });
   };
 
@@ -698,7 +702,8 @@ export default class GrupoProjetoService {
       escolaGUID: projeto.EscolaGUID,
       titulo: `Seu grupo recebeu pontuação no projeto "${projeto.ProjetoTitulo}"`,
       entidadeTipo: 'grupoprojeto',
-      entidadeGUID: grupoGUID
+      entidadeGUID: grupoGUID,
+      link: `/dashboard/${projeto.EscolaGUID}/projetos/${projeto.ProjetoGUID}/grupos/${grupoGUID}`,
     }).catch((error) => {
       console.error('🔴 GrupoProjetoService.atualizarPontuacao() falhou ao notificar:', error);
     });
