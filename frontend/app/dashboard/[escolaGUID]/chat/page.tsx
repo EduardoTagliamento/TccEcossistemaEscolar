@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSocket } from '@/lib/socket/SocketContext';
@@ -109,9 +109,10 @@ function nomeDaConversa(conversa: ConversaAPI.ConversaListItem): string {
     : conversa.ParceiroNome || 'Conversa';
 }
 
-export default function ChatPage() {
+function ChatPageConteudo() {
   const params = useParams();
   const escolaGUID = (params?.escolaGUID as string) || '';
+  const searchParams = useSearchParams();
   const { usuario, token } = useAuth();
   const { socket, conectado } = useSocket();
   const { conversaAbertaGUID, definirConversaAberta } = useChatUI();
@@ -170,6 +171,17 @@ export default function ChatPage() {
     void carregarConversas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [escolaGUID]);
+
+  // Deep-link vindo de uma notificação (?conversa=<ConversaGUID>) — mesmo
+  // padrão do `?abrirItem=` na página de matérias. Roda só uma vez no mount,
+  // sobrepõe a conversa que o ChatUIContext eventualmente já tivesse aberta.
+  useEffect(() => {
+    const conversaGUID = searchParams?.get('conversa');
+    if (conversaGUID) {
+      setConversaAtivaGUID(conversaGUID);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---------- Funções do usuário na escola (gate de "Gerenciar grupo") ----------
   // Mesmo padrão de DashboardNavbar.buscarFuncoesDaEscola — duplicado de propósito
@@ -1236,5 +1248,13 @@ export default function ChatPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<Loader />}>
+      <ChatPageConteudo />
+    </Suspense>
   );
 }

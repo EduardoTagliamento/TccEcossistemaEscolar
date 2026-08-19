@@ -258,6 +258,7 @@ export default class MatriculaService {
       titulo: `Você foi matriculado(a) na turma ${turma.TurmaSerie} ${turma.TurmaNome}`,
       entidadeTipo: "turma",
       entidadeGUID: turma.TurmaGUID,
+      link: `/dashboard/${turma.EscolaGUID}/materias`,
     }).catch((error) => {
       console.error("🔴 MatriculaService.criarMatricula() - notificação falhou:", error);
     });

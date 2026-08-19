@@ -307,6 +307,7 @@ export default class GrupoTarefaService {
       titulo: `Você foi removido(a) do grupo da tarefa "${info.TarefaTitulo}"`,
       entidadeTipo: 'tarefa',
       entidadeGUID: tarefaGUID,
+      link: `/dashboard/${info.EscolaGUID}/tarefas/${tarefaGUID}`,
     });
   };
 

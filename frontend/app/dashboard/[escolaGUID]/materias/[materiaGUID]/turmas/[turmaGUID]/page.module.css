@@ -308,7 +308,6 @@
   border-radius: 16px;
   margin-bottom: 1.25rem;
   box-shadow: 0 2px 8px rgba(15, 29, 23, 0.06);
-  overflow: hidden;
 }
 
 .categoria.arrastando {
@@ -322,6 +321,7 @@
   padding: 1rem 1.25rem;
   background: var(--surface-50, #F5F9F6);
   border-bottom: 1px solid var(--line-200, #E2EAE5);
+  border-radius: 16px 16px 0 0;
   cursor: grab;
 }
 
@@ -425,6 +425,8 @@
 
 .categoriaItens {
   min-height: 2rem;
+  overflow: hidden;
+  border-radius: 0 0 16px 16px;
 }
 
 .itemLinha {

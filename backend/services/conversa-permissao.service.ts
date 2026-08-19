@@ -230,6 +230,7 @@ export default class ConversaPermissaoService {
       titulo,
       entidadeTipo: 'conversagrupo',
       entidadeGUID: conversaGUID,
+      link: `/dashboard/${escolaGUID}/chat?conversa=${conversaGUID}`,
     });
   };
 }
