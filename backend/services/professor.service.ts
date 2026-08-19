@@ -16,6 +16,7 @@ import { WhatsappCredenciaisService } from "./whatsapp-credenciais.service";
 import bcrypt from "bcrypt";
 import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
+import { GrupoEletivoDAO } from "../repositories/grupoeletivo.repository";
 
 /**
  * DTOs para transferência de dados
@@ -23,7 +24,8 @@ import { EscolaDAO } from "../repositories/escola.repository";
 export interface AlocacaoDTO {
   MatProfTurGUID: string;
   MateriaGUID: string;
-  TurmaGUID: string;
+  TurmaGUID: string | null;
+  GrupoEletivoGUID: string | null;
   UsuarioGUID: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
   AulasPorSemana: number | null;
@@ -36,6 +38,8 @@ export interface AlocacaoCreateDTO {
   MateriaNome?: string; // Novo: aceita nome da matéria
   TurmaGUID?: string;
   TurmaNome?: string; // Novo: aceita nome da turma
+  /** Alvo alternativo a TurmaGUID/TurmaNome — turma mista/eletiva (ver docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md) */
+  GrupoEletivoGUID?: string;
   UsuarioGUID: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
   AulasPorSemana?: number | null; // Override do padrão da matéria, específico desta turma
@@ -130,6 +134,7 @@ export default class ProfessorService {
   #usuarioDAO: UsuarioDAO;
   #customizacaoDAO?: MateriaCustomizacaoDAO;
   #escolaDAO?: EscolaDAO;
+  #grupoEletivoDAO?: GrupoEletivoDAO;
 
   constructor(
     alocacaoDAO: MaterialProfessorTurmaDAO,
@@ -139,7 +144,8 @@ export default class ProfessorService {
     matriculaDAO: MatriculaDAO,
     usuarioDAO: UsuarioDAO,
     customizacaoDAO?: MateriaCustomizacaoDAO,
-    escolaDAO?: EscolaDAO
+    escolaDAO?: EscolaDAO,
+    grupoEletivoDAO?: GrupoEletivoDAO
   ) {
     this.#alocacaoDAO = alocacaoDAO;
     this.#materiaDAO = materiaDAO;
@@ -149,6 +155,7 @@ export default class ProfessorService {
     this.#usuarioDAO = usuarioDAO;
     this.#customizacaoDAO = customizacaoDAO;
     this.#escolaDAO = escolaDAO;
+    this.#grupoEletivoDAO = grupoEletivoDAO;
   }
 
   /** Grid de seleção de matéria (professor) — matérias que ele leciona, já com a capa/cor. */
@@ -203,6 +210,9 @@ export default class ProfessorService {
 
     const turmas = await Promise.all(
       alocacoes.map(async (alocacao) => {
+        // Alocação de grupo eletivo não entra nesta grade (módulo Matérias
+        // ainda é turma-only) — filtrada aqui, não é um erro.
+        if (!alocacao.TurmaGUID) return null;
         const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
         if (!turma) return null;
         return {
@@ -270,11 +280,18 @@ export default class ProfessorService {
     // 2. Buscar todas as alocações do professor
     const todasAlocacoes = await this.#alocacaoDAO.findByProfessor(usuarioGUID);
 
-    // 3. Filtrar apenas as da escola especificada
+    // 3. Filtrar apenas as da escola especificada (turma normal ou grupo eletivo)
     const alocacoesFiltradas: MaterialProfessorTurma[] = [];
 
     for (const alocacao of todasAlocacoes) {
-      const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
+      if (alocacao.GrupoEletivoGUID) {
+        const grupo = await this.#grupoEletivoDAO?.findById(alocacao.GrupoEletivoGUID);
+        if (grupo && grupo.EscolaGUID === escolaGUID) {
+          alocacoesFiltradas.push(alocacao);
+        }
+        continue;
+      }
+      const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID!);
       if (turma && turma.EscolaGUID === escolaGUID) {
         alocacoesFiltradas.push(alocacao);
       }
@@ -298,10 +315,14 @@ export default class ProfessorService {
    * 6. Não existe duplicidade (mesmo professor + matéria + turma)
    */
   async criarAlocacao(data: AlocacaoCreateDTO, usuarioGUID: string): Promise<AlocacaoDTO> {
+    if (data.GrupoEletivoGUID) {
+      return this.criarAlocacaoGrupoEletivo(data, usuarioGUID);
+    }
+
     // 1. Buscar turma
     if (!data.TurmaGUID) {
-      throw new ErrorResponse(400, 'TurmaGUID é obrigatório', {
-        message: 'O campo TurmaGUID é obrigatório para criar uma alocação',
+      throw new ErrorResponse(400, 'TurmaGUID ou GrupoEletivoGUID é obrigatório', {
+        message: 'Informe TurmaGUID (turma normal) ou GrupoEletivoGUID (turma mista/eletiva) para criar uma alocação',
       });
     }
     const turma = await this.#turmaDAO.findById(data.TurmaGUID);
@@ -404,6 +425,99 @@ export default class ProfessorService {
   }
 
   /**
+   * Variante de criarAlocacao() com GrupoEletivoGUID como alvo em vez de
+   * TurmaGUID (turma mista/eletiva — ver docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md).
+   * Mesmas 7 etapas de validação de criarAlocacao(), adaptadas pro alvo ser
+   * um GrupoEletivo em vez de uma Turma.
+   */
+  private async criarAlocacaoGrupoEletivo(data: AlocacaoCreateDTO, usuarioGUID: string): Promise<AlocacaoDTO> {
+    if (!this.#grupoEletivoDAO) {
+      throw new ErrorResponse(500, 'Serviço mal configurado');
+    }
+
+    const grupo = await this.#grupoEletivoDAO.findById(data.GrupoEletivoGUID!);
+    if (!grupo) {
+      throw new ErrorResponse(404, 'Grupo eletivo não encontrado', {
+        message: `Não existe grupo eletivo com id ${data.GrupoEletivoGUID}`,
+      });
+    }
+
+    await this.validarPermissaoEscrita(usuarioGUID, grupo.EscolaGUID);
+
+    if (!data.MateriaGUID) {
+      throw new ErrorResponse(400, 'MateriaGUID é obrigatório', {
+        message: 'O campo MateriaGUID é obrigatório para criar uma alocação',
+      });
+    }
+    const materia = await this.#materiaDAO.findById(data.MateriaGUID);
+    if (!materia) {
+      throw new ErrorResponse(404, 'Matéria não encontrada', {
+        message: `Não existe matéria com id ${data.MateriaGUID}`,
+      });
+    }
+
+    if (materia.EscolaGUID !== grupo.EscolaGUID) {
+      throw new ErrorResponse(400, 'Matéria e grupo eletivo de escolas diferentes', {
+        message: 'A matéria e o grupo eletivo devem pertencer à mesma escola',
+      });
+    }
+
+    const vinculo = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(data.UsuarioGUID, grupo.EscolaGUID, 3);
+    if (!vinculo) {
+      throw new ErrorResponse(403, 'Usuário não é professor nesta escola', {
+        message: 'O identificador informado não está vinculado como professor nesta escola',
+      });
+    }
+    if (vinculo.Status !== 'Ativo') {
+      throw new ErrorResponse(403, 'Professor inativo', {
+        message: 'O professor não está com status ativo nesta escola',
+      });
+    }
+
+    const professorGUID = data.UsuarioGUID;
+    const existente = await this.#alocacaoDAO.findByMateriaGrupoProfessor(
+      data.MateriaGUID!,
+      data.GrupoEletivoGUID!,
+      professorGUID
+    );
+
+    if (existente) {
+      if (existente.AlocacaoStatus === 'Ativa') {
+        throw new ErrorResponse(409, 'Alocação já existe', {
+          message: 'Este professor já está alocado nesta matéria e grupo eletivo',
+          alocacaoExistente: {
+            MatProfTurGUID: existente.MatProfTurGUID,
+            AlocacaoStatus: existente.AlocacaoStatus,
+          },
+        });
+      }
+
+      const reativada = await this.#alocacaoDAO.update(existente.MatProfTurGUID, {
+        AlocacaoStatus: 'Ativa',
+        AulasPorSemana: data.AulasPorSemana ?? existente.AulasPorSemana,
+      });
+
+      return await this.toAlocacaoDTO(reativada!);
+    }
+
+    const alocacao = new MaterialProfessorTurma();
+    alocacao.MatProfTurGUID = gerarGUID();
+    alocacao.MateriaGUID = data.MateriaGUID!;
+    alocacao.GrupoEletivoGUID = data.GrupoEletivoGUID!;
+    alocacao.UsuarioGUID = professorGUID;
+    alocacao.AlocacaoStatus = data.AlocacaoStatus || 'Ativa';
+    alocacao.AulasPorSemana = data.AulasPorSemana ?? null;
+    alocacao.MatProfTurCreatedAt = new Date();
+    alocacao.MatProfTurUpdatedAt = new Date();
+
+    alocacao.validar();
+
+    const alocacaoCriada = await this.#alocacaoDAO.create(alocacao);
+
+    return await this.toAlocacaoDTO(alocacaoCriada);
+  }
+
+  /**
    * Listar alocações com filtros
    */
   async listarAlocacoes(filters?: AlocacaoFilters): Promise<{
@@ -449,16 +563,28 @@ export default class ProfessorService {
       });
     }
 
-    // 2. Buscar turma para validar permissão
-    const turma = await this.#turmaDAO.findById(alocacaoExistente.TurmaGUID);
-    if (!turma) {
-      throw new ErrorResponse(404, 'Turma não encontrada', {
-        message: 'Turma vinculada não existe',
-      });
+    // 2. Buscar turma (ou grupo eletivo) para validar permissão
+    let escolaGUID: string;
+    if (alocacaoExistente.GrupoEletivoGUID) {
+      const grupo = await this.#grupoEletivoDAO?.findById(alocacaoExistente.GrupoEletivoGUID);
+      if (!grupo) {
+        throw new ErrorResponse(404, 'Grupo eletivo não encontrado', {
+          message: 'Grupo eletivo vinculado não existe',
+        });
+      }
+      escolaGUID = grupo.EscolaGUID;
+    } else {
+      const turma = await this.#turmaDAO.findById(alocacaoExistente.TurmaGUID!);
+      if (!turma) {
+        throw new ErrorResponse(404, 'Turma não encontrada', {
+          message: 'Turma vinculada não existe',
+        });
+      }
+      escolaGUID = turma.EscolaGUID;
     }
 
     // 3. Validar permissão
-    await this.validarPermissaoEscrita(usuarioGUID, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, escolaGUID);
 
     // 4. Atualizar
     const alocacaoAtualizada = await this.#alocacaoDAO.update(guid, data);
@@ -484,16 +610,28 @@ export default class ProfessorService {
       });
     }
 
-    // 2. Buscar turma para validar permissão
-    const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
-    if (!turma) {
-      throw new ErrorResponse(404, 'Turma não encontrada', {
-        message: 'Turma vinculada não existe',
-      });
+    // 2. Buscar turma (ou grupo eletivo) para validar permissão
+    let escolaGUID: string;
+    if (alocacao.GrupoEletivoGUID) {
+      const grupo = await this.#grupoEletivoDAO?.findById(alocacao.GrupoEletivoGUID);
+      if (!grupo) {
+        throw new ErrorResponse(404, 'Grupo eletivo não encontrado', {
+          message: 'Grupo eletivo vinculado não existe',
+        });
+      }
+      escolaGUID = grupo.EscolaGUID;
+    } else {
+      const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID!);
+      if (!turma) {
+        throw new ErrorResponse(404, 'Turma não encontrada', {
+          message: 'Turma vinculada não existe',
+        });
+      }
+      escolaGUID = turma.EscolaGUID;
     }
 
     // 3. Validar permissão
-    await this.validarPermissaoEscrita(usuarioGUID, turma.EscolaGUID);
+    await this.validarPermissaoEscrita(usuarioGUID, escolaGUID);
 
     // 4. Excluir (soft delete)
     const deletado = await this.#alocacaoDAO.delete(guid);
@@ -1042,6 +1180,7 @@ export default class ProfessorService {
       MatProfTurGUID: alocacao.MatProfTurGUID,
       MateriaGUID: alocacao.MateriaGUID,
       TurmaGUID: alocacao.TurmaGUID,
+      GrupoEletivoGUID: alocacao.GrupoEletivoGUID,
       UsuarioGUID: alocacao.UsuarioGUID,
       AlocacaoStatus: alocacao.AlocacaoStatus,
       AulasPorSemana: alocacao.AulasPorSemana,
@@ -1090,14 +1229,30 @@ export default class ProfessorService {
       return [];
     }
 
-    // Buscar informações de matéria e turma para cada alocação
+    // Buscar informações de matéria e turma (ou grupo eletivo) para cada alocação
     const materias = await Promise.all(
       alocacoes.map(async (alocacao) => {
         const materia = await this.#materiaDAO.findById(alocacao.MateriaGUID);
-        const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
+        if (!materia) return null;
+
+        if (alocacao.GrupoEletivoGUID) {
+          const grupo = await this.#grupoEletivoDAO?.findById(alocacao.GrupoEletivoGUID);
+          if (!grupo || grupo.EscolaGUID !== escolaGUID) return null;
+
+          return {
+            MatProfTurGUID: alocacao.MatProfTurGUID,
+            MateriaGUID: materia.MateriaGUID,
+            MateriaNome: materia.MateriaNome,
+            // Rótulo visual pra diferenciar de turma normal (ver docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md, §5.3)
+            TurmaNome: `🔀 ${grupo.GrupoEletivoNome}`,
+            TurmaSerie: 'Eletivas',
+          };
+        }
+
+        const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID!);
 
         // Filtrar apenas da escola solicitada
-        if (!materia || !turma || turma.EscolaGUID !== escolaGUID) {
+        if (!turma || turma.EscolaGUID !== escolaGUID) {
           return null;
         }
 
@@ -1157,9 +1312,48 @@ export default class ProfessorService {
       throw new ErrorResponse(403, 'Sem permissão para acessar esta alocação');
     }
 
+    // 2.1. Alocação de grupo eletivo: estrutura simplificada, um único
+    // "pseudo-grupo" com todos os membros — não tem série/múltiplas turmas.
+    if (alocacaoBase.GrupoEletivoGUID) {
+      if (!this.#grupoEletivoDAO) {
+        throw new ErrorResponse(500, 'Serviço mal configurado');
+      }
+      const grupo = await this.#grupoEletivoDAO.findById(alocacaoBase.GrupoEletivoGUID);
+      if (!grupo) {
+        throw new ErrorResponse(404, 'Grupo eletivo não encontrado');
+      }
+
+      const membros = await this.#matriculaDAO.findMembrosByGrupoEletivo(alocacaoBase.GrupoEletivoGUID);
+      const alunosPromises = membros.map(async (matricula) => {
+        const usuario = await this.#usuarioDAO.findByGUID(matricula.UsuarioGUID);
+        if (!usuario) return null;
+        return { MatriculaGUID: matricula.MatriculaGUID, UsuarioNome: usuario.UsuarioNome };
+      });
+      const alunos = (await Promise.all(alunosPromises)).filter((a) => a !== null) as Array<{
+        MatriculaGUID: string;
+        UsuarioNome: string;
+      }>;
+
+      return {
+        series: [
+          {
+            TurmaSerie: 'Eletivas',
+            turmas: [
+              {
+                TurmaGUID: grupo.GrupoEletivoGUID,
+                TurmaNome: `🔀 ${grupo.GrupoEletivoNome}`,
+                MatProfTurGUID: alocacaoBase.MatProfTurGUID,
+                alunos,
+              },
+            ],
+          },
+        ],
+      };
+    }
+
     // 3. Buscar matéria e turma da alocação base
     const materiaBase = await this.#materiaDAO.findById(alocacaoBase.MateriaGUID);
-    const turmaBase = await this.#turmaDAO.findById(alocacaoBase.TurmaGUID);
+    const turmaBase = await this.#turmaDAO.findById(alocacaoBase.TurmaGUID!);
 
     if (!materiaBase || !turmaBase) {
       throw new ErrorResponse(404, 'Matéria ou turma não encontrada');
@@ -1175,6 +1369,7 @@ export default class ProfessorService {
     // 5. Buscar turmas relacionadas às alocações
     const matProfTurGUIDPorTurma = new Map<string, string>();
     const turmasPromises = todasAlocacoes.map(async (alocacao) => {
+      if (!alocacao.TurmaGUID) return null; // alocação de grupo eletivo — ignorada aqui, tratada em §2.1
       const turma = await this.#turmaDAO.findById(alocacao.TurmaGUID);
       if (!turma || turma.EscolaGUID !== turmaBase.EscolaGUID) {
         return null;

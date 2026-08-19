@@ -16,6 +16,7 @@ import { usuarioRouterFactory } from "../routes/usuario.routes";
 import { escolaxusuarioxfuncaoRouterFactory } from "../routes/escolaxusuarioxfuncao.routes";
 import { materiaRouterFactory } from "../routes/materia.routes";
 import { cursoRouterFactory } from "../routes/curso.routes";
+import { grupoEletivoRouterFactory } from "../routes/grupoeletivo.routes";
 import { turmaRouterFactory } from "../routes/turma.routes";
 import { horarioTurmaRouterFactory } from "../routes/horarioturma.routes";
 import { gradeHorariaRouterFactory } from "../routes/gradehoraria.routes";
@@ -396,6 +397,11 @@ export default class Server {
     const cursoRouter = cursoRouterFactory();
     this.#app.use("/api/curso", cursoRouter);
     console.log("✅ Rotas de Curso registradas em /api/curso");
+
+    // 🔀 Rotas de Grupo Eletivo (turmas mistas/eletivas)
+    const grupoEletivoRouter = grupoEletivoRouterFactory();
+    this.#app.use("/api/grupoeletivo", grupoEletivoRouter);
+    console.log("✅ Rotas de Grupo Eletivo registradas em /api/grupoeletivo");
 
     // 🏫 Rotas de Turma
     const turmaRouter = turmaRouterFactory();

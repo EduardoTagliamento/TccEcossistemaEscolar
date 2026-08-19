@@ -34,7 +34,9 @@ export interface Professor extends Usuario {
 export interface Alocacao {
   MatProfTurGUID: string;
   MateriaGUID: string;
-  TurmaGUID: string;
+  TurmaGUID: string | null;
+  /** Preenchido em vez de TurmaGUID quando a alocação é de um grupo eletivo (turma mista) */
+  GrupoEletivoGUID?: string | null;
   UsuarioGUID: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
   AulasPorSemana: number | null;
@@ -75,6 +77,8 @@ export interface AlocacaoCreateDTO {
   MateriaNome?: string;
   TurmaGUID?: string;
   TurmaNome?: string;
+  /** Alvo alternativo a TurmaGUID/TurmaNome — turma mista/eletiva */
+  GrupoEletivoGUID?: string;
   UsuarioGUID: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
   AulasPorSemana?: number | null;
@@ -359,12 +363,14 @@ export async function buscarAlocacoesProfessor(
 export async function listarAlocacoes(filters: {
   MateriaGUID?: string;
   TurmaGUID?: string;
+  GrupoEletivoGUID?: string;
   UsuarioGUID?: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
 }): Promise<{ alocacoes: Alocacao[]; total: number }> {
   const query = new URLSearchParams();
   if (filters.MateriaGUID) query.append('MateriaGUID', filters.MateriaGUID);
   if (filters.TurmaGUID) query.append('TurmaGUID', filters.TurmaGUID);
+  if (filters.GrupoEletivoGUID) query.append('GrupoEletivoGUID', filters.GrupoEletivoGUID);
   if (filters.UsuarioGUID) query.append('UsuarioGUID', filters.UsuarioGUID);
   if (filters.AlocacaoStatus) query.append('AlocacaoStatus', filters.AlocacaoStatus);
 

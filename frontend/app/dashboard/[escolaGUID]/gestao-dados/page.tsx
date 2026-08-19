@@ -11,6 +11,7 @@ import * as TurmaAPI from '@/lib/api/turma.api';
 import * as AlunoAPI from '@/lib/api/aluno.api';
 import * as ProfessorAPI from '@/lib/api/professor.api';
 import * as VinculoAPI from '@/lib/api/escolaxusuarioxfuncao.api';
+import * as GrupoEletivoAPI from '@/lib/api/grupoeletivo.api';
 import { Icon, IconName } from '@/components/Icon';
 import { useAuth } from '@/lib/auth/AuthContext';
 
@@ -36,6 +37,7 @@ const MODULOS_BASE: Modulo[] = [
   { id: 'cursos', nome: 'Cursos', descricao: 'Gerencie cursos técnicos', icone: 'layers' },
   { id: 'materias', nome: 'Matérias', descricao: 'Gerencie disciplinas', icone: 'book-open' },
   { id: 'turmas', nome: 'Turmas', descricao: 'Gerencie turmas/classes', icone: 'grid' },
+  { id: 'grupos-eletivos', nome: 'Grupos Eletivos', descricao: 'Turmas mistas/eletivas', icone: 'repeat' },
   { id: 'alunos', nome: 'Alunos', descricao: 'Gerencie matrículas', icone: 'users' },
   { id: 'professores', nome: 'Professores', descricao: 'Gerencie corpo docente', icone: 'award' },
   { id: 'secretaria', nome: 'Secretaria', descricao: 'Gerencie a equipe de secretaria', icone: 'file-text' },
@@ -95,7 +97,7 @@ export default function GestaoDadosPage() {
       setLoading(true);
       
       // Buscar contadores em paralelo
-      const [cursosRes, materiasRes, turmasRes, alunosRes, professoresRes, secretariaRes, coordenacaoRes] = await Promise.all([
+      const [cursosRes, materiasRes, turmasRes, alunosRes, professoresRes, secretariaRes, coordenacaoRes, gruposEletivosRes] = await Promise.all([
         CursoAPI.listarCursos({ EscolaGUID: escolaGUID }).catch(() => ({ cursos: [], total: 0 })),
         MateriaAPI.listarMaterias({ EscolaGUID: escolaGUID }).catch(() => ({ materias: [], total: 0 })),
         TurmaAPI.listarTurmas({ EscolaGUID: escolaGUID }).catch(() => ({ turmas: [], total: 0 })),
@@ -103,6 +105,7 @@ export default function GestaoDadosPage() {
         ProfessorAPI.listarProfessores({ EscolaGUID: escolaGUID }).catch(() => ({ professores: [], total: 0 })),
         VinculoAPI.listarVinculos({ EscolaGUID: escolaGUID, FuncaoId: FUNCAO_ID_SECRETARIA }).catch(() => []),
         VinculoAPI.listarVinculos({ EscolaGUID: escolaGUID, FuncaoId: FUNCAO_ID_COORDENACAO }).catch(() => []),
+        GrupoEletivoAPI.listarGruposEletivos({ EscolaGUID: escolaGUID }).catch(() => ({ grupos: [], total: 0 })),
       ]);
 
       // Atualizar módulos com contadores
@@ -122,6 +125,8 @@ export default function GestaoDadosPage() {
             return { ...modulo, contador: secretariaRes.filter(v => v.Status === 'Ativo').length };
           case 'coordenacao':
             return { ...modulo, contador: coordenacaoRes.filter(v => v.Status === 'Ativo').length };
+          case 'grupos-eletivos':
+            return { ...modulo, contador: gruposEletivosRes.grupos?.length || 0 };
           default:
             return modulo;
         }

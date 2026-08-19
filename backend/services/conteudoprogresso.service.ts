@@ -52,7 +52,9 @@ export default class ConteudoProgressoService {
     const turmaGUIDs = new Set(atribuicoes.map((a) => a.TurmaGUID));
 
     const matriculas = await this.#matriculaDAO.findAllMatriculasAtivasByUsuario(usuarioGUID);
-    const matricula = matriculas.find((m) => turmaGUIDs.has(m.TurmaGUID));
+    // Matrícula-sombra de grupo eletivo (TurmaGUID=null) nunca bate aqui — conteúdo
+    // ainda é atribuído só por turma (ver docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md, §8).
+    const matricula = matriculas.find((m) => m.TurmaGUID && turmaGUIDs.has(m.TurmaGUID));
     if (!matricula) {
       throw new ErrorResponse(404, "Matrícula não encontrada", {
         message: "Usuário não possui matrícula ativa na turma deste conteúdo.",

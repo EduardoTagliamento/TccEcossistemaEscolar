@@ -10,9 +10,11 @@ export interface AlocacaoComNomesDTO {
   MatProfTurGUID: string;
   MateriaGUID: string;
   MateriaNome: string;
-  TurmaGUID: string;
-  TurmaNome: string;
-  TurmaSerie: string;
+  TurmaGUID: string | null;
+  TurmaNome: string | null;
+  TurmaSerie: string | null;
+  GrupoEletivoGUID: string | null;
+  GrupoEletivoNome: string | null;
   UsuarioGUID: string;
   UsuarioNome: string;
 }
@@ -20,6 +22,7 @@ export interface AlocacaoComNomesDTO {
 export interface AlocacaoFilters {
   MateriaGUID?: string;
   TurmaGUID?: string;
+  GrupoEletivoGUID?: string;
   UsuarioGUID?: string;
   AlocacaoStatus?: 'Ativa' | 'Inativa';
 }
@@ -30,7 +33,8 @@ export interface AlocacaoFilters {
 interface AlocacaoRow extends RowDataPacket {
   MatProfTurGUID: string;
   MateriaGUID: string;
-  TurmaGUID: string;
+  TurmaGUID: string | null;
+  GrupoEletivoGUID: string | null;
   UsuarioGUID: string;
   AlocacaoStatus: 'Ativa' | 'Inativa';
   AulasPorSemana: number | null;
@@ -77,18 +81,20 @@ export class MaterialProfessorTurmaDAO {
         MatProfTurGUID,
         MateriaGUID,
         TurmaGUID,
+        GrupoEletivoGUID,
         UsuarioGUID,
         AlocacaoStatus,
         AulasPorSemana,
         MatProfTurCreatedAt,
         MatProfTurUpdatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       alocacao.MatProfTurGUID,
       alocacao.MateriaGUID,
       alocacao.TurmaGUID,
+      alocacao.GrupoEletivoGUID,
       alocacao.UsuarioGUID,
       alocacao.AlocacaoStatus,
       alocacao.AulasPorSemana,
@@ -116,6 +122,11 @@ export class MaterialProfessorTurmaDAO {
     if (filters?.TurmaGUID) {
       query += ` AND TurmaGUID = ?`;
       params.push(filters.TurmaGUID);
+    }
+
+    if (filters?.GrupoEletivoGUID) {
+      query += ` AND GrupoEletivoGUID = ?`;
+      params.push(filters.GrupoEletivoGUID);
     }
 
     if (filters?.UsuarioGUID) {
@@ -161,10 +172,12 @@ export class MaterialProfessorTurmaDAO {
       SELECT
         mpt.MatProfTurGUID, mpt.MateriaGUID, mat.MateriaNome,
         mpt.TurmaGUID, tu.TurmaNome, tu.TurmaSerie,
+        mpt.GrupoEletivoGUID, ge.GrupoEletivoNome,
         mpt.UsuarioGUID, u.UsuarioNome
       FROM materiaxprofessorxturma mpt
       INNER JOIN materia mat ON mat.MateriaGUID = mpt.MateriaGUID
-      INNER JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
+      LEFT JOIN turma tu ON tu.TurmaGUID = mpt.TurmaGUID
+      LEFT JOIN grupoeletivo ge ON ge.GrupoEletivoGUID = mpt.GrupoEletivoGUID
       INNER JOIN usuario u ON u.UsuarioGUID = mpt.UsuarioGUID
       WHERE mpt.MatProfTurGUID = ?
       LIMIT 1
@@ -184,6 +197,8 @@ export class MaterialProfessorTurmaDAO {
       TurmaGUID: row.TurmaGUID,
       TurmaNome: row.TurmaNome,
       TurmaSerie: row.TurmaSerie,
+      GrupoEletivoGUID: row.GrupoEletivoGUID,
+      GrupoEletivoNome: row.GrupoEletivoNome,
       UsuarioGUID: row.UsuarioGUID,
       UsuarioNome: row.UsuarioNome,
     };
@@ -222,6 +237,22 @@ export class MaterialProfessorTurmaDAO {
   }
 
   /**
+   * Buscar alocações de um grupo eletivo
+   */
+  async findByGrupoEletivo(grupoEletivoGUID: string): Promise<MaterialProfessorTurma[]> {
+    const query = `
+      SELECT * FROM materiaxprofessorxturma
+      WHERE GrupoEletivoGUID = ?
+      ORDER BY MatProfTurCreatedAt DESC
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(query, [grupoEletivoGUID]);
+
+    return this.mapRows(rows as AlocacaoRow[]);
+  }
+
+  /**
    * Validar duplicidade: professor já alocado na matéria+turma?
    */
   async findByMateriaTurmaProfessor(
@@ -239,6 +270,32 @@ export class MaterialProfessorTurmaDAO {
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(query, [materiaGUID, turmaGUID, usuarioGUID]);
+
+    if (!rows || (rows as AlocacaoRow[]).length === 0) {
+      return null;
+    }
+
+    return this.mapRows(rows as AlocacaoRow[])[0];
+  }
+
+  /**
+   * Validar duplicidade: professor já alocado na matéria+grupo eletivo?
+   */
+  async findByMateriaGrupoProfessor(
+    materiaGUID: string,
+    grupoEletivoGUID: string,
+    usuarioGUID: string
+  ): Promise<MaterialProfessorTurma | null> {
+    const query = `
+      SELECT * FROM materiaxprofessorxturma
+      WHERE MateriaGUID = ?
+        AND GrupoEletivoGUID = ?
+        AND UsuarioGUID = ?
+      LIMIT 1
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(query, [materiaGUID, grupoEletivoGUID, usuarioGUID]);
 
     if (!rows || (rows as AlocacaoRow[]).length === 0) {
       return null;
@@ -379,6 +436,7 @@ export class MaterialProfessorTurmaDAO {
       alocacao.MatProfTurGUID = row.MatProfTurGUID;
       alocacao.MateriaGUID = row.MateriaGUID;
       alocacao.TurmaGUID = row.TurmaGUID;
+      alocacao.GrupoEletivoGUID = row.GrupoEletivoGUID;
       alocacao.UsuarioGUID = row.UsuarioGUID;
       alocacao.AlocacaoStatus = row.AlocacaoStatus;
       alocacao.AulasPorSemana = row.AulasPorSemana;

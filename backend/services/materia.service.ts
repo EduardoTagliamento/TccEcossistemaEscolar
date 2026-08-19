@@ -122,7 +122,7 @@ export default class MateriaService {
     const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuarioEEscola(usuarioGUID, escolaGUID);
     if (!matricula) return [];
 
-    const alocacoes = await this.#alocacaoDAO.findByTurma(matricula.TurmaGUID);
+    const alocacoes = await this.#alocacaoDAO.findByTurma(matricula.TurmaGUID!);
     const alocacoesAtivas = alocacoes.filter((a) => a.AlocacaoStatus === "Ativa");
 
     const resultado: MateriaDoAlunoDTO[] = [];
@@ -137,7 +137,7 @@ export default class MateriaService {
       resultado.push({
         MateriaGUID: materia.MateriaGUID,
         MateriaNome: materia.MateriaNome || "",
-        TurmaGUID: matricula.TurmaGUID,
+        TurmaGUID: matricula.TurmaGUID!,
         ProfessorGUID: alocacao.UsuarioGUID,
         ProfessorCPF: professor?.UsuarioCPF ?? "",
         ProfessorNome: professor?.UsuarioNome ?? "Professor",

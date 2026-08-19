@@ -10,6 +10,7 @@ import { Icon } from '@/components/Icon';
 
 import * as ProfessorAPI from '@/lib/api/professor.api';
 import * as EscolaAPI from '@/lib/api/escola.api';
+import * as GrupoEletivoAPI from '@/lib/api/grupoeletivo.api';
 import { UsuarioBusca } from '@/lib/api/usuario.api';
 import { useBuscaUsuarioPorNome } from '@/lib/usuario/useBuscaUsuarioPorNome';
 import ListaCandidatosUsuario from '@/components/gestao-dados/ListaCandidatosUsuario';
@@ -33,6 +34,7 @@ export default function ProfessoresPage() {
   // Estados
   const [materias, setMaterias] = useState<ProfessorAPI.Materia[]>([]);
   const [turmas, setTurmas] = useState<ProfessorAPI.Turma[]>([]);
+  const [gruposEletivos, setGruposEletivos] = useState<GrupoEletivoAPI.GrupoEletivo[]>([]);
   const [escola, setEscola] = useState<any>(null);
   const [carregandoAuxiliares, setCarregandoAuxiliares] = useState(true);
   const [modalAberto, setModalAberto] = useState(false);
@@ -42,7 +44,9 @@ export default function ProfessoresPage() {
   const [resultadoBatch, setResultadoBatch] = useState<ProfessorAPI.BatchCreateResponse | null>(null);
 
   const [professorEditando, setProfessorEditando] = useState<ProfessorAPI.Professor | null>(null);
+  const [modoAlocacao, setModoAlocacao] = useState<'turma' | 'grupo'>('turma');
   const [novaAlocacaoTurma, setNovaAlocacaoTurma] = useState('');
+  const [novaAlocacaoGrupoEletivo, setNovaAlocacaoGrupoEletivo] = useState('');
   const [novaAlocacaoMateria, setNovaAlocacaoMateria] = useState('');
   const [novaAlocacaoAulasPorSemana, setNovaAlocacaoAulasPorSemana] = useState('');
   const [salvandoAlocacao, setSalvandoAlocacao] = useState(false);
@@ -120,14 +124,16 @@ export default function ProfessoresPage() {
   const carregarDadosAuxiliares = async () => {
     try {
       setCarregandoAuxiliares(true);
-      const [resultadoMaterias, resultadoTurmas, resultadoEscola] = await Promise.all([
+      const [resultadoMaterias, resultadoTurmas, resultadoEscola, resultadoGruposEletivos] = await Promise.all([
         ProfessorAPI.listarMaterias(escolaGUID),
         ProfessorAPI.listarTurmas(escolaGUID),
-        EscolaAPI.buscarEscola(escolaGUID)
+        EscolaAPI.buscarEscola(escolaGUID),
+        GrupoEletivoAPI.listarGruposEletivos({ EscolaGUID: escolaGUID, GrupoEletivoStatus: 'Ativo' }).catch(() => ({ grupos: [], total: 0 })),
       ]);
       setMaterias(resultadoMaterias);
       setTurmas(resultadoTurmas);
       setEscola(resultadoEscola.escola);
+      setGruposEletivos(resultadoGruposEletivos.grupos);
     } catch (erro: any) {
       console.error('Erro ao carregar dados:', erro);
       alert('Erro ao carregar dados: ' + erro.message);
@@ -390,7 +396,9 @@ export default function ProfessoresPage() {
         alocacao: {
           UsuarioGUID: professorEditando!.UsuarioGUID,
           MateriaGUID: novaAlocacaoMateria,
-          TurmaGUID: novaAlocacaoTurma,
+          ...(modoAlocacao === 'grupo'
+            ? { GrupoEletivoGUID: novaAlocacaoGrupoEletivo }
+            : { TurmaGUID: novaAlocacaoTurma }),
           AlocacaoStatus: 'Ativa',
           AulasPorSemana: novaAlocacaoAulasPorSemana ? parseInt(novaAlocacaoAulasPorSemana, 10) : null,
         },
@@ -398,6 +406,7 @@ export default function ProfessoresPage() {
       });
       await alocacoesQuery.refetch();
       setNovaAlocacaoTurma('');
+      setNovaAlocacaoGrupoEletivo('');
       setNovaAlocacaoMateria('');
       setNovaAlocacaoAulasPorSemana('');
     } catch (erro: any) {
@@ -421,7 +430,12 @@ export default function ProfessoresPage() {
   };
 
   const handleAssociarMateria = async () => {
-    if (!novaAlocacaoTurma || !novaAlocacaoMateria) {
+    if (modoAlocacao === 'grupo') {
+      if (!novaAlocacaoGrupoEletivo || !novaAlocacaoMateria) {
+        setErroAlocacao('Selecione um grupo eletivo e uma matéria.');
+        return;
+      }
+    } else if (!novaAlocacaoTurma || !novaAlocacaoMateria) {
       setErroAlocacao('Selecione uma turma e uma matéria.');
       return;
     }
@@ -432,7 +446,9 @@ export default function ProfessoresPage() {
       setSalvandoAlocacao(true);
       const { alocacoes: existentes } = await ProfessorAPI.listarAlocacoes({
         MateriaGUID: novaAlocacaoMateria,
-        TurmaGUID: novaAlocacaoTurma,
+        ...(modoAlocacao === 'grupo'
+          ? { GrupoEletivoGUID: novaAlocacaoGrupoEletivo }
+          : { TurmaGUID: novaAlocacaoTurma }),
         AlocacaoStatus: 'Ativa',
       });
 
@@ -441,11 +457,14 @@ export default function ProfessoresPage() {
         const outroProfessor = professores.find(p => p.UsuarioGUID === conflito.UsuarioGUID);
         const mat = materias.find(m => m.MateriaGUID === novaAlocacaoMateria);
         const tur = turmas.find(t => t.TurmaGUID === novaAlocacaoTurma);
+        const grupo = gruposEletivos.find(g => g.GrupoEletivoGUID === novaAlocacaoGrupoEletivo);
         setSalvandoAlocacao(false);
         setAvisoConflito({
           professorNome: outroProfessor?.UsuarioNome ?? conflito.UsuarioGUID,
           materiaNome: mat?.MateriaNome ?? novaAlocacaoMateria,
-          turmaNome: tur ? `${tur.TurmaSerie} ${tur.TurmaNome}` : novaAlocacaoTurma,
+          turmaNome: modoAlocacao === 'grupo'
+            ? (grupo?.GrupoEletivoNome ?? novaAlocacaoGrupoEletivo)
+            : (tur ? `${tur.TurmaSerie} ${tur.TurmaNome}` : novaAlocacaoTurma),
           confirmar: executarCriacaoAlocacao,
         });
         return;
@@ -698,6 +717,7 @@ export default function ProfessoresPage() {
                 setModalAberto(false);
                 setProfessorEditando(null);
                 setNovaAlocacaoTurma('');
+                setNovaAlocacaoGrupoEletivo('');
                 setNovaAlocacaoMateria('');
                 setErroAlocacao('');
                 setAvisoConflito(null);
@@ -747,8 +767,9 @@ export default function ProfessoresPage() {
                     {(() => {
                       const porTurma = alocacoesProfessor.reduce<Record<string, ProfessorAPI.Alocacao[]>>(
                         (acc, a) => {
-                          if (!acc[a.TurmaGUID]) acc[a.TurmaGUID] = [];
-                          acc[a.TurmaGUID].push(a);
+                          const chave = a.TurmaGUID ?? a.GrupoEletivoGUID ?? 'desconhecido';
+                          if (!acc[chave]) acc[chave] = [];
+                          acc[chave].push(a);
                           return acc;
                         },
                         {}
@@ -756,11 +777,15 @@ export default function ProfessoresPage() {
                       const entradas = Object.entries(porTurma);
                       return entradas.length > 0 ? (
                         <ul style={{ margin: '4px 0 0 0', paddingLeft: 16 }}>
-                          {entradas.map(([turmaGUID, alocacoes]) => {
-                            const t = turmas.find(t => t.TurmaGUID === turmaGUID);
-                            const nomeTurma = t ? `${t.TurmaSerie} ${t.TurmaNome}` : turmaGUID;
+                          {entradas.map(([chaveGrupo, alocacoes]) => {
+                            const ehGrupoEletivo = !!alocacoes[0].GrupoEletivoGUID;
+                            const t = ehGrupoEletivo ? null : turmas.find(t => t.TurmaGUID === chaveGrupo);
+                            const grupo = ehGrupoEletivo ? gruposEletivos.find(g => g.GrupoEletivoGUID === chaveGrupo) : null;
+                            const nomeTurma = ehGrupoEletivo
+                              ? `🔀 ${grupo?.GrupoEletivoNome ?? chaveGrupo}`
+                              : (t ? `${t.TurmaSerie} ${t.TurmaNome}` : chaveGrupo);
                             return (
-                              <li key={turmaGUID} style={{ marginBottom: 4 }}>
+                              <li key={chaveGrupo} style={{ marginBottom: 4 }}>
                                 <strong>{nomeTurma}:</strong>{' '}
                                 {alocacoes.map((a, idx) => {
                                   const m = materias.find(m => m.MateriaGUID === a.MateriaGUID);
@@ -821,17 +846,48 @@ export default function ProfessoresPage() {
 
                     <div style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 10 }}>
                       <p style={{ marginBottom: 6 }}><strong><Icon name="plus-circle" size={16} /> Nova alocação:</strong></p>
+                      <div style={{ display: 'flex', gap: 10, marginBottom: 6, fontSize: 13 }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            checked={modoAlocacao === 'turma'}
+                            onChange={() => { setModoAlocacao('turma'); setErroAlocacao(''); setAvisoConflito(null); }}
+                          />
+                          Turma
+                        </label>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            checked={modoAlocacao === 'grupo'}
+                            onChange={() => { setModoAlocacao('grupo'); setErroAlocacao(''); setAvisoConflito(null); }}
+                          />
+                          <Icon name="repeat" size={12} /> Grupo Eletivo (turma mista)
+                        </label>
+                      </div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <select
-                          value={novaAlocacaoTurma}
-                          onChange={e => { setNovaAlocacaoTurma(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
-                          style={{ flex: 1, minWidth: 120, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
-                        >
-                          <option value="">Turma...</option>
-                          {turmas.map(t => (
-                            <option key={t.TurmaGUID} value={t.TurmaGUID}>{t.TurmaSerie} {t.TurmaNome}</option>
-                          ))}
-                        </select>
+                        {modoAlocacao === 'turma' ? (
+                          <select
+                            value={novaAlocacaoTurma}
+                            onChange={e => { setNovaAlocacaoTurma(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
+                            style={{ flex: 1, minWidth: 120, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
+                          >
+                            <option value="">Turma...</option>
+                            {turmas.map(t => (
+                              <option key={t.TurmaGUID} value={t.TurmaGUID}>{t.TurmaSerie} {t.TurmaNome}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <select
+                            value={novaAlocacaoGrupoEletivo}
+                            onChange={e => { setNovaAlocacaoGrupoEletivo(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
+                            style={{ flex: 1, minWidth: 120, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
+                          >
+                            <option value="">Grupo eletivo...</option>
+                            {gruposEletivos.map(g => (
+                              <option key={g.GrupoEletivoGUID} value={g.GrupoEletivoGUID}>{g.GrupoEletivoNome}</option>
+                            ))}
+                          </select>
+                        )}
                         <select
                           value={novaAlocacaoMateria}
                           onChange={e => { setNovaAlocacaoMateria(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
@@ -839,9 +895,13 @@ export default function ProfessoresPage() {
                         >
                           <option value="">Matéria...</option>
                           {materias
-                            .filter(m => !novaAlocacaoTurma || !alocacoesProfessor.some(
-                              a => a.MateriaGUID === m.MateriaGUID && a.TurmaGUID === novaAlocacaoTurma
-                            ))
+                            .filter(m => modoAlocacao === 'grupo'
+                              ? (!novaAlocacaoGrupoEletivo || !alocacoesProfessor.some(
+                                  a => a.MateriaGUID === m.MateriaGUID && a.GrupoEletivoGUID === novaAlocacaoGrupoEletivo
+                                ))
+                              : (!novaAlocacaoTurma || !alocacoesProfessor.some(
+                                  a => a.MateriaGUID === m.MateriaGUID && a.TurmaGUID === novaAlocacaoTurma
+                                )))
                             .map(m => (
                               <option key={m.MateriaGUID} value={m.MateriaGUID}>{m.MateriaNome}</option>
                             ))}
@@ -858,13 +918,13 @@ export default function ProfessoresPage() {
                         />
                         <button
                           onClick={handleAssociarMateria}
-                          disabled={salvandoAlocacao || !novaAlocacaoTurma || !novaAlocacaoMateria}
-                          style={{ padding: '4px 14px', background: '#3182ce', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, opacity: (salvandoAlocacao || !novaAlocacaoTurma || !novaAlocacaoMateria) ? 0.5 : 1 }}
+                          disabled={salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : !novaAlocacaoTurma)}
+                          style={{ padding: '4px 14px', background: '#3182ce', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, opacity: (salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : !novaAlocacaoTurma)) ? 0.5 : 1 }}
                         >
                           {salvandoAlocacao ? '...' : 'Associar'}
                         </button>
                       </div>
-                      {novaAlocacaoTurma && (() => {
+                      {novaAlocacaoTurma && modoAlocacao === 'turma' && (() => {
                         const jaLeciona = alocacoesProfessor
                           .filter(a => a.TurmaGUID === novaAlocacaoTurma)
                           .map(a => materias.find(m => m.MateriaGUID === a.MateriaGUID)?.MateriaNome ?? a.MateriaGUID);

@@ -29,8 +29,11 @@ export interface TarefaAcademicaDTO {
   matXprofXturxescGUID: string;
   MateriaGUID?: string;
   MateriaNome?: string;
-  TurmaGUID?: string;
-  TurmaNome?: string;
+  TurmaGUID?: string | null;
+  TurmaNome?: string | null;
+  /** Preenchidos em vez de TurmaGUID/TurmaNome quando a tarefa é de um grupo eletivo (turma mista) */
+  GrupoEletivoGUID?: string | null;
+  GrupoEletivoNome?: string | null;
   ProfessorNome?: string;
   TarefaTitulo: string;
   TarefaConteudo: string | null;
@@ -441,7 +444,7 @@ export default class TarefaAcademicaService {
 
     const primeiraMatriculaValida = matriculasExistentes.find((m): m is NonNullable<typeof m> => m !== null);
     if (primeiraMatriculaValida) {
-      const escolaGUID = await this.#resolverEscolaGUIDPorTurma((primeiraMatriculaValida as any).TurmaGUID);
+      const escolaGUID = await this.#resolverEscolaGUIDPorMatricula(primeiraMatriculaValida);
       if (escolaGUID) {
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
@@ -467,6 +470,31 @@ export default class TarefaAcademicaService {
     return (turmaRows[0] as any)?.EscolaGUID ?? null;
   };
 
+  /** Resolve EscolaGUID via grupo eletivo — mesma ideia de #resolverEscolaGUIDPorTurma. */
+  #resolverEscolaGUIDPorGrupoEletivo = async (grupoEletivoGUID: string): Promise<string | null> => {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      "SELECT EscolaGUID FROM grupoeletivo WHERE GrupoEletivoGUID = ? LIMIT 1",
+      [grupoEletivoGUID]
+    );
+    return (rows[0] as any)?.EscolaGUID ?? null;
+  };
+
+  /**
+   * Resolve EscolaGUID a partir de uma matrícula, seja ela de turma normal
+   * ou matrícula-sombra de grupo eletivo (ver docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md, §2).
+   */
+  #resolverEscolaGUIDPorMatricula = async (
+    matricula: { TurmaGUID: string | null; GrupoEletivoGUID: string | null }
+  ): Promise<string | null> => {
+    if (matricula.GrupoEletivoGUID) {
+      return this.#resolverEscolaGUIDPorGrupoEletivo(matricula.GrupoEletivoGUID);
+    }
+    if (matricula.TurmaGUID) {
+      return this.#resolverEscolaGUIDPorTurma(matricula.TurmaGUID);
+    }
+    return null;
+  };
+
   /**
    * Notifica os alunos atribuídos sobre a nova tarefa (tipo `tarefa_postada`).
    * Quando a tarefa é compartilhada, o texto já menciona isso — não existe
@@ -474,19 +502,17 @@ export default class TarefaAcademicaService {
    */
   #notificarTarefaPostada = async (
     tarefa: TarefaAcademica,
-    matriculas: Array<{ UsuarioGUID: string; TurmaGUID: string } | null>
+    matriculas: Array<{ UsuarioGUID: string; TurmaGUID: string | null; GrupoEletivoGUID: string | null } | null>
   ): Promise<void> => {
     const primeiraMatricula = matriculas.find((m) => m !== null);
     if (!primeiraMatricula) return;
 
-    const [turmaRows] = await pool.execute<RowDataPacket[]>(
-      "SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1",
-      [primeiraMatricula.TurmaGUID]
-    );
-    const escolaGUID = (turmaRows[0] as any)?.EscolaGUID;
+    const escolaGUID = await this.#resolverEscolaGUIDPorMatricula(primeiraMatricula);
     if (!escolaGUID) return;
 
-    const destinatarios = matriculas.filter((m): m is { UsuarioGUID: string; TurmaGUID: string } => m !== null).map((m) => m.UsuarioGUID);
+    const destinatarios = matriculas
+      .filter((m): m is { UsuarioGUID: string; TurmaGUID: string | null; GrupoEletivoGUID: string | null } => m !== null)
+      .map((m) => m.UsuarioGUID);
 
     const [alocacao, anexosDescricaoPorTarefa] = await Promise.all([
       this.#alocacaoDAO.findByIdComNomes(tarefa.matXprofXturxescGUID),
@@ -508,7 +534,7 @@ export default class TarefaAcademicaService {
       metadados: {
         materiaNome: alocacao?.MateriaNome,
         professorNome: alocacao?.UsuarioNome,
-        turmaNome: alocacao?.TurmaNome,
+        turmaNome: alocacao?.TurmaNome ?? alocacao?.GrupoEletivoNome,
         anexos: anexosDescricao.map((anexo) => ({
           nome: anexo.AnexoNomeOriginal ?? "Anexo",
           url: anexo.AnexoCaminho,
@@ -700,7 +726,7 @@ export default class TarefaAcademicaService {
 
     if (atribuicoes.length > 0) {
       const matriculaRef = await this.#matriculaDAO.findById(atribuicoes[0].MatriculaGUID);
-      const escolaGUID = matriculaRef ? await this.#resolverEscolaGUIDPorTurma(matriculaRef.TurmaGUID) : null;
+      const escolaGUID = matriculaRef ? await this.#resolverEscolaGUIDPorMatricula(matriculaRef) : null;
       if (escolaGUID) {
         void getAuditoriaService().registrar({
           EscolaGUID: escolaGUID,
@@ -772,7 +798,7 @@ export default class TarefaAcademicaService {
     let escolaGUIDParaAuditoria: string | null = null;
     if (atribuicoesParaAuditoria.length > 0) {
       const matriculaRef = await this.#matriculaDAO.findById(atribuicoesParaAuditoria[0].MatriculaGUID);
-      escolaGUIDParaAuditoria = matriculaRef ? await this.#resolverEscolaGUIDPorTurma(matriculaRef.TurmaGUID) : null;
+      escolaGUIDParaAuditoria = matriculaRef ? await this.#resolverEscolaGUIDPorMatricula(matriculaRef) : null;
     }
 
     // CASCADE vai excluir automaticamente as atribuições em tarefaacademica_matricula
@@ -844,7 +870,7 @@ export default class TarefaAcademicaService {
     }
 
     const matriculaRefFeito = await this.#matriculaDAO.findById(MatriculaGUID);
-    const escolaGUIDFeito = matriculaRefFeito ? await this.#resolverEscolaGUIDPorTurma(matriculaRefFeito.TurmaGUID) : null;
+    const escolaGUIDFeito = matriculaRefFeito ? await this.#resolverEscolaGUIDPorMatricula(matriculaRefFeito) : null;
     if (escolaGUIDFeito) {
       void getAuditoriaService().registrar({
         EscolaGUID: escolaGUIDFeito,
@@ -948,7 +974,7 @@ export default class TarefaAcademicaService {
 
     const matricula = await this.#matriculaDAO.findById(atribuicaoAtualizada.MatriculaGUID);
     if (matricula) {
-      const escolaGUID = await this.#resolverEscolaGUIDPorTurma(matricula.TurmaGUID);
+      const escolaGUID = await this.#resolverEscolaGUIDPorMatricula(matricula);
       if (escolaGUID) {
         await getNotificacaoService().disparar({
           tipoSlug: "tarefa_avaliada",
@@ -1380,6 +1406,8 @@ export default class TarefaAcademicaService {
       MateriaNome: alocacao?.MateriaNome,
       TurmaGUID: alocacao?.TurmaGUID,
       TurmaNome: alocacao?.TurmaNome,
+      GrupoEletivoGUID: alocacao?.GrupoEletivoGUID,
+      GrupoEletivoNome: alocacao?.GrupoEletivoNome,
       ProfessorNome: alocacao?.UsuarioNome,
       TarefaTitulo: tarefa.TarefaTitulo,
       TarefaConteudo: tarefa.TarefaConteudo,
@@ -1940,7 +1968,9 @@ export default class TarefaAcademicaService {
       });
     }
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuarioETurma(alunoGUID, alocacao.TurmaGUID);
+    const matricula = alocacao.GrupoEletivoGUID
+      ? await this.#matriculaDAO.findMatriculaEletivaAtiva(alunoGUID, alocacao.GrupoEletivoGUID)
+      : await this.#matriculaDAO.findMatriculaAtivaByUsuarioETurma(alunoGUID, alocacao.TurmaGUID!);
     if (!matricula) {
       throw new ErrorResponse(403, "Sem permissão", {
         message: "Você não tem matrícula ativa nesta turma.",
@@ -2030,7 +2060,7 @@ export default class TarefaAcademicaService {
     // Nota fechou (última discursiva corrigida, ou lista 100% objetiva
     // fechando na hora) — avisa o aluno, mesmo padrão de avaliarTarefa.
     if (notaVaiFecharAgora && notaFinal !== null) {
-      const escolaGUID = await this.#resolverEscolaGUIDPorTurma(matricula.TurmaGUID);
+      const escolaGUID = await this.#resolverEscolaGUIDPorMatricula(matricula);
       if (escolaGUID) {
         await getNotificacaoService().disparar({
           tipoSlug: "tarefa_avaliada",
@@ -2145,7 +2175,9 @@ export default class TarefaAcademicaService {
       });
     }
 
-    const matricula = await this.#matriculaDAO.findMatriculaAtivaByUsuarioETurma(alunoGUID, alocacao.TurmaGUID);
+    const matricula = alocacao.GrupoEletivoGUID
+      ? await this.#matriculaDAO.findMatriculaEletivaAtiva(alunoGUID, alocacao.GrupoEletivoGUID)
+      : await this.#matriculaDAO.findMatriculaAtivaByUsuarioETurma(alunoGUID, alocacao.TurmaGUID!);
     if (!matricula) {
       throw new ErrorResponse(403, "Sem permissão", { message: "Você não tem matrícula ativa nesta turma." });
     }
@@ -2324,7 +2356,7 @@ export default class TarefaAcademicaService {
     if (tarefaDaQuestao && atribuicao) {
       const matriculaDoAluno = await this.#matriculaDAO.findById(atribuicao.MatriculaGUID);
       if (matriculaDoAluno) {
-        const escolaGUID = await this.#resolverEscolaGUIDPorTurma(matriculaDoAluno.TurmaGUID);
+        const escolaGUID = await this.#resolverEscolaGUIDPorMatricula(matriculaDoAluno);
         if (escolaGUID) {
           void getAuditoriaService().registrar({
             EscolaGUID: escolaGUID,
