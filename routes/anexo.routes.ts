@@ -9,6 +9,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuario
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { anexoUploadMiddleware } from "../backend/middlewares/anexo-upload.middleware";
+import { uploadRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
 export default class AnexoRoteador {
   #router: Router;
@@ -29,6 +30,7 @@ export default class AnexoRoteador {
     this.#router.post(
       "/",
       AuthMiddleware.authenticate,
+      uploadRateLimitMiddleware,
       anexoUploadMiddleware.single("file"),
       this.#anexoMiddleware.validateUploadBody,
       this.#anexoControle.store

@@ -65,10 +65,12 @@ export default class ConviteGrupoTarefaService {
       throw new ErrorResponse(403, 'Apenas o líder pode enviar convites');
     }
 
-    // 3. Validar se grupo não está cheio
+    // 3. Validar se grupo não está cheio (contarMembros já inclui o líder)
     const totalMembros = await this.#grupoTarefaDAO.contarMembros(grupoGUID);
-    // Buscar limite da tarefa (precisaria buscar a tarefa, simplificando aqui)
-    // TODO: Validar limite máximo
+    const maxPessoas = await this.#buscarMaxPessoas(grupo.TarefaGUID);
+    if (maxPessoas !== null && totalMembros >= maxPessoas) {
+      throw new ErrorResponse(400, 'Grupo já atingiu o limite máximo de integrantes');
+    }
 
     const convidado = await this.#usuarioDAO.findByCPF(convidadoCPF);
     if (!convidado) {
@@ -86,6 +88,12 @@ export default class ConviteGrupoTarefaService {
     const jaEstaNoGrupo = await this.#grupoTarefaDAO.usuarioPertenceAoGrupo(convidadoGUID, grupoGUID);
     if (jaEstaNoGrupo) {
       throw new ErrorResponse(400, 'Usuário já é membro do grupo');
+    }
+
+    // 5b. Convidado só pode ser convidado se ainda estiver sozinho no próprio grupo (RF03)
+    const convidadoSozinho = await this.#estaSozinhoNoProprioGrupo(convidadoGUID, grupo.TarefaGUID);
+    if (!convidadoSozinho) {
+      throw new ErrorResponse(400, 'Este usuário já formou o próprio grupo e não pode ser convidado');
     }
 
     // 6. Criar convite
@@ -107,6 +115,30 @@ export default class ConviteGrupoTarefaService {
 
     return convite;
   }
+
+  /** Limite máximo de integrantes definido na tarefa compartilhada (null = sem limite definido). */
+  #buscarMaxPessoas = async (tarefaGUID: string): Promise<number | null> => {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT TarefaMaxPessoas FROM tarefaacademica WHERE TarefaGUID = ? LIMIT 1`,
+      [tarefaGUID]
+    );
+    return (rows[0] as any)?.TarefaMaxPessoas ?? null;
+  };
+
+  /**
+   * RF02/RF03 (docs/PLANO_IMPLEMENTACAO_TAREFA_COMPARTILHADA.md): toda tarefa
+   * compartilhada cria automaticamente 1 grupo solo por aluno, com o próprio
+   * aluno como líder. "Estar sozinho no próprio grupo" é a pré-condição pra
+   * poder convidar/ser convidado/solicitar entrada em outro grupo — sem isso
+   * um aluno que já formou grupo próprio poderia entrar em outro e deixar o
+   * primeiro grupo órfão (com membros, sem líder ativo cuidando dele).
+   */
+  #estaSozinhoNoProprioGrupo = async (usuarioGUID: string, tarefaGUID: string): Promise<boolean> => {
+    const proprioGrupo = await this.#grupoTarefaDAO.findGrupoOndeEhLider(usuarioGUID, tarefaGUID);
+    if (!proprioGrupo) return true;
+    const membros = await this.#usuarioXGrupoDAO.findByGrupo(proprioGrupo.GrupoTarefaGUID);
+    return membros.length === 0;
+  };
 
   /**
    * Resolve o EscolaGUID a partir da turma (mesma necessidade/padrão de
@@ -187,8 +219,18 @@ export default class ConviteGrupoTarefaService {
       throw new ErrorResponse(404, 'Grupo não encontrado');
     }
 
-    // 2. Validar se solicitante está sozinho no próprio grupo
-    // TODO: Implementar validação completa
+    // 2. Validar se o solicitante ainda está sozinho no próprio grupo (RF03)
+    const solicitanteSozinho = await this.#estaSozinhoNoProprioGrupo(solicitanteGUID, grupo.TarefaGUID);
+    if (!solicitanteSozinho) {
+      throw new ErrorResponse(400, 'Você já formou o próprio grupo e não pode solicitar entrada em outro');
+    }
+
+    // 2b. Validar se grupo alvo não está cheio (contarMembros já inclui o líder)
+    const totalMembros = await this.#grupoTarefaDAO.contarMembros(grupoGUID);
+    const maxPessoas = await this.#buscarMaxPessoas(grupo.TarefaGUID);
+    if (maxPessoas !== null && totalMembros >= maxPessoas) {
+      throw new ErrorResponse(400, 'Grupo já atingiu o limite máximo de integrantes');
+    }
 
     // 3. Verificar se já existe solicitação pendente
     const existeSolicitacao = await this.#conviteDAO.existeConvitePendente(grupoGUID, solicitanteGUID);
@@ -252,13 +294,39 @@ export default class ConviteGrupoTarefaService {
         throw new ErrorResponse(403, 'Apenas o líder pode aceitar solicitações');
       }
 
-      // 3. Adicionar usuário ao grupo
       const novoMembroGUID = convite.UsuarioGUIDConvidado;
 
+      // 2b. RF04: revalidar no momento do aceite (o estado pode ter mudado
+      // desde que o convite/solicitação foi criado) — grupo alvo pode ter
+      // enchido enquanto o convite ficava pendente; se sim, o convite é
+      // descartado (não fica pendente pra sempre apontando pra um grupo cheio).
+      const totalMembrosAtual = await this.#grupoTarefaDAO.contarMembros(convite.GrupoTarefaGUID);
+      const maxPessoas = await this.#buscarMaxPessoas(grupo.TarefaGUID);
+      if (maxPessoas !== null && totalMembrosAtual >= maxPessoas) {
+        await this.#conviteDAO.updateStatus(conviteGUID, 'Recusado');
+        throw new ErrorResponse(400, 'Grupo já atingiu o limite máximo de integrantes');
+      }
+
+      // 2c. RF04: novoMembroGUID só pode aceitar se ainda estiver sozinho no
+      // próprio grupo (pode ter formado grupo próprio nesse meio-tempo).
+      const aindaSozinho = await this.#estaSozinhoNoProprioGrupo(novoMembroGUID, grupo.TarefaGUID);
+      if (!aindaSozinho) {
+        throw new ErrorResponse(400, 'Você já formou o próprio grupo e não pode mais aceitar este convite/solicitação');
+      }
+
+      // 3. Adicionar usuário ao grupo
       await this.#usuarioXGrupoDAO.create({
         GrupoTarefaGUID: convite.GrupoTarefaGUID,
         UsuarioGUID: novoMembroGUID
       });
+
+      // 3b. RF04: o grupo solo original do aluno (onde ele era líder sozinho)
+      // é deletado — FKs de convitegrupotarefa/usuarioxgrupotarefa pra esse
+      // grupo são ON DELETE CASCADE, não deixa órfão.
+      const grupoOriginal = await this.#grupoTarefaDAO.findGrupoOndeEhLider(novoMembroGUID, grupo.TarefaGUID);
+      if (grupoOriginal && grupoOriginal.GrupoTarefaGUID !== convite.GrupoTarefaGUID) {
+        await this.#grupoTarefaDAO.delete(grupoOriginal.GrupoTarefaGUID);
+      }
 
       // 4. Atualizar status do convite
       await this.#conviteDAO.updateStatus(conviteGUID, 'Aceito');
@@ -290,6 +358,55 @@ export default class ConviteGrupoTarefaService {
     } finally {
       connection.release();
     }
+  }
+
+  /**
+   * LISTAR ALUNOS DISPONÍVEIS PRA CONVIDAR — matriculados na turma da tarefa,
+   * exceto quem já é membro deste grupo. `TemMembros` sinaliza quem já
+   * formou o próprio grupo (RF03: não pode ser convidado enquanto isso não
+   * mudar) — o frontend usa isso pra desabilitar o botão de convite.
+   * Só o líder do grupo pode ver esta lista (mesma pessoa que envia convites).
+   */
+  async listarAlunosDisponiveis(
+    grupoGUID: string,
+    solicitanteGUID: string
+  ): Promise<Array<{ UsuarioGUID: string; UsuarioCPF: string | null; UsuarioNome: string; UsuarioEmail: string | null; TemMembros: boolean }>> {
+    console.log('🟣 ConviteGrupoTarefaService.listarAlunosDisponiveis()');
+
+    const grupo = await this.#grupoTarefaDAO.findById(grupoGUID);
+    if (!grupo) {
+      throw new ErrorResponse(404, 'Grupo não encontrado');
+    }
+    if (grupo.UsuarioGUIDLider !== solicitanteGUID) {
+      throw new ErrorResponse(403, 'Apenas o líder pode ver os alunos disponíveis para convite');
+    }
+
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT u.UsuarioGUID, u.UsuarioCPF, u.UsuarioNome, u.UsuarioEmail,
+         EXISTS (
+           SELECT 1 FROM grupotarefa gt2
+           INNER JOIN usuarioxgrupotarefa uxgt2 ON uxgt2.GrupoTarefaGUID = gt2.GrupoTarefaGUID
+           WHERE gt2.TarefaGUID = ? AND gt2.UsuarioGUIDLider = u.UsuarioGUID
+         ) AS TemMembros
+       FROM matricula m
+       INNER JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
+       WHERE m.TurmaGUID = ?
+         AND m.MatriculaStatus = 'Ativa'
+         AND u.UsuarioGUID != ?
+         AND u.UsuarioGUID NOT IN (
+           SELECT UsuarioGUID FROM usuarioxgrupotarefa WHERE GrupoTarefaGUID = ?
+         )
+       ORDER BY u.UsuarioNome ASC`,
+      [grupo.TarefaGUID, grupo.TurmaGUID, solicitanteGUID, grupoGUID]
+    );
+
+    return (rows as any[]).map((row) => ({
+      UsuarioGUID: row.UsuarioGUID,
+      UsuarioCPF: row.UsuarioCPF,
+      UsuarioNome: row.UsuarioNome,
+      UsuarioEmail: row.UsuarioEmail,
+      TemMembros: Boolean(row.TemMembros),
+    }));
   }
 
   /**

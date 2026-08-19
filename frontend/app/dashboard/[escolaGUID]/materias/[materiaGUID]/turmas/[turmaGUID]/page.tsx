@@ -128,6 +128,18 @@ function CategoriaPageConteudo() {
   } | null>(null);
   const [modalNovoItem, setModalNovoItem] = useState<{ categoriaGUID: string; aba: NovoItemAba } | null>(null);
 
+  // Trocar capa/cor da turma — só Representante/Vice-Representante do grupo
+  // da turma (ou Coordenação/Direção) pode de fato salvar; o botão aparece
+  // pra qualquer aluno (não dá pra saber a função dele aqui sem uma consulta
+  // extra) e o backend rejeita com mensagem clara quem não tem permissão.
+  const [modalCapaAberto, setModalCapaAberto] = useState(false);
+  const [capaImagem, setCapaImagem] = useState<File | null>(null);
+  const [capaImagemPreview, setCapaImagemPreview] = useState<string | null>(null);
+  const [capaCor, setCapaCor] = useState('#17C077');
+  const [capaCorAutomatica, setCapaCorAutomatica] = useState(false);
+  const [capaSalvando, setCapaSalvando] = useState(false);
+  const [capaErro, setCapaErro] = useState('');
+
   // Outras telas (ex.: "tarefas a se esgotar"/"avaliações pendentes" do
   // dashboard) linkam pra cá com ?abrirItem=GUID — abre o visualizador do
   // item automaticamente assim que a lista carregar. O módulo Matérias é
@@ -202,6 +214,52 @@ function CategoriaPageConteudo() {
       console.error('Erro ao iniciar conversa com o professor:', erro);
     } finally {
       setIniciandoConversa(false);
+    }
+  };
+
+  const abrirModalCapa = () => {
+    setCapaCor(corFundo);
+    setCapaCorAutomatica(false);
+    setCapaImagem(null);
+    setCapaImagemPreview(null);
+    setCapaErro('');
+    setModalCapaAberto(true);
+  };
+
+  const fecharModalCapa = () => {
+    if (capaImagemPreview) URL.revokeObjectURL(capaImagemPreview);
+    setCapaImagemPreview(null);
+    setModalCapaAberto(false);
+  };
+
+  const escolherImagemCapa = (file: File | null) => {
+    if (capaImagemPreview) URL.revokeObjectURL(capaImagemPreview);
+    setCapaImagem(file);
+    setCapaImagemPreview(file ? URL.createObjectURL(file) : null);
+    // Nova imagem: até o usuário mexer na cor manualmente, deixa o backend
+    // extrair a cor dominante dela automaticamente ao salvar.
+    if (file) setCapaCorAutomatica(true);
+  };
+
+  const salvarCapaTurma = async () => {
+    try {
+      setCapaSalvando(true);
+      setCapaErro('');
+      await MateriasModuloAPI.atualizarCapaTurma(turmaGUID, {
+        imagem: capaImagem || undefined,
+        cor: capaCorAutomatica ? undefined : capaCor,
+      });
+      const turmaAtualizada = await TurmaAPI.buscarTurma(turmaGUID);
+      setImagemFundo(turmaAtualizada.TurmaImagemUrl || null);
+      setCorFundo(turmaAtualizada.TurmaCorFundo || '#17C077');
+      if (capaImagemPreview) URL.revokeObjectURL(capaImagemPreview);
+      setCapaImagem(null);
+      setCapaImagemPreview(null);
+      setModalCapaAberto(false);
+    } catch (erro: any) {
+      setCapaErro(erro?.message || 'Erro ao atualizar capa da turma');
+    } finally {
+      setCapaSalvando(false);
     }
   };
 
@@ -406,6 +464,16 @@ function CategoriaPageConteudo() {
           <div className={styles.heroFundo} style={{ backgroundImage: `url(${imagemFundo})` }} />
         ) : (
           <div className={styles.heroFundoCor} style={{ backgroundColor: corFundo }} />
+        )}
+        {!ehProfessor && (
+          <button
+            type="button"
+            className={styles.heroEditarCapa}
+            onClick={abrirModalCapa}
+            title="Editar capa da turma"
+          >
+            <Icon name="edit" size={14} /> Editar capa
+          </button>
         )}
         <div className={styles.heroConteudo}>
           {mensagem && mensagemVisivel && <div className={styles.heroMensagem}>{mensagem}</div>}
@@ -732,6 +800,64 @@ function CategoriaPageConteudo() {
             void carregarCategorias();
           }}
         />
+      )}
+
+      {modalCapaAberto && (
+        <div className={styles.overlay} onClick={fecharModalCapa}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitulo}>Editar capa da turma</h2>
+            <p className={styles.hint}>
+              Só o representante/vice-representante da turma (ou Coordenação/Direção) pode alterar a capa.
+            </p>
+
+            <div className={styles.campo}>
+              <label>Capa (imagem)</label>
+              {(capaImagemPreview || imagemFundo) && (
+                <img
+                  src={capaImagemPreview || imagemFundo || undefined}
+                  alt="Prévia da capa"
+                  className={styles.previewImagem}
+                />
+              )}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg"
+                onChange={(e) => escolherImagemCapa(e.target.files?.[0] || null)}
+              />
+              {capaImagem && (
+                <p className={styles.hint}>
+                  {capaCorAutomatica
+                    ? 'A cor abaixo vai ser definida automaticamente a partir dessa imagem ao salvar — mas você ainda pode escolher outra.'
+                    : 'Cor definida manualmente — não será sobrescrita pela imagem.'}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.campo}>
+              <label>Cor</label>
+              <input
+                type="color"
+                className={styles.corInput}
+                value={capaCor}
+                onChange={(e) => {
+                  setCapaCor(e.target.value);
+                  setCapaCorAutomatica(false);
+                }}
+              />
+            </div>
+
+            {capaErro && <p className={styles.erroCapa}>{capaErro}</p>}
+
+            <div className={styles.botoes}>
+              <button className={styles.botaoSalvar} onClick={salvarCapaTurma} disabled={capaSalvando}>
+                {capaSalvando ? 'Salvando...' : 'Salvar'}
+              </button>
+              <button className={styles.botaoCancelar} onClick={fecharModalCapa}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

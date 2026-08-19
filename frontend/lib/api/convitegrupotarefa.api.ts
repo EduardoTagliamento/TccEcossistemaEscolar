@@ -68,6 +68,30 @@ export async function listarConvitesPendentes(): Promise<ConvitePendente[]> {
   return result.data.convites || [];
 }
 
+export interface AlunoDisponivel {
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
+  UsuarioNome: string;
+  UsuarioEmail: string | null;
+  /** Já formou o próprio grupo nesta tarefa — não pode ser convidado enquanto isso não mudar. */
+  TemMembros: boolean;
+}
+
+// GET - Líder lista alunos da turma disponíveis pra convidar
+export async function listarAlunosDisponiveis(grupoGUID: string): Promise<AlunoDisponivel[]> {
+  const response = await fetch(`${API_URL}/convitegrupotarefa/${grupoGUID}/alunos-disponiveis`, {
+    headers: getHeaders()
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || result.message || 'Erro ao listar alunos disponíveis');
+  }
+
+  return result.data.alunos || [];
+}
+
 // PATCH - Aceitar convite ou solicitação
 export async function aceitarConvite(conviteGUID: string): Promise<void> {
   const response = await fetch(`${API_URL}/convitegrupotarefa/${conviteGUID}/aceitar`, {

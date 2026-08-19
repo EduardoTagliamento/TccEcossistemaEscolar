@@ -9,6 +9,7 @@ import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import { SugestaoMiddleware } from '../backend/middlewares/sugestao.middleware';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
 import { plataformaAdminGuard } from '../backend/guards/plataformaAdmin.guard';
+import { escritaSensivelRateLimitMiddleware } from '../backend/middlewares/rate-limit.middleware';
 
 export default class SugestaoRoteador {
   #router: Router;
@@ -26,7 +27,7 @@ export default class SugestaoRoteador {
     this.#router.use(AuthMiddleware.authenticate);
 
     // POST /api/sugestao - qualquer usuário autenticado pode enviar
-    this.#router.post('/', SugestaoMiddleware.validarCreate, this.#controller.create);
+    this.#router.post('/', escritaSensivelRateLimitMiddleware, SugestaoMiddleware.validarCreate, this.#controller.create);
 
     // GET /api/sugestao - só admin de plataforma
     this.#router.get('/', plataformaAdminGuard, this.#controller.index);
