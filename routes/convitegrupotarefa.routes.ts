@@ -4,11 +4,12 @@
  * Define os endpoints HTTP para gerenciamento de convites e solicitações de grupos.
  * 
  * Rotas:
- * - POST   /api/convitegrupotarefa/:grupoGUID/convites         - Líder envia convite
- * - POST   /api/convitegrupotarefa/:grupoGUID/solicitacoes     - Aluno solicita entrada
- * - GET    /api/convitegrupotarefa/pendentes                   - Listar pendentes
- * - PATCH  /api/convitegrupotarefa/:conviteGUID/aceitar        - Aceitar convite/solicitação
- * - PATCH  /api/convitegrupotarefa/:conviteGUID/recusar        - Recusar convite/solicitação
+ * - POST   /api/convitegrupotarefa/:grupoGUID/convites            - Líder envia convite
+ * - POST   /api/convitegrupotarefa/:grupoGUID/solicitacoes        - Aluno solicita entrada
+ * - GET    /api/convitegrupotarefa/pendentes                      - Listar pendentes
+ * - GET    /api/convitegrupotarefa/:grupoGUID/alunos-disponiveis  - Líder lista alunos disponíveis pra convidar
+ * - PATCH  /api/convitegrupotarefa/:conviteGUID/aceitar           - Aceitar convite/solicitação
+ * - PATCH  /api/convitegrupotarefa/:conviteGUID/recusar           - Recusar convite/solicitação
  */
 
 import { Router } from 'express';
@@ -88,6 +89,18 @@ export function conviteGrupoTarefaRoutes(): Router {
     '/pendentes',
     AuthMiddleware.authenticate,
     conviteController.listarPendentes
+  );
+
+  /**
+   * GET /api/convitegrupotarefa/:grupoGUID/alunos-disponiveis
+   * Líder lista alunos da turma disponíveis pra convidar
+   * Requer: Autenticação + Líder do grupo
+   */
+  router.get(
+    '/:grupoGUID/alunos-disponiveis',
+    AuthMiddleware.authenticate,
+    conviteMiddleware.validateGrupoGUIDParam,
+    conviteController.listarAlunosDisponiveis
   );
 
   /**

@@ -98,16 +98,6 @@ export default class TurmaService {
     this.#conversaGrupoService = conversaGrupoService;
   }
 
-  /** Resolve o CPF de um usuário a partir do UsuarioGUID — conversa_grupo_membro
-   * (via ConversaGrupoService) ainda usa CPF. */
-  #resolverCPF = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    return usuario.UsuarioCPF;
-  };
-
   /**
    * Criar nova turma
    * 
@@ -654,9 +644,7 @@ export default class TurmaService {
    */
   private async validarPermissaoCapaTurma(turmaGUID: string, usuarioGUID: string, escolaGUID: string): Promise<void> {
     if (this.#conversaGrupoService) {
-      // conversa_grupo_membro ainda usa CPF — resolver o usuário logado.
-      const usuarioCPF = await this.#resolverCPF(usuarioGUID);
-      const funcao = await this.#conversaGrupoService.getFuncaoNaTurma(turmaGUID, usuarioCPF);
+      const funcao = await this.#conversaGrupoService.getFuncaoNaTurma(turmaGUID, usuarioGUID);
       if (funcao === 'Representante' || funcao === 'Vice-Representante') {
         return;
       }

@@ -157,6 +157,7 @@ export default function TarefaDetalhesPage() {
             isOpen={modalSolicitar}
             onClose={() => setModalSolicitar(false)}
             tarefaGUID={tarefaGUID}
+            maxPessoas={tarefa.TarefaMaxPessoas}
             onSolicitacaoEnviada={recarregarGrupo}
           />
         </>

@@ -158,6 +158,37 @@ export default class ConviteGrupoTarefaController {
   };
 
   /**
+   * GET /api/convitegrupotarefa/:grupoGUID/alunos-disponiveis
+   * Líder lista alunos da turma disponíveis pra convidar
+   */
+  listarAlunosDisponiveis = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      console.log('🔵 ConviteGrupoTarefaController.listarAlunosDisponiveis()');
+
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
+        res.status(401).json({
+          success: false,
+          message: 'Não autenticado'
+        });
+        return;
+      }
+
+      const { grupoGUID } = req.params;
+
+      const alunos = await this.#conviteService.listarAlunosDisponiveis(grupoGUID, usuarioGUID);
+
+      res.status(200).json({
+        success: true,
+        message: 'Alunos disponíveis listados com sucesso',
+        data: { alunos }
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * PATCH /api/convitegrupotarefa/:conviteGUID/recusar
    * Recusar convite ou solicitação
    */

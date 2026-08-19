@@ -8,6 +8,7 @@ import { VestibularDAO } from "../backend/repositories/vestibular.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { plataformaAdminGuard } from "../backend/guards/plataformaAdmin.guard";
+import { escritaSensivelRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
 export default class QuestaoBancoRoteador {
   #router: Router;
@@ -29,9 +30,9 @@ export default class QuestaoBancoRoteador {
     this.#router.get("/vestibular", this.#controller.indexVestibulares);
 
     // Escrita: só admin de plataforma (spec item 13)
-    this.#router.post("/", plataformaAdminGuard, this.#controller.store);
-    this.#router.delete("/:guid", plataformaAdminGuard, this.#controller.destroy);
-    this.#router.post("/vestibular", plataformaAdminGuard, this.#controller.storeVestibular);
+    this.#router.post("/", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, this.#controller.store);
+    this.#router.delete("/:guid", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, this.#controller.destroy);
+    this.#router.post("/vestibular", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, this.#controller.storeVestibular);
 
     return this.#router;
   };

@@ -9,6 +9,8 @@ interface SolicitarEntradaModalProps {
   isOpen: boolean;
   onClose: () => void;
   tarefaGUID: string;
+  /** Limite de integrantes da tarefa (TarefaMaxPessoas) — null/undefined = sem limite. */
+  maxPessoas?: number | null;
   onSolicitacaoEnviada: () => void;
 }
 
@@ -16,6 +18,7 @@ export default function SolicitarEntradaModal({
   isOpen,
   onClose,
   tarefaGUID,
+  maxPessoas,
   onSolicitacaoEnviada
 }: SolicitarEntradaModalProps) {
   const [erro, setErro] = useState<string | null>(null);
@@ -25,7 +28,7 @@ export default function SolicitarEntradaModal({
   // Filtrar apenas grupos que não estão cheios
   const grupos = (gruposQuery.data ?? []).filter((g) => {
     const totalMembros = g.Membros.length + 1; // +1 para contar o líder
-    return totalMembros < 5; // TODO: pegar MaxPessoas da tarefa
+    return maxPessoas == null || totalMembros < maxPessoas;
   });
   const solicitarEntradaMutation = useSolicitarEntradaMutation();
   const enviando = solicitarEntradaMutation.isPending;
@@ -96,7 +99,7 @@ export default function SolicitarEntradaModal({
                           👑 Líder: {lider?.UsuarioNome || 'Desconhecido'}
                         </p>
                         <p className={styles.membros}>
-                          👥 {totalMembros} / 5 membros
+                          👥 {totalMembros}{maxPessoas != null ? ` / ${maxPessoas}` : ''} membros
                         </p>
                         <div className={styles.membrosList}>
                           {grupo.Membros.slice(0, 3).map(m => (

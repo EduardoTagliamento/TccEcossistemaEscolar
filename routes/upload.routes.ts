@@ -19,6 +19,7 @@ import {
   handleMulterErrorMensagem,
 } from '../backend/middlewares/upload.middleware';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
+import { uploadRateLimitMiddleware } from '../backend/middlewares/rate-limit.middleware';
 import ErrorResponse from '../backend/utils/ErrorResponse';
 
 // Instanciar dependências
@@ -63,6 +64,7 @@ async function verificarParticipanteConversa(req: Request, res: Response, next: 
 uploadRoutes.post(
   '/logo/:EscolaGUID',
   AuthMiddleware.authenticate,
+  uploadRateLimitMiddleware,
   uploadMiddleware.single('logo'),
   handleMulterError,
   validateFilePresence,
@@ -91,6 +93,7 @@ uploadRoutes.delete(
 uploadRoutes.post(
   '/mensagem/:conversaGUID',
   AuthMiddleware.authenticate,
+  uploadRateLimitMiddleware,
   verificarParticipanteConversa,
   uploadMensagemMiddleware.single('arquivo'),
   handleMulterErrorMensagem,
@@ -120,6 +123,7 @@ function verificarProprioUsuario(req: Request, res: Response, next: NextFunction
 uploadRoutes.post(
   '/foto-usuario/:UsuarioGUID',
   AuthMiddleware.authenticate,
+  uploadRateLimitMiddleware,
   verificarProprioUsuario,
   uploadMiddleware.single('foto'),
   handleMulterError,

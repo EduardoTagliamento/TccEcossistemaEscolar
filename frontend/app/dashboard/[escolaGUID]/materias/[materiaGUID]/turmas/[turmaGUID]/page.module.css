@@ -542,3 +542,127 @@
   background: var(--green-500, #17C077) !important;
   color: #fff !important;
 }
+
+.heroEditarCapa {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.heroEditarCapa:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 29, 23, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--white, #fff);
+  border-radius: 12px;
+  max-width: 480px;
+  width: 100%;
+  padding: 2rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: var(--slate-600, #46564D);
+}
+
+.modalTitulo {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  color: var(--ink-900, #0F1D17);
+}
+
+.campo {
+  margin-bottom: 1.25rem;
+}
+
+.campo label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--slate-500, #647268);
+  margin-bottom: 0.4rem;
+}
+
+.previewImagem {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 0.6rem;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--slate-500, #647268);
+  margin-top: 0.4rem;
+}
+
+.corInput {
+  width: 60px;
+  height: 40px;
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.erroCapa {
+  color: var(--red-500, #E5484D);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.botoes {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.botaoSalvar {
+  flex: 1;
+  padding: 0.75rem;
+  background: var(--green-500, #17C077);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botaoSalvar:disabled {
+  background: var(--slate-400, #8A968E);
+  cursor: not-allowed;
+}
+
+.botaoCancelar {
+  padding: 0.75rem 1.25rem;
+  background: var(--white, #fff);
+  color: var(--slate-600, #46564D);
+  border: 1.5px solid var(--line-200, #E2EAE5);
+  border-radius: 8px;
+  cursor: pointer;
+}

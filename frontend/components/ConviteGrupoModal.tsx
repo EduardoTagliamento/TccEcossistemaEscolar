@@ -2,14 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useEnviarConvite } from '@/lib/convitegrupotarefa/useConviteGrupoTarefaMutations';
+import { listarAlunosDisponiveis, AlunoDisponivel } from '@/lib/api/convitegrupotarefa.api';
 import styles from './ConviteGrupoModal.module.css';
 
-interface Aluno {
-  UsuarioCPF: string;
-  UsuarioNome: string;
-  UsuarioEmail: string | null;
-  TemMembros: boolean;
-}
+type Aluno = AlunoDisponivel;
 
 interface ConviteGrupoModalProps {
   isOpen: boolean;
@@ -43,13 +39,8 @@ export default function ConviteGrupoModal({
     setLoading(true);
     setErro(null);
     try {
-      // TODO: Implementar endpoint para buscar alunos disponíveis da turma
-      // Por enquanto, dados mockados
-      setAlunos([
-        { UsuarioCPF: '12345678901', UsuarioNome: 'João Silva', UsuarioEmail: 'joao@exemplo.com', TemMembros: false },
-        { UsuarioCPF: '12345678902', UsuarioNome: 'Maria Santos', UsuarioEmail: 'maria@exemplo.com', TemMembros: true },
-        { UsuarioCPF: '12345678903', UsuarioNome: 'Pedro Costa', UsuarioEmail: 'pedro@exemplo.com', TemMembros: false },
-      ]);
+      const lista = await listarAlunosDisponiveis(grupoGUID);
+      setAlunos(lista);
     } catch (err: any) {
       setErro(err?.message || 'Erro ao carregar alunos');
     } finally {
@@ -57,7 +48,8 @@ export default function ConviteGrupoModal({
     }
   };
 
-  const enviarConvite = async (cpf: string) => {
+  const enviarConvite = async (cpf: string | null) => {
+    if (!cpf) return;
     setErro(null);
     try {
       await enviarConviteMutation.mutateAsync({ grupoGUID, cpfConvidado: cpf });
@@ -102,7 +94,7 @@ export default function ConviteGrupoModal({
                 <p className={styles.empty}>Nenhum aluno disponível</p>
               ) : (
                 alunosFiltrados.map((aluno) => (
-                  <div key={aluno.UsuarioCPF} className={styles.alunoCard}>
+                  <div key={aluno.UsuarioGUID} className={styles.alunoCard}>
                     <div className={styles.alunoInfo}>
                       <div className={styles.alunoAvatar}>
                         {aluno.UsuarioNome.charAt(0)}
@@ -121,9 +113,15 @@ export default function ConviteGrupoModal({
                     </div>
                     <button
                       onClick={() => enviarConvite(aluno.UsuarioCPF)}
-                      disabled={enviando || aluno.TemMembros}
+                      disabled={enviando || aluno.TemMembros || !aluno.UsuarioCPF}
                       className={styles.btnConvidar}
-                      title={aluno.TemMembros ? 'Aluno tem membros no próprio grupo' : 'Enviar convite'}
+                      title={
+                        aluno.TemMembros
+                          ? 'Aluno tem membros no próprio grupo'
+                          : !aluno.UsuarioCPF
+                            ? 'Aluno sem CPF cadastrado'
+                            : 'Enviar convite'
+                      }
                     >
                       {enviando ? '...' : 'Convidar'}
                     </button>

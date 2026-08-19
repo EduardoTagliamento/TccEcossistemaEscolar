@@ -2,6 +2,7 @@ import { Router } from "express";
 import { MateriaGlobalController } from "../backend/controllers/materiaglobal.controller";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import { plataformaAdminGuard } from "../backend/guards/plataformaAdmin.guard";
+import { escritaSensivelRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
 const controller = new MateriaGlobalController();
 
@@ -11,9 +12,9 @@ export const materiaGlobalRouterFactory = () => {
   router.use(AuthMiddleware.authenticate, plataformaAdminGuard);
 
   router.get("/", controller.index);
-  router.post("/:guid/resolver-pendente", controller.resolverPendente);
+  router.post("/:guid/resolver-pendente", escritaSensivelRateLimitMiddleware, controller.resolverPendente);
   router.get("/:guid/submateria", controller.listarSubMaterias);
-  router.post("/:guid/submateria", controller.criarSubMateria);
+  router.post("/:guid/submateria", escritaSensivelRateLimitMiddleware, controller.criarSubMateria);
 
   return router;
 };
