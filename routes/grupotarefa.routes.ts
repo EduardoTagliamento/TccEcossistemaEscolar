@@ -130,5 +130,18 @@ export function grupoTarefaRoutes(): Router {
     grupoTarefaController.transferirLideranca
   );
 
+  /**
+   * PATCH /api/grupotarefa/:grupoGUID/membros/:membroGUID/permissoes
+   * Conceder/revogar permissões granulares de um membro
+   * Requer: Autenticação + Líder do grupo
+   */
+  router.patch(
+    '/:grupoGUID/membros/:membroGUID/permissoes',
+    AuthMiddleware.authenticate,
+    grupoTarefaMiddleware.validateGrupoAndMembroParams,
+    grupoTarefaMiddleware.validatePermissoesBody,
+    grupoTarefaController.atualizarPermissaoMembro
+  );
+
   return router;
 }

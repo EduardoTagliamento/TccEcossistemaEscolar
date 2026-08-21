@@ -6,11 +6,22 @@ import ErrorResponse from '../utils/ErrorResponse';
 import { RowDataPacket } from 'mysql2';
 import { pool } from '../database/mysql';
 import { getNotificacaoService } from './notificacao.service';
+import R2StorageService from './r2storage.service';
+import { extrairCorDominante } from '../utils/helpers/cor-imagem.helper';
+import { resolverPermissaoChat } from '../utils/helpers/permissao-granular.helper';
 
 export interface MembrosTurmaDTO {
   ConversaGUID: string;
   ConversaGrupoRefGUID: string;
   Membros: Array<{ UsuarioGUID: string; UsuarioNome: string; MembroFuncao: string; MembroEntradaAt: string }>;
+}
+
+export interface ConversaGrupoDTO {
+  ConversaGUID: string;
+  ConversaGrupoNome: string;
+  ConversaGrupoTipo: 'Turma' | 'Tarefa';
+  ConversaGrupoCorFundo: string | null;
+  ConversaGrupoImagemUrl: string | null;
 }
 
 export default class ConversaPermissaoService {
@@ -63,6 +74,128 @@ export default class ConversaPermissaoService {
         throw new ErrorResponse(403, 'Apenas o Líder pode delegar Vice-Representante neste grupo');
       }
     }
+  }
+
+  /** Resolve o EscolaGUID de um grupo (Turma direto, Tarefa via grupotarefa) — mesma consulta usada em #notificarPromocao. */
+  async #resolverEscolaGUID(grupo: { ConversaGrupoTipo: 'Turma' | 'Tarefa'; ConversaGrupoRefGUID: string }): Promise<string | null> {
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      grupo.ConversaGrupoTipo === 'Turma'
+        ? `SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1`
+        : `SELECT t.EscolaGUID FROM grupotarefa gt INNER JOIN turma t ON t.TurmaGUID = gt.TurmaGUID WHERE gt.GrupoTarefaGUID = ? LIMIT 1`,
+      [grupo.ConversaGrupoRefGUID]
+    );
+    return (rows[0] as any)?.EscolaGUID ?? null;
+  }
+
+  /**
+   * Quem pode personalizar (nome/cor/foto) o grupo: quem tem a capacidade
+   * PodePersonalizarGrupo (papel padrão Representante/Vice-Representante em
+   * Turma, Lider em Tarefa, ou concedida individualmente) — ou, como
+   * fallback administrativo, Coordenação/Direção da escola (só se aplica a
+   * grupos de Turma, mesmo padrão da capa da turma).
+   */
+  async #assertPermissaoPersonalizarGrupo(conversaGUID: string, solicitanteGUID: string): Promise<{ grupo: NonNullable<Awaited<ReturnType<ConversaGrupoDAO['findByConversaGUID']>>> }> {
+    const grupo = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
+    if (!grupo) throw new ErrorResponse(404, 'Conversa não encontrada');
+
+    const membro = await this.#conversaGrupoDAO.findMembro(conversaGUID, solicitanteGUID);
+    const podePersonalizar = resolverPermissaoChat(
+      membro?.MembroFuncao ?? null,
+      membro?.MembroPermissoes,
+      grupo.ConversaGrupoTipo,
+      'PodePersonalizarGrupo'
+    );
+    if (podePersonalizar) return { grupo };
+
+    const escolaGUID = await this.#resolverEscolaGUID(grupo);
+    if (escolaGUID) {
+      const autorizado = await this.#escolaFuncaoDAO.isCoordOuDirecaoEmEscola(solicitanteGUID, escolaGUID);
+      if (autorizado) return { grupo };
+    }
+
+    throw new ErrorResponse(403, 'Você não tem permissão para personalizar este grupo');
+  }
+
+  /** Personalização do grupo (nome/cor/foto) — Turma e Tarefa (Projeto não tem grupo de chat). */
+  async atualizarPersonalizacao(
+    conversaGUID: string,
+    usuarioGUID: string,
+    dados: { nome?: string; cor?: string; imagem?: { buffer: Buffer; mimetype: string } }
+  ): Promise<ConversaGrupoDTO> {
+    console.log('🟣 ConversaPermissaoService.atualizarPersonalizacao()');
+
+    const { grupo } = await this.#assertPermissaoPersonalizarGrupo(conversaGUID, usuarioGUID);
+
+    const updates: { ConversaGrupoNome?: string; ConversaGrupoCorFundo?: string; ConversaGrupoImagemUrl?: string } = {};
+
+    if (dados.nome !== undefined) {
+      updates.ConversaGrupoNome = dados.nome;
+    }
+
+    if (dados.imagem) {
+      const extensao = dados.imagem.mimetype.split('/')[1] || 'jpg';
+      const chave = `conversas/${conversaGUID}/capa-${Date.now()}.${extensao}`;
+      const novaUrl = await R2StorageService.upload(chave, dados.imagem.buffer, dados.imagem.mimetype);
+
+      if (grupo.ConversaGrupoImagemUrl) {
+        R2StorageService.removeByUrl(grupo.ConversaGrupoImagemUrl).catch((erro) =>
+          console.error('Erro ao remover imagem antiga do grupo:', erro)
+        );
+      }
+
+      updates.ConversaGrupoImagemUrl = novaUrl;
+      updates.ConversaGrupoCorFundo = dados.cor || (await extrairCorDominante(dados.imagem.buffer));
+    } else if (dados.cor) {
+      updates.ConversaGrupoCorFundo = dados.cor;
+    }
+
+    await this.#conversaGrupoDAO.atualizarPersonalizacao(conversaGUID, updates);
+
+    const { SocketServer } = await import('../websocket/SocketServer');
+    SocketServer.emit(conversaGUID, 'grupo_personalizado', {
+      ConversaGUID: conversaGUID,
+      ConversaGrupoNome: updates.ConversaGrupoNome ?? grupo.ConversaGrupoNome,
+      ConversaGrupoCorFundo: updates.ConversaGrupoCorFundo ?? grupo.ConversaGrupoCorFundo,
+      ConversaGrupoImagemUrl: updates.ConversaGrupoImagemUrl ?? grupo.ConversaGrupoImagemUrl,
+    });
+
+    const atualizado = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
+    return {
+      ConversaGUID: conversaGUID,
+      ConversaGrupoNome: atualizado?.ConversaGrupoNome ?? grupo.ConversaGrupoNome,
+      ConversaGrupoTipo: grupo.ConversaGrupoTipo,
+      ConversaGrupoCorFundo: atualizado?.ConversaGrupoCorFundo ?? null,
+      ConversaGrupoImagemUrl: atualizado?.ConversaGrupoImagemUrl ?? null,
+    };
+  }
+
+  /**
+   * Conceder/revogar capacidades granulares a um membro específico — só
+   * quem já tem autoridade "de origem" (Representante em Turma, Lider em
+   * Tarefa) pode conceder; um membro delegado nunca pode conceder permissão
+   * a outro (mesmo gate estrito de #assertRepresentanteOuLider, reusado).
+   */
+  async atualizarPermissaoMembro(
+    conversaGUID: string,
+    alvoGUID: string,
+    patch: Record<string, boolean>,
+    solicitanteGUID: string
+  ): Promise<void> {
+    console.log('🟣 ConversaPermissaoService.atualizarPermissaoMembro()');
+
+    await this.#assertRepresentanteOuLider(conversaGUID, solicitanteGUID);
+
+    const isMembro = await this.#conversaGrupoDAO.isMembro(conversaGUID, alvoGUID);
+    if (!isMembro) throw new ErrorResponse(400, 'Usuário não é membro desta conversa');
+
+    await this.#conversaGrupoDAO.atualizarPermissaoMembro(conversaGUID, alvoGUID, patch);
+
+    const { SocketServer } = await import('../websocket/SocketServer');
+    SocketServer.emit(conversaGUID, 'permissao_membro_atualizada', {
+      ConversaGUID: conversaGUID,
+      UsuarioGUID: alvoGUID,
+      Permissoes: patch,
+    });
   }
 
   /**

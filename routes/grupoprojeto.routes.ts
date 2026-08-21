@@ -128,5 +128,13 @@ export function grupoProjetoRoutes(): Router {
     grupoProjetoController.expulsarMembro
   );
 
+  router.patch(
+    '/:grupoGUID/membros/:membroGUID/permissoes',
+    AuthMiddleware.authenticate,
+    grupoProjetoMiddleware.validateGrupoAndMembroParams,
+    grupoProjetoMiddleware.validatePermissoesBody,
+    grupoProjetoController.atualizarPermissaoMembro
+  );
+
   return router;
 }

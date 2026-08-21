@@ -107,6 +107,7 @@ function CategoriaPageConteudo() {
   const [iniciandoConversa, setIniciandoConversa] = useState(false);
   const [imagemFundo, setImagemFundo] = useState<string | null>(null);
   const [corFundo, setCorFundo] = useState('#17C077');
+  const [podeEditarCapa, setPodeEditarCapa] = useState(false);
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [mensagemVisivel, setMensagemVisivel] = useState(true);
   const [abaFiltro, setAbaFiltro] = useState<AbaFiltro>('tudo');
@@ -193,6 +194,17 @@ function CategoriaPageConteudo() {
         setProfessorNome(materiaAtual?.ProfessorNome || '');
         setProfessorFotoUrl(materiaAtual?.ProfessorFotoUrl || null);
         setMensagem(materiaAtual?.MensagemBoasVindas || null);
+
+        // Só Representante/Vice-Representante do grupo da turma pode trocar
+        // a capa — o backend já garante isso, aqui é só pra não mostrar o
+        // botão pra quem não pode de fato usá-lo.
+        try {
+          const funcao = await TurmaAPI.buscarMinhaFuncaoGrupo(turmaGUID);
+          setPodeEditarCapa(funcao === 'Representante' || funcao === 'Vice-Representante');
+        } catch (erro) {
+          console.error('Erro ao consultar função no grupo da turma:', erro);
+          setPodeEditarCapa(false);
+        }
       }
 
       await carregarCategorias();
@@ -465,7 +477,7 @@ function CategoriaPageConteudo() {
         ) : (
           <div className={styles.heroFundoCor} style={{ backgroundColor: corFundo }} />
         )}
-        {!ehProfessor && (
+        {podeEditarCapa && (
           <button
             type="button"
             className={styles.heroEditarCapa}

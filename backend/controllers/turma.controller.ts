@@ -209,6 +209,27 @@ export class TurmaController {
   };
 
   /**
+   * GET /api/turma/:guid/minha-funcao-grupo
+   * Auto-consulta: função do usuário autenticado no grupo de chat da turma
+   * (usado só pra decidir se mostra o botão de editar capa no frontend).
+   */
+  minhaFuncaoGrupo = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { guid } = req.params;
+      const usuarioGUID = req.user?.UsuarioGUID || '';
+      const funcao = await this.#turmaService.buscarMinhaFuncaoNoGrupo(guid, usuarioGUID);
+      res.status(200).json({ success: true, message: "Função consultada com sucesso", data: { funcao } });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({ success: false, message: error.message });
+      } else {
+        console.error("Erro ao consultar função no grupo:", error);
+        res.status(500).json({ success: false, message: "Erro interno ao consultar função no grupo" });
+      }
+    }
+  };
+
+  /**
    * PUT /api/turma/:guid/capa
    * Atualiza capa (imagem) e/ou cor de fundo da turma.
    * multipart/form-data: campo "imagem" (opcional) + campo "cor" (opcional, hex)

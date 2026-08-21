@@ -148,6 +148,35 @@ export class RelacaoAnexosDAO {
   }
 
   /**
+   * Vincular anexo à submissão de um grupo de projeto (entrega/deliverable).
+   */
+  async vincularAnexoGrupoProjeto(anexoGUID: string, grupoProjetoGUID: string): Promise<RelacaoAnexos> {
+    console.log("🟢 RelacaoAnexosDAO.vincularAnexoGrupoProjeto()");
+
+    const relacaoGUID = gerarGUID();
+
+    const query = `
+      INSERT INTO relacaoanexosgrupoprojeto (
+        RelacaoAnexoGrupoProjetoGUID,
+        AnexoGUID,
+        GrupoProjetoGUID
+      ) VALUES (?, ?, ?)
+    `;
+
+    const pool = await this.#database.getPool();
+    await pool.execute<ResultSetHeader>(query, [relacaoGUID, anexoGUID, grupoProjetoGUID]);
+
+    return {
+      RelacaoAnexoGUID: relacaoGUID,
+      AnexoGUID: anexoGUID,
+      TarefaGUID: null,
+      PendenciaGUID: null,
+      EventoGUID: null,
+      RelacaoCreatedAt: new Date()
+    };
+  }
+
+  /**
    * Vincular anexo a sugestão (módulo temporário, beta) — mesmo formato de vincularAnexoAviso.
    */
   async vincularAnexoSugestao(anexoGUID: string, sugestaoGUID: string): Promise<void> {
@@ -276,6 +305,33 @@ export class RelacaoAnexosDAO {
   }
 
   /**
+   * Buscar anexos da submissão de um grupo de projeto
+   */
+  async findAnexosByGrupoProjeto(grupoProjetoGUID: string): Promise<Anexo[]> {
+    console.log("🟢 RelacaoAnexosDAO.findAnexosByGrupoProjeto()");
+
+    const query = `
+      SELECT
+        a.AnexoGUID,
+        a.UsuarioGUID,
+        a.EscolaGUID,
+        a.AnexoCaminho,
+        a.AnexoNomeOriginal,
+        a.AnexoTamanho,
+        a.CreatedAt
+      FROM anexo a
+      JOIN relacaoanexosgrupoprojeto ra ON ra.AnexoGUID = a.AnexoGUID
+      WHERE ra.GrupoProjetoGUID = ?
+      ORDER BY a.CreatedAt ASC
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoProjetoGUID]);
+
+    return (rows as any[]).map((row: any) => this.#mapRowToAnexo(row));
+  }
+
+  /**
    * Buscar anexos de uma sugestão (módulo temporário, beta)
    */
   async findAnexosBySugestao(sugestaoGUID: string): Promise<Anexo[]> {
@@ -348,8 +404,16 @@ export class RelacaoAnexosDAO {
       "DELETE FROM relacaoanexossugestao WHERE RelacaoAnexoSugestaoGUID = ?",
       [relacaoGUID]
     );
+    if (resultSugestao.affectedRows > 0) {
+      return true;
+    }
 
-    return resultSugestao.affectedRows > 0;
+    const [resultGrupoProjeto] = await pool.execute<ResultSetHeader>(
+      "DELETE FROM relacaoanexosgrupoprojeto WHERE RelacaoAnexoGrupoProjetoGUID = ?",
+      [relacaoGUID]
+    );
+
+    return resultGrupoProjeto.affectedRows > 0;
   }
 
   /**

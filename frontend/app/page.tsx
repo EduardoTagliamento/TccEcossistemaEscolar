@@ -288,22 +288,22 @@ const FAQ_ITENS = [
   {
     pergunta: 'O Bauá substitui o Google Classroom?',
     resposta:
-      'Não necessariamente substitui — o Bauá foi inspirado nele, mas pensado para a realidade de escolas brasileiras, unindo gestão administrativa, comunicação e conteúdo acadêmico numa única plataforma.',
+      'Não necessariamente substitui, o Bauá foi inspirado nele, mas pensado para a realidade de escolas brasileiras, unindo gestão administrativa, comunicação e conteúdo acadêmico numa única plataforma.',
   },
   {
     pergunta: 'Preciso instalar algum programa?',
     resposta:
-      'Não. O Bauá funciona direto do navegador, em computador, tablet ou celular — não é necessário instalar nada.',
+      'Não. O Bauá funciona direto do navegador, em computador, tablet ou celular, não é necessário instalar nada.',
   },
   {
     pergunta: 'Meus dados e os dos alunos estão seguros?',
     resposta:
-      'Sim. Toda senha é armazenada com hash bcrypt, o acesso é autenticado via JWT, e cada escola tem seus dados isolados das demais — veja mais na seção de Segurança e Confiança acima.',
+      'Sim. Toda senha é armazenada com hash bcrypt, o acesso é autenticado via JWT, e cada escola tem seus dados isolados das demais, veja mais na seção de Segurança e Confiança acima.',
   },
   {
     pergunta: 'Dá pra migrar os dados da minha escola atual?',
     resposta:
-      'Sim — o módulo de Gestão de Dados permite importar alunos, professores e turmas em massa a partir de planilhas Excel, sem precisar recadastrar tudo manualmente.',
+      'Sim, o módulo de Gestão de Dados permite importar alunos, professores e turmas em massa a partir de planilhas Excel, sem precisar recadastrar tudo manualmente.',
   },
   {
     pergunta: 'O Bauá é gratuito?',
@@ -312,7 +312,7 @@ const FAQ_ITENS = [
   {
     pergunta: 'O Bauá funciona para escolas técnicas?',
     resposta:
-      'Sim — o sistema já contempla cursos técnicos, com cadastro específico para turmas e disciplinas desse tipo de formação.',
+      'Sim, o sistema já contempla cursos técnicos, com cadastro específico para turmas e disciplinas desse tipo de formação.',
   },
 ];
 

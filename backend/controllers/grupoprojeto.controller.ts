@@ -99,6 +99,26 @@ export default class GrupoProjetoController {
     }
   };
 
+  // PATCH /api/grupoprojeto/:grupoGUID/membros/:membroGUID/permissoes
+  atualizarPermissaoMembro = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      console.log('🔵 GrupoProjetoController.atualizarPermissaoMembro()');
+
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
+        res.status(401).json({ success: false, message: 'Não autenticado' });
+        return;
+      }
+
+      const { grupoGUID, membroGUID } = req.params;
+      const resultado = await this.#grupoProjetoService.atualizarPermissaoMembro(grupoGUID, membroGUID, req.body, usuarioGUID);
+
+      res.status(200).json({ success: true, message: resultado.mensagem, data: null });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   atualizarPontuacao = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       console.log('🔵 GrupoProjetoController.atualizarPontuacao()');

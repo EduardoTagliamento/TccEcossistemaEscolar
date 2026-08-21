@@ -59,3 +59,13 @@ export const AdicionarMembroBodySchema = z.object({
 export const TransferirLiderBodySchema = z.object({
   NovoLiderGUID: guidUsuario("NovoLiderGUID"),
 });
+
+export const PermissoesBodySchema = z
+  .object({
+    PodeExpulsarMembros: z.boolean().optional(),
+    PodeAtualizarGrupo: z.boolean().optional(),
+    PodeSubmeterProjeto: z.boolean().optional(),
+  })
+  .refine((obj) => Object.values(obj).some((v) => v !== undefined), {
+    message: "Envie ao menos uma permissão: PodeExpulsarMembros, PodeAtualizarGrupo, PodeSubmeterProjeto.",
+  });

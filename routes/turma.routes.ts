@@ -56,6 +56,13 @@ export default class TurmaRoteador {
       this.#turmaController.update
     );
 
+    // GET /api/turma/:guid/minha-funcao-grupo
+    this.#router.get(
+      "/:guid/minha-funcao-grupo",
+      TurmaMiddleware.validarGUID,
+      this.#turmaController.minhaFuncaoGrupo
+    );
+
     // PUT /api/turma/:guid/capa
     this.#router.put(
       "/:guid/capa",

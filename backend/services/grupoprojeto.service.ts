@@ -8,6 +8,7 @@ import { Pool, PoolConnection } from 'mysql2/promise';
 import { getNotificacaoService } from './notificacao.service';
 import { getAuditoriaService } from './auditoria.service';
 import { UsuarioDAO } from '../repositories/usuario.repository';
+import { resolverPermissaoGrupoComLiderUnico } from '../utils/helpers/permissao-granular.helper';
 import {
   GrupoProjetoComMembrosDTO,
   GrupoProjetoCreateDTO,
@@ -166,8 +167,10 @@ export default class GrupoProjetoService {
       throw new ErrorResponse(404, 'Grupo não encontrado');
     }
 
-    if (grupo.UsuarioGUIDLider !== usuarioGUID) {
-      throw new ErrorResponse(403, 'Apenas o líder pode atualizar o grupo');
+    const membro = await this.#usuarioXGrupoDAO.findByGrupoAndUsuario(grupoGUID, usuarioGUID);
+    const podeAtualizar = resolverPermissaoGrupoComLiderUnico(usuarioGUID, grupo.UsuarioGUIDLider, membro?.MembroPermissoes, 'PodeAtualizarGrupo');
+    if (!podeAtualizar) {
+      throw new ErrorResponse(403, 'Você não tem permissão para atualizar o grupo');
     }
 
     if (data.GrupoProjetoNome !== undefined && data.GrupoProjetoNome !== null && data.GrupoProjetoNome.length > 128) {
@@ -203,6 +206,38 @@ export default class GrupoProjetoService {
     }
 
     return { mensagem: 'Grupo atualizado com sucesso' };
+  };
+
+  /**
+   * CONCEDER/REVOGAR permissões granulares a um membro — só o líder concede
+   * (nunca delegável, mesma regra do chat: quem recebe uma capacidade nunca
+   * pode conceder capacidades a outros).
+   */
+  atualizarPermissaoMembro = async (
+    grupoGUID: string,
+    membroGUID: string,
+    patch: Record<string, boolean>,
+    atorGUID: string
+  ): Promise<{ mensagem: string }> => {
+    console.log('🟣 GrupoProjetoService.atualizarPermissaoMembro()');
+
+    const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
+    if (!grupo) {
+      throw new ErrorResponse(404, 'Grupo não encontrado');
+    }
+
+    if (grupo.UsuarioGUIDLider !== atorGUID) {
+      throw new ErrorResponse(403, 'Apenas o líder pode conceder permissões a membros do grupo');
+    }
+
+    const isMembro = await this.#usuarioXGrupoDAO.isMembroNaoLider(membroGUID, grupoGUID);
+    if (!isMembro) {
+      throw new ErrorResponse(404, 'Usuário não é membro deste grupo');
+    }
+
+    await this.#usuarioXGrupoDAO.atualizarPermissoes(grupoGUID, membroGUID, patch);
+
+    return { mensagem: 'Permissões atualizadas com sucesso' };
   };
 
   /**
@@ -454,9 +489,12 @@ export default class GrupoProjetoService {
 
       const ehLider = grupo.UsuarioGUIDLider === atorGUID;
       const ehCriadorDoProjeto = projeto.UsuarioGUIDCriador === atorGUID;
+      const atorMembro = await this.#usuarioXGrupoDAO.findByGrupoAndUsuario(grupoGUID, atorGUID);
+      const podeExpulsar = ehLider || ehCriadorDoProjeto
+        || resolverPermissaoGrupoComLiderUnico(atorGUID, grupo.UsuarioGUIDLider, atorMembro?.MembroPermissoes, 'PodeExpulsarMembros');
 
-      if (!ehLider && !ehCriadorDoProjeto) {
-        throw new ErrorResponse(403, 'Apenas o líder do grupo ou o criador do projeto podem expulsar membros');
+      if (!podeExpulsar) {
+        throw new ErrorResponse(403, 'Você não tem permissão para expulsar membros deste grupo');
       }
 
       if (membroGUID === atorGUID) {
