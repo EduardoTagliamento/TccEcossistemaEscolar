@@ -13,6 +13,7 @@ import { RowDataPacket } from 'mysql2';
 import { pool as mysqlPool } from '../database/mysql';
 import { getNotificacaoService } from './notificacao.service';
 import { getAuditoriaService } from './auditoria.service';
+import { resolverPermissaoGrupoComLiderUnico } from '../utils/helpers/permissao-granular.helper';
 import {
   GrupoTarefaComMembrosDTO,
   GrupoTarefaCreateDTO
@@ -178,9 +179,11 @@ export default class GrupoTarefaService {
         throw new ErrorResponse(404, 'Grupo não encontrado');
       }
 
-      // 2. Validar se quem expulsa é o líder
-      if (grupo.UsuarioGUIDLider !== liderGUID) {
-        throw new ErrorResponse(403, 'Apenas o líder pode expulsar membros');
+      // 2. Validar se quem expulsa é o líder ou tem a permissão delegada
+      const atorMembro = await this.#usuarioXGrupoDAO.findByGrupoAndUsuario(grupoGUID, liderGUID);
+      const podeExpulsar = resolverPermissaoGrupoComLiderUnico(liderGUID, grupo.UsuarioGUIDLider, atorMembro?.MembroPermissoes, 'PodeExpulsarMembros');
+      if (!podeExpulsar) {
+        throw new ErrorResponse(403, 'Você não tem permissão para expulsar membros deste grupo');
       }
 
       // 3. Validar se membro a ser expulso não é o líder
@@ -409,9 +412,11 @@ export default class GrupoTarefaService {
       throw new ErrorResponse(404, 'Grupo não encontrado');
     }
 
-    // 2. Validar se usuário é o líder
-    if (grupo.UsuarioGUIDLider !== usuarioGUID) {
-      throw new ErrorResponse(403, 'Apenas o líder pode alterar o nome do grupo');
+    // 2. Validar se usuário é o líder ou tem a permissão delegada
+    const membro = await this.#usuarioXGrupoDAO.findByGrupoAndUsuario(grupoGUID, usuarioGUID);
+    const podeAtualizar = resolverPermissaoGrupoComLiderUnico(usuarioGUID, grupo.UsuarioGUIDLider, membro?.MembroPermissoes, 'PodeAtualizarGrupo');
+    if (!podeAtualizar) {
+      throw new ErrorResponse(403, 'Você não tem permissão para atualizar o grupo');
     }
 
     // 3. Validar nome (máximo 128 caracteres)
@@ -429,6 +434,37 @@ export default class GrupoTarefaService {
     return {
       mensagem: 'Nome do grupo atualizado com sucesso'
     };
+  }
+
+  /**
+   * CONCEDER/REVOGAR permissões granulares a um membro — só o líder concede
+   * (nunca delegável).
+   */
+  async atualizarPermissaoMembro(
+    grupoGUID: string,
+    membroGUID: string,
+    patch: Record<string, boolean>,
+    liderGUID: string
+  ): Promise<{ mensagem: string }> {
+    console.log('🟣 GrupoTarefaService.atualizarPermissaoMembro()');
+
+    const grupo = await this.#grupoTarefaDAO.findById(grupoGUID);
+    if (!grupo) {
+      throw new ErrorResponse(404, 'Grupo não encontrado');
+    }
+
+    if (grupo.UsuarioGUIDLider !== liderGUID) {
+      throw new ErrorResponse(403, 'Apenas o líder pode conceder permissões a membros do grupo');
+    }
+
+    const isMembro = await this.#usuarioXGrupoDAO.isMembroNaoLider(membroGUID, grupoGUID);
+    if (!isMembro) {
+      throw new ErrorResponse(404, 'Usuário não é membro deste grupo');
+    }
+
+    await this.#usuarioXGrupoDAO.atualizarPermissoes(grupoGUID, membroGUID, patch);
+
+    return { mensagem: 'Permissões atualizadas com sucesso' };
   }
 
   /**

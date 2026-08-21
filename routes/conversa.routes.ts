@@ -14,6 +14,7 @@ import ConversaPermissaoService from '../backend/services/conversa-permissao.ser
 import { ConversaController } from '../backend/controllers/conversa.controller';
 import { ConversaMiddleware } from '../backend/middlewares/conversa.middleware';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
+import { uploadCapaMiddleware, handleMulterError } from '../backend/middlewares/upload.middleware';
 
 export function conversaRouterFactory(): Router {
   const router = Router();
@@ -144,6 +145,26 @@ export function conversaRouterFactory(): Router {
     ConversaMiddleware.validarGUID,
     ConversaMiddleware.validarUsuarioGUIDParam,
     controller.removerViceRepresentante
+  );
+
+  // PUT /api/conversa/:guid/personalizacao — nome/cor/foto do grupo
+  // (Representante/Vice-Representante em Turma, Líder em Tarefa, membro com
+  // PodePersonalizarGrupo delegado, ou Coordenação/Direção)
+  router.put(
+    '/:guid/personalizacao',
+    ConversaMiddleware.validarGUID,
+    uploadCapaMiddleware.single('imagem'),
+    handleMulterError,
+    controller.atualizarPersonalizacao
+  );
+
+  // PATCH /api/conversa/:guid/permissao/membro/:usuarioGUID — concede/revoga
+  // capacidades granulares a um membro (Representante/Líder only)
+  router.patch(
+    '/:guid/permissao/membro/:usuarioGUID',
+    ConversaMiddleware.validarGUID,
+    ConversaMiddleware.validarUsuarioGUIDParam,
+    controller.atualizarPermissaoMembro
   );
 
   return router;

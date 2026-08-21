@@ -124,6 +124,42 @@ export default class GrupoTarefaController {
   };
 
   /**
+   * PATCH /api/grupotarefa/:grupoGUID/membros/:membroGUID/permissoes
+   * Conceder/revogar permissões granulares de um membro (apenas líder)
+   */
+  atualizarPermissaoMembro = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      console.log('🔵 GrupoTarefaController.atualizarPermissaoMembro()');
+
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
+        res.status(401).json({
+          success: false,
+          message: 'Não autenticado'
+        });
+        return;
+      }
+
+      const { grupoGUID, membroGUID } = req.params;
+
+      const resultado = await this.#grupoTarefaService.atualizarPermissaoMembro(
+        grupoGUID,
+        membroGUID,
+        req.body,
+        usuarioGUID
+      );
+
+      res.status(200).json({
+        success: true,
+        message: resultado.mensagem,
+        data: null
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * DELETE /api/grupotarefa/:grupoGUID/membros/:membroGUID
    * Expulsar membro do grupo (apenas líder)
    */

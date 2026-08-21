@@ -5,6 +5,7 @@ export default class ConversaGrupoMembro {
   #MembroStatus!: 'Ativo' | 'Inativo';
   #MembroEntradaAt!: Date;
   #MembroSaidaAt: Date | null = null;
+  #MembroPermissoes: Record<string, boolean> | null = null;
 
   constructor() {
     console.log('⬆️  ConversaGrupoMembro.constructor()');
@@ -16,6 +17,7 @@ export default class ConversaGrupoMembro {
   get MembroStatus(): 'Ativo' | 'Inativo' { return this.#MembroStatus; }
   get MembroEntradaAt(): Date { return this.#MembroEntradaAt; }
   get MembroSaidaAt(): Date | null { return this.#MembroSaidaAt; }
+  get MembroPermissoes(): Record<string, boolean> | null { return this.#MembroPermissoes; }
 
   set ConversaGUID(value: string) {
     if (typeof value !== 'string' || value.trim().length !== 36) {
@@ -60,6 +62,22 @@ export default class ConversaGrupoMembro {
     this.#MembroSaidaAt = value;
   }
 
+  set MembroPermissoes(value: Record<string, boolean> | null) {
+    if (value === null) {
+      this.#MembroPermissoes = null;
+      return;
+    }
+    if (typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('MembroPermissoes deve ser um objeto de chave -> boolean');
+    }
+    for (const chave of Object.keys(value)) {
+      if (typeof value[chave] !== 'boolean') {
+        throw new Error(`MembroPermissoes.${chave} deve ser boolean`);
+      }
+    }
+    this.#MembroPermissoes = value;
+  }
+
   toJSON() {
     return {
       ConversaGUID: this.#ConversaGUID,
@@ -68,6 +86,7 @@ export default class ConversaGrupoMembro {
       MembroStatus: this.#MembroStatus,
       MembroEntradaAt: this.#MembroEntradaAt.toISOString(),
       MembroSaidaAt: this.#MembroSaidaAt?.toISOString() ?? null,
+      MembroPermissoes: this.#MembroPermissoes,
     };
   }
 
@@ -79,6 +98,9 @@ export default class ConversaGrupoMembro {
     m.MembroStatus = data.MembroStatus;
     m.MembroEntradaAt = data.MembroEntradaAt;
     m.MembroSaidaAt = data.MembroSaidaAt ?? null;
+    m.MembroPermissoes = typeof data.MembroPermissoes === 'string'
+      ? JSON.parse(data.MembroPermissoes)
+      : (data.MembroPermissoes ?? null);
     return m;
   }
 }

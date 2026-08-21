@@ -9,6 +9,7 @@ import {
   PontuacaoBodySchema,
   AdicionarMembroBodySchema,
   TransferirLiderBodySchema,
+  PermissoesBodySchema,
 } from '../schemas/grupoprojeto.schema';
 
 /**
@@ -53,5 +54,10 @@ export default class GrupoProjetoMiddleware {
   validateTransferirLiderBody = (request: Request, response: Response, next: NextFunction): void => {
     console.log('🔷 GrupoProjetoMiddleware.validateTransferirLiderBody()');
     zodValidate(TransferirLiderBodySchema, 'body')(request, response, next);
+  };
+
+  validatePermissoesBody = (request: Request, response: Response, next: NextFunction): void => {
+    console.log('🔷 GrupoProjetoMiddleware.validatePermissoesBody()');
+    zodValidate(PermissoesBodySchema, 'body')(request, response, next);
   };
 }

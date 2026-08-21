@@ -169,6 +169,26 @@ export async function buscarTurma(turmaGUID: string): Promise<Turma> {
   return result.data;
 }
 
+export type MinhaFuncaoGrupo = 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante' | null;
+
+/**
+ * Função do usuário autenticado no grupo de chat da turma — usado só pra
+ * decidir se mostra o botão de "editar capa" (Representante/Vice-Representante).
+ */
+export async function buscarMinhaFuncaoGrupo(turmaGUID: string): Promise<MinhaFuncaoGrupo> {
+  const response = await fetch(`${API_URL}/turma/${turmaGUID}/minha-funcao-grupo`, {
+    headers: getHeaders()
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao consultar função no grupo');
+  }
+
+  return result.data.funcao;
+}
+
 // ==================== UPDATE ====================
 
 /**

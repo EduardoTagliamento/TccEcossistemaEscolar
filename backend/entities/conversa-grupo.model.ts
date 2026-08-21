@@ -3,6 +3,8 @@ export default class ConversaGrupo {
   #ConversaGrupoNome!: string;
   #ConversaGrupoTipo!: 'Turma' | 'Tarefa';
   #ConversaGrupoRefGUID!: string;
+  #ConversaGrupoCorFundo: string | null = null;
+  #ConversaGrupoImagemUrl: string | null = null;
 
   constructor() {
     console.log('⬆️  ConversaGrupo.constructor()');
@@ -12,6 +14,8 @@ export default class ConversaGrupo {
   get ConversaGrupoNome(): string { return this.#ConversaGrupoNome; }
   get ConversaGrupoTipo(): 'Turma' | 'Tarefa' { return this.#ConversaGrupoTipo; }
   get ConversaGrupoRefGUID(): string { return this.#ConversaGrupoRefGUID; }
+  get ConversaGrupoCorFundo(): string | null { return this.#ConversaGrupoCorFundo; }
+  get ConversaGrupoImagemUrl(): string | null { return this.#ConversaGrupoImagemUrl; }
 
   set ConversaGUID(value: string) {
     if (typeof value !== 'string' || value.trim().length !== 36) {
@@ -43,12 +47,36 @@ export default class ConversaGrupo {
     this.#ConversaGrupoRefGUID = value.trim();
   }
 
+  set ConversaGrupoCorFundo(value: string | null) {
+    if (value === null) {
+      this.#ConversaGrupoCorFundo = null;
+      return;
+    }
+    if (typeof value !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(value)) {
+      throw new Error('ConversaGrupoCorFundo deve ser uma cor hex válida (#RRGGBB)');
+    }
+    this.#ConversaGrupoCorFundo = value;
+  }
+
+  set ConversaGrupoImagemUrl(value: string | null) {
+    if (value === null) {
+      this.#ConversaGrupoImagemUrl = null;
+      return;
+    }
+    if (typeof value !== 'string' || value.length > 500) {
+      throw new Error('ConversaGrupoImagemUrl deve ter no máximo 500 caracteres');
+    }
+    this.#ConversaGrupoImagemUrl = value;
+  }
+
   toJSON() {
     return {
       ConversaGUID: this.#ConversaGUID,
       ConversaGrupoNome: this.#ConversaGrupoNome,
       ConversaGrupoTipo: this.#ConversaGrupoTipo,
       ConversaGrupoRefGUID: this.#ConversaGrupoRefGUID,
+      ConversaGrupoCorFundo: this.#ConversaGrupoCorFundo,
+      ConversaGrupoImagemUrl: this.#ConversaGrupoImagemUrl,
     };
   }
 
@@ -58,6 +86,8 @@ export default class ConversaGrupo {
     cg.ConversaGrupoNome = data.ConversaGrupoNome;
     cg.ConversaGrupoTipo = data.ConversaGrupoTipo;
     cg.ConversaGrupoRefGUID = data.ConversaGrupoRefGUID;
+    cg.ConversaGrupoCorFundo = data.ConversaGrupoCorFundo ?? null;
+    cg.ConversaGrupoImagemUrl = data.ConversaGrupoImagemUrl ?? null;
     return cg;
   }
 }

@@ -16,6 +16,7 @@ import { MensagemFixadaDTO } from './conversa.service';
 import ErrorResponse from '../utils/ErrorResponse';
 import { pool } from '../database/mysql';
 import { getNotificacaoService } from './notificacao.service';
+import { resolverPermissaoChat } from '../utils/helpers/permissao-granular.helper';
 
 export interface MensagemDTO {
   MensagemGUID: string;
@@ -244,15 +245,15 @@ export default class MensagemService {
         throw new ErrorResponse(403, 'Você só pode deletar suas próprias mensagens em conversas individuais');
       }
       const grupo = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
-      const funcao = await this.#conversaGrupoDAO.getFuncao(conversaGUID, usuarioGUID);
-      if (grupo?.ConversaGrupoTipo === 'Tarefa') {
-        if (funcao !== 'Lider') {
-          throw new ErrorResponse(403, 'Apenas o Líder pode deletar mensagens de outros membros');
-        }
-      } else {
-        if (funcao !== 'Representante' && funcao !== 'Vice-Representante') {
-          throw new ErrorResponse(403, 'Apenas o Representante ou Vice-Representante pode deletar mensagens de outros membros');
-        }
+      const membro = await this.#conversaGrupoDAO.findMembro(conversaGUID, usuarioGUID);
+      const podeExcluir = resolverPermissaoChat(
+        membro?.MembroFuncao ?? null,
+        membro?.MembroPermissoes,
+        grupo?.ConversaGrupoTipo ?? 'Turma',
+        'PodeExcluirMensagens'
+      );
+      if (!podeExcluir) {
+        throw new ErrorResponse(403, 'Você não tem permissão para deletar mensagens de outros membros');
       }
     }
 

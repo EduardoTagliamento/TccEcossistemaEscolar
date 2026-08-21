@@ -13,6 +13,7 @@ interface UsuarioXGrupoProjetoRow extends RowDataPacket {
   GrupoProjetoGUID: string;
   UsuarioGUID: string;
   DataEntrada: Date;
+  MembroPermissoes: Record<string, boolean> | string | null;
 }
 
 export class UsuarioXGrupoProjetoDAO {
@@ -174,11 +175,28 @@ export class UsuarioXGrupoProjetoDAO {
     return (rows[0] as any).total;
   }
 
+  // Concede/revoga capacidades específicas ao membro (merge com o que já existe).
+  async atualizarPermissoes(grupoGUID: string, usuarioGUID: string, patch: Record<string, boolean>): Promise<void> {
+    console.log('🟢 UsuarioXGrupoProjetoDAO.atualizarPermissoes()');
+
+    const atual = await this.findByGrupoAndUsuario(grupoGUID, usuarioGUID);
+    const mesclado = { ...(atual?.MembroPermissoes ?? {}), ...patch };
+
+    const pool = await this.#database.getPool();
+    await pool.execute(
+      `UPDATE usuarioxgrupoprojeto SET MembroPermissoes = ? WHERE GrupoProjetoGUID = ? AND UsuarioGUID = ?`,
+      [JSON.stringify(mesclado), grupoGUID, usuarioGUID]
+    );
+  }
+
   private mapRow(row: UsuarioXGrupoProjetoRow): UsuarioXGrupoProjeto {
     return {
       GrupoProjetoGUID: row.GrupoProjetoGUID,
       UsuarioGUID: row.UsuarioGUID,
-      DataEntrada: row.DataEntrada
+      DataEntrada: row.DataEntrada,
+      MembroPermissoes: typeof row.MembroPermissoes === 'string'
+        ? JSON.parse(row.MembroPermissoes)
+        : (row.MembroPermissoes ?? null)
     };
   }
 }

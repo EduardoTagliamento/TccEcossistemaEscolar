@@ -21,6 +21,8 @@ interface GrupoProjetoRow extends RowDataPacket {
   GrupoProjetoProposta: string;
   GrupoProjetoVisibilidade: 'Aberto' | 'Fechado';
   GrupoProjetoPontuacao: number | null;
+  GrupoProjetoSubmetidoEm: Date | null;
+  GrupoProjetoSubmetidoPorGUID: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }
@@ -211,6 +213,16 @@ export class GrupoProjetoDAO {
       params.push(data.UsuarioGUIDLider);
     }
 
+    if (data.GrupoProjetoSubmetidoEm !== undefined) {
+      updates.push('GrupoProjetoSubmetidoEm = ?');
+      params.push(data.GrupoProjetoSubmetidoEm);
+    }
+
+    if (data.GrupoProjetoSubmetidoPorGUID !== undefined) {
+      updates.push('GrupoProjetoSubmetidoPorGUID = ?');
+      params.push(data.GrupoProjetoSubmetidoPorGUID);
+    }
+
     if (updates.length === 0) {
       return await this.findById(guid);
     }
@@ -288,6 +300,8 @@ export class GrupoProjetoDAO {
       GrupoProjetoProposta: row.GrupoProjetoProposta,
       GrupoProjetoVisibilidade: row.GrupoProjetoVisibilidade,
       GrupoProjetoPontuacao: row.GrupoProjetoPontuacao,
+      GrupoProjetoSubmetidoEm: row.GrupoProjetoSubmetidoEm ?? null,
+      GrupoProjetoSubmetidoPorGUID: row.GrupoProjetoSubmetidoPorGUID ?? null,
       CreatedAt: row.CreatedAt,
       UpdatedAt: row.UpdatedAt
     };

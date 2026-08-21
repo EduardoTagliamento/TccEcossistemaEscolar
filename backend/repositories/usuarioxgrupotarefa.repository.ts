@@ -12,6 +12,7 @@ interface UsuarioXGrupoTarefaRow extends RowDataPacket {
   UsuarioGUID: string;
   DataEntrada: Date;
   CreatedAt: Date;
+  MembroPermissoes: Record<string, boolean> | string | null;
 }
 
 export class UsuarioXGrupoTarefaDAO {
@@ -128,17 +129,46 @@ export class UsuarioXGrupoTarefaDAO {
   // AUXILIAR - Verificar se usuário é membro (não-líder) do grupo
   async isMembroNaoLider(usuarioGUID: string, grupoGUID: string): Promise<boolean> {
     console.log('🟢 UsuarioXGrupoTarefaDAO.isMembroNaoLider()');
-    
+
     const query = `
       SELECT 1 FROM usuarioxgrupotarefa
       WHERE GrupoTarefaGUID = ? AND UsuarioGUID = ?
       LIMIT 1
     `;
-    
+
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<RowDataPacket[]>(query, [grupoGUID, usuarioGUID]);
-    
+
     return rows.length > 0;
+  }
+
+  async findByGrupoAndUsuario(grupoGUID: string, usuarioGUID: string): Promise<UsuarioXGrupoTarefa | null> {
+    console.log('🟢 UsuarioXGrupoTarefaDAO.findByGrupoAndUsuario()');
+
+    const query = `
+      SELECT * FROM usuarioxgrupotarefa
+      WHERE GrupoTarefaGUID = ? AND UsuarioGUID = ?
+      LIMIT 1
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<UsuarioXGrupoTarefaRow[]>(query, [grupoGUID, usuarioGUID]);
+
+    return rows.length > 0 ? this.mapRow(rows[0]) : null;
+  }
+
+  // Concede/revoga capacidades específicas ao membro (merge com o que já existe).
+  async atualizarPermissoes(grupoGUID: string, usuarioGUID: string, patch: Record<string, boolean>): Promise<void> {
+    console.log('🟢 UsuarioXGrupoTarefaDAO.atualizarPermissoes()');
+
+    const atual = await this.findByGrupoAndUsuario(grupoGUID, usuarioGUID);
+    const mesclado = { ...(atual?.MembroPermissoes ?? {}), ...patch };
+
+    const pool = await this.#database.getPool();
+    await pool.execute(
+      `UPDATE usuarioxgrupotarefa SET MembroPermissoes = ? WHERE GrupoTarefaGUID = ? AND UsuarioGUID = ?`,
+      [JSON.stringify(mesclado), grupoGUID, usuarioGUID]
+    );
   }
 
   private mapRow(row: UsuarioXGrupoTarefaRow): UsuarioXGrupoTarefa {
@@ -147,7 +177,10 @@ export class UsuarioXGrupoTarefaDAO {
       GrupoTarefaGUID: row.GrupoTarefaGUID,
       UsuarioGUID: row.UsuarioGUID,
       DataEntrada: row.DataEntrada,
-      CreatedAt: row.CreatedAt
+      CreatedAt: row.CreatedAt,
+      MembroPermissoes: typeof row.MembroPermissoes === 'string'
+        ? JSON.parse(row.MembroPermissoes)
+        : (row.MembroPermissoes ?? null)
     };
   }
 }

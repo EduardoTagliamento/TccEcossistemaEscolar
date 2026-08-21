@@ -8,6 +8,8 @@ interface ConversaGrupoRow extends RowDataPacket {
   ConversaGrupoNome: string;
   ConversaGrupoTipo: 'Turma' | 'Tarefa';
   ConversaGrupoRefGUID: string;
+  ConversaGrupoCorFundo: string | null;
+  ConversaGrupoImagemUrl: string | null;
 }
 
 type MembroFuncaoType = 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante';
@@ -19,6 +21,7 @@ interface ConversaGrupoMembroRow extends RowDataPacket {
   MembroStatus: 'Ativo' | 'Inativo';
   MembroEntradaAt: Date;
   MembroSaidaAt: Date | null;
+  MembroPermissoes: Record<string, boolean> | string | null;
 }
 
 interface GrupoTarefaExpiradoRow extends RowDataPacket {
@@ -79,6 +82,41 @@ export class ConversaGrupoDAO {
     await pool.execute(
       `UPDATE conversa_grupo SET ConversaGrupoNome = ? WHERE ConversaGUID = ?`,
       [nome, conversaGUID]
+    );
+  }
+
+  /** Personalização do grupo (nome/cor/foto) — usado pelo endpoint de
+   * personalização, distinto de updateNome (que só serve a sincronização
+   * automática vinda do nome da turma). */
+  async atualizarPersonalizacao(
+    conversaGUID: string,
+    updates: Partial<{ ConversaGrupoNome: string; ConversaGrupoCorFundo: string; ConversaGrupoImagemUrl: string }>
+  ): Promise<void> {
+    console.log('🟢 ConversaGrupoDAO.atualizarPersonalizacao()');
+
+    const campos: string[] = [];
+    const valores: any[] = [];
+
+    if (updates.ConversaGrupoNome !== undefined) {
+      campos.push('ConversaGrupoNome = ?');
+      valores.push(updates.ConversaGrupoNome);
+    }
+    if (updates.ConversaGrupoCorFundo !== undefined) {
+      campos.push('ConversaGrupoCorFundo = ?');
+      valores.push(updates.ConversaGrupoCorFundo);
+    }
+    if (updates.ConversaGrupoImagemUrl !== undefined) {
+      campos.push('ConversaGrupoImagemUrl = ?');
+      valores.push(updates.ConversaGrupoImagemUrl);
+    }
+
+    if (campos.length === 0) return;
+
+    valores.push(conversaGUID);
+    const pool = await this.#database.getPool();
+    await pool.execute(
+      `UPDATE conversa_grupo SET ${campos.join(', ')} WHERE ConversaGUID = ?`,
+      valores
     );
   }
 
@@ -168,6 +206,33 @@ export class ConversaGrupoDAO {
     const list = rows as RowDataPacket[];
     if (list.length === 0) return null;
     return list[0].MembroFuncao as MembroFuncaoType;
+  }
+
+  /** Linha completa do membro (incl. MembroPermissoes) — getFuncao() só traz o enum. */
+  async findMembro(conversaGUID: string, usuarioGUID: string): Promise<ConversaGrupoMembro | null> {
+    console.log('🟢 ConversaGrupoDAO.findMembro()');
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(
+      `SELECT * FROM conversa_grupo_membro
+       WHERE ConversaGUID = ? AND MembroUsuarioGUID = ? AND MembroStatus = 'Ativo' LIMIT 1`,
+      [conversaGUID, usuarioGUID]
+    );
+    const list = rows as ConversaGrupoMembroRow[];
+    if (list.length === 0) return null;
+    return ConversaGrupoMembro.fromDatabase(list[0]);
+  }
+
+  /** Concede/revoga capacidades específicas ao membro (merge com o que já existe). */
+  async atualizarPermissaoMembro(conversaGUID: string, usuarioGUID: string, patch: Record<string, boolean>): Promise<void> {
+    console.log('🟢 ConversaGrupoDAO.atualizarPermissaoMembro()');
+    const atual = await this.findMembro(conversaGUID, usuarioGUID);
+    const mesclado = { ...(atual?.MembroPermissoes ?? {}), ...patch };
+
+    const pool = await this.#database.getPool();
+    await pool.execute(
+      `UPDATE conversa_grupo_membro SET MembroPermissoes = ? WHERE ConversaGUID = ? AND MembroUsuarioGUID = ?`,
+      [JSON.stringify(mesclado), conversaGUID, usuarioGUID]
+    );
   }
 
   async findByFuncao(conversaGUID: string, funcao: MembroFuncaoType): Promise<ConversaGrupoMembro | null> {

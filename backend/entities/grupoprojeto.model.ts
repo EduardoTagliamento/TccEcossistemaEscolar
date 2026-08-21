@@ -8,6 +8,8 @@ export interface GrupoProjeto {
   GrupoProjetoProposta: string;
   GrupoProjetoVisibilidade: GrupoProjetoVisibilidade;
   GrupoProjetoPontuacao: number | null;
+  GrupoProjetoSubmetidoEm: Date | null;
+  GrupoProjetoSubmetidoPorGUID: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }
@@ -25,6 +27,8 @@ export interface GrupoProjetoUpdateDTO {
   GrupoProjetoProposta?: string;
   GrupoProjetoVisibilidade?: GrupoProjetoVisibilidade;
   UsuarioGUIDLider?: string; // Para transferência de liderança
+  GrupoProjetoSubmetidoEm?: Date | null;
+  GrupoProjetoSubmetidoPorGUID?: string | null;
 }
 
 export interface MembroGrupoProjetoDTO {
@@ -61,6 +65,8 @@ export class GrupoProjetoEntity {
   #grupoProjetoProposta: string;
   #grupoProjetoVisibilidade: GrupoProjetoVisibilidade;
   #grupoProjetoPontuacao: number | null;
+  #grupoProjetoSubmetidoEm: Date | null;
+  #grupoProjetoSubmetidoPorGUID: string | null;
   #createdAt: Date;
   #updatedAt: Date;
 
@@ -72,6 +78,8 @@ export class GrupoProjetoEntity {
     this.#grupoProjetoProposta = data.GrupoProjetoProposta;
     this.#grupoProjetoVisibilidade = data.GrupoProjetoVisibilidade;
     this.#grupoProjetoPontuacao = data.GrupoProjetoPontuacao;
+    this.#grupoProjetoSubmetidoEm = data.GrupoProjetoSubmetidoEm ?? null;
+    this.#grupoProjetoSubmetidoPorGUID = data.GrupoProjetoSubmetidoPorGUID ?? null;
     this.#createdAt = data.CreatedAt;
     this.#updatedAt = data.UpdatedAt;
   }
@@ -83,6 +91,8 @@ export class GrupoProjetoEntity {
   get grupoProjetoProposta(): string { return this.#grupoProjetoProposta; }
   get grupoProjetoVisibilidade(): GrupoProjetoVisibilidade { return this.#grupoProjetoVisibilidade; }
   get grupoProjetoPontuacao(): number | null { return this.#grupoProjetoPontuacao; }
+  get grupoProjetoSubmetidoEm(): Date | null { return this.#grupoProjetoSubmetidoEm; }
+  get grupoProjetoSubmetidoPorGUID(): string | null { return this.#grupoProjetoSubmetidoPorGUID; }
   get createdAt(): Date { return this.#createdAt; }
   get updatedAt(): Date { return this.#updatedAt; }
 
@@ -159,6 +169,8 @@ export class GrupoProjetoEntity {
       GrupoProjetoProposta: this.#grupoProjetoProposta,
       GrupoProjetoVisibilidade: this.#grupoProjetoVisibilidade,
       GrupoProjetoPontuacao: this.#grupoProjetoPontuacao,
+      GrupoProjetoSubmetidoEm: this.#grupoProjetoSubmetidoEm,
+      GrupoProjetoSubmetidoPorGUID: this.#grupoProjetoSubmetidoPorGUID,
       CreatedAt: this.#createdAt,
       UpdatedAt: this.#updatedAt
     };

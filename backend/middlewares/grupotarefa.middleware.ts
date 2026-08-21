@@ -6,6 +6,7 @@ import {
   GrupoAndMembroParamsSchema,
   NomeGrupoBodySchema,
   TransferirLiderBodySchema,
+  PermissoesBodySchema,
 } from '../schemas/grupotarefa.schema';
 
 /**
@@ -44,5 +45,11 @@ export default class GrupoTarefaMiddleware {
   validateTransferirLiderBody = (request: Request, response: Response, next: NextFunction): void => {
     console.log('🔷 GrupoTarefaMiddleware.validateTransferirLiderBody()');
     zodValidate(TransferirLiderBodySchema, 'body')(request, response, next);
+  };
+
+  /** Valida body para conceder/revogar permissões granulares (PATCH) */
+  validatePermissoesBody = (request: Request, response: Response, next: NextFunction): void => {
+    console.log('🔷 GrupoTarefaMiddleware.validatePermissoesBody()');
+    zodValidate(PermissoesBodySchema, 'body')(request, response, next);
   };
 }

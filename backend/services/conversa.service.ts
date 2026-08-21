@@ -4,6 +4,7 @@ import { ConversaIndividualDAO } from '../repositories/conversa-individual.repos
 import { MensagemDAO, agruparReacoesPorMensagem, agruparLeitoresPorMensagem } from '../repositories/mensagem.repository';
 import { UsuarioDAO } from '../repositories/usuario.repository';
 import ErrorResponse from '../utils/ErrorResponse';
+import { resolverPermissaoChat } from '../utils/helpers/permissao-granular.helper';
 
 export interface MensagemFixadaDTO {
   MensagemGUID: string;
@@ -52,7 +53,11 @@ export interface ConversaDetalheDTO {
   ConversaGrupoNome: string | null;
   ConversaGrupoTipo: 'Turma' | 'Tarefa' | null;
   ConversaGrupoRefGUID: string | null;
+  ConversaGrupoCorFundo: string | null;
+  ConversaGrupoImagemUrl: string | null;
   Membros: MembroDTO[];
+  /** Capacidades do usuário autenticado neste grupo — null pra conversa Individual. */
+  MinhasPermissoes: { PodeExcluirMensagens: boolean; PodePersonalizarGrupo: boolean } | null;
   // Individual
   ParceiroGUID: string | null;
   ParceiroNome: string | null;
@@ -177,6 +182,8 @@ export default class ConversaService {
     if (conversa.ConversaTipo === 'Grupo') {
       const grupo = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
       const membros = await this.#conversaGrupoDAO.findMembrosComNome(conversaGUID);
+      const meuMembro = await this.#conversaGrupoDAO.findMembro(conversaGUID, usuarioGUID);
+      const grupoTipo = grupo?.ConversaGrupoTipo ?? 'Turma';
 
       return {
         ConversaGUID: conversa.ConversaGUID,
@@ -184,6 +191,8 @@ export default class ConversaService {
         ConversaGrupoNome: grupo?.ConversaGrupoNome ?? null,
         ConversaGrupoTipo: grupo?.ConversaGrupoTipo ?? null,
         ConversaGrupoRefGUID: grupo?.ConversaGrupoRefGUID ?? null,
+        ConversaGrupoCorFundo: grupo?.ConversaGrupoCorFundo ?? null,
+        ConversaGrupoImagemUrl: grupo?.ConversaGrupoImagemUrl ?? null,
         Membros: membros.map((m) => ({
           UsuarioGUID: m.MembroUsuarioGUID,
           UsuarioNome: m.UsuarioNome,
@@ -191,6 +200,10 @@ export default class ConversaService {
           MembroFuncao: m.MembroFuncao,
           MembroEntradaAt: m.MembroEntradaAt.toISOString(),
         })),
+        MinhasPermissoes: {
+          PodeExcluirMensagens: resolverPermissaoChat(meuMembro?.MembroFuncao ?? null, meuMembro?.MembroPermissoes, grupoTipo, 'PodeExcluirMensagens'),
+          PodePersonalizarGrupo: resolverPermissaoChat(meuMembro?.MembroFuncao ?? null, meuMembro?.MembroPermissoes, grupoTipo, 'PodePersonalizarGrupo'),
+        },
         ParceiroGUID: null,
         ParceiroNome: null,
         TagContextual: null,
@@ -207,7 +220,10 @@ export default class ConversaService {
         ConversaGrupoNome: null,
         ConversaGrupoTipo: null,
         ConversaGrupoRefGUID: null,
+        ConversaGrupoCorFundo: null,
+        ConversaGrupoImagemUrl: null,
         Membros: [],
+        MinhasPermissoes: null,
         ParceiroGUID: parceiro?.ParceiroGUID ?? null,
         ParceiroNome: parceiro?.ParceiroNome ?? null,
         TagContextual: null,

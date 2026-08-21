@@ -579,6 +579,18 @@ export default class TurmaService {
   }
 
   /**
+   * Auto-consulta: qual a função do próprio usuário no grupo de chat desta
+   * turma (Membro/Lider/Representante/Vice-Representante, ou null se nem
+   * participa) — usado pelo frontend só pra decidir se mostra o botão de
+   * "editar capa" (quem realmente pode salvar é sempre revalidado em
+   * `atualizarCapa`/`validarPermissaoCapaTurma`, isto aqui é só UI).
+   */
+  async buscarMinhaFuncaoNoGrupo(turmaGUID: string, usuarioGUID: string): Promise<string | null> {
+    if (!this.#conversaGrupoService) return null;
+    return this.#conversaGrupoService.getFuncaoNaTurma(turmaGUID, usuarioGUID);
+  }
+
+  /**
    * Atualiza a capa (imagem + cor) da turma — compartilhada entre todas as
    * matérias dessa turma. Quem pode: Representante/Vice-Representante do
    * grupo de chat da turma, ou Coordenação/Direção ativa na escola.

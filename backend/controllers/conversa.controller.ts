@@ -189,6 +189,41 @@ export class ConversaController {
     }
   };
 
+  // PUT /api/conversa/:guid/personalizacao
+  atualizarPersonalizacao = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log('🔵 ConversaController.atualizarPersonalizacao()');
+    try {
+      const { guid } = req.params;
+      const usuarioGUID = req.user!.UsuarioGUID;
+      const arquivo = (req as any).file as Express.Multer.File | undefined;
+      const nome = req.body.nome as string | undefined;
+      const cor = req.body.cor as string | undefined;
+
+      const atualizado = await this.#conversaPermissaoService!.atualizarPersonalizacao(guid, usuarioGUID, {
+        nome,
+        cor,
+        imagem: arquivo ? { buffer: arquivo.buffer, mimetype: arquivo.mimetype } : undefined,
+      });
+
+      res.status(200).json({ success: true, message: 'Grupo personalizado com sucesso', data: atualizado });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // PATCH /api/conversa/:guid/permissao/membro/:usuarioGUID
+  atualizarPermissaoMembro = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log('🔵 ConversaController.atualizarPermissaoMembro()');
+    try {
+      const { guid, usuarioGUID: alvoGUID } = req.params;
+      const solicitanteGUID = req.user!.UsuarioGUID;
+      await this.#conversaPermissaoService!.atualizarPermissaoMembro(guid, alvoGUID, req.body, solicitanteGUID);
+      res.status(200).json({ success: true, message: 'Permissões atualizadas' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // DELETE /api/conversa/:guid/mensagem/:msgGuid
   deletarMensagem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log('🔵 ConversaController.deletarMensagem()');
