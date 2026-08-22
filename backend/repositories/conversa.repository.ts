@@ -41,12 +41,13 @@ export class ConversaDAO {
 
   /**
    * @param escolaGUID Quando informado, restringe às conversas da escola:
-   * grupos de Turma (via turma.EscolaGUID) ou Tarefa (via
-   * grupotarefa->tarefaacademica->materiaxprofessorxturma->turma), e
-   * individuais só quando o OUTRO participante também tem vínculo ativo
-   * nessa escola. Sem isso, um usuário com turma/vínculo em mais de uma
-   * escola via cross-escola (ver findMatriculaAtivaByUsuarioEEscola) via
-   * todas as conversas de todas as escolas misturadas.
+   * grupos de Turma (via turma.EscolaGUID), Tarefa (via
+   * grupotarefa->tarefaacademica->materiaxprofessorxturma->turma) ou Projeto
+   * (via grupoprojeto->projeto.EscolaGUID), e individuais só quando o OUTRO
+   * participante também tem vínculo ativo nessa escola. Sem isso, um usuário
+   * com turma/vínculo em mais de uma escola via cross-escola (ver
+   * findMatriculaAtivaByUsuarioEEscola) via todas as conversas de todas as
+   * escolas misturadas.
    */
   async findAllByUsuarioGUID(usuarioGUID: string, escolaGUID?: string): Promise<Conversa[]> {
     console.log('🟢 ConversaDAO.findAllByUsuarioGUID()');
@@ -60,9 +61,11 @@ export class ConversaDAO {
         LEFT JOIN tarefaacademica ta ON ta.TarefaGUID = gt.TarefaGUID
         LEFT JOIN materiaxprofessorxturma mpt ON mpt.MatProfTurGUID = ta.matXprofXturxescGUID
         LEFT JOIN turma t_tarefa ON t_tarefa.TurmaGUID = mpt.TurmaGUID
+        LEFT JOIN grupoprojeto gp ON cg.ConversaGrupoTipo = 'Projeto' AND gp.GrupoProjetoGUID = cg.ConversaGrupoRefGUID
+        LEFT JOIN projeto pj ON pj.ProjetoGUID = gp.ProjetoGUID
       `
       : '';
-    const ondeGrupo = escolaGUID ? ' AND COALESCE(t_direct.EscolaGUID, t_tarefa.EscolaGUID) = ?' : '';
+    const ondeGrupo = escolaGUID ? ' AND COALESCE(t_direct.EscolaGUID, t_tarefa.EscolaGUID, pj.EscolaGUID) = ?' : '';
 
     const ondeIndividual = escolaGUID
       ? ` AND EXISTS (

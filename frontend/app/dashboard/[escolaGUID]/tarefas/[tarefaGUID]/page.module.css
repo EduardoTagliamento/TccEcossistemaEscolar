@@ -369,6 +369,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   padding: var(--space-3);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-3);
@@ -424,6 +425,23 @@
 .membroAcoes {
   display: flex;
   gap: 0.5rem;
+}
+
+.permissoesRow {
+  display: flex;
+  width: 100%;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+.permissaoCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--slate-600, #46564D);
+  cursor: pointer;
 }
 
 .btnExpulsar,

@@ -1,7 +1,7 @@
 export default class ConversaGrupo {
   #ConversaGUID!: string;
   #ConversaGrupoNome!: string;
-  #ConversaGrupoTipo!: 'Turma' | 'Tarefa';
+  #ConversaGrupoTipo!: 'Turma' | 'Tarefa' | 'Projeto';
   #ConversaGrupoRefGUID!: string;
   #ConversaGrupoCorFundo: string | null = null;
   #ConversaGrupoImagemUrl: string | null = null;
@@ -12,7 +12,7 @@ export default class ConversaGrupo {
 
   get ConversaGUID(): string { return this.#ConversaGUID; }
   get ConversaGrupoNome(): string { return this.#ConversaGrupoNome; }
-  get ConversaGrupoTipo(): 'Turma' | 'Tarefa' { return this.#ConversaGrupoTipo; }
+  get ConversaGrupoTipo(): 'Turma' | 'Tarefa' | 'Projeto' { return this.#ConversaGrupoTipo; }
   get ConversaGrupoRefGUID(): string { return this.#ConversaGrupoRefGUID; }
   get ConversaGrupoCorFundo(): string | null { return this.#ConversaGrupoCorFundo; }
   get ConversaGrupoImagemUrl(): string | null { return this.#ConversaGrupoImagemUrl; }
@@ -33,9 +33,9 @@ export default class ConversaGrupo {
     this.#ConversaGrupoNome = trimmed;
   }
 
-  set ConversaGrupoTipo(value: 'Turma' | 'Tarefa') {
-    if (value !== 'Turma' && value !== 'Tarefa') {
-      throw new Error('ConversaGrupoTipo deve ser "Turma" ou "Tarefa"');
+  set ConversaGrupoTipo(value: 'Turma' | 'Tarefa' | 'Projeto') {
+    if (value !== 'Turma' && value !== 'Tarefa' && value !== 'Projeto') {
+      throw new Error('ConversaGrupoTipo deve ser "Turma", "Tarefa" ou "Projeto"');
     }
     this.#ConversaGrupoTipo = value;
   }

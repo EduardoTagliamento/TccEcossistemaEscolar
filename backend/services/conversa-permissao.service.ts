@@ -19,7 +19,7 @@ export interface MembrosTurmaDTO {
 export interface ConversaGrupoDTO {
   ConversaGUID: string;
   ConversaGrupoNome: string;
-  ConversaGrupoTipo: 'Turma' | 'Tarefa';
+  ConversaGrupoTipo: 'Turma' | 'Tarefa' | 'Projeto';
   ConversaGrupoCorFundo: string | null;
   ConversaGrupoImagemUrl: string | null;
 }
@@ -76,12 +76,14 @@ export default class ConversaPermissaoService {
     }
   }
 
-  /** Resolve o EscolaGUID de um grupo (Turma direto, Tarefa via grupotarefa) — mesma consulta usada em #notificarPromocao. */
-  async #resolverEscolaGUID(grupo: { ConversaGrupoTipo: 'Turma' | 'Tarefa'; ConversaGrupoRefGUID: string }): Promise<string | null> {
+  /** Resolve o EscolaGUID de um grupo (Turma direto, Tarefa via grupotarefa, Projeto via grupoprojeto) — mesma consulta usada em #notificarPromocao. */
+  async #resolverEscolaGUID(grupo: { ConversaGrupoTipo: 'Turma' | 'Tarefa' | 'Projeto'; ConversaGrupoRefGUID: string }): Promise<string | null> {
     const [rows] = await pool.execute<RowDataPacket[]>(
       grupo.ConversaGrupoTipo === 'Turma'
         ? `SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1`
-        : `SELECT t.EscolaGUID FROM grupotarefa gt INNER JOIN turma t ON t.TurmaGUID = gt.TurmaGUID WHERE gt.GrupoTarefaGUID = ? LIMIT 1`,
+        : grupo.ConversaGrupoTipo === 'Tarefa'
+        ? `SELECT t.EscolaGUID FROM grupotarefa gt INNER JOIN turma t ON t.TurmaGUID = gt.TurmaGUID WHERE gt.GrupoTarefaGUID = ? LIMIT 1`
+        : `SELECT p.EscolaGUID FROM grupoprojeto gp INNER JOIN projeto p ON p.ProjetoGUID = gp.ProjetoGUID WHERE gp.GrupoProjetoGUID = ? LIMIT 1`,
       [grupo.ConversaGrupoRefGUID]
     );
     return (rows[0] as any)?.EscolaGUID ?? null;
@@ -339,18 +341,12 @@ export default class ConversaPermissaoService {
     });
   }
 
-  /** Resolve o EscolaGUID de um grupo (Turma direto, Tarefa via grupotarefa) e dispara a notificação de mudança de papel */
+  /** Dispara a notificação de mudança de papel — resolve EscolaGUID via #resolverEscolaGUID (Turma/Tarefa/Projeto). */
   #notificarPromocao = async (conversaGUID: string, alvoGUID: string, tipoSlug: string, titulo: string): Promise<void> => {
     const grupo = await this.#conversaGrupoDAO.findByConversaGUID(conversaGUID);
     if (!grupo) return;
 
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      grupo.ConversaGrupoTipo === 'Turma'
-        ? `SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1`
-        : `SELECT t.EscolaGUID FROM grupotarefa gt INNER JOIN turma t ON t.TurmaGUID = gt.TurmaGUID WHERE gt.GrupoTarefaGUID = ? LIMIT 1`,
-      [grupo.ConversaGrupoRefGUID]
-    );
-    const escolaGUID = (rows[0] as any)?.EscolaGUID;
+    const escolaGUID = await this.#resolverEscolaGUID(grupo);
     if (!escolaGUID) return;
 
     const alvo = await this.#usuarioDAO.findByGUID(alvoGUID);

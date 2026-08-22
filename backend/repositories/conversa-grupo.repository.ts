@@ -6,7 +6,7 @@ import { RowDataPacket } from 'mysql2';
 interface ConversaGrupoRow extends RowDataPacket {
   ConversaGUID: string;
   ConversaGrupoNome: string;
-  ConversaGrupoTipo: 'Turma' | 'Tarefa';
+  ConversaGrupoTipo: 'Turma' | 'Tarefa' | 'Projeto';
   ConversaGrupoRefGUID: string;
   ConversaGrupoCorFundo: string | null;
   ConversaGrupoImagemUrl: string | null;
@@ -40,7 +40,7 @@ export class ConversaGrupoDAO {
   async createGrupo(
     conversaGUID: string,
     nome: string,
-    tipo: 'Turma' | 'Tarefa',
+    tipo: 'Turma' | 'Tarefa' | 'Projeto',
     refGUID: string
   ): Promise<void> {
     console.log('🟢 ConversaGrupoDAO.createGrupo()');
@@ -158,19 +158,22 @@ export class ConversaGrupoDAO {
   // Rows cruas com nome do usuário via JOIN — só para exibição (não é a entidade ConversaGrupoMembro,
   // que espelha 1:1 a tabela conversa_grupo_membro e não tem coluna de nome).
   async findMembrosComNome(conversaGUID: string): Promise<
-    { MembroUsuarioGUID: string; UsuarioNome: string; UsuarioFotoUrl: string | null; MembroFuncao: MembroFuncaoType; MembroEntradaAt: Date }[]
+    { MembroUsuarioGUID: string; UsuarioNome: string; UsuarioFotoUrl: string | null; MembroFuncao: MembroFuncaoType; MembroEntradaAt: Date; MembroPermissoes: Record<string, boolean> | string | null }[]
   > {
     console.log('🟢 ConversaGrupoDAO.findMembrosComNome()');
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(
-      `SELECT cgm.MembroUsuarioGUID, u.UsuarioNome, u.UsuarioFotoUrl, cgm.MembroFuncao, cgm.MembroEntradaAt
+      `SELECT cgm.MembroUsuarioGUID, u.UsuarioNome, u.UsuarioFotoUrl, cgm.MembroFuncao, cgm.MembroEntradaAt, cgm.MembroPermissoes
        FROM conversa_grupo_membro cgm
        INNER JOIN usuario u ON u.UsuarioGUID = cgm.MembroUsuarioGUID
        WHERE cgm.ConversaGUID = ? AND cgm.MembroStatus = 'Ativo'
        ORDER BY cgm.MembroEntradaAt ASC`,
       [conversaGUID]
     );
-    return rows as any[];
+    return (rows as any[]).map((row) => ({
+      ...row,
+      MembroPermissoes: typeof row.MembroPermissoes === 'string' ? JSON.parse(row.MembroPermissoes) : (row.MembroPermissoes ?? null),
+    }));
   }
 
   async isMembro(conversaGUID: string, usuarioGUID: string): Promise<boolean> {

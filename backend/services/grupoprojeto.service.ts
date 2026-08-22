@@ -8,6 +8,9 @@ import { Pool, PoolConnection } from 'mysql2/promise';
 import { getNotificacaoService } from './notificacao.service';
 import { getAuditoriaService } from './auditoria.service';
 import { UsuarioDAO } from '../repositories/usuario.repository';
+import { AnexoDAO } from '../repositories/anexo.repository';
+import { RelacaoAnexosDAO } from '../repositories/relacaoanexos.repository';
+import ConversaGrupoService from './conversa-grupo.service';
 import { resolverPermissaoGrupoComLiderUnico } from '../utils/helpers/permissao-granular.helper';
 import {
   GrupoProjetoComMembrosDTO,
@@ -16,13 +19,11 @@ import {
 } from '../entities/grupoprojeto.model';
 
 /**
- * NOTA: diferente de GrupoTarefaService, este service NÃO integra com
- * ConversaGrupoService — chat de grupo foi deliberadamente deixado fora do
- * escopo da v1 (ver docs/PLANO_IMPLEMENTACAO_PROJETOS.md, Seção 7 ponto 4).
- * ConversaGrupoService hoje rotula toda conversa de grupo criada via
- * `criarConversaParaGrupoTarefa` com RefTipo='Tarefa' — reaproveitar sem
- * generalizar esse rótulo primeiro misturaria GUIDs de GrupoProjeto sob um
- * tipo de referência errado.
+ * Grupo de Projeto integra com ConversaGrupoService desde 2026-08-21 (decisão
+ * revertida — v1 deixava chat de fora, ver
+ * docs/PLANO_IMPLEMENTACAO_PERMISSOES_GRANULARES_GRUPOS.md, seção 1b/#29).
+ * `conversaGrupoService` é opcional (mesmo padrão de GrupoTarefaService) pra
+ * não quebrar quem instancia este service sem esse argumento.
  */
 export default class GrupoProjetoService {
   #grupoProjetoDAO: GrupoProjetoDAO;
@@ -31,6 +32,9 @@ export default class GrupoProjetoService {
   #historicoService: HistoricoGrupoProjetoService;
   #database: MysqlDatabase;
   #usuarioDAO: UsuarioDAO;
+  #anexoDAO?: AnexoDAO;
+  #relacaoAnexosDAO?: RelacaoAnexosDAO;
+  #conversaGrupoService?: ConversaGrupoService;
 
   constructor(
     grupoProjetoDAO: GrupoProjetoDAO,
@@ -38,7 +42,10 @@ export default class GrupoProjetoService {
     projetoDAO: ProjetoDAO,
     historicoService: HistoricoGrupoProjetoService,
     database: MysqlDatabase,
-    usuarioDAO: UsuarioDAO
+    usuarioDAO: UsuarioDAO,
+    anexoDAO?: AnexoDAO,
+    relacaoAnexosDAO?: RelacaoAnexosDAO,
+    conversaGrupoService?: ConversaGrupoService
   ) {
     console.log('⬆️  GrupoProjetoService.constructor()');
     this.#grupoProjetoDAO = grupoProjetoDAO;
@@ -47,6 +54,9 @@ export default class GrupoProjetoService {
     this.#historicoService = historicoService;
     this.#database = database;
     this.#usuarioDAO = usuarioDAO;
+    this.#anexoDAO = anexoDAO;
+    this.#relacaoAnexosDAO = relacaoAnexosDAO;
+    this.#conversaGrupoService = conversaGrupoService;
   }
 
   /**
@@ -60,6 +70,27 @@ export default class GrupoProjetoService {
   #resolverCPFAlvo = async (usuarioGUID: string): Promise<string | undefined> => {
     const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
     return usuario?.UsuarioCPF ?? undefined;
+  };
+
+  /**
+   * Anexa `MinhasPermissoes` ao DTO — capacidades do usuário autenticado
+   * neste grupo, mesmo padrão de `ConversaService.buscarConversa`
+   * (`MinhasPermissoes`), usado pelo frontend pra decidir quais ações
+   * mostrar sem precisar tentar-e-receber-403.
+   */
+  #comMinhasPermissoes = async (
+    grupo: GrupoProjetoComMembrosDTO,
+    usuarioGUID: string
+  ): Promise<GrupoProjetoComMembrosDTO> => {
+    const membro = await this.#usuarioXGrupoDAO.findByGrupoAndUsuario(grupo.GrupoProjetoGUID, usuarioGUID);
+    return {
+      ...grupo,
+      MinhasPermissoes: {
+        PodeExpulsarMembros: resolverPermissaoGrupoComLiderUnico(usuarioGUID, grupo.UsuarioGUIDLider, membro?.MembroPermissoes, 'PodeExpulsarMembros'),
+        PodeAtualizarGrupo: resolverPermissaoGrupoComLiderUnico(usuarioGUID, grupo.UsuarioGUIDLider, membro?.MembroPermissoes, 'PodeAtualizarGrupo'),
+        PodeSubmeterProjeto: resolverPermissaoGrupoComLiderUnico(usuarioGUID, grupo.UsuarioGUIDLider, membro?.MembroPermissoes, 'PodeSubmeterProjeto'),
+      }
+    };
   };
 
   /**
@@ -84,6 +115,10 @@ export default class GrupoProjetoService {
 
     const grupoCriado = await this.#grupoProjetoDAO.create({ ...data, UsuarioGUIDLider: usuarioGUID });
 
+    if (this.#conversaGrupoService) {
+      await this.#conversaGrupoService.criarConversaParaGrupoProjeto(grupoCriado.GrupoProjetoGUID, projeto.ProjetoTitulo, usuarioGUID);
+    }
+
     await this.#historicoService.registrar({
       GrupoProjetoGUID: grupoCriado.GrupoProjetoGUID,
       HistoricoTipo: 'Entrada',
@@ -107,13 +142,13 @@ export default class GrupoProjetoService {
       throw new Error('Erro ao buscar grupo recém-criado');
     }
 
-    return grupoComMembros;
+    return this.#comMinhasPermissoes(grupoComMembros, usuarioGUID);
   };
 
   /**
    * LISTAR GRUPOS de um projeto
    */
-  listarGruposDoProjeto = async (projetoGUID: string): Promise<GrupoProjetoComMembrosDTO[]> => {
+  listarGruposDoProjeto = async (projetoGUID: string, usuarioGUID: string): Promise<GrupoProjetoComMembrosDTO[]> => {
     console.log('🟣 GrupoProjetoService.listarGruposDoProjeto()');
 
     const projeto = await this.#projetoDAO.findById(projetoGUID);
@@ -127,7 +162,7 @@ export default class GrupoProjetoService {
     for (const grupo of grupos) {
       const grupoComMembros = await this.#grupoProjetoDAO.findByIdComMembros(grupo.GrupoProjetoGUID);
       if (grupoComMembros) {
-        gruposDetalhados.push(grupoComMembros);
+        gruposDetalhados.push(await this.#comMinhasPermissoes(grupoComMembros, usuarioGUID));
       }
     }
 
@@ -141,7 +176,7 @@ export default class GrupoProjetoService {
    * alunos elegíveis decidam entrar; grupos "Fechado" mostram a proposta
    * mas não permitem entrada direta.
    */
-  buscarGrupo = async (grupoGUID: string): Promise<GrupoProjetoComMembrosDTO> => {
+  buscarGrupo = async (grupoGUID: string, usuarioGUID: string): Promise<GrupoProjetoComMembrosDTO> => {
     console.log('🟣 GrupoProjetoService.buscarGrupo()');
 
     const grupo = await this.#grupoProjetoDAO.findByIdComMembros(grupoGUID);
@@ -149,7 +184,7 @@ export default class GrupoProjetoService {
       throw new ErrorResponse(404, 'Grupo não encontrado');
     }
 
-    return grupo;
+    return this.#comMinhasPermissoes(grupo, usuarioGUID);
   };
 
   /**
@@ -322,6 +357,10 @@ export default class GrupoProjetoService {
 
     await this.#usuarioXGrupoDAO.create({ GrupoProjetoGUID: grupoGUID, UsuarioGUID: usuarioGUID }, executor);
 
+    if (this.#conversaGrupoService) {
+      await this.#conversaGrupoService.adicionarMembroGrupoProjeto(grupoGUID, usuarioGUID);
+    }
+
     await this.#historicoService.registrar({
       GrupoProjetoGUID: grupoGUID,
       HistoricoTipo: 'Entrada',
@@ -370,6 +409,10 @@ export default class GrupoProjetoService {
 
       await this.#grupoProjetoDAO.delete(grupoGUID);
 
+      if (this.#conversaGrupoService) {
+        await this.#conversaGrupoService.encerrarConversaGrupoProjeto(grupoGUID);
+      }
+
       if (projeto) {
         void getAuditoriaService().registrar({
           EscolaGUID: projeto.EscolaGUID,
@@ -391,6 +434,10 @@ export default class GrupoProjetoService {
     }
 
     await this.#usuarioXGrupoDAO.deleteByGrupoAndUsuario(grupoGUID, usuarioGUID);
+
+    if (this.#conversaGrupoService) {
+      await this.#conversaGrupoService.removerMembroGrupoProjeto(grupoGUID, usuarioGUID);
+    }
 
     await this.#historicoService.registrar({
       GrupoProjetoGUID: grupoGUID,
@@ -513,6 +560,10 @@ export default class GrupoProjetoService {
           await this.#grupoProjetoDAO.delete(grupoGUID);
           await connection.commit();
 
+          if (this.#conversaGrupoService) {
+            await this.#conversaGrupoService.encerrarConversaGrupoProjeto(grupoGUID);
+          }
+
           this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoGUID, projeto.ProjetoTitulo, membroGUID, grupo.GrupoProjetoGUID).catch((error) => {
             console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
           });
@@ -542,6 +593,11 @@ export default class GrupoProjetoService {
         });
 
         await connection.commit();
+
+        if (this.#conversaGrupoService) {
+          await this.#conversaGrupoService.transferirLiderGrupoProjeto(grupoGUID, membroGUID, proximoLider.UsuarioGUID);
+          await this.#conversaGrupoService.removerMembroGrupoProjeto(grupoGUID, membroGUID);
+        }
 
         this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoGUID, projeto.ProjetoTitulo, membroGUID, grupoGUID).catch((error) => {
           console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
@@ -576,6 +632,10 @@ export default class GrupoProjetoService {
       });
 
       await connection.commit();
+
+      if (this.#conversaGrupoService) {
+        await this.#conversaGrupoService.removerMembroGrupoProjeto(grupoGUID, membroGUID);
+      }
 
       this.#notificarRemovidoGrupo(projeto.EscolaGUID, projeto.ProjetoGUID, projeto.ProjetoTitulo, membroGUID, grupoGUID).catch((error) => {
         console.error('🔴 GrupoProjetoService.#notificarRemovidoGrupo() falhou:', error);
@@ -664,6 +724,10 @@ export default class GrupoProjetoService {
 
       await connection.commit();
 
+      if (this.#conversaGrupoService) {
+        await this.#conversaGrupoService.transferirLiderGrupoProjeto(grupoGUID, liderAtualGUID, novoLiderGUID);
+      }
+
       const projetoDoGrupo = await this.#projetoDAO.findById(grupo.ProjetoGUID);
       if (projetoDoGrupo) {
         void getAuditoriaService().registrar({
@@ -747,6 +811,150 @@ export default class GrupoProjetoService {
     });
 
     return { mensagem: 'Pontuação atribuída com sucesso' };
+  };
+
+  /**
+   * VINCULAR ANEXO À SUBMISSÃO — membro com `PodeSubmeterProjeto` (líder
+   * sempre tem, membro só com override explícito) anexa arquivos de entrega
+   * antes de submeter. Segue o mesmo padrão de ownership-check de
+   * `TarefaAcademicaService.enviarAnexoEntrega`: só quem enviou o anexo pode
+   * vinculá-lo (evita um membro grudar o anexo de outra pessoa na entrega).
+   */
+  vincularAnexoSubmissao = async (
+    grupoGUID: string,
+    anexoGUID: string,
+    usuarioGUID: string
+  ): Promise<{ mensagem: string }> => {
+    console.log('🟣 GrupoProjetoService.vincularAnexoSubmissao()');
+
+    if (!this.#anexoDAO || !this.#relacaoAnexosDAO) {
+      throw new ErrorResponse(500, 'Serviço mal configurado');
+    }
+
+    const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
+    if (!grupo) {
+      throw new ErrorResponse(404, 'Grupo não encontrado');
+    }
+
+    const membro = await this.#usuarioXGrupoDAO.findByGrupoAndUsuario(grupoGUID, usuarioGUID);
+    const podeSubmeter = resolverPermissaoGrupoComLiderUnico(usuarioGUID, grupo.UsuarioGUIDLider, membro?.MembroPermissoes, 'PodeSubmeterProjeto');
+    if (!podeSubmeter) {
+      throw new ErrorResponse(403, 'Você não tem permissão para submeter este projeto');
+    }
+
+    if (grupo.GrupoProjetoSubmetidoEm) {
+      throw new ErrorResponse(400, 'Este grupo já submeteu o projeto');
+    }
+
+    const anexo = await this.#anexoDAO.findById(anexoGUID);
+    if (!anexo) {
+      throw new ErrorResponse(404, 'Anexo não encontrado');
+    }
+
+    if (anexo.UsuarioGUID !== usuarioGUID) {
+      throw new ErrorResponse(403, 'Você só pode vincular anexos enviados por você');
+    }
+
+    await this.#relacaoAnexosDAO.vincularAnexoGrupoProjeto(anexoGUID, grupoGUID);
+
+    return { mensagem: 'Anexo vinculado à submissão com sucesso' };
+  };
+
+  /**
+   * SUBMETER PROJETO — marca a entrega do grupo como submetida. Exige ao
+   * menos 1 anexo já vinculado (via `vincularAnexoSubmissao`) e bloqueia se
+   * o projeto estiver encerrado ou o prazo de entrega já tiver passado.
+   * Desfazer submissão fica fora de escopo desta rodada (ver
+   * docs/PLANO_IMPLEMENTACAO_PERMISSOES_GRANULARES_GRUPOS.md, seção 4e).
+   */
+  submeterProjeto = async (
+    grupoGUID: string,
+    usuarioGUID: string
+  ): Promise<{ mensagem: string }> => {
+    console.log('🟣 GrupoProjetoService.submeterProjeto()');
+
+    if (!this.#relacaoAnexosDAO) {
+      throw new ErrorResponse(500, 'Serviço mal configurado');
+    }
+
+    const grupo = await this.#grupoProjetoDAO.findById(grupoGUID);
+    if (!grupo) {
+      throw new ErrorResponse(404, 'Grupo não encontrado');
+    }
+
+    const membro = await this.#usuarioXGrupoDAO.findByGrupoAndUsuario(grupoGUID, usuarioGUID);
+    const podeSubmeter = resolverPermissaoGrupoComLiderUnico(usuarioGUID, grupo.UsuarioGUIDLider, membro?.MembroPermissoes, 'PodeSubmeterProjeto');
+    if (!podeSubmeter) {
+      throw new ErrorResponse(403, 'Você não tem permissão para submeter este projeto');
+    }
+
+    if (grupo.GrupoProjetoSubmetidoEm) {
+      throw new ErrorResponse(400, 'Este grupo já submeteu o projeto');
+    }
+
+    const projeto = await this.#projetoDAO.findById(grupo.ProjetoGUID);
+    if (!projeto) {
+      throw new ErrorResponse(404, 'Projeto não encontrado');
+    }
+
+    if (projeto.ProjetoStatus === 'Encerrado') {
+      throw new ErrorResponse(400, 'Projeto está encerrado');
+    }
+
+    if (projeto.ProjetoEntregaPrazoData && new Date(projeto.ProjetoEntregaPrazoData) < new Date()) {
+      throw new ErrorResponse(400, 'Prazo de entrega do projeto já encerrou');
+    }
+
+    const anexos = await this.#relacaoAnexosDAO.findAnexosByGrupoProjeto(grupoGUID);
+    if (anexos.length === 0) {
+      throw new ErrorResponse(400, 'Vincule ao menos um anexo antes de submeter o projeto');
+    }
+
+    await this.#grupoProjetoDAO.update(grupoGUID, {
+      GrupoProjetoSubmetidoEm: new Date(),
+      GrupoProjetoSubmetidoPorGUID: usuarioGUID
+    });
+
+    await this.#historicoService.registrar({
+      GrupoProjetoGUID: grupoGUID,
+      HistoricoTipo: 'Submissao',
+      UsuarioGUIDAtor: usuarioGUID,
+      UsuarioCPFAlvo: await this.#resolverCPFAlvo(usuarioGUID)
+    });
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: projeto.EscolaGUID,
+      UsuarioGUIDAtor: usuarioGUID,
+      AcaoTipo: 'Update',
+      EntidadeTipo: 'grupoprojeto',
+      EntidadeGUID: grupoGUID,
+      EntidadeDescricao: `Grupo submeteu o projeto "${projeto.ProjetoTitulo}"`,
+      CategoriaAuditoriaId: 1,
+    });
+
+    this.#notificarProjetoSubmetido(projeto.EscolaGUID, projeto.ProjetoGUID, projeto.ProjetoTitulo, projeto.UsuarioGUIDCriador, grupoGUID).catch((error) => {
+      console.error('🔴 GrupoProjetoService.#notificarProjetoSubmetido() falhou:', error);
+    });
+
+    return { mensagem: 'Projeto submetido com sucesso' };
+  };
+
+  #notificarProjetoSubmetido = async (
+    escolaGUID: string,
+    projetoGUID: string,
+    projetoTitulo: string,
+    criadorGUID: string,
+    grupoGUID: string
+  ): Promise<void> => {
+    await getNotificacaoService().disparar({
+      tipoSlug: 'projeto_submetido',
+      destinatarios: [criadorGUID],
+      escolaGUID,
+      titulo: `Um grupo submeteu a entrega do projeto "${projetoTitulo}"`,
+      entidadeTipo: 'grupoprojeto',
+      entidadeGUID: grupoGUID,
+      link: `/dashboard/${escolaGUID}/projetos/${projetoGUID}/grupos/${grupoGUID}`,
+    });
   };
 
   #validarProjetoAbertoParaInscricao = async (projetoGUID: string) => {

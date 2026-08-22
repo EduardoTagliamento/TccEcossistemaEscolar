@@ -125,17 +125,22 @@ export class GrupoProjetoDAO {
         gp.GrupoProjetoProposta,
         gp.GrupoProjetoVisibilidade,
         gp.GrupoProjetoPontuacao,
+        gp.GrupoProjetoSubmetidoEm,
+        gp.GrupoProjetoSubmetidoPorGUID,
         gp.CreatedAt,
+        cg.ConversaGUID,
         u_lider.UsuarioNome AS NomeLider,
         p.ProjetoGrupoMaxPessoas AS LimiteMaximo,
         uxgp.UsuarioGUID AS MembroGUID,
         u_membro.UsuarioNome AS MembroNome,
-        uxgp.DataEntrada AS MembroDataEntrada
+        uxgp.DataEntrada AS MembroDataEntrada,
+        uxgp.MembroPermissoes AS MembroPermissoesJSON
       FROM grupoprojeto gp
       INNER JOIN usuario u_lider ON u_lider.UsuarioGUID = gp.UsuarioGUIDLider
       INNER JOIN projeto p ON p.ProjetoGUID = gp.ProjetoGUID
       LEFT JOIN usuarioxgrupoprojeto uxgp ON uxgp.GrupoProjetoGUID = gp.GrupoProjetoGUID
       LEFT JOIN usuario u_membro ON u_membro.UsuarioGUID = uxgp.UsuarioGUID
+      LEFT JOIN conversa_grupo cg ON cg.ConversaGrupoTipo = 'Projeto' AND cg.ConversaGrupoRefGUID = gp.GrupoProjetoGUID
       WHERE gp.GrupoProjetoGUID = ?
       ORDER BY uxgp.DataEntrada ASC
     `;
@@ -152,16 +157,26 @@ export class GrupoProjetoDAO {
       UsuarioGUID: primeiraLinha.UsuarioGUIDLider,
       UsuarioNome: primeiraLinha.NomeLider,
       DataEntrada: primeiraLinha.CreatedAt,
-      IsLider: true
+      IsLider: true,
+      Permissoes: { PodeExpulsarMembros: true, PodeAtualizarGrupo: true, PodeSubmeterProjeto: true }
     });
 
     rows.forEach((row) => {
       if (row.MembroGUID) {
+        const permissoesRaw: Record<string, boolean> | null = typeof row.MembroPermissoesJSON === 'string'
+          ? JSON.parse(row.MembroPermissoesJSON)
+          : (row.MembroPermissoesJSON ?? null);
+
         membros.push({
           UsuarioGUID: row.MembroGUID,
           UsuarioNome: row.MembroNome,
           DataEntrada: row.MembroDataEntrada,
-          IsLider: false
+          IsLider: false,
+          Permissoes: {
+            PodeExpulsarMembros: permissoesRaw?.PodeExpulsarMembros === true,
+            PodeAtualizarGrupo: permissoesRaw?.PodeAtualizarGrupo === true,
+            PodeSubmeterProjeto: permissoesRaw?.PodeSubmeterProjeto === true,
+          }
         });
       }
     });
@@ -178,6 +193,9 @@ export class GrupoProjetoDAO {
       GrupoProjetoProposta: primeiraLinha.GrupoProjetoProposta,
       GrupoProjetoVisibilidade: primeiraLinha.GrupoProjetoVisibilidade,
       GrupoProjetoPontuacao: primeiraLinha.GrupoProjetoPontuacao,
+      GrupoProjetoSubmetidoEm: primeiraLinha.GrupoProjetoSubmetidoEm ?? null,
+      GrupoProjetoSubmetidoPorGUID: primeiraLinha.GrupoProjetoSubmetidoPorGUID ?? null,
+      ConversaGUID: primeiraLinha.ConversaGUID ?? null,
       Membros: membros,
       TotalMembros: totalMembros,
       LimiteMaximo: limiteMaximo,

@@ -123,7 +123,9 @@ export default class MensagemService {
     const [escolaRows] = await pool.execute<RowDataPacket[]>(
       grupo.ConversaGrupoTipo === 'Turma'
         ? `SELECT EscolaGUID FROM turma WHERE TurmaGUID = ? LIMIT 1`
-        : `SELECT t.EscolaGUID FROM grupotarefa gt INNER JOIN turma t ON t.TurmaGUID = gt.TurmaGUID WHERE gt.GrupoTarefaGUID = ? LIMIT 1`,
+        : grupo.ConversaGrupoTipo === 'Tarefa'
+        ? `SELECT t.EscolaGUID FROM grupotarefa gt INNER JOIN turma t ON t.TurmaGUID = gt.TurmaGUID WHERE gt.GrupoTarefaGUID = ? LIMIT 1`
+        : `SELECT p.EscolaGUID FROM grupoprojeto gp INNER JOIN projeto p ON p.ProjetoGUID = gp.ProjetoGUID WHERE gp.GrupoProjetoGUID = ? LIMIT 1`,
       [grupo.ConversaGrupoRefGUID]
     );
     const escolaGUID = (escolaRows[0] as any)?.EscolaGUID;

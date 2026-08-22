@@ -108,6 +108,24 @@ export default class GrupoTarefaService {
   }
 
   /**
+   * Anexa `MinhasPermissoes` ao DTO — mesmo padrão de
+   * `GrupoProjetoService.#comMinhasPermissoes`.
+   */
+  #comMinhasPermissoes = async (
+    grupo: GrupoTarefaComMembrosDTO,
+    usuarioGUID: string
+  ): Promise<GrupoTarefaComMembrosDTO> => {
+    const membro = await this.#usuarioXGrupoDAO.findByGrupoAndUsuario(grupo.GrupoTarefaGUID, usuarioGUID);
+    return {
+      ...grupo,
+      MinhasPermissoes: {
+        PodeExpulsarMembros: resolverPermissaoGrupoComLiderUnico(usuarioGUID, grupo.UsuarioGUIDLider, membro?.MembroPermissoes, 'PodeExpulsarMembros'),
+        PodeAtualizarGrupo: resolverPermissaoGrupoComLiderUnico(usuarioGUID, grupo.UsuarioGUIDLider, membro?.MembroPermissoes, 'PodeAtualizarGrupo'),
+      }
+    };
+  };
+
+  /**
    * LISTAR GRUPOS de uma tarefa
    */
   async listarGruposDaTarefa(tarefaGUID: string, usuarioGUID: string): Promise<GrupoTarefaComMembrosDTO[]> {
@@ -124,11 +142,11 @@ export default class GrupoTarefaService {
 
     // 3. Buscar detalhes de cada grupo (com membros)
     const gruposDetalhados: GrupoTarefaComMembrosDTO[] = [];
-    
+
     for (const grupo of grupos) {
       const grupoComMembros = await this.#grupoTarefaDAO.findByIdComMembros(grupo.GrupoTarefaGUID);
       if (grupoComMembros) {
-        gruposDetalhados.push(grupoComMembros);
+        gruposDetalhados.push(await this.#comMinhasPermissoes(grupoComMembros, usuarioGUID));
       }
     }
 
@@ -152,7 +170,7 @@ export default class GrupoTarefaService {
       throw new ErrorResponse(403, 'Você não tem acesso a este grupo');
     }
 
-    return grupo;
+    return this.#comMinhasPermissoes(grupo, usuarioGUID);
   }
 
   /**

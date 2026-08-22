@@ -114,3 +114,36 @@ export async function transferirLideranca(grupoGUID: string, novoLiderGUID: stri
   });
   await tratarResposta(response);
 }
+
+/** PATCH /:grupoGUID/membros/:membroGUID/permissoes — só o líder concede. */
+export async function atualizarPermissaoMembro(
+  grupoGUID: string,
+  membroGUID: string,
+  patch: Partial<{ PodeExpulsarMembros: boolean; PodeAtualizarGrupo: boolean; PodeSubmeterProjeto: boolean }>
+): Promise<void> {
+  const response = await fetch(`${API_URL}/grupoprojeto/${grupoGUID}/membros/${membroGUID}/permissoes`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify(patch)
+  });
+  await tratarResposta(response);
+}
+
+/** POST /:grupoGUID/submissao/anexo — vincula um anexo já enviado (via /api/anexo) à submissão do grupo. */
+export async function vincularAnexoSubmissao(grupoGUID: string, anexoGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/grupoprojeto/${grupoGUID}/submissao/anexo`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ AnexoGUID: anexoGUID })
+  });
+  await tratarResposta(response);
+}
+
+/** POST /:grupoGUID/submeter — marca a entrega como submetida (exige ao menos 1 anexo vinculado). */
+export async function submeterProjeto(grupoGUID: string): Promise<void> {
+  const response = await fetch(`${API_URL}/grupoprojeto/${grupoGUID}/submeter`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  await tratarResposta(response);
+}

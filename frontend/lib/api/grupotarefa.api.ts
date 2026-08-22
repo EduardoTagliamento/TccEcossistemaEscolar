@@ -98,3 +98,22 @@ export async function transferirLideranca(
     throw new Error(result.error || result.message || 'Erro ao transferir liderança');
   }
 }
+
+// PATCH - Conceder/revogar permissões granulares de um membro (só líder)
+export async function atualizarPermissaoMembro(
+  grupoGUID: string,
+  membroGUID: string,
+  patch: Partial<{ PodeExpulsarMembros: boolean; PodeAtualizarGrupo: boolean }>
+): Promise<void> {
+  const response = await fetch(`${API_URL}/grupotarefa/${grupoGUID}/membros/${membroGUID}/permissoes`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify(patch)
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || result.message || 'Erro ao atualizar permissões do membro');
+  }
+}

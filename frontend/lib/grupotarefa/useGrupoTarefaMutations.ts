@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { atualizarNomeGrupo, expulsarMembro, transferirLideranca } from '@/lib/api/grupotarefa.api';
+import { atualizarNomeGrupo, expulsarMembro, transferirLideranca, atualizarPermissaoMembro } from '@/lib/api/grupotarefa.api';
 import { grupoTarefaKeys } from './queryKeys';
 
 export function useAtualizarNomeGrupo() {
@@ -28,6 +28,17 @@ export function useTransferirLideranca() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ grupoGUID, novoLiderGUID }: { grupoGUID: string; novoLiderGUID: string }) => transferirLideranca(grupoGUID, novoLiderGUID),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: grupoTarefaKeys.all });
+    },
+  });
+}
+
+export function useAtualizarPermissaoMembroGrupoTarefa() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ grupoGUID, membroGUID, patch }: { grupoGUID: string; membroGUID: string; patch: Parameters<typeof atualizarPermissaoMembro>[2] }) =>
+      atualizarPermissaoMembro(grupoGUID, membroGUID, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: grupoTarefaKeys.all });
     },

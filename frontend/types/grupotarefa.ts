@@ -20,12 +20,18 @@ export interface UsuarioXGrupoTarefa {
   CreatedAt: string;
 }
 
+export interface PermissoesGrupoTarefa {
+  PodeExpulsarMembros: boolean;
+  PodeAtualizarGrupo: boolean;
+}
+
 export interface MembroGrupo {
   UsuarioGUID: string;
   UsuarioNome: string;
   UsuarioEmail: string | null;
   IsLider: boolean;
   DataEntrada?: string;
+  Permissoes?: PermissoesGrupoTarefa;
 }
 
 export interface GrupoTarefaComMembros {
@@ -40,6 +46,7 @@ export interface GrupoTarefaComMembros {
   TotalMembros: number;
   MaxPessoas: number;
   MinPessoas: number;
+  MinhasPermissoes?: PermissoesGrupoTarefa | null;
 }
 
 export interface GrupoTarefaUpdateData {

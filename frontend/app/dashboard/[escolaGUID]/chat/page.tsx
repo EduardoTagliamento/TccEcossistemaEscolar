@@ -610,8 +610,7 @@ function ChatPageConteudo() {
     if (!conversaAtiva) return false;
     if (mensagem.MensagemRemetenteGUID === usuario?.UsuarioGUID) return true;
     if (conversaAtiva.ConversaTipo === 'Individual') return false;
-    if (conversaAtiva.ConversaGrupoTipo === 'Tarefa') return meuPapelNoGrupo === 'Lider';
-    return meuPapelNoGrupo === 'Representante' || meuPapelNoGrupo === 'Vice-Representante';
+    return conversaAtiva.MinhasPermissoes?.PodeExcluirMensagens ?? false;
   };
 
   const handleFixarToggle = async (mensagem: ConversaAPI.Mensagem) => {
@@ -841,7 +840,7 @@ function ChatPageConteudo() {
                   <span className={styles.painelHeaderNome}>{tituloConversaAtiva}</span>
                   <span className={styles.painelHeaderSub}>
                     {conversaAtiva?.ConversaTipo === 'Grupo'
-                      ? `Grupo de ${conversaAtiva.ConversaGrupoTipo === 'Turma' ? 'Turma' : 'Tarefa'} · ${
+                      ? `Grupo de ${conversaAtiva.ConversaGrupoTipo} · ${
                           conversaAtiva.Membros?.length || 0
                         } membros`
                       : digitandoNome

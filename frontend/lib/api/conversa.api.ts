@@ -32,7 +32,7 @@ function getHeaders(): HeadersInit {
 // ==================== TYPES ====================
 
 export type ConversaTipo = 'Individual' | 'Grupo';
-export type ConversaGrupoTipo = 'Turma' | 'Tarefa';
+export type ConversaGrupoTipo = 'Turma' | 'Tarefa' | 'Projeto';
 export type MembroFuncao = 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante';
 export type MensagemTipo = 'Texto' | 'Arquivo' | 'Imagem';
 
@@ -56,11 +56,19 @@ export interface ConversaListItem {
   NaoLidas: number;
 }
 
+export interface MinhasPermissoesChat {
+  PodeExcluirMensagens: boolean;
+  PodePersonalizarGrupo: boolean;
+}
+
 export interface ConversaMembro {
   UsuarioGUID: string;
   UsuarioNome: string;
+  UsuarioFotoUrl?: string | null;
   MembroFuncao: MembroFuncao;
   MembroEntradaAt: string;
+  /** Capacidades resolvidas deste membro — usado por quem concede permissão pra ver o estado atual. */
+  Permissoes?: MinhasPermissoesChat;
 }
 
 export const EMOJIS_REACAO_PERMITIDOS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
@@ -102,7 +110,11 @@ export interface ConversaDetalhe {
   ConversaGrupoNome: string | null;
   ConversaGrupoTipo: ConversaGrupoTipo | null;
   ConversaGrupoRefGUID: string | null;
+  ConversaGrupoCorFundo: string | null;
+  ConversaGrupoImagemUrl: string | null;
   Membros?: ConversaMembro[];
+  /** Capacidades do usuário autenticado neste grupo — null pra conversa Individual. */
+  MinhasPermissoes: MinhasPermissoesChat | null;
   ParceiroGUID: string | null;
   ParceiroNome: string | null;
   TagContextual: string | null;
@@ -307,4 +319,54 @@ export async function removerViceRepresentante(conversaGUID: string, usuarioGUID
     headers: getHeaders(),
   });
   return tratarResposta<void>(response, 'Erro ao remover vice-representante');
+}
+
+export interface ConversaGrupoPersonalizacao {
+  ConversaGUID: string;
+  ConversaGrupoNome: string;
+  ConversaGrupoTipo: ConversaGrupoTipo;
+  ConversaGrupoCorFundo: string | null;
+  ConversaGrupoImagemUrl: string | null;
+}
+
+/**
+ * PUT /api/conversa/:guid/personalizacao — nome/cor/foto do grupo. Multipart
+ * (mesmo padrão de `turma.api.ts#atualizarCapaTurma`), campo `imagem`
+ * (File) e/ou `cor` (hex) e/ou `nome`.
+ */
+export async function atualizarPersonalizacaoGrupo(
+  conversaGUID: string,
+  dados: { nome?: string; cor?: string; imagem?: File }
+): Promise<ConversaGrupoPersonalizacao> {
+  const formData = new FormData();
+  if (dados.nome !== undefined) formData.append('nome', dados.nome);
+  if (dados.cor) formData.append('cor', dados.cor);
+  if (dados.imagem) formData.append('imagem', dados.imagem);
+
+  const token = getToken();
+  const response = await fetch(`${API_URL}/conversa/${conversaGUID}/personalizacao`, {
+    method: 'PUT',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+  return tratarResposta<ConversaGrupoPersonalizacao>(response, 'Erro ao personalizar grupo');
+}
+
+/**
+ * PATCH /api/conversa/:guid/permissao/membro/:usuarioGUID — concede/revoga
+ * capacidades granulares (`PodeExcluirMensagens`, `PodePersonalizarGrupo`)
+ * a um membro específico do grupo. Só Representante (Turma) / Líder
+ * (Tarefa) pode chamar.
+ */
+export async function atualizarPermissaoMembroChat(
+  conversaGUID: string,
+  usuarioGUID: string,
+  patch: Partial<MinhasPermissoesChat>
+): Promise<void> {
+  const response = await fetch(`${API_URL}/conversa/${conversaGUID}/permissao/membro/${usuarioGUID}`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify(patch),
+  });
+  return tratarResposta<void>(response, 'Erro ao atualizar permissão do membro');
 }

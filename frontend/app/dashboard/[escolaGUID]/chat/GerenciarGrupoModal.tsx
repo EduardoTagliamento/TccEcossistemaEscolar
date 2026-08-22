@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import * as ConversaAPI from '@/lib/api/conversa.api';
 import * as GrupoTarefaAPI from '@/lib/api/grupotarefa.api';
+import * as GrupoProjetoAPI from '@/lib/api/grupoprojeto.api';
 import { Icon } from './icons';
 import Loader from '@/components/Loader';
 import styles from './GerenciarGrupoModal.module.css';
@@ -61,12 +62,23 @@ export default function GerenciarGrupoModal({
 }: GerenciarGrupoModalProps) {
   const [guidEmAcao, setGuidEmAcao] = useState<string | null>(null);
   const [erro, setErro] = useState('');
+  const [nomeInput, setNomeInput] = useState(conversa.ConversaGrupoNome || '');
+  const [corInput, setCorInput] = useState(conversa.ConversaGrupoCorFundo || '#17C077');
+  const [imagemSelecionada, setImagemSelecionada] = useState<File | null>(null);
+  const [salvandoPersonalizacao, setSalvandoPersonalizacao] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!aberto) return null;
 
   const ehTurma = conversa.ConversaGrupoTipo === 'Turma';
+  const ehGrupoProjeto = conversa.ConversaGrupoTipo === 'Projeto';
   const souRepresentante = meuPapelNoGrupo === 'Representante';
-  const souLiderTarefa = !ehTurma && meuPapelNoGrupo === 'Lider';
+  const souLiderNaoTurma = !ehTurma && meuPapelNoGrupo === 'Lider';
+  // Quem concede permissões granulares a outros membros — mesmo gate estrito
+  // do backend (#assertRepresentanteOuLider): Representante em Turma, Líder
+  // em Tarefa/Projeto, nunca um membro delegado.
+  const souConcedente = souRepresentante || souLiderNaoTurma;
+  const podePersonalizar = conversa.MinhasPermissoes?.PodePersonalizarGrupo ?? false;
 
   const executar = async (guid: string, acao: () => Promise<void>) => {
     setGuidEmAcao(guid);
@@ -93,15 +105,42 @@ export default function GerenciarGrupoModal({
   const handleRemoverVice = (guid: string) =>
     executar(guid, () => ConversaAPI.removerViceRepresentante(conversa.ConversaGUID, guid));
 
-  // Nota: usuarioxgrupotarefa (tabela dona de GrupoTarefaAPI.expulsarMembro)
-  // também teve sua FK migrada pra UsuarioGUID na mesma migração de schema —
-  // o cluster de grupos/projetos/tarefas está atualizando esse endpoint em
-  // paralelo para aceitar GUID. conversa_grupo_membro não guarda mais CPF,
-  // então GUID é o único identificador disponível aqui.
+  // Tarefa e Projeto expulsam via endpoints diferentes (grupotarefa vs.
+  // grupoprojeto) — conversa_grupo_membro não guarda CPF, então GUID é o
+  // único identificador disponível aqui.
   const handleExpulsar = (guid: string, nome: string) => {
     if (!conversa.ConversaGrupoRefGUID) return;
-    if (!confirm(`Expulsar ${nome} do grupo? Essa pessoa passa a ter um grupo próprio.`)) return;
-    return executar(guid, () => GrupoTarefaAPI.expulsarMembro(conversa.ConversaGrupoRefGUID!, guid));
+    const mensagemConfirmacao = ehGrupoProjeto
+      ? `Expulsar ${nome} do grupo?`
+      : `Expulsar ${nome} do grupo? Essa pessoa passa a ter um grupo próprio.`;
+    if (!confirm(mensagemConfirmacao)) return;
+    const acao = ehGrupoProjeto
+      ? () => GrupoProjetoAPI.expulsarMembro(conversa.ConversaGrupoRefGUID!, guid)
+      : () => GrupoTarefaAPI.expulsarMembro(conversa.ConversaGrupoRefGUID!, guid);
+    return executar(guid, acao);
+  };
+
+  const handleSalvarPersonalizacao = async () => {
+    setErro('');
+    setSalvandoPersonalizacao(true);
+    try {
+      await ConversaAPI.atualizarPersonalizacaoGrupo(conversa.ConversaGUID, {
+        nome: nomeInput.trim() || undefined,
+        cor: corInput || undefined,
+        imagem: imagemSelecionada || undefined,
+      });
+      setImagemSelecionada(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      onAtualizado();
+    } catch (erroPersonalizacao: any) {
+      setErro(erroPersonalizacao?.message || 'Erro ao salvar personalização');
+    } finally {
+      setSalvandoPersonalizacao(false);
+    }
+  };
+
+  const handleTogglePermissaoChat = (guid: string, capacidade: keyof ConversaAPI.MinhasPermissoesChat, valorAtual: boolean) => {
+    return executar(guid, () => ConversaAPI.atualizarPermissaoMembroChat(conversa.ConversaGUID, guid, { [capacidade]: !valorAtual }));
   };
 
   return (
@@ -115,6 +154,49 @@ export default function GerenciarGrupoModal({
         </div>
 
         {erro && <p className={styles.erro}>{erro}</p>}
+
+        {podePersonalizar && (
+          <div className={styles.personalizacaoSection}>
+            <h4 className={styles.secaoTitulo}>Personalizar grupo</h4>
+            <div className={styles.personalizacaoPreview} style={{ background: corInput || '#17C077' }}>
+              {conversa.ConversaGrupoImagemUrl && !imagemSelecionada && (
+                <img src={conversa.ConversaGrupoImagemUrl} alt="Foto do grupo" className={styles.personalizacaoImg} />
+              )}
+            </div>
+            <input
+              type="text"
+              className={styles.campoTexto}
+              placeholder="Nome do grupo"
+              value={nomeInput}
+              onChange={(e) => setNomeInput(e.target.value)}
+              maxLength={128}
+            />
+            <div className={styles.personalizacaoLinha}>
+              <input
+                type="color"
+                value={corInput}
+                onChange={(e) => setCorInput(e.target.value)}
+                className={styles.campoCor}
+                aria-label="Cor do grupo"
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImagemSelecionada(e.target.files?.[0] || null)}
+                className={styles.campoArquivo}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleSalvarPersonalizacao}
+              disabled={salvandoPersonalizacao}
+              className={styles.salvarBtn}
+            >
+              {salvandoPersonalizacao ? <Loader size={16} inline /> : 'Salvar personalização'}
+            </button>
+          </div>
+        )}
 
         <div className={styles.lista}>
           {(conversa.Membros || []).map((membro) => {
@@ -154,7 +236,7 @@ export default function GerenciarGrupoModal({
                         )
                       )}
 
-                      {((ehTurma && souRepresentante) || souLiderTarefa) &&
+                      {((ehTurma && souRepresentante) || souLiderNaoTurma) &&
                         !ehEuMesmo &&
                         membro.MembroFuncao !== 'Representante' &&
                         membro.MembroFuncao !== 'Lider' &&
@@ -168,7 +250,7 @@ export default function GerenciarGrupoModal({
                           </button>
                         ))}
 
-                      {souLiderTarefa && !ehEuMesmo && (
+                      {souLiderNaoTurma && !ehEuMesmo && (
                         <button
                           type="button"
                           className={styles.acaoPerigo}
@@ -181,6 +263,32 @@ export default function GerenciarGrupoModal({
                     </>
                   )}
                 </div>
+
+                {souConcedente &&
+                  !ehEuMesmo &&
+                  membro.MembroFuncao !== 'Representante' &&
+                  membro.MembroFuncao !== 'Lider' && (
+                    <div className={styles.permissoesRow}>
+                      <label className={styles.permissaoCheckbox}>
+                        <input
+                          type="checkbox"
+                          checked={membro.Permissoes?.PodeExcluirMensagens ?? false}
+                          disabled={emAcao}
+                          onChange={() => handleTogglePermissaoChat(membro.UsuarioGUID, 'PodeExcluirMensagens', membro.Permissoes?.PodeExcluirMensagens ?? false)}
+                        />
+                        Excluir mensagens
+                      </label>
+                      <label className={styles.permissaoCheckbox}>
+                        <input
+                          type="checkbox"
+                          checked={membro.Permissoes?.PodePersonalizarGrupo ?? false}
+                          disabled={emAcao}
+                          onChange={() => handleTogglePermissaoChat(membro.UsuarioGUID, 'PodePersonalizarGrupo', membro.Permissoes?.PodePersonalizarGrupo ?? false)}
+                        />
+                        Personalizar grupo
+                      </label>
+                    </div>
+                  )}
               </div>
             );
           })}

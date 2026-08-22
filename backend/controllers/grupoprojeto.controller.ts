@@ -50,8 +50,14 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.listarGruposDoProjeto()');
 
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
+        res.status(401).json({ success: false, message: 'Não autenticado' });
+        return;
+      }
+
       const { projetoGUID } = req.params;
-      const grupos = await this.#grupoProjetoService.listarGruposDoProjeto(projetoGUID);
+      const grupos = await this.#grupoProjetoService.listarGruposDoProjeto(projetoGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -67,8 +73,14 @@ export default class GrupoProjetoController {
     try {
       console.log('🔵 GrupoProjetoController.buscarGrupo()');
 
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
+        res.status(401).json({ success: false, message: 'Não autenticado' });
+        return;
+      }
+
       const { grupoGUID } = req.params;
-      const grupo = await this.#grupoProjetoService.buscarGrupo(grupoGUID);
+      const grupo = await this.#grupoProjetoService.buscarGrupo(grupoGUID, usuarioGUID);
 
       res.status(200).json({
         success: true,
@@ -233,6 +245,45 @@ export default class GrupoProjetoController {
       const { grupoGUID } = req.params;
       const { NovoLiderGUID } = req.body;
       const resultado = await this.#grupoProjetoService.transferirLideranca(grupoGUID, NovoLiderGUID, usuarioGUID);
+
+      res.status(200).json({ success: true, message: resultado.mensagem, data: null });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  vincularAnexoSubmissao = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      console.log('🔵 GrupoProjetoController.vincularAnexoSubmissao()');
+
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
+        res.status(401).json({ success: false, message: 'Não autenticado' });
+        return;
+      }
+
+      const { grupoGUID } = req.params;
+      const { AnexoGUID } = req.body;
+      const resultado = await this.#grupoProjetoService.vincularAnexoSubmissao(grupoGUID, AnexoGUID, usuarioGUID);
+
+      res.status(200).json({ success: true, message: resultado.mensagem, data: null });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  submeterProjeto = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      console.log('🔵 GrupoProjetoController.submeterProjeto()');
+
+      const usuarioGUID = req.user?.UsuarioGUID;
+      if (!usuarioGUID) {
+        res.status(401).json({ success: false, message: 'Não autenticado' });
+        return;
+      }
+
+      const { grupoGUID } = req.params;
+      const resultado = await this.#grupoProjetoService.submeterProjeto(grupoGUID, usuarioGUID);
 
       res.status(200).json({ success: true, message: resultado.mensagem, data: null });
     } catch (error) {

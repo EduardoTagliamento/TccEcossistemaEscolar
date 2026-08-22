@@ -31,6 +31,8 @@ export interface GrupoTarefaComMembrosDTO {
   TotalMembros: number;
   LimiteMaximo: number;
   PodeConvidar: boolean;
+  /** Capacidades do usuário autenticado neste grupo — null quando não solicitado. */
+  MinhasPermissoes?: { PodeExpulsarMembros: boolean; PodeAtualizarGrupo: boolean } | null;
   CreatedAt: Date;
 }
 
@@ -39,6 +41,8 @@ export interface MembroGrupoDTO {
   UsuarioNome: string;
   DataEntrada: Date;
   IsLider: boolean;
+  /** Capacidades resolvidas deste membro — líder sempre true; membro comum só com override explícito. */
+  Permissoes: { PodeExpulsarMembros: boolean; PodeAtualizarGrupo: boolean };
 }
 
 /**

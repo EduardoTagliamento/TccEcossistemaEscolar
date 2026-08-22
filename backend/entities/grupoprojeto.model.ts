@@ -36,6 +36,8 @@ export interface MembroGrupoProjetoDTO {
   UsuarioNome: string;
   DataEntrada: Date;
   IsLider: boolean;
+  /** Capacidades resolvidas deste membro — líder sempre true; membro comum só com override explícito. */
+  Permissoes: { PodeExpulsarMembros: boolean; PodeAtualizarGrupo: boolean; PodeSubmeterProjeto: boolean };
 }
 
 export interface GrupoProjetoComMembrosDTO {
@@ -47,10 +49,16 @@ export interface GrupoProjetoComMembrosDTO {
   GrupoProjetoProposta: string;
   GrupoProjetoVisibilidade: GrupoProjetoVisibilidade;
   GrupoProjetoPontuacao: number | null;
+  GrupoProjetoSubmetidoEm: Date | null;
+  GrupoProjetoSubmetidoPorGUID: string | null;
+  /** GUID da conversa de chat do grupo — null se ainda não foi criada (grupos antigos, ver migration de backfill). */
+  ConversaGUID: string | null;
   Membros: MembroGrupoProjetoDTO[];
   TotalMembros: number;
   LimiteMaximo: number;
   PodeEntrar: boolean;
+  /** Capacidades do usuário autenticado neste grupo — null quando não solicitado (contexto sem usuarioGUID). */
+  MinhasPermissoes?: { PodeExpulsarMembros: boolean; PodeAtualizarGrupo: boolean; PodeSubmeterProjeto: boolean } | null;
   CreatedAt: Date;
 }
 

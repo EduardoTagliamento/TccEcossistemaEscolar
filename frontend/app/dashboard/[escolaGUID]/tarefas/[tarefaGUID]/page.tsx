@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useTarefa } from '@/lib/tarefas/useTarefaQueries';
 import { useGruposDaTarefa, useGrupoComMembros } from '@/lib/grupotarefa/useGrupoTarefaQueries';
-import { useAtualizarNomeGrupo, useExpulsarMembro } from '@/lib/grupotarefa/useGrupoTarefaMutations';
+import { useAtualizarNomeGrupo, useExpulsarMembro, useAtualizarPermissaoMembroGrupoTarefa } from '@/lib/grupotarefa/useGrupoTarefaMutations';
 import { grupoTarefaKeys } from '@/lib/grupotarefa/queryKeys';
 import ConviteGrupoModal from '@/components/ConviteGrupoModal';
 import TransferirLiderancaModal from '@/components/TransferirLiderancaModal';
@@ -48,6 +48,7 @@ export default function TarefaDetalhesPage() {
 
   const atualizarNomeGrupoMutation = useAtualizarNomeGrupo();
   const expulsarMembroMutation = useExpulsarMembro();
+  const atualizarPermissaoMutation = useAtualizarPermissaoMembroGrupoTarefa();
 
   const [modalConvite, setModalConvite] = useState(false);
   const [modalTransferir, setModalTransferir] = useState(false);
@@ -69,8 +70,12 @@ export default function TarefaDetalhesPage() {
     }
   }, [grupo]);
 
+  const souLiderDoGrupo = grupo?.UsuarioGUIDLider === usuario?.UsuarioGUID;
+  const podeAtualizarGrupo = grupo?.MinhasPermissoes?.PodeAtualizarGrupo ?? souLiderDoGrupo;
+  const podeExpulsar = grupo?.MinhasPermissoes?.PodeExpulsarMembros ?? souLiderDoGrupo;
+
   const salvarNomeGrupo = async () => {
-    if (!grupo || !usuarioELider) return;
+    if (!grupo || !podeAtualizarGrupo) return;
 
     setSalvandoNome(true);
     try {
@@ -84,7 +89,7 @@ export default function TarefaDetalhesPage() {
   };
 
   const handleExpulsarMembro = async (membroGUID: string, nome: string) => {
-    if (!grupo || !usuarioELider) return;
+    if (!grupo || !podeExpulsar) return;
 
     if (!confirm(`Deseja expulsar ${nome} do grupo?`)) return;
 
@@ -93,6 +98,19 @@ export default function TarefaDetalhesPage() {
       alert('Membro expulso do grupo.');
     } catch (err: any) {
       alert(err?.message || 'Erro ao expulsar membro');
+    }
+  };
+
+  const handleTogglePermissaoGrupoTarefa = async (
+    membroGUID: string,
+    capacidade: 'PodeExpulsarMembros' | 'PodeAtualizarGrupo',
+    valorAtual: boolean
+  ) => {
+    if (!grupo) return;
+    try {
+      await atualizarPermissaoMutation.mutateAsync({ grupoGUID: grupo.GrupoTarefaGUID, membroGUID, patch: { [capacidade]: !valorAtual } });
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao atualizar permissão');
     }
   };
 
@@ -237,7 +255,7 @@ export default function TarefaDetalhesPage() {
                   value={grupoNomeEditado}
                   onChange={(e) => setGrupoNomeEditado(e.target.value)}
                   onBlur={salvarNomeGrupo}
-                  disabled={!usuarioELider || salvandoNome}
+                  disabled={!podeAtualizarGrupo || salvandoNome}
                   placeholder="Nome do grupo"
                   className={styles.grupoNomeInput}
                 />
@@ -268,20 +286,44 @@ export default function TarefaDetalhesPage() {
                         )}
                       </div>
                     </div>
-                    {usuarioELider && !membro.IsLider && (
+                    {!membro.IsLider && (podeExpulsar || usuarioELider) && (
                       <div className={styles.membroAcoes}>
-                        <button
-                          className={styles.btnExpulsar}
-                          onClick={() => handleExpulsarMembro(membro.UsuarioGUID, membro.UsuarioNome)}
-                        >
-                          Expulsar
-                        </button>
-                        <button
-                          className={styles.btnTransferir}
-                          onClick={() => setModalTransferir(true)}
-                        >
-                          Transferir Liderança
-                        </button>
+                        {podeExpulsar && (
+                          <button
+                            className={styles.btnExpulsar}
+                            onClick={() => handleExpulsarMembro(membro.UsuarioGUID, membro.UsuarioNome)}
+                          >
+                            Expulsar
+                          </button>
+                        )}
+                        {usuarioELider && (
+                          <button
+                            className={styles.btnTransferir}
+                            onClick={() => setModalTransferir(true)}
+                          >
+                            Transferir Liderança
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {usuarioELider && !membro.IsLider && (
+                      <div className={styles.permissoesRow}>
+                        <label className={styles.permissaoCheckbox}>
+                          <input
+                            type="checkbox"
+                            checked={membro.Permissoes?.PodeExpulsarMembros ?? false}
+                            onChange={() => handleTogglePermissaoGrupoTarefa(membro.UsuarioGUID, 'PodeExpulsarMembros', membro.Permissoes?.PodeExpulsarMembros ?? false)}
+                          />
+                          Expulsar membros
+                        </label>
+                        <label className={styles.permissaoCheckbox}>
+                          <input
+                            type="checkbox"
+                            checked={membro.Permissoes?.PodeAtualizarGrupo ?? false}
+                            onChange={() => handleTogglePermissaoGrupoTarefa(membro.UsuarioGUID, 'PodeAtualizarGrupo', membro.Permissoes?.PodeAtualizarGrupo ?? false)}
+                          />
+                          Atualizar grupo
+                        </label>
                       </div>
                     )}
                   </div>

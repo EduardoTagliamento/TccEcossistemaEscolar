@@ -151,6 +151,7 @@
 .membroItem {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   width: 100%;
   padding: 10px;
@@ -242,5 +243,113 @@
   background: var(--danger-50) !important;
   border-color: var(--danger-500) !important;
   color: var(--danger-500) !important;
+}
+
+.personalizacaoSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 1rem;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  background: var(--surface-50);
+}
+
+.secaoTitulo {
+  margin: 0;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.personalizacaoPreview {
+  width: 100%;
+  height: 64px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.personalizacaoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.campoTexto {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  color: var(--ink-900);
+  background: var(--white);
+}
+
+.personalizacaoLinha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.campoCor {
+  width: 40px;
+  height: 34px;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  padding: 2px;
+  background: var(--white);
+  cursor: pointer;
+}
+
+.campoArquivo {
+  flex: 1;
+  font-size: 0.75rem;
+  color: var(--slate-600);
+}
+
+.salvarBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--green-500);
+  color: var(--white);
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.salvarBtn:hover {
+  background: var(--green-600);
+}
+
+.salvarBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.permissoesRow {
+  display: flex;
+  width: 100%;
+  gap: 14px;
+  padding: 0 10px 4px 48px;
+  flex-wrap: wrap;
+}
+
+.permissaoCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--slate-600);
+  cursor: pointer;
 }
 
