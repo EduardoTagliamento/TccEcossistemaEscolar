@@ -22,7 +22,7 @@ export interface ConversaListItemDTO {
   ConversaTipo: 'Individual' | 'Grupo';
   // Grupo
   ConversaGrupoNome: string | null;
-  ConversaGrupoTipo: 'Turma' | 'Tarefa' | null;
+  ConversaGrupoTipo: 'Turma' | 'Tarefa' | 'Projeto' | null;
   // Individual
   ParceiroGUID: string | null;
   ParceiroNome: string | null;
@@ -44,6 +44,8 @@ export interface MembroDTO {
   UsuarioFotoUrl: string | null;
   MembroFuncao: 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante';
   MembroEntradaAt: string;
+  /** Capacidades resolvidas deste membro (papel + override) — pra quem concede permissão ver o estado atual de cada um. */
+  Permissoes: { PodeExcluirMensagens: boolean; PodePersonalizarGrupo: boolean };
 }
 
 export interface ConversaDetalheDTO {
@@ -51,7 +53,7 @@ export interface ConversaDetalheDTO {
   ConversaTipo: 'Individual' | 'Grupo';
   // Grupo
   ConversaGrupoNome: string | null;
-  ConversaGrupoTipo: 'Turma' | 'Tarefa' | null;
+  ConversaGrupoTipo: 'Turma' | 'Tarefa' | 'Projeto' | null;
   ConversaGrupoRefGUID: string | null;
   ConversaGrupoCorFundo: string | null;
   ConversaGrupoImagemUrl: string | null;
@@ -199,6 +201,10 @@ export default class ConversaService {
           UsuarioFotoUrl: m.UsuarioFotoUrl,
           MembroFuncao: m.MembroFuncao,
           MembroEntradaAt: m.MembroEntradaAt.toISOString(),
+          Permissoes: {
+            PodeExcluirMensagens: resolverPermissaoChat(m.MembroFuncao, m.MembroPermissoes as any, grupoTipo, 'PodeExcluirMensagens'),
+            PodePersonalizarGrupo: resolverPermissaoChat(m.MembroFuncao, m.MembroPermissoes as any, grupoTipo, 'PodePersonalizarGrupo'),
+          },
         })),
         MinhasPermissoes: {
           PodeExcluirMensagens: resolverPermissaoChat(meuMembro?.MembroFuncao ?? null, meuMembro?.MembroPermissoes, grupoTipo, 'PodeExcluirMensagens'),

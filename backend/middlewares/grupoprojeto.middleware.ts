@@ -10,6 +10,7 @@ import {
   AdicionarMembroBodySchema,
   TransferirLiderBodySchema,
   PermissoesBodySchema,
+  VincularAnexoBodySchema,
 } from '../schemas/grupoprojeto.schema';
 
 /**
@@ -59,5 +60,10 @@ export default class GrupoProjetoMiddleware {
   validatePermissoesBody = (request: Request, response: Response, next: NextFunction): void => {
     console.log('🔷 GrupoProjetoMiddleware.validatePermissoesBody()');
     zodValidate(PermissoesBodySchema, 'body')(request, response, next);
+  };
+
+  validateVincularAnexoBody = (request: Request, response: Response, next: NextFunction): void => {
+    console.log('🔷 GrupoProjetoMiddleware.validateVincularAnexoBody()');
+    zodValidate(VincularAnexoBodySchema, 'body')(request, response, next);
   };
 }

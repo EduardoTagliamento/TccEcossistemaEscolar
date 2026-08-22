@@ -31,18 +31,20 @@ export function resolverPermissaoGrupoComLiderUnico(
 }
 
 /**
- * Chat (Turma/Tarefa): o default por papel é assimétrico hoje (ver
+ * Chat (Turma/Tarefa/Projeto): o default por papel é assimétrico hoje (ver
  * mensagem.service.ts#deletarMensagem) — preservado como default; o JSON
- * pode estender a capacidade a qualquer membro.
+ * pode estender a capacidade a qualquer membro. Projeto espelha Tarefa
+ * (líder único fora do conceito de Representante/Vice) — ver
+ * docs/PLANO_IMPLEMENTACAO_PERMISSOES_GRANULARES_GRUPOS.md, seção 1b.
  */
 export function resolverPermissaoChat(
   membroFuncao: 'Membro' | 'Lider' | 'Representante' | 'Vice-Representante' | null,
   membroPermissoes: MapaPermissoes,
-  grupoTipo: 'Turma' | 'Tarefa',
+  grupoTipo: 'Turma' | 'Tarefa' | 'Projeto',
   capacidade: 'PodeExcluirMensagens' | 'PodePersonalizarGrupo'
 ): boolean {
-  const defaultPorPapel = grupoTipo === 'Tarefa'
-    ? membroFuncao === 'Lider'
-    : (membroFuncao === 'Representante' || membroFuncao === 'Vice-Representante');
+  const defaultPorPapel = grupoTipo === 'Turma'
+    ? (membroFuncao === 'Representante' || membroFuncao === 'Vice-Representante')
+    : membroFuncao === 'Lider';
   return resolverComOverride(membroPermissoes, capacidade, defaultPorPapel);
 }

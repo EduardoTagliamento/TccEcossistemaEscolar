@@ -4,7 +4,8 @@ export type HistoricoTipo =
   | 'Expulsao'
   | 'TransferenciaLider'
   | 'MudancaVisibilidade'
-  | 'PontuacaoAtribuida';
+  | 'PontuacaoAtribuida'
+  | 'Submissao';
 
 export interface HistoricoGrupoProjeto {
   HistoricoGUID: string;
@@ -62,7 +63,8 @@ export class HistoricoGrupoProjetoEntity {
       'Expulsao',
       'TransferenciaLider',
       'MudancaVisibilidade',
-      'PontuacaoAtribuida'
+      'PontuacaoAtribuida',
+      'Submissao'
     ];
 
     if (!tiposValidos.includes(this.#historicoTipo)) {

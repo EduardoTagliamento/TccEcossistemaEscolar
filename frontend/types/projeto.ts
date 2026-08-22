@@ -51,11 +51,18 @@ export interface ProjetoUpdateDTO {
   ProjetoEntregaPrazoData?: string | null;
 }
 
+export interface PermissoesGrupoProjeto {
+  PodeExpulsarMembros: boolean;
+  PodeAtualizarGrupo: boolean;
+  PodeSubmeterProjeto: boolean;
+}
+
 export interface MembroGrupoProjeto {
   UsuarioGUID: string;
   UsuarioNome: string;
   DataEntrada: string;
   IsLider: boolean;
+  Permissoes: PermissoesGrupoProjeto;
 }
 
 export interface GrupoProjeto {
@@ -67,10 +74,14 @@ export interface GrupoProjeto {
   GrupoProjetoProposta: string;
   GrupoProjetoVisibilidade: GrupoProjetoVisibilidade;
   GrupoProjetoPontuacao: number | null;
+  GrupoProjetoSubmetidoEm: string | null;
+  GrupoProjetoSubmetidoPorGUID: string | null;
+  ConversaGUID: string | null;
   Membros: MembroGrupoProjeto[];
   TotalMembros: number;
   LimiteMaximo: number;
   PodeEntrar: boolean;
+  MinhasPermissoes?: PermissoesGrupoProjeto | null;
   CreatedAt: string;
 }
 

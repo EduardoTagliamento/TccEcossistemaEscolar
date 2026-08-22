@@ -14,6 +14,8 @@
  * - DELETE /api/grupoprojeto/:grupoGUID/membros/:membroGUID - Expulsar membro (líder ou criador do projeto)
  * - POST   /api/grupoprojeto/:grupoGUID/membros          - Adicionar membro direto (só criador do projeto)
  * - PATCH  /api/grupoprojeto/:grupoGUID/transferir-lider - Transferir liderança (só líder)
+ * - POST   /api/grupoprojeto/:grupoGUID/submissao/anexo  - Vincular anexo à submissão
+ * - POST   /api/grupoprojeto/:grupoGUID/submeter         - Submeter projeto
  */
 
 import { Router } from 'express';
@@ -23,8 +25,14 @@ import { UsuarioXGrupoProjetoDAO } from '../backend/repositories/usuarioxgrupopr
 import { ProjetoDAO } from '../backend/repositories/projeto.repository';
 import { HistoricoGrupoProjetoDAO } from '../backend/repositories/historicogrupoprojeto.repository';
 import { UsuarioDAO } from '../backend/repositories/usuario.repository';
+import { AnexoDAO } from '../backend/repositories/anexo.repository';
+import { RelacaoAnexosDAO } from '../backend/repositories/relacaoanexos.repository';
+import { ConversaDAO } from '../backend/repositories/conversa.repository';
+import { ConversaGrupoDAO } from '../backend/repositories/conversa-grupo.repository';
+import { MatriculaDAO } from '../backend/repositories/matricula.repository';
 import GrupoProjetoService from '../backend/services/grupoprojeto.service';
 import HistoricoGrupoProjetoService from '../backend/services/historicogrupoprojeto.service';
+import ConversaGrupoService from '../backend/services/conversa-grupo.service';
 import GrupoProjetoController from '../backend/controllers/grupoprojeto.controller';
 import GrupoProjetoMiddleware from '../backend/middlewares/grupoprojeto.middleware';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
@@ -38,15 +46,24 @@ export function grupoProjetoRoutes(): Router {
   const projetoDAO = new ProjetoDAO(database);
   const historicoDAO = new HistoricoGrupoProjetoDAO(database);
   const usuarioDAO = new UsuarioDAO(database);
+  const anexoDAO = new AnexoDAO(database);
+  const relacaoAnexosDAO = new RelacaoAnexosDAO(database);
+  const conversaDAO = new ConversaDAO(database);
+  const conversaGrupoDAO = new ConversaGrupoDAO(database);
+  const matriculaDAO = new MatriculaDAO(database);
 
   const historicoService = new HistoricoGrupoProjetoService(historicoDAO);
+  const conversaGrupoService = new ConversaGrupoService(conversaDAO, conversaGrupoDAO, matriculaDAO, usuarioDAO);
   const grupoProjetoService = new GrupoProjetoService(
     grupoProjetoDAO,
     usuarioXGrupoDAO,
     projetoDAO,
     historicoService,
     database,
-    usuarioDAO
+    usuarioDAO,
+    anexoDAO,
+    relacaoAnexosDAO,
+    conversaGrupoService
   );
 
   const grupoProjetoController = new GrupoProjetoController(grupoProjetoService);
@@ -134,6 +151,21 @@ export function grupoProjetoRoutes(): Router {
     grupoProjetoMiddleware.validateGrupoAndMembroParams,
     grupoProjetoMiddleware.validatePermissoesBody,
     grupoProjetoController.atualizarPermissaoMembro
+  );
+
+  router.post(
+    '/:grupoGUID/submissao/anexo',
+    AuthMiddleware.authenticate,
+    grupoProjetoMiddleware.validateGrupoGUIDParam,
+    grupoProjetoMiddleware.validateVincularAnexoBody,
+    grupoProjetoController.vincularAnexoSubmissao
+  );
+
+  router.post(
+    '/:grupoGUID/submeter',
+    AuthMiddleware.authenticate,
+    grupoProjetoMiddleware.validateGrupoGUIDParam,
+    grupoProjetoController.submeterProjeto
   );
 
   return router;

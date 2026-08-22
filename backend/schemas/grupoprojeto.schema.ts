@@ -60,6 +60,10 @@ export const TransferirLiderBodySchema = z.object({
   NovoLiderGUID: guidUsuario("NovoLiderGUID"),
 });
 
+export const VincularAnexoBodySchema = z.object({
+  AnexoGUID: guid("AnexoGUID"),
+});
+
 export const PermissoesBodySchema = z
   .object({
     PodeExpulsarMembros: z.boolean().optional(),

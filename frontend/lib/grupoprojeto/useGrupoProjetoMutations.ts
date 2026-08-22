@@ -10,6 +10,9 @@ import {
   adicionarMembro,
   expulsarMembro,
   transferirLideranca,
+  atualizarPermissaoMembro,
+  vincularAnexoSubmissao,
+  submeterProjeto,
 } from '@/lib/api/grupoprojeto.api';
 import { grupoProjetoKeys } from './queryKeys';
 
@@ -87,6 +90,37 @@ export function useTransferirLideranca() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ grupoGUID, novoLiderGUID }: { grupoGUID: string; novoLiderGUID: string }) => transferirLideranca(grupoGUID, novoLiderGUID),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: grupoProjetoKeys.all });
+    },
+  });
+}
+
+export function useAtualizarPermissaoMembroGrupoProjeto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ grupoGUID, membroGUID, patch }: { grupoGUID: string; membroGUID: string; patch: Parameters<typeof atualizarPermissaoMembro>[2] }) =>
+      atualizarPermissaoMembro(grupoGUID, membroGUID, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: grupoProjetoKeys.all });
+    },
+  });
+}
+
+export function useVincularAnexoSubmissao() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ grupoGUID, anexoGUID }: { grupoGUID: string; anexoGUID: string }) => vincularAnexoSubmissao(grupoGUID, anexoGUID),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: grupoProjetoKeys.all });
+    },
+  });
+}
+
+export function useSubmeterProjeto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (grupoGUID: string) => submeterProjeto(grupoGUID),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: grupoProjetoKeys.all });
     },

@@ -14,9 +14,13 @@ import {
   useExpulsarMembro,
   useSairGrupo,
   useTransferirLideranca,
+  useAtualizarPermissaoMembroGrupoProjeto,
+  useVincularAnexoSubmissao,
+  useSubmeterProjeto,
 } from '@/lib/grupoprojeto/useGrupoProjetoMutations';
 import { useSolicitarEntrada } from '@/lib/convitegrupoprojeto/useConviteGrupoProjetoMutations';
 import { buscarUsuarioPorCPF } from '@/lib/api/usuario.api';
+import { uploadAnexo } from '@/lib/api/anexo.api';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
@@ -37,6 +41,8 @@ export default function GrupoProjetoDetalhePage() {
   const [acaoMensagem, setAcaoMensagem] = useState<string | null>(null);
   const [novoCPF, setNovoCPF] = useState('');
   const [pontuacaoInput, setPontuacaoInput] = useState('');
+  const [anexosVinculados, setAnexosVinculados] = useState<string[]>([]);
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false);
 
   const projetoQuery = useProjeto(usuario ? projetoGUID : undefined);
   const projeto = projetoQuery.data ?? null;
@@ -52,6 +58,9 @@ export default function GrupoProjetoDetalhePage() {
   const atualizarGrupoMutation = useAtualizarGrupo();
   const adicionarMembroMutation = useAdicionarMembro();
   const atualizarPontuacaoMutation = useAtualizarPontuacao();
+  const atualizarPermissaoMutation = useAtualizarPermissaoMembroGrupoProjeto();
+  const vincularAnexoMutation = useVincularAnexoSubmissao();
+  const submeterProjetoMutation = useSubmeterProjeto();
 
   useEffect(() => {
     if (!authLoading && !usuario) {
@@ -74,6 +83,10 @@ export default function GrupoProjetoDetalhePage() {
   const souLider = grupo?.UsuarioGUIDLider === usuario?.UsuarioGUID;
   const souCriadorProjeto = projeto?.UsuarioGUIDCriador === usuario?.UsuarioGUID;
   const souMembro = grupo?.Membros.some((m) => m.UsuarioGUID === usuario?.UsuarioGUID) ?? false;
+  const podeExpulsar = grupo?.MinhasPermissoes?.PodeExpulsarMembros ?? souLider;
+  const podeAtualizarGrupo = grupo?.MinhasPermissoes?.PodeAtualizarGrupo ?? souLider;
+  const podeSubmeter = grupo?.MinhasPermissoes?.PodeSubmeterProjeto ?? souLider;
+  const jaSubmetido = Boolean(grupo?.GrupoProjetoSubmetidoEm);
 
   const executar = async (acao: () => Promise<void>, mensagemSucesso: string) => {
     setAcaoErro(null);
@@ -136,6 +149,40 @@ export default function GrupoProjetoDetalhePage() {
     void executar(() => atualizarPontuacaoMutation.mutateAsync({ grupoGUID, pontuacao }), 'Pontuação atribuída.');
   };
 
+  const handleTogglePermissao = (
+    membroGUID: string,
+    capacidade: 'PodeExpulsarMembros' | 'PodeAtualizarGrupo' | 'PodeSubmeterProjeto',
+    valorAtual: boolean
+  ) => {
+    void executar(
+      () => atualizarPermissaoMutation.mutateAsync({ grupoGUID, membroGUID, patch: { [capacidade]: !valorAtual } }),
+      'Permissão atualizada.'
+    );
+  };
+
+  const handleAnexarArquivo = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = event.target.files?.[0];
+    event.target.value = '';
+    if (!arquivo) return;
+
+    setAcaoErro(null);
+    setEnviandoAnexo(true);
+    try {
+      const anexo = await uploadAnexo(arquivo, escolaGUID);
+      await vincularAnexoMutation.mutateAsync({ grupoGUID, anexoGUID: anexo.AnexoGUID });
+      setAnexosVinculados((atual) => [...atual, arquivo.name]);
+    } catch (err: any) {
+      setAcaoErro(err?.message || 'Falha ao anexar arquivo');
+    } finally {
+      setEnviandoAnexo(false);
+    }
+  };
+
+  const handleSubmeterProjeto = () => {
+    if (!confirm('Submeter o projeto? Essa ação marca a entrega do grupo como concluída.')) return;
+    void executar(() => submeterProjetoMutation.mutateAsync(grupoGUID), 'Projeto submetido com sucesso!');
+  };
+
   if (authLoading || loading) {
     return (
       <div className={styles.container}>
@@ -181,10 +228,22 @@ export default function GrupoProjetoDetalhePage() {
           )}
         </p>
 
-        {souLider && !projeto.ProjetoStatus.includes('Encerrado') && (
+        {podeAtualizarGrupo && !projeto.ProjetoStatus.includes('Encerrado') && (
           <button onClick={handleToggleVisibilidade} className={styles.secondaryBtn}>
             Tornar {grupo.GrupoProjetoVisibilidade === 'Aberto' ? 'Fechado' : 'Aberto'}
           </button>
+        )}
+
+        {souMembro && grupo.ConversaGUID && (
+          <Link href={`/dashboard/${escolaGUID}/chat?conversa=${grupo.ConversaGUID}`} className={`${styles.secondaryBtn} ${styles.chatLink}`}>
+            <Icon name="message-circle" size={14} /> Ir para o chat do grupo
+          </Link>
+        )}
+
+        {jaSubmetido && (
+          <p className={styles.sucesso}>
+            <Icon name="check-circle" size={14} /> Projeto submetido em {new Date(grupo.GrupoProjetoSubmetidoEm as string).toLocaleString('pt-BR')}
+          </p>
         )}
       </section>
 
@@ -216,21 +275,50 @@ export default function GrupoProjetoDetalhePage() {
               </span>
               <div className={styles.membroAcoes}>
                 {souLider && !membro.IsLider && (
-                  <>
-                    <button onClick={() => handleTransferir(membro.UsuarioGUID)} className={styles.linkBtn}>
-                      Tornar líder
-                    </button>
-                    <button onClick={() => handleExpulsar(membro.UsuarioGUID)} className={styles.linkBtnDanger}>
-                      Remover
-                    </button>
-                  </>
+                  <button onClick={() => handleTransferir(membro.UsuarioGUID)} className={styles.linkBtn}>
+                    Tornar líder
+                  </button>
                 )}
-                {souCriadorProjeto && !souLider && (
+                {podeExpulsar && !membro.IsLider && (
+                  <button onClick={() => handleExpulsar(membro.UsuarioGUID)} className={styles.linkBtnDanger}>
+                    Remover
+                  </button>
+                )}
+                {souCriadorProjeto && !souLider && !podeExpulsar && (
                   <button onClick={() => handleExpulsar(membro.UsuarioGUID)} className={styles.linkBtnDanger}>
                     Remover (criador do projeto)
                   </button>
                 )}
               </div>
+
+              {souLider && !membro.IsLider && (
+                <div className={styles.permissoesRow}>
+                  <label className={styles.permissaoCheckbox}>
+                    <input
+                      type="checkbox"
+                      checked={membro.Permissoes?.PodeExpulsarMembros ?? false}
+                      onChange={() => handleTogglePermissao(membro.UsuarioGUID, 'PodeExpulsarMembros', membro.Permissoes?.PodeExpulsarMembros ?? false)}
+                    />
+                    Expulsar membros
+                  </label>
+                  <label className={styles.permissaoCheckbox}>
+                    <input
+                      type="checkbox"
+                      checked={membro.Permissoes?.PodeAtualizarGrupo ?? false}
+                      onChange={() => handleTogglePermissao(membro.UsuarioGUID, 'PodeAtualizarGrupo', membro.Permissoes?.PodeAtualizarGrupo ?? false)}
+                    />
+                    Atualizar grupo
+                  </label>
+                  <label className={styles.permissaoCheckbox}>
+                    <input
+                      type="checkbox"
+                      checked={membro.Permissoes?.PodeSubmeterProjeto ?? false}
+                      onChange={() => handleTogglePermissao(membro.UsuarioGUID, 'PodeSubmeterProjeto', membro.Permissoes?.PodeSubmeterProjeto ?? false)}
+                    />
+                    Submeter projeto
+                  </label>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -241,6 +329,46 @@ export default function GrupoProjetoDetalhePage() {
           </button>
         )}
       </section>
+
+      {souMembro && (
+        <section className={styles.submissaoSection}>
+          <h2>Submissão do projeto</h2>
+          {jaSubmetido ? (
+            <p className={styles.sucesso}>
+              <Icon name="check-circle" size={14} /> Projeto já submetido — não é possível anexar novos arquivos.
+            </p>
+          ) : podeSubmeter ? (
+            <>
+              <div className={styles.anexosList}>
+                {anexosVinculados.length === 0 ? (
+                  <p className={styles.meta}>Nenhum arquivo anexado ainda nesta sessão.</p>
+                ) : (
+                  anexosVinculados.map((nome, indice) => (
+                    <span key={`${nome}-${indice}`} className={styles.anexoItem}>
+                      <Icon name="paperclip" size={12} /> {nome}
+                    </span>
+                  ))
+                )}
+              </div>
+              <div className={styles.inlineForm}>
+                <label className={styles.secondaryBtn} style={{ cursor: enviandoAnexo ? 'default' : 'pointer' }}>
+                  {enviandoAnexo ? <Loader size={16} inline /> : 'Anexar arquivo'}
+                  <input type="file" onChange={handleAnexarArquivo} disabled={enviandoAnexo} style={{ display: 'none' }} />
+                </label>
+                <button
+                  onClick={handleSubmeterProjeto}
+                  disabled={anexosVinculados.length === 0}
+                  className={styles.primaryBtn}
+                >
+                  Submeter projeto
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className={styles.meta}>Você não tem permissão para submeter este projeto — peça ao líder para conceder essa permissão.</p>
+          )}
+        </section>
+      )}
 
       {souCriadorProjeto && (
         <section className={styles.criadorSection}>

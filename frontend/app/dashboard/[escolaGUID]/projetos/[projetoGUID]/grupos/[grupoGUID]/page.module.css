@@ -220,6 +220,14 @@
   background: var(--surface-50);
 }
 
+.chatLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  margin-left: var(--space-3);
+}
+
 .secondaryBtnDanger {
   margin-top: var(--space-4);
   background: transparent;
@@ -337,4 +345,53 @@
 .inlineForm input:focus {
   outline: none;
   border-color: var(--color-primary, var(--green-500));
+}
+
+.permissoesRow {
+  display: flex;
+  width: 100%;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding-bottom: var(--space-2);
+}
+
+.permissaoCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--slate-600);
+  cursor: pointer;
+}
+
+.submissaoSection {
+  background: var(--white);
+  border: 1px solid var(--line-100);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.submissaoSection h2 {
+  margin-top: 0;
+  font-size: 1.15rem;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.anexosList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.anexoItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--ink-900);
 }

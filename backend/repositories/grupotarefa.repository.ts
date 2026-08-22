@@ -129,7 +129,8 @@ export class GrupoTarefaDAO {
         -- Membros não-líderes
         uxgt.UsuarioGUID AS MembroGUID,
         u_membro.UsuarioNome AS MembroNome,
-        uxgt.DataEntrada AS MembroDataEntrada
+        uxgt.DataEntrada AS MembroDataEntrada,
+        uxgt.MembroPermissoes AS MembroPermissoesJSON
       FROM grupotarefa gt
       INNER JOIN usuario u_lider ON u_lider.UsuarioGUID = gt.UsuarioGUIDLider
       INNER JOIN tarefaacademica t ON t.TarefaGUID = gt.TarefaGUID
@@ -152,17 +153,26 @@ export class GrupoTarefaDAO {
       UsuarioGUID: primeiraLinha.UsuarioGUIDLider,
       UsuarioNome: primeiraLinha.NomeLider,
       DataEntrada: primeiraLinha.CreatedAt,
-      IsLider: true
+      IsLider: true,
+      Permissoes: { PodeExpulsarMembros: true, PodeAtualizarGrupo: true }
     });
-    
+
     // Adicionar membros não-líderes
     rows.forEach(row => {
       if (row.MembroGUID) {
+        const permissoesRaw: Record<string, boolean> | null = typeof row.MembroPermissoesJSON === 'string'
+          ? JSON.parse(row.MembroPermissoesJSON)
+          : (row.MembroPermissoesJSON ?? null);
+
         membros.push({
           UsuarioGUID: row.MembroGUID,
           UsuarioNome: row.MembroNome,
           DataEntrada: row.MembroDataEntrada,
-          IsLider: false
+          IsLider: false,
+          Permissoes: {
+            PodeExpulsarMembros: permissoesRaw?.PodeExpulsarMembros === true,
+            PodeAtualizarGrupo: permissoesRaw?.PodeAtualizarGrupo === true,
+          }
         });
       }
     });
