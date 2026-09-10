@@ -49,7 +49,7 @@ interface AuthContextData {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (identifier: string, senha: string) => Promise<void>;
+  login: (identifier: string, senha: string, lembrar?: boolean) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Login
-  const login = async (identifier: string, senha: string) => {
+  const login = async (identifier: string, senha: string, lembrar?: boolean) => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/auth/login', {
@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ identifier, senha }),
+        body: JSON.stringify({ identifier, senha, lembrar }),
       });
 
       const data = await response.json();

@@ -49,6 +49,7 @@ import { assuntoRouterFactory } from "../routes/assunto.routes";
 import { materialDidaticoRouterFactory } from "../routes/materialdidatico.routes";
 import { questaoBancoRouterFactory } from "../routes/questaobanco.routes";
 import { materiaGlobalRouterFactory } from "../routes/materiaglobal.routes";
+import { chatbotRoutes } from "../routes/chatbot.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { NotificacaoScheduler } from "./services/notificacao.scheduler";
 import { AuditoriaScheduler } from "./services/auditoria.scheduler";
@@ -541,6 +542,11 @@ export default class Server {
     const materiaGlobalRouter = materiaGlobalRouterFactory();
     this.#app.use("/api/materiaglobal", materiaGlobalRouter);
     console.log("✅ Rotas de Matéria Global registradas em /api/materiaglobal");
+
+    // 🤖 Rotas do Chatbot (assistente conversacional — consulta de tarefas,
+    // matérias, calendário e conversas; + webhook de entrada do WhatsApp)
+    this.#app.use("/api/chatbot", chatbotRoutes);
+    console.log("✅ Rotas de Chatbot registradas em /api/chatbot");
 
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {

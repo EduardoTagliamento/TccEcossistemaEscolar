@@ -12,6 +12,7 @@ import ErrorResponse from '../utils/ErrorResponse';
 interface LoginCredentials {
   identifier: string; // CPF, email ou telefone
   senha: string;
+  lembrar?: boolean; // "Lembrar de mim" — sessão mais longa (30d em vez de 24h)
 }
 
 interface LoginResponse {
@@ -100,7 +101,7 @@ export default class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const { identifier, senha } = credentials;
+      const { identifier, senha, lembrar } = credentials;
 
       // 1. Buscar usuário no banco — CPF e telefone têm os dois exatamente
       // 11 dígitos quando limpos (XXX.XXX.XXX-XX = 9+2, (XX) XXXXX-XXXX =
@@ -139,11 +140,14 @@ export default class AuthService {
       }
 
       // 5. Gerar token JWT
-      const token = JwtService.generateToken({
-        UsuarioGUID: usuario.UsuarioGUID,
-        UsuarioEmail: usuario.UsuarioEmail || '',
-        UsuarioNome: usuario.UsuarioNome,
-      });
+      const token = JwtService.generateToken(
+        {
+          UsuarioGUID: usuario.UsuarioGUID,
+          UsuarioEmail: usuario.UsuarioEmail || '',
+          UsuarioNome: usuario.UsuarioNome,
+        },
+        { lembrar }
+      );
 
       // 6. Atualizar último acesso
       await this.#usuarioDAO.updateUltimoAcesso(usuario.UsuarioGUID);

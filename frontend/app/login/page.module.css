@@ -37,8 +37,32 @@
   font-size: 0.875rem;
 }
 
+.optionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rememberLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--slate-500);
+  cursor: pointer;
+  user-select: none;
+}
+
+.rememberCheckbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green-500);
+  cursor: pointer;
+}
+
 .forgotLink {
-  align-self: flex-start;
   font-size: 13px;
   font-weight: 600;
   color: var(--green-700);
@@ -47,6 +71,7 @@
   padding: 0;
   cursor: pointer;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .forgotLink:hover:not(:disabled) {

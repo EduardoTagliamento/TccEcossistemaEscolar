@@ -49,6 +49,7 @@ function LoginPageContent() {
 
   const [identifier, setIdentifier] = useState('');
   const [senha, setSenha] = useState('');
+  const [lembrar, setLembrar] = useState(false);
   const [error, setError] = useState('');
 
   // Campo aceita CPF, e-mail ou telefone — enquanto vazio, o hint/placeholder
@@ -161,7 +162,7 @@ function LoginPageContent() {
     }
 
     try {
-      await login(identifier, senha);
+      await login(identifier, senha, lembrar);
 
       // Redirecionar para dashboard ou seleção de escola
       router.push('/selecionar-escola');
@@ -214,9 +215,22 @@ function LoginPageContent() {
           disabled={isLoading}
         />
 
-        <Link href="/esqueci-senha" className={styles.forgotLink}>
-          Esqueci minha senha
-        </Link>
+        <div className={styles.optionsRow}>
+          <label className={styles.rememberLabel}>
+            <input
+              type="checkbox"
+              checked={lembrar}
+              onChange={(e) => setLembrar(e.target.checked)}
+              disabled={isLoading}
+              className={styles.rememberCheckbox}
+            />
+            Lembrar de mim
+          </label>
+
+          <Link href="/esqueci-senha" className={styles.forgotLink}>
+            Esqueci minha senha
+          </Link>
+        </div>
 
         <AuthButton type="submit" variant="primary" size="lg" block disabled={isLoading}>
           {isLoading ? 'Entrando...' : 'Entrar'}

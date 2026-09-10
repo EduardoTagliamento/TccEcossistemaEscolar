@@ -31,19 +31,23 @@ function resolveSecret(): string {
 export class JwtService {
   private static readonly SECRET: string = resolveSecret();
   private static readonly EXPIRES_IN: string = (process.env.JWT_EXPIRES_IN as string) || '24h';
+  // Usado quando o usuário marca "lembrar de mim" no login — sessão mais
+  // longa, igual ao que qualquer app real faz (troca de expiração do token,
+  // já que aqui não existe conceito separado de refresh token).
+  private static readonly EXPIRES_IN_LEMBRAR: string = (process.env.JWT_EXPIRES_IN_LEMBRAR as string) || '30d';
 
   /**
    * Gera um token JWT para o usuário
    */
-  static generateToken(payload: TokenPayload): string {
+  static generateToken(payload: TokenPayload, opcoes?: { lembrar?: boolean }): string {
     try {
       const options: SignOptions = {
-        expiresIn: this.EXPIRES_IN as any,
+        expiresIn: (opcoes?.lembrar ? this.EXPIRES_IN_LEMBRAR : this.EXPIRES_IN) as any,
       };
 
       const token = jwt.sign(payload, this.SECRET, options);
 
-      console.log(`✅ [JWT] Token gerado para ${payload.UsuarioNome}`);
+      console.log(`✅ [JWT] Token gerado para ${payload.UsuarioNome}${opcoes?.lembrar ? ' (lembrar de mim)' : ''}`);
       return token;
     } catch (error) {
       console.error('❌ [JWT] Erro ao gerar token:', error);
