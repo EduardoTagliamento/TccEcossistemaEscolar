@@ -177,6 +177,41 @@ export class EvolutionApiService {
       return 'UNKNOWN';
     }
   }
+
+  /**
+   * Baixa o conteúdo binário de uma mensagem de mídia recebida (imagem,
+   * documento, etc.) via `/chat/getBase64FromMediaMessage`. Recebe o objeto
+   * `message` cru do webhook (a Evolution precisa dele inteiro, não só a key)
+   * e devolve o buffer já decodificado + metadados.
+   *
+   * @throws Error se a API falhar ou não retornar base64.
+   */
+  public async baixarMidiaBase64(
+    mensagemWebhook: unknown
+  ): Promise<{ buffer: Buffer; mimetype: string; fileName: string }> {
+    let response: Response;
+    try {
+      response = await fetch(`${this.#baseUrl}/chat/getBase64FromMediaMessage/${this.#instanceName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: this.#apiKey },
+        body: JSON.stringify({ message: mensagemWebhook, convertToMp4: false }),
+      });
+    } catch (erro: any) {
+      throw new Error(`Falha ao baixar mídia da Evolution API: ${erro?.message ?? erro}`);
+    }
+
+    const data: any = await response.json().catch(() => null);
+    if (!response.ok || !data?.base64) {
+      const msg = data?.message ?? data?.response?.message ?? response.statusText;
+      throw new Error(`Evolution API não retornou a mídia: ${msg}`);
+    }
+
+    return {
+      buffer: Buffer.from(data.base64, 'base64'),
+      mimetype: data.mimetype ?? 'application/octet-stream',
+      fileName: data.fileName ?? 'arquivo',
+    };
+  }
 }
 
 export default EvolutionApiService;

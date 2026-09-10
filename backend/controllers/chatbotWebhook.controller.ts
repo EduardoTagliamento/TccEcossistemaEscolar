@@ -17,11 +17,15 @@ import ChatbotService from "../services/chatbot.service";
 import EvolutionApiService from "../external/EvolutionApiService";
 
 const MAX_IDS_PROCESSADOS = 500;
+const MIMES_ANEXO_ACEITOS = ["image/", "application/pdf"];
+const TAMANHO_MAX_ANEXO_BYTES = 16 * 1024 * 1024; // limite do próprio WhatsApp
 
 interface EventoWhatsapp {
   numeroJid: string;
   texto: string;
   id: string;
+  /** Quando a mensagem traz imagem/PDF: o objeto `message` cru (a Evolution precisa dele inteiro pra baixar a mídia). */
+  midiaMensagemCru?: unknown;
 }
 
 export default class ChatbotWebhookController {
@@ -70,8 +74,9 @@ export default class ChatbotWebhookController {
   };
 
   /**
-   * Extrai número + texto do payload da Evolution, ou null se for um evento
-   * que o chatbot deve ignorar (mensagem própria, grupo, status, sem texto).
+   * Extrai número + texto (+ mídia) do payload da Evolution, ou null se for
+   * um evento que o chatbot deve ignorar (mensagem própria, grupo, status,
+   * sem texto nem mídia aceita).
    */
   #extrair = (body: any): EventoWhatsapp | null => {
     const data = body?.data ?? body;
@@ -84,15 +89,62 @@ export default class ChatbotWebhookController {
 
     const message = data?.message ?? {};
     const texto: string = message?.conversation ?? message?.extendedTextMessage?.text ?? "";
-    if (!texto || !texto.trim()) return null;
 
-    return { numeroJid: remoteJid.split("@")[0], texto: texto.trim(), id: key?.id ?? "" };
+    // Imagem ou PDF: aceita como anexo pendente. O caption (se houver) vira o texto.
+    const imagem = message?.imageMessage;
+    const documento = message?.documentMessage ?? message?.documentWithCaptionMessage?.message?.documentMessage;
+    const midia = imagem ?? documento;
+    let midiaMensagemCru: unknown;
+    let textoFinal = texto.trim();
+
+    if (midia) {
+      const mimetype: string = midia?.mimetype ?? "";
+      const tamanho = Number(midia?.fileLength ?? 0);
+      const aceito = MIMES_ANEXO_ACEITOS.some((m) => mimetype.startsWith(m));
+      if (aceito && (tamanho === 0 || tamanho <= TAMANHO_MAX_ANEXO_BYTES)) {
+        midiaMensagemCru = data;
+        if (!textoFinal) {
+          textoFinal = String(imagem?.caption ?? documento?.caption ?? "").trim();
+        }
+      }
+    }
+
+    if (!textoFinal && !midiaMensagemCru) return null;
+
+    return {
+      numeroJid: remoteJid.split("@")[0],
+      texto: textoFinal,
+      id: key?.id ?? "",
+      midiaMensagemCru,
+    };
   };
 
   #processar = async (evento: EventoWhatsapp): Promise<void> => {
     console.log("📥 [ChatbotWebhookController] Mensagem WhatsApp recebida, processando...");
 
-    const { resposta } = await this.#chatbotService.enviarMensagemWhatsapp(evento.numeroJid, evento.texto);
+    let resposta: string;
+
+    if (evento.midiaMensagemCru) {
+      let arquivo: { buffer: Buffer; mimetype: string; fileName: string };
+      try {
+        arquivo = await EvolutionApiService.getInstance().baixarMidiaBase64(evento.midiaMensagemCru);
+      } catch (erro) {
+        console.error("❌ [ChatbotWebhookController] Falha ao baixar mídia:", erro);
+        await EvolutionApiService.getInstance().sendText(
+          evento.numeroJid,
+          "Não consegui baixar esse arquivo. Pode tentar enviar de novo?"
+        );
+        return;
+      }
+      ({ resposta } = await this.#chatbotService.enviarMensagemWhatsappComAnexo(
+        evento.numeroJid,
+        evento.texto,
+        arquivo
+      ));
+    } else {
+      ({ resposta } = await this.#chatbotService.enviarMensagemWhatsapp(evento.numeroJid, evento.texto));
+    }
+
     if (!resposta || !resposta.trim()) return;
 
     await EvolutionApiService.getInstance().sendText(evento.numeroJid, resposta.trim());
