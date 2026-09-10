@@ -1,58 +1,16 @@
 {
   "pages": {
-    "/dashboard/[escolaGUID]/gestao-dados/professores/page": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/dashboard/[escolaGUID]/gestao-dados/professores/page.css",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/professores/page.js"
-    ],
-    "/dashboard/[escolaGUID]/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/dashboard/[escolaGUID]/layout.css",
-      "static/chunks/app/dashboard/[escolaGUID]/layout.js"
+      "static/css/app/page.css",
+      "static/chunks/app/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/alunos/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/dashboard/[escolaGUID]/gestao-dados/alunos/page.css",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/alunos/page.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/secretaria/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/dashboard/[escolaGUID]/gestao-dados/secretaria/page.css",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/secretaria/page.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/coordenacao/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/dashboard/[escolaGUID]/gestao-dados/coordenacao/page.css",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/coordenacao/page.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/cursos/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/dashboard/[escolaGUID]/gestao-dados/cursos/page.css",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/cursos/page.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/materias/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/dashboard/[escolaGUID]/gestao-dados/materias/page.css",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/materias/page.js"
-    ],
-    "/dashboard/[escolaGUID]/gestao-dados/turmas/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/css/app/dashboard/[escolaGUID]/gestao-dados/turmas/page.css",
-      "static/chunks/app/dashboard/[escolaGUID]/gestao-dados/turmas/page.js"
     ]
   }
 }

@@ -11,6 +11,7 @@ import ErrorResponse from '../utils/ErrorResponse';
 interface LoginRequest {
   identifier: string; // CPF, email ou telefone
   senha: string;
+  lembrar?: boolean;
 }
 
 export default class AuthController {
@@ -29,7 +30,7 @@ export default class AuthController {
     try {
       console.log('📥 [AuthController] POST /api/auth/login');
 
-      const { identifier, senha } = req.body as LoginRequest;
+      const { identifier, senha, lembrar } = req.body as LoginRequest;
 
       // Validações
       if (!identifier || !senha) {
@@ -45,7 +46,7 @@ export default class AuthController {
       }
 
       // Executar login
-      const result = await this.#authService.login({ identifier, senha });
+      const result = await this.#authService.login({ identifier, senha, lembrar: !!lembrar });
 
       // Renomear 'user' para 'usuario' na resposta
       const { token, user, ...rest } = result;

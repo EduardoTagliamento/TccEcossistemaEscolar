@@ -1,4 +1,4 @@
-import { GoogleGenAI, Schema, createUserContent, createPartFromBase64 } from "@google/genai";
+import { GoogleGenAI, Schema, createUserContent, createPartFromBase64, Content, Tool, FunctionCall } from "@google/genai";
 import { IAIndisponivelError } from "../aiErrors";
 
 /**
@@ -122,6 +122,49 @@ export class GeminiProvider {
         throw new Error("resposta vazia");
       }
       return texto.trim();
+    } catch (error) {
+      if (error instanceof IAIndisponivelError) throw error;
+      throw new IAIndisponivelError("Gemini", error);
+    }
+  };
+
+  /**
+   * Um turno de conversa com function calling manual (não o
+   * "automaticFunctionCalling" do SDK — aqui quem decide se/como executar
+   * cada chamada é o agent, porque as ferramentas do chatbot precisam
+   * injetar estado de sessão que o modelo nunca vê nem controla, ver
+   * `backend/ai/agents/assistenteAgent.ts`). Devolve o `Content` bruto do
+   * modelo (pra caller anexar ao histórico) + as function calls pendentes,
+   * se houver — texto e function calls nunca coexistem na prática do
+   * Gemini, mas o shape permite os dois por segurança do caller.
+   */
+  conversarComFerramentas = async (
+    contents: Content[],
+    tools: Tool[],
+    systemInstruction: string,
+    tier: GeminiTier,
+    timeoutMs = TIMEOUT_PADRAO_MS
+  ): Promise<{ content: Content; functionCalls: FunctionCall[] | undefined; texto: string | undefined }> => {
+    console.log(`🤖 GeminiProvider.conversarComFerramentas() tier=${tier}`);
+
+    try {
+      const client = this.#getClient();
+      const response = await comTimeout(
+        client.models.generateContent({
+          model: MODELO_POR_TIER[tier],
+          contents,
+          config: { tools, systemInstruction },
+        }),
+        timeoutMs,
+        "Gemini"
+      );
+
+      const content = response.candidates?.[0]?.content;
+      if (!content) {
+        throw new Error("resposta sem conteúdo");
+      }
+
+      return { content, functionCalls: response.functionCalls, texto: response.text };
     } catch (error) {
       if (error instanceof IAIndisponivelError) throw error;
       throw new IAIndisponivelError("Gemini", error);

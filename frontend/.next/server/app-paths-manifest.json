@@ -1,9 +1,3 @@
 {
-  "/dashboard/[escolaGUID]/gestao-dados/alunos/page": "app/dashboard/[escolaGUID]/gestao-dados/alunos/page.js",
-  "/dashboard/[escolaGUID]/gestao-dados/coordenacao/page": "app/dashboard/[escolaGUID]/gestao-dados/coordenacao/page.js",
-  "/dashboard/[escolaGUID]/gestao-dados/cursos/page": "app/dashboard/[escolaGUID]/gestao-dados/cursos/page.js",
-  "/dashboard/[escolaGUID]/gestao-dados/materias/page": "app/dashboard/[escolaGUID]/gestao-dados/materias/page.js",
-  "/dashboard/[escolaGUID]/gestao-dados/professores/page": "app/dashboard/[escolaGUID]/gestao-dados/professores/page.js",
-  "/dashboard/[escolaGUID]/gestao-dados/turmas/page": "app/dashboard/[escolaGUID]/gestao-dados/turmas/page.js",
-  "/dashboard/[escolaGUID]/gestao-dados/secretaria/page": "app/dashboard/[escolaGUID]/gestao-dados/secretaria/page.js"
+  "/page": "app/page.js"
 }
