@@ -905,6 +905,32 @@ export default class TarefaAcademicaService {
   };
 
   /**
+   * Variante de `marcarComoFeito` pra quem tem só o par TarefaGUID +
+   * usuarioGUID em mãos (ex.: chatbot) — resolve a atribuição do próprio aluno
+   * dentro da tarefa e delega. Mesma lógica de "achar minha atribuição" de
+   * `enviarAnexoEntrega`.
+   */
+  marcarComoFeitoPorUsuario = async (
+    TarefaGUID: string,
+    usuarioGUID: string,
+    TarefaFeito: boolean
+  ): Promise<MatriculaAtribuidaDTO> => {
+    console.log("🟣 TarefaAcademicaService.marcarComoFeitoPorUsuario()");
+
+    const atribuicoes = await this.#tarefaMatriculaDAO.findByTarefa(TarefaGUID);
+    const infoPorMatricula = await this.#buscarInfoPorMatricula(atribuicoes.map((a) => a.MatriculaGUID));
+    const minha = atribuicoes.find((a) => infoPorMatricula.get(a.MatriculaGUID)?.UsuarioGUID === usuarioGUID);
+
+    if (!minha) {
+      throw new ErrorResponse(403, "Sem permissão", {
+        message: "Você não está atribuído a esta tarefa.",
+      });
+    }
+
+    return this.marcarComoFeito(TarefaGUID, minha.MatriculaGUID, TarefaFeito, usuarioGUID);
+  };
+
+  /**
    * Notifica o professor responsável (via matXprofXturxescGUID) que um aluno
    * entregou/marcou a tarefa como feita (tipo `tarefa_resposta_recebida`).
    */

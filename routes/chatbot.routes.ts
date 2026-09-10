@@ -25,10 +25,39 @@ import { MateriaCustomizacaoDAO } from "../backend/repositories/materiacustomiza
 import CalendarioService from "../backend/services/calendario.service";
 import { CalendarioDAO } from "../backend/repositories/calendario.repository";
 import ConversaService from "../backend/services/conversa.service";
+import MensagemService from "../backend/services/mensagem.service";
 import { ConversaDAO } from "../backend/repositories/conversa.repository";
 import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
 import { ConversaIndividualDAO } from "../backend/repositories/conversa-individual.repository";
 import { MensagemDAO } from "../backend/repositories/mensagem.repository";
+import ConteudoService from "../backend/services/conteudo.service";
+import { ConteudoDAO } from "../backend/repositories/conteudo.repository";
+import ConteudoTurmaDAO from "../backend/repositories/conteudoturma.repository";
+import { ConteudoCronometradoDAO } from "../backend/repositories/conteudocronometrado.repository";
+import { ConteudoTextoDAO } from "../backend/repositories/conteudotexto.repository";
+import { ConteudoPaginadoArquivoDAO } from "../backend/repositories/conteudopaginadoarquivo.repository";
+import { TurmaDAO } from "../backend/repositories/turma.repository";
+import { AvisoService } from "../backend/services/aviso.service";
+import { AvisoDAO } from "../backend/repositories/aviso.repository";
+import { RelacaoAnexosDAO } from "../backend/repositories/relacaoanexos.repository";
+import AnexoService from "../backend/services/anexo.service";
+import NotificacaoService from "../backend/services/notificacao.service";
+import { NotificacaoDAO } from "../backend/repositories/notificacao.repository";
+import { NotificacaoTipoDAO } from "../backend/repositories/notificacaotipo.repository";
+import { UsuarioNotificacaoPreferenciaDAO } from "../backend/repositories/usuarionotificacaopreferencia.repository";
+import { NotificacaoEnvioDAO } from "../backend/repositories/notificacaoenvio.repository";
+import { AnotacaoService } from "../backend/services/anotacao.service";
+import { AnotacaoDAO } from "../backend/repositories/anotacao.repository";
+import ProjetoService from "../backend/services/projeto.service";
+import { ProjetoDAO } from "../backend/repositories/projeto.repository";
+import CategoriaConteudoService from "../backend/services/categoriaconteudo.service";
+import PendenciaService from "../backend/services/pendencia.service";
+import { PendenciaDAO } from "../backend/repositories/pendencia.repository";
+import GrupoTarefaService from "../backend/services/grupotarefa.service";
+import HistoricoGrupoTarefaService from "../backend/services/historicogrupotarefa.service";
+import { GrupoTarefaDAO } from "../backend/repositories/grupotarefa.repository";
+import { UsuarioXGrupoTarefaDAO } from "../backend/repositories/usuarioxgrupotarefa.repository";
+import { HistoricoGrupoTarefaDAO } from "../backend/repositories/historicogrupotarefa.repository";
 
 export default class ChatbotRoteador {
   #router: Router;
@@ -117,6 +146,77 @@ const conversaGrupoDAO = new ConversaGrupoDAO(db);
 const conversaIndividualDAO = new ConversaIndividualDAO(db);
 const mensagemDAO = new MensagemDAO(db);
 const conversaService = new ConversaService(conversaDAO, conversaGrupoDAO, conversaIndividualDAO, mensagemDAO, usuarioDAO);
+const mensagemService = new MensagemService(mensagemDAO, conversaGrupoDAO, conversaDAO, usuarioDAO);
+
+const turmaDAO = new TurmaDAO(db);
+const conteudoDAO = new ConteudoDAO(db);
+const conteudoTurmaDAO = new ConteudoTurmaDAO(db);
+const conteudoCronometradoDAO = new ConteudoCronometradoDAO(db);
+const conteudoTextoDAO = new ConteudoTextoDAO(db);
+const conteudoPaginadoArquivoDAO = new ConteudoPaginadoArquivoDAO(db);
+const conteudoService = new ConteudoService(
+  conteudoDAO,
+  conteudoTurmaDAO,
+  conteudoCronometradoDAO,
+  conteudoTextoDAO,
+  conteudoPaginadoArquivoDAO,
+  materiaDAO,
+  turmaDAO,
+  categoriaDAO,
+  alocacaoDAO,
+  usuarioDAO
+);
+
+const avisoDAO = new AvisoDAO(db);
+const relacaoAnexosDAO = new RelacaoAnexosDAO(db);
+const avisoService = new AvisoService(avisoDAO, escolaxUsuarioxFuncaoDAO, relacaoAnexosDAO, anexoDAO, matriculaDAO, usuarioDAO);
+
+const anexoService = new AnexoService(anexoDAO, escolaDAO, escolaxUsuarioxFuncaoDAO, usuarioDAO);
+
+const notificacaoDAO = new NotificacaoDAO(db);
+const notificacaoTipoDAO = new NotificacaoTipoDAO(db);
+const usuarioNotificacaoPreferenciaDAO = new UsuarioNotificacaoPreferenciaDAO(db);
+const notificacaoEnvioDAO = new NotificacaoEnvioDAO(db);
+const notificacaoService = new NotificacaoService(
+  notificacaoDAO,
+  notificacaoTipoDAO,
+  usuarioNotificacaoPreferenciaDAO,
+  notificacaoEnvioDAO,
+  usuarioDAO
+);
+
+const anotacaoDAO = new AnotacaoDAO(db);
+const anotacaoService = new AnotacaoService(anotacaoDAO, escolaxUsuarioxFuncaoDAO);
+
+const projetoDAO = new ProjetoDAO(db);
+const projetoService = new ProjetoService(projetoDAO, turmaDAO, matriculaDAO, escolaxUsuarioxFuncaoDAO, usuarioDAO);
+
+const categoriaConteudoService = new CategoriaConteudoService(
+  categoriaDAO,
+  materiaDAO,
+  turmaDAO,
+  usuarioDAO,
+  matriculaDAO,
+  respostaDAO
+);
+
+const pendenciaDAO = new PendenciaDAO(db);
+const pendenciaService = new PendenciaService(pendenciaDAO, usuarioDAO, escolaDAO, escolaxUsuarioxFuncaoDAO);
+
+const grupoTarefaDAO = new GrupoTarefaDAO(db);
+const usuarioXGrupoTarefaDAO = new UsuarioXGrupoTarefaDAO(db);
+const historicoGrupoTarefaDAO = new HistoricoGrupoTarefaDAO(db);
+const historicoGrupoTarefaService = new HistoricoGrupoTarefaService(historicoGrupoTarefaDAO);
+const grupoTarefaService = new GrupoTarefaService(
+  grupoTarefaDAO,
+  usuarioXGrupoTarefaDAO,
+  tarefaDAO,
+  matriculaDAO,
+  tarefaMatriculaDAO,
+  usuarioDAO,
+  historicoGrupoTarefaService,
+  db
+);
 
 const chatbotService = new ChatbotService(
   usuarioDAO,
@@ -124,7 +224,21 @@ const chatbotService = new ChatbotService(
   materiaService,
   escolaxUsuarioxFuncaoService,
   calendarioService,
-  conversaService
+  conversaService,
+  mensagemService,
+  conteudoService,
+  avisoService,
+  anexoService,
+  notificacaoService,
+  anotacaoService,
+  projetoService,
+  categoriaConteudoService,
+  pendenciaService,
+  grupoTarefaService,
+  alocacaoDAO,
+  matriculaDAO,
+  materiaDAO,
+  turmaDAO
 );
 const chatbotControle = new ChatbotController(chatbotService);
 const chatbotWebhookControle = new ChatbotWebhookController(chatbotService);
