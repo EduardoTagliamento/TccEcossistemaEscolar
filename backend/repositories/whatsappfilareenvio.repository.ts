@@ -46,6 +46,13 @@ export class WhatsappFilaReenvioDAO {
   async buscarPendentes(limite: number): Promise<WhatsappFilaRow[]> {
     console.log("🟢 WhatsappFilaReenvioDAO.buscarPendentes()");
 
+    // `LIMIT ?` bindado quebra em pool.execute() (prepared statement) com
+    // "ER_WRONG_ARGUMENTS / Incorrect arguments to mysqld_stmt_execute" — bug
+    // conhecido do mysql2. Como `limite` é sempre valor interno do código (nunca
+    // input de usuário), valida e interpola como inteiro literal — mesmo padrão
+    // de UsuarioDAO.searchByNome.
+    const limiteSeguro = Number.isInteger(limite) && limite > 0 ? limite : 10;
+
     const query = `
       SELECT WhatsappFilaId, WhatsappFilaNumero, WhatsappFilaTexto, WhatsappFilaOrigem,
         WhatsappFilaStatus, WhatsappFilaTentativas, WhatsappFilaUltimoErro,
@@ -53,11 +60,11 @@ export class WhatsappFilaReenvioDAO {
       FROM whatsappfilareenvio
       WHERE WhatsappFilaStatus = 'Pendente'
       ORDER BY CreatedAt ASC
-      LIMIT ?
+      LIMIT ${limiteSeguro}
     `;
 
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute<RowDataPacket[]>(query, [limite]);
+    const [rows] = await pool.execute<RowDataPacket[]>(query);
 
     return rows as unknown as WhatsappFilaRow[];
   }
