@@ -4,7 +4,9 @@
  * A Evolution API (Baileys) faz POST aqui a cada mensagem recebida no número
  * pareado (evento messages.upsert). Este controller traduz o payload cru pra
  * uma chamada do ChatbotService e devolve a resposta pelo mesmo canal
- * (EvolutionApiService.sendText).
+ * (EvolutionApiService.sendTextRapido — sem a verificação de entrega de
+ * 6-12s que `sendText` faz pra fila de notificação; aqui responsividade
+ * importa mais).
  *
  * Sem AuthMiddleware — a Evolution não manda JWT. Proteção: um segredo no
  * path (:segredo), comparado com CHATBOT_WHATSAPP_WEBHOOK_SECRET. Responde
@@ -82,7 +84,7 @@ export default class ChatbotWebhookController {
       // Sem isso, uma falha aqui (ex.: timeout do Gemini) deixa o usuário sem
       // resposta nenhuma — silêncio total, sem indicar que algo deu errado.
       try {
-        await EvolutionApiService.getInstance().sendText(
+        await EvolutionApiService.getInstance().sendTextRapido(
           evento.numeroJid,
           "Tive um problema pra responder agora. Pode tentar de novo em instantes?"
         );
@@ -174,7 +176,7 @@ export default class ChatbotWebhookController {
         arquivo = await EvolutionApiService.getInstance().baixarMidiaBase64(evento.midiaMensagemCru);
       } catch (erro) {
         console.error("❌ [ChatbotWebhookController] Falha ao baixar mídia:", erro);
-        await EvolutionApiService.getInstance().sendText(
+        await EvolutionApiService.getInstance().sendTextRapido(
           evento.numeroJid,
           "Não consegui baixar esse arquivo. Pode tentar enviar de novo?"
         );
@@ -191,7 +193,7 @@ export default class ChatbotWebhookController {
 
     if (!resposta || !resposta.trim()) return;
 
-    await EvolutionApiService.getInstance().sendText(evento.numeroJid, resposta.trim());
+    await EvolutionApiService.getInstance().sendTextRapido(evento.numeroJid, resposta.trim());
     console.log("📤 [ChatbotWebhookController] Resposta enviada ao WhatsApp.");
   };
 }

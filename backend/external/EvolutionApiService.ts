@@ -112,6 +112,18 @@ export class EvolutionApiService {
     return { ...segundaTentativa, entregue: statusFinal === 'DELIVERED' ? true : undefined };
   }
 
+  /**
+   * Envia texto SEM confirmar entrega (sem os 6-12s de `#verificarEntrega` +
+   * reenvio de `sendText`) — pra uso em conversas ao vivo (chatbot), onde
+   * responsividade importa mais do que a garantia de entrega que a fila de
+   * notificação precisa. Custo aceito: uma falha rara e silenciosa da janela
+   * de reconexão do Baileys (ver comentário de `#VERIFICACAO_DELAY_MS`) não é
+   * detectada nem reenviada aqui — na prática, o usuário só manda de novo.
+   */
+  public async sendTextRapido(numero: string, texto: string): Promise<SendTextResponse> {
+    return this.#enviarBruto(numero, texto);
+  }
+
   async #enviarBruto(numero: string, texto: string): Promise<SendTextResponse> {
     console.log(`📵 [EvolutionApiService] Enviando WhatsApp para: ${numero.slice(0, 4)}${'*'.repeat(Math.max(numero.length - 6, 0))}${numero.slice(-2)}`);
 
