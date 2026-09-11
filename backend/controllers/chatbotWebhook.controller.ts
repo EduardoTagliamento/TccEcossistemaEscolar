@@ -42,6 +42,12 @@ export default class ChatbotWebhookController {
    */
   receberWhatsapp = (req: Request, res: Response): void => {
     const segredoEsperado = process.env.CHATBOT_WHATSAPP_WEBHOOK_SECRET;
+    console.log(
+      `🪝 [ChatbotWebhookController] hit — event=${(req.body?.event ?? req.body?.data?.event ?? "?")} ` +
+        `secretOk=${!!segredoEsperado && req.params.segredo === segredoEsperado} ` +
+        `msgKeys=${Object.keys(req.body?.data?.message ?? req.body?.message ?? {}).join(",") || "-"}`
+    );
+
     if (!segredoEsperado) {
       console.error("❌ [ChatbotWebhookController] CHATBOT_WHATSAPP_WEBHOOK_SECRET não configurado — webhook desativado.");
       res.status(404).json({ message: "Not found" });
@@ -58,7 +64,10 @@ export default class ChatbotWebhookController {
     // SEMPRE 200 — erro repetido faz a Evolution desabilitar o webhook.
     res.status(200).json({ ok: true });
 
-    if (!evento) return;
+    if (!evento) {
+      console.log("🪝 [ChatbotWebhookController] evento ignorado (fromMe / não-1:1 / sem texto nem mídia aceita).");
+      return;
+    }
 
     if (evento.id) {
       if (this.#idsProcessados.has(evento.id)) return; // reentrega da Evolution (reconexão do Baileys)
