@@ -3,16 +3,23 @@ import { getGeminiProvider } from "../providers/geminiProvider";
 
 /**
  * Assistente conversacional (chatbot) com acesso à API real da escola via
- * function calling — v1 cobre consulta de tarefas e matérias (spec do
- * usuário). Identificação é por telefone (não por JWT — o chatbot é
- * pensado pra rodar num canal como WhatsApp, onde não existe login prévio),
- * então as ferramentas de identidade (`identificar_usuario_por_telefone`,
- * `selecionar_escola`) mutam o estado da sessão em vez de devolver o
- * UsuarioGUID pro modelo — as ferramentas de consulta (`consultar_tarefas`,
- * `consultar_materias`) não recebem NENHUM parâmetro de identidade; elas
- * leem o UsuarioGUID/EscolaGUID já resolvidos da própria sessão. Isso
- * fecha o buraco óbvio de segurança de "deixar o modelo decidir de quem
- * são os dados" — o modelo nunca vê nem escolhe um GUID de usuário.
+ * function calling. Dois canais de entrada, cada um com sua própria fonte
+ * de identidade INFALSIFICÁVEL (nunca um valor que o modelo/usuário digite):
+ * WhatsApp resolve pelo telefone real do remetente (JID da mensagem) e web
+ * exige JWT (AuthMiddleware) — ver ChatbotService#prepararSessaoWhatsapp/
+ * #enviarMensagem. `identificar_usuario_por_telefone`/`selecionar_pessoa`
+ * só existem quando a sessão ainda não tem identidade travada por canal
+ * (`usuarioGUIDTravado`); quando o telefone do canal está fixado
+ * (`telefoneVerificado`), essa ferramenta ignora qualquer telefone que o
+ * modelo passe e usa sempre o do remetente real — sem isso, bastaria digitar
+ * o telefone de outra pessoa na conversa pra assumir a identidade dela.
+ * As ferramentas de identidade (`identificar_usuario_por_telefone`,
+ * `selecionar_pessoa`, `selecionar_escola`) mutam o estado da sessão em vez
+ * de devolver o UsuarioGUID pro modelo — as ferramentas de consulta
+ * (`consultar_tarefas`, `consultar_materias`, ...) não recebem NENHUM
+ * parâmetro de identidade; elas leem o UsuarioGUID/EscolaGUID já resolvidos
+ * da própria sessão. Isso fecha o buraco de "deixar o modelo decidir de quem
+ * são os dados" — o modelo nunca vê nem escolhe livremente um GUID de usuário.
  */
 
 export type FerramentaHandler = (args: Record<string, unknown>) => Promise<unknown>;
@@ -27,6 +34,9 @@ const SYSTEM_INSTRUCTION = [
   "1. Se ainda não souber quem é o usuário (nenhuma chamada bem-sucedida de identificar_usuario_por_telefone",
   "   nesta conversa), peça o telefone cadastrado e chame identificar_usuario_por_telefone assim que o",
   "   usuário informar. (No canal WhatsApp isso já pode vir resolvido — nesse caso siga direto.)",
+  "1b. Se a identificação retornar mais de uma PESSOA pro mesmo telefone, pergunte qual delas o usuário quer",
+  "   usar e chame selecionar_pessoa com o UsuarioGUID correspondente — nunca invente um GUID, use somente",
+  "   um dos que vieram na lista de opções.",
   "2. Se a identificação retornar mais de uma escola, pergunte em qual escola o usuário quer continuar e",
   "   chame selecionar_escola com o EscolaGUID correspondente à resposta dele — nunca invente um GUID,",
   "   use somente um dos que vieram na lista de opções.",
@@ -72,7 +82,8 @@ const FERRAMENTAS: FunctionDeclaration[] = [
   {
     name: "identificar_usuario_por_telefone",
     description:
-      "Identifica o usuário pelo telefone cadastrado na plataforma e lista as escolas em que ele tem vínculo ativo.",
+      "Identifica o usuário pelo telefone cadastrado na plataforma e lista as escolas em que ele tem vínculo ativo. " +
+      "Se o telefone estiver associado a mais de uma conta, devolve a lista de pessoas em vez da escola.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -82,6 +93,21 @@ const FERRAMENTAS: FunctionDeclaration[] = [
         },
       },
       required: ["telefone"],
+    },
+  },
+  {
+    name: "selecionar_pessoa",
+    description:
+      "Confirma qual conta usar, quando identificar_usuario_por_telefone encontrou mais de uma pessoa associada ao mesmo telefone.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        usuarioGUID: {
+          type: Type.STRING,
+          description: "UsuarioGUID escolhido — deve ser exatamente um dos valores recebidos em 'pessoas' na resposta anterior.",
+        },
+      },
+      required: ["usuarioGUID"],
     },
   },
   {

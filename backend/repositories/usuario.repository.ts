@@ -232,6 +232,24 @@ export class UsuarioDAO {
     return this.mapRowToEntity(rows[0]);
   };
 
+  /**
+   * Todas as contas ativas com este telefone — normalmente 0 ou 1, mas o
+   * piloto do chatbot usa isso pra deixar quem administra várias contas de
+   * teste (professores) escolher qual delas usar a partir do próprio número
+   * (ver ChatbotService#identificarPorTelefone / selecionar_pessoa).
+   */
+  findAllByTelefone = async (UsuarioTelefone: string): Promise<Usuario[]> => {
+    console.log("🟢 UsuarioDAO.findAllByTelefone()");
+
+    const SQL = "SELECT * FROM usuario WHERE UsuarioTelefone = ? AND UsuarioDeletedAt IS NULL;";
+    const params = [UsuarioTelefone];
+
+    const pool = await this.#database.getPool();
+    const [linhas] = await pool.execute(SQL, params);
+
+    return (linhas as UsuarioRow[]).map((row) => this.mapRowToEntity(row));
+  };
+
   findByCPF = async (UsuarioCPF: string): Promise<Usuario | null> => {
     console.log("🟢 UsuarioDAO.findByCPF()");
 

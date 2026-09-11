@@ -58,6 +58,7 @@ import HistoricoGrupoTarefaService from "../backend/services/historicogrupotaref
 import { GrupoTarefaDAO } from "../backend/repositories/grupotarefa.repository";
 import { UsuarioXGrupoTarefaDAO } from "../backend/repositories/usuarioxgrupotarefa.repository";
 import { HistoricoGrupoTarefaDAO } from "../backend/repositories/historicogrupotarefa.repository";
+import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 export default class ChatbotRoteador {
   #router: Router;
@@ -74,10 +75,12 @@ export default class ChatbotRoteador {
   createRoutes = (): Router => {
     console.log("⬆️  ChatbotRoteador.createRoutes()");
 
-    // POST /api/chatbot/mensagem — sem AuthMiddleware de propósito, ver
-    // controller/service (identidade resolvida por telefone dentro da
-    // própria conversa, não por JWT).
-    this.#router.post("/mensagem", this.#controle.enviarMensagem);
+    // POST /api/chatbot/mensagem — EXIGE AuthMiddleware: a identidade vem do
+    // JWT (req.user), nunca de um telefone que o cliente informe (ver
+    // controller/service — falha de segurança corrigida em 2026-09-10:
+    // aceitar telefone livre aqui permitia qualquer um se passar por outra
+    // conta só digitando o telefone dela).
+    this.#router.post("/mensagem", AuthMiddleware.authenticate, this.#controle.enviarMensagem);
 
     // POST /api/chatbot/webhook/whatsapp/:segredo — recebido pela Evolution
     // API a cada mensagem no número pareado. Sem AuthMiddleware; protegido

@@ -70,6 +70,24 @@ interface ChatbotSessao {
   usuarioGUID: string | null;
   escolaGUID: string | null;
   funcoes: string[];
+  /**
+   * Telefone real do remetente (canal WhatsApp), obtido do próprio transporte
+   * (JID da mensagem) — nunca do que o modelo/usuário alega no texto. Quando
+   * setado, `identificar_usuario_por_telefone` ignora o argumento do modelo e
+   * usa sempre este valor, fechando a brecha de "digitar o telefone de outra
+   * pessoa" pra assumir a identidade dela.
+   */
+  telefoneVerificado: string | null;
+  /**
+   * UsuarioGUID travado por autenticação de canal (JWT no site) — setado uma
+   * vez e nunca mais sobrescrito. Enquanto travado, `identificar_usuario_por_telefone`
+   * e `selecionar_pessoa` nem aparecem no toolset: não há ambiguidade a
+   * resolver, e expor essas ferramentas permitiria trocar de identidade no
+   * meio da conversa a partir de um telefone arbitrário.
+   */
+  usuarioGUIDTravado: string | null;
+  /** Contas ativas encontradas pelo telefone quando mais de uma bate (piloto: várias contas de teste no mesmo número). */
+  usuariosDisponiveis: { UsuarioGUID: string; nome: string }[];
   escolasDisponiveis: EscolaOpcao[];
   conversasCache: ConversaResumoCache[];
   tarefasCache: TarefaResumoCache[];
@@ -155,7 +173,19 @@ export default class ChatbotService {
     this.#turmaDAO = turmaDAODependency;
   }
 
-  enviarMensagem = async (sessionIdRecebido: string | undefined, mensagem: string): Promise<EnviarMensagemResultado> => {
+  /**
+   * Entrada do canal web (site) — EXIGE usuário autenticado (JWT, resolvido
+   * pelo controller via AuthMiddleware). Diferente do WhatsApp (onde a
+   * identidade vem do telefone do remetente), aqui ela vem direto do token:
+   * a identidade é travada em `usuarioGUIDTravado` e o modelo nunca vê nem
+   * escolhe um telefone pra se identificar — fecha a brecha de qualquer
+   * pessoa poder digitar o telefone de outra e assumir a conta dela.
+   */
+  enviarMensagem = async (
+    sessionIdRecebido: string | undefined,
+    mensagem: string,
+    usuarioGUIDAutenticado: string
+  ): Promise<EnviarMensagemResultado> => {
     console.log("🟣 ChatbotService.enviarMensagem()");
 
     if (!mensagem || !mensagem.trim()) {
@@ -165,6 +195,16 @@ export default class ChatbotService {
     const sessionId = sessionIdRecebido && this.#sessoes.has(sessionIdRecebido) ? sessionIdRecebido : gerarGUID();
     const sessao = this.#sessoes.get(sessionId) ?? this.#criarSessaoVazia();
     this.#sessoes.set(sessionId, sessao);
+
+    sessao.usuarioGUIDTravado = usuarioGUIDAutenticado;
+
+    if (!sessao.usuarioGUID && sessao.historico.length === 0) {
+      const usuario = await this.#usuarioDAO.findByGUID(usuarioGUIDAutenticado);
+      if (usuario && usuario.UsuarioStatus === "Ativo") {
+        const resultado = await this.#resolverIdentidadeUsuario(sessao, { UsuarioGUID: usuario.UsuarioGUID, UsuarioNome: usuario.UsuarioNome });
+        this.#seedIdentidadeResolvida(sessao, "Oi.", resultado);
+      }
+    }
 
     const resposta = await getAssistenteAgent().responder(
       sessao.historico,
@@ -246,44 +286,63 @@ export default class ChatbotService {
     const sessao = this.#sessoes.get(sessionId) ?? this.#criarSessaoVazia();
     this.#sessoes.set(sessionId, sessao);
 
+    // Trava o telefone real do remetente pra esta sessão — sempre, mesmo em
+    // mensagens seguintes. `identificar_usuario_por_telefone` usa este valor
+    // no lugar de qualquer telefone que o modelo (ou um texto malicioso)
+    // alegue, então não dá pra "digitar o telefone de outra pessoa" pelo
+    // WhatsApp e assumir a identidade dela.
+    sessao.telefoneVerificado = nacional;
+
     if (!sessao.usuarioGUID && sessao.historico.length === 0) {
       const resultado = await this.#identificarPorTelefone(sessao, nacional);
       const identificou = resultado.encontrado === true && resultado.semVinculoAtivo !== true;
       if (identificou) {
-        // Semeia o histórico com um turno user + par functionCall/functionResponse
-        // igual ao que o loop do agente produziria se o modelo tivesse recebido
-        // o telefone e chamado a ferramenta — assim o modelo vê a identidade (e,
-        // se for o caso, a lista de escolas) já resolvida e segue o fluxo normal.
-        // O turno "user" inicial é obrigatório: a API do Gemini exige que todo
-        // turno de functionCall seja precedido por um turno user (ou de
-        // functionResponse) — sem isso, "Please ensure that function call turn
-        // comes immediately after a user turn..." (400 INVALID_ARGUMENT).
-        //
-        // O turno "model" final (texto de confirmação, não gerado pelo Gemini)
-        // é o que faz a identificação "grudar": sem ele, o modelo às vezes ignora
-        // o par functionCall/functionResponse sintético e pede o telefone de novo
-        // mesmo já identificado — com uma frase dele mesmo confirmando quem é o
-        // usuário logo antes da mensagem real, isso praticamente não acontece mais.
-        const nomeUsuario = String(resultado.nomeUsuario ?? "");
-        const precisaEscolherEscola = resultado.precisaEscolherEscola === true;
-        const textoConfirmacao = precisaEscolherEscola
-          ? `Olá, ${nomeUsuario}! Encontrei mais de uma escola no seu cadastro: ${
-              ((resultado.opcoes as Array<{ EscolaNome: string }>) ?? []).map((o) => o.EscolaNome).join(", ")
-            }. Qual delas?`
-          : `Olá, ${nomeUsuario}! Encontrei seu cadastro em ${
-              (resultado.escola as { EscolaNome: string } | undefined)?.EscolaNome ?? "sua escola"
-            }. Como posso ajudar?`;
-
-        sessao.historico.push(
-          { role: "user", parts: [{ text: `Meu telefone é ${nacional}.` }] },
-          { role: "model", parts: [{ functionCall: { name: "identificar_usuario_por_telefone", args: { telefone: nacional } } }] },
-          { role: "user", parts: [{ functionResponse: { name: "identificar_usuario_por_telefone", response: { output: resultado } } }] },
-          { role: "model", parts: [{ text: textoConfirmacao }] }
-        );
+        this.#seedIdentidadeResolvida(sessao, `Meu telefone é ${nacional}.`, resultado);
       }
     }
 
     return { sessionId, sessao };
+  };
+
+  /**
+   * Semeia o histórico com uma troca sintética de identificação já resolvida
+   * (turno user inicial + functionCall/functionResponse + ack do modelo) —
+   * compartilhado pela pré-identificação do WhatsApp (telefone) e pela
+   * identificação via JWT no canal web (usuarioGUIDAutenticado).
+   *
+   * O turno "user" inicial é obrigatório: a API do Gemini exige que todo
+   * turno de functionCall seja precedido por um turno user (ou de
+   * functionResponse) — sem isso, "Please ensure that function call turn
+   * comes immediately after a user turn..." (400 INVALID_ARGUMENT).
+   *
+   * O turno "model" final (texto de confirmação, não gerado pelo Gemini) é o
+   * que faz a identificação "grudar": sem ele, o modelo às vezes ignora o par
+   * functionCall/functionResponse sintético e pede a identificação de novo
+   * mesmo já resolvida — com uma frase dele mesmo confirmando quem é o
+   * usuário logo antes da mensagem real, isso praticamente não acontece mais.
+   */
+  #seedIdentidadeResolvida = (sessao: ChatbotSessao, turnoInicial: string, resultado: Record<string, unknown>): void => {
+    const precisaEscolherPessoa = resultado.precisaEscolherPessoa === true;
+    const precisaEscolherEscola = resultado.precisaEscolherEscola === true;
+    const nomeUsuario = String(resultado.nomeUsuario ?? "");
+    const textoConfirmacao = precisaEscolherPessoa
+      ? `Olá! Esse telefone está associado a mais de uma conta: ${
+          ((resultado.pessoas as Array<{ nome: string }>) ?? []).map((p) => p.nome).join(", ")
+        }. Qual delas você quer usar agora?`
+      : precisaEscolherEscola
+      ? `Olá, ${nomeUsuario}! Encontrei mais de uma escola no seu cadastro: ${
+          ((resultado.opcoes as Array<{ EscolaNome: string }>) ?? []).map((o) => o.EscolaNome).join(", ")
+        }. Qual delas?`
+      : `Olá, ${nomeUsuario}! Encontrei seu cadastro em ${
+          (resultado.escola as { EscolaNome: string } | undefined)?.EscolaNome ?? "sua escola"
+        }. Como posso ajudar?`;
+
+    sessao.historico.push(
+      { role: "user", parts: [{ text: turnoInicial }] },
+      { role: "model", parts: [{ functionCall: { name: "identificar_usuario_por_telefone", args: {} } }] },
+      { role: "user", parts: [{ functionResponse: { name: "identificar_usuario_por_telefone", response: { output: resultado } } }] },
+      { role: "model", parts: [{ text: textoConfirmacao }] }
+    );
   };
 
   #criarSessaoVazia = (): ChatbotSessao => ({
@@ -291,6 +350,9 @@ export default class ChatbotService {
     usuarioGUID: null,
     escolaGUID: null,
     funcoes: [],
+    telefoneVerificado: null,
+    usuarioGUIDTravado: null,
+    usuariosDisponiveis: [],
     escolasDisponiveis: [],
     conversasCache: [],
     tarefasCache: [],
@@ -316,17 +378,44 @@ export default class ChatbotService {
    * Muta `sessao` (usuarioGUID / escolaGUID / escolasDisponiveis) como efeito
    * colateral e devolve o mesmo objeto de resultado que o modelo consome.
    */
+  /**
+   * Identificação por telefone — em massa: um telefone normalmente resolve
+   * pra 0 ou 1 conta, mas o piloto usa várias contas de teste (professores)
+   * com o MESMO telefone de quem administra, então trata >1 conta ativa como
+   * "escolha qual pessoa" (mesmo padrão de escolha de escola), em vez de
+   * silenciosamente pegar só a primeira.
+   */
   #identificarPorTelefone = async (sessao: ChatbotSessao, telefoneBruto: string): Promise<Record<string, unknown>> => {
     const telefone = normalizarTelefone(String(telefoneBruto ?? ""));
 
-    const usuario = await this.#usuarioDAO.findByTelefone(telefone);
-    if (!usuario) {
+    const usuarios = await this.#usuarioDAO.findAllByTelefone(telefone);
+    const usuariosAtivos = usuarios.filter((u) => u.UsuarioStatus === "Ativo");
+
+    if (usuarios.length === 0) {
       return { encontrado: false };
     }
-    if (usuario.UsuarioStatus !== "Ativo") {
+    if (usuariosAtivos.length === 0) {
       return { encontrado: false, motivo: "conta inativa ou bloqueada" };
     }
 
+    if (usuariosAtivos.length === 1) {
+      return this.#resolverIdentidadeUsuario(sessao, usuariosAtivos[0]);
+    }
+
+    sessao.usuariosDisponiveis = usuariosAtivos.map((u) => ({ UsuarioGUID: u.UsuarioGUID, nome: u.UsuarioNome }));
+    return {
+      encontrado: true,
+      precisaEscolherPessoa: true,
+      pessoas: usuariosAtivos.map((u) => ({ UsuarioGUID: u.UsuarioGUID, nome: u.UsuarioNome })),
+    };
+  };
+
+  /**
+   * A partir de um usuário já resolvido (por telefone único ou por
+   * selecionar_pessoa), resolve a(s) escola(s) vinculada(s) — igual ao
+   * comportamento anterior de #identificarPorTelefone pra um usuário só.
+   */
+  #resolverIdentidadeUsuario = async (sessao: ChatbotSessao, usuario: { UsuarioGUID: string; UsuarioNome: string }): Promise<Record<string, unknown>> => {
     const vinculos = await this.#escolaxUsuarioxFuncaoService.findEscolasByUsuario(usuario.UsuarioGUID);
     const vinculosAtivos = vinculos.filter((v) => v.funcoes.some((f) => f.Status === "Ativo"));
 
@@ -370,10 +459,35 @@ export default class ChatbotService {
    * resolvidas.
    */
   #construirFerramentas = (sessao: ChatbotSessao): Record<string, FerramentaHandler> => {
-    const handlers: Record<string, FerramentaHandler> = {
-      identificar_usuario_por_telefone: async (args) =>
-        this.#identificarPorTelefone(sessao, String(args.telefone ?? "")),
-    };
+    const handlers: Record<string, FerramentaHandler> = {};
+
+    // Se a identidade já foi travada por autenticação de canal (JWT no site),
+    // a ferramenta de identificação por telefone NEM aparece pro modelo: não
+    // há ambiguidade a resolver, e deixar essa ferramenta chamável permitiria
+    // trocar de identidade no meio da conversa a partir de um telefone
+    // qualquer que o modelo/usuário alegasse.
+    if (!sessao.usuarioGUIDTravado) {
+      handlers.identificar_usuario_por_telefone = async (args) =>
+        // `telefoneVerificado` (canal WhatsApp) sempre vence sobre o que o
+        // modelo passar — fecha a brecha de "digitar o telefone de outra
+        // pessoa" pra assumir a identidade dela dentro da própria conversa.
+        this.#identificarPorTelefone(sessao, sessao.telefoneVerificado ?? String(args.telefone ?? ""));
+
+      // Escolha de pessoa: só enquanto o telefone bateu em mais de uma conta e
+      // nenhuma foi fixada ainda (piloto: várias contas de teste no mesmo número).
+      if (sessao.usuariosDisponiveis.length > 0 && !sessao.usuarioGUID) {
+        handlers.selecionar_pessoa = async (args) => {
+          const usuarioGUID = String(args.usuarioGUID ?? "");
+          // Nunca aceita um UsuarioGUID arbitrário do modelo — só um dos que a
+          // própria identificação já resolveu e ofereceu como opção.
+          const opcaoValida = sessao.usuariosDisponiveis.find((u) => u.UsuarioGUID === usuarioGUID);
+          if (!opcaoValida) {
+            return { error: "UsuarioGUID não corresponde a nenhuma das pessoas oferecidas" };
+          }
+          return this.#resolverIdentidadeUsuario(sessao, { UsuarioGUID: opcaoValida.UsuarioGUID, UsuarioNome: opcaoValida.nome });
+        };
+      }
+    }
 
     // Escolha de escola: só enquanto há opções pendentes e nenhuma foi fixada.
     if (sessao.escolasDisponiveis.length > 0 && !sessao.escolaGUID) {

@@ -1,9 +1,11 @@
 /**
  * 🎮 Controller do Chatbot
  *
- * Único endpoint v1: enviar uma mensagem e receber a resposta do
- * assistente. Sem AuthMiddleware — a identidade é resolvida DENTRO da
- * conversa (telefone), não por JWT (ver ChatbotService/assistenteAgent).
+ * Único endpoint v1 do canal web: enviar uma mensagem e receber a resposta
+ * do assistente. EXIGE AuthMiddleware — a identidade vem do JWT (req.user),
+ * nunca de um telefone que o cliente informe. O canal WhatsApp (webhook) é
+ * quem resolve identidade por telefone, a partir do remetente real da
+ * mensagem — ver ChatbotWebhookController/ChatbotService.
  */
 import { Request, Response, NextFunction } from "express";
 import ChatbotService from "../services/chatbot.service";
@@ -36,7 +38,7 @@ export default class ChatbotController {
         });
       }
 
-      const resultado = await this.#chatbotService.enviarMensagem(sessionId, mensagem);
+      const resultado = await this.#chatbotService.enviarMensagem(sessionId, mensagem, req.user!.UsuarioGUID);
 
       res.status(200).json({
         success: true,
