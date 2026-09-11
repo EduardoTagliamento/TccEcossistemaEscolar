@@ -258,10 +258,27 @@ export default class ChatbotService {
         // turno de functionCall seja precedido por um turno user (ou de
         // functionResponse) — sem isso, "Please ensure that function call turn
         // comes immediately after a user turn..." (400 INVALID_ARGUMENT).
+        //
+        // O turno "model" final (texto de confirmação, não gerado pelo Gemini)
+        // é o que faz a identificação "grudar": sem ele, o modelo às vezes ignora
+        // o par functionCall/functionResponse sintético e pede o telefone de novo
+        // mesmo já identificado — com uma frase dele mesmo confirmando quem é o
+        // usuário logo antes da mensagem real, isso praticamente não acontece mais.
+        const nomeUsuario = String(resultado.nomeUsuario ?? "");
+        const precisaEscolherEscola = resultado.precisaEscolherEscola === true;
+        const textoConfirmacao = precisaEscolherEscola
+          ? `Olá, ${nomeUsuario}! Encontrei mais de uma escola no seu cadastro: ${
+              ((resultado.opcoes as Array<{ EscolaNome: string }>) ?? []).map((o) => o.EscolaNome).join(", ")
+            }. Qual delas?`
+          : `Olá, ${nomeUsuario}! Encontrei seu cadastro em ${
+              (resultado.escola as { EscolaNome: string } | undefined)?.EscolaNome ?? "sua escola"
+            }. Como posso ajudar?`;
+
         sessao.historico.push(
           { role: "user", parts: [{ text: `Meu telefone é ${nacional}.` }] },
           { role: "model", parts: [{ functionCall: { name: "identificar_usuario_por_telefone", args: { telefone: nacional } } }] },
-          { role: "user", parts: [{ functionResponse: { name: "identificar_usuario_por_telefone", response: { output: resultado } } }] }
+          { role: "user", parts: [{ functionResponse: { name: "identificar_usuario_por_telefone", response: { output: resultado } } }] },
+          { role: "model", parts: [{ text: textoConfirmacao }] }
         );
       }
     }
