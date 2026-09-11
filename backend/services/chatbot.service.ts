@@ -16,6 +16,7 @@ import ProjetoService from "./projeto.service";
 import CategoriaConteudoService from "./categoriaconteudo.service";
 import PendenciaService from "./pendencia.service";
 import GrupoTarefaService from "./grupotarefa.service";
+import UploadService from "./upload.service";
 import { getProvaAgendadaRecomendacaoService, RecomendacaoDTO } from "./provaagendadarecomendacao.service";
 import { getAuditoriaService } from "./auditoria.service";
 import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
@@ -118,6 +119,7 @@ export default class ChatbotService {
   #categoriaConteudoService: CategoriaConteudoService;
   #pendenciaService: PendenciaService;
   #grupoTarefaService: GrupoTarefaService;
+  #uploadService: UploadService;
   #alocacaoDAO: MaterialProfessorTurmaDAO;
   #matriculaDAO: MatriculaDAO;
   #materiaDAO: MateriaDAO;
@@ -140,6 +142,7 @@ export default class ChatbotService {
     categoriaConteudoServiceDependency: CategoriaConteudoService,
     pendenciaServiceDependency: PendenciaService,
     grupoTarefaServiceDependency: GrupoTarefaService,
+    uploadServiceDependency: UploadService,
     alocacaoDAODependency: MaterialProfessorTurmaDAO,
     matriculaDAODependency: MatriculaDAO,
     materiaDAODependency: MateriaDAO,
@@ -162,6 +165,7 @@ export default class ChatbotService {
     this.#categoriaConteudoService = categoriaConteudoServiceDependency;
     this.#pendenciaService = pendenciaServiceDependency;
     this.#grupoTarefaService = grupoTarefaServiceDependency;
+    this.#uploadService = uploadServiceDependency;
     this.#alocacaoDAO = alocacaoDAODependency;
     this.#matriculaDAO = matriculaDAODependency;
     this.#materiaDAO = materiaDAODependency;
@@ -631,9 +635,14 @@ export default class ChatbotService {
             size: arquivo.buffer.length,
           } as Express.Multer.File;
 
-          const anexo = await this.#anexoService.uploadAnexo(pseudoFile, escolaGUID, usuarioGUID);
-          const tipoMensagem: "Imagem" | "Arquivo" = arquivo.mimetype.startsWith("image/") ? "Imagem" : "Arquivo";
-          await this.#mensagemService.enviar(conversaGUID, usuarioGUID, anexo.AnexoCaminho, tipoMensagem);
+          // IMPORTANTE: usa UploadService.uploadMensagemAnexo (mesmo caminho do
+          // upload de imagem/arquivo do chat web), NÃO AnexoService.uploadAnexo.
+          // AnexoService sobe com Content-Disposition "attachment" (força
+          // download) — bom pra anexo de tarefa/aviso, mas quebra a abertura
+          // inline da imagem no chat. uploadMensagemAnexo sobe com "inline" e
+          // na mesma pasta (mensagens/{conversaGUID}/...) que o app usa de verdade.
+          const upload = await this.#uploadService.uploadMensagemAnexo(conversaGUID, pseudoFile);
+          await this.#mensagemService.enviar(conversaGUID, usuarioGUID, upload.fileUrl, upload.mensagemTipo);
 
           sessao.anexoPendente = null;
           return { ok: true, enviadaEm: alvo.nome, arquivo: arquivo.fileName };

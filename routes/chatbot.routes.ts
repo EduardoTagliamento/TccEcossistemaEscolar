@@ -59,6 +59,7 @@ import { GrupoTarefaDAO } from "../backend/repositories/grupotarefa.repository";
 import { UsuarioXGrupoTarefaDAO } from "../backend/repositories/usuarioxgrupotarefa.repository";
 import { HistoricoGrupoTarefaDAO } from "../backend/repositories/historicogrupotarefa.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import UploadService from "../backend/services/upload.service";
 
 export default class ChatbotRoteador {
   #router: Router;
@@ -221,6 +222,8 @@ const grupoTarefaService = new GrupoTarefaService(
   db
 );
 
+const uploadService = new UploadService(escolaDAO, usuarioDAO);
+
 const chatbotService = new ChatbotService(
   usuarioDAO,
   tarefaService,
@@ -238,6 +241,7 @@ const chatbotService = new ChatbotService(
   categoriaConteudoService,
   pendenciaService,
   grupoTarefaService,
+  uploadService,
   alocacaoDAO,
   matriculaDAO,
   materiaDAO,
