@@ -70,22 +70,6 @@ interface ChatbotSessao {
   usuarioGUID: string | null;
   escolaGUID: string | null;
   funcoes: string[];
-  /**
-   * Telefone real do remetente (canal WhatsApp), obtido do próprio transporte
-   * (JID da mensagem) — nunca do que o modelo/usuário alega no texto. Quando
-   * setado, `identificar_usuario_por_telefone` ignora o argumento do modelo e
-   * usa sempre este valor, fechando a brecha de "digitar o telefone de outra
-   * pessoa" pra assumir a identidade dela.
-   */
-  telefoneVerificado: string | null;
-  /**
-   * UsuarioGUID travado por autenticação de canal (JWT no site) — setado uma
-   * vez e nunca mais sobrescrito. Enquanto travado, `identificar_usuario_por_telefone`
-   * e `selecionar_pessoa` nem aparecem no toolset: não há ambiguidade a
-   * resolver, e expor essas ferramentas permitiria trocar de identidade no
-   * meio da conversa a partir de um telefone arbitrário.
-   */
-  usuarioGUIDTravado: string | null;
   /** Contas ativas encontradas pelo telefone quando mais de uma bate (piloto: várias contas de teste no mesmo número). */
   usuariosDisponiveis: { UsuarioGUID: string; nome: string }[];
   escolasDisponiveis: EscolaOpcao[];
@@ -104,6 +88,17 @@ export interface EnviarMensagemResultado {
   sessionId: string;
   resposta: string;
 }
+
+/**
+ * Resposta fixa (não passa pelo Gemini) quando a identidade do canal não
+ * resolve pra nenhuma conta — mesma mensagem pra "telefone não cadastrado",
+ * "conta inativa" e "sem vínculo ativo", de propósito: dar mensagens
+ * diferentes por motivo permitiria a alguém de fora descobrir quais
+ * telefones existem no sistema testando um por um (enumeração de contas).
+ */
+const MENSAGEM_IDENTIDADE_NAO_RESOLVIDA =
+  "Não encontrei nenhuma conta ativa vinculada a este contato. Se você já tem cadastro no Bauá, peça pra " +
+  "secretaria da sua escola conferir/vincular este telefone à sua conta — ou acesse normalmente pelo site, com seu login.";
 
 export default class ChatbotService {
   #sessoes: Map<string, ChatbotSessao> = new Map();
@@ -176,10 +171,10 @@ export default class ChatbotService {
   /**
    * Entrada do canal web (site) — EXIGE usuário autenticado (JWT, resolvido
    * pelo controller via AuthMiddleware). Diferente do WhatsApp (onde a
-   * identidade vem do telefone do remetente), aqui ela vem direto do token:
-   * a identidade é travada em `usuarioGUIDTravado` e o modelo nunca vê nem
-   * escolhe um telefone pra se identificar — fecha a brecha de qualquer
-   * pessoa poder digitar o telefone de outra e assumir a conta dela.
+   * identidade vem do telefone do remetente), aqui ela vem direto do token —
+   * não existe NENHUMA ferramenta que aceite telefone/identidade como
+   * argumento do modelo, então não há como digitar o telefone de outra
+   * pessoa e assumir a conta dela (ver #construirFerramentas).
    */
   enviarMensagem = async (
     sessionIdRecebido: string | undefined,
@@ -196,14 +191,19 @@ export default class ChatbotService {
     const sessao = this.#sessoes.get(sessionId) ?? this.#criarSessaoVazia();
     this.#sessoes.set(sessionId, sessao);
 
-    sessao.usuarioGUIDTravado = usuarioGUIDAutenticado;
-
     if (!sessao.usuarioGUID && sessao.historico.length === 0) {
       const usuario = await this.#usuarioDAO.findByGUID(usuarioGUIDAutenticado);
       if (usuario && usuario.UsuarioStatus === "Ativo") {
         const resultado = await this.#resolverIdentidadeUsuario(sessao, { UsuarioGUID: usuario.UsuarioGUID, UsuarioNome: usuario.UsuarioNome });
         this.#seedIdentidadeResolvida(sessao, "Oi.", resultado);
       }
+    }
+
+    // Identidade não resolveu (conta do JWT foi excluída/desativada depois do
+    // token emitido) — resposta fixa, sem passar pelo Gemini.
+    const semIdentidade = !sessao.usuarioGUID && sessao.usuariosDisponiveis.length === 0 && sessao.escolasDisponiveis.length === 0;
+    if (semIdentidade) {
+      return { sessionId, resposta: MENSAGEM_IDENTIDADE_NAO_RESOLVIDA };
     }
 
     const resposta = await getAssistenteAgent().responder(
@@ -232,7 +232,10 @@ export default class ChatbotService {
       throw new ErrorResponse(400, "Mensagem vazia", { message: "A mensagem não pode ser vazia." });
     }
 
-    const { sessionId, sessao } = await this.#prepararSessaoWhatsapp(telefoneRemetente);
+    const { sessionId, sessao, identidadeResolvida } = await this.#prepararSessaoWhatsapp(telefoneRemetente);
+    if (!identidadeResolvida) {
+      return { sessionId, resposta: MENSAGEM_IDENTIDADE_NAO_RESOLVIDA };
+    }
 
     const resposta = await getAssistenteAgent().responder(
       sessao.historico,
@@ -256,7 +259,10 @@ export default class ChatbotService {
   ): Promise<EnviarMensagemResultado> => {
     console.log("🟢 ChatbotService.enviarMensagemWhatsappComAnexo()");
 
-    const { sessionId, sessao } = await this.#prepararSessaoWhatsapp(telefoneRemetente);
+    const { sessionId, sessao, identidadeResolvida } = await this.#prepararSessaoWhatsapp(telefoneRemetente);
+    if (!identidadeResolvida) {
+      return { sessionId, resposta: MENSAGEM_IDENTIDADE_NAO_RESOLVIDA };
+    }
     sessao.anexoPendente = arquivo;
 
     const texto = mensagem.trim() || `[o usuário enviou um arquivo: ${arquivo.fileName}]`;
@@ -272,11 +278,13 @@ export default class ChatbotService {
   /**
    * Resolve/cria a sessão do número, faz a pré-identificação por telefone e
    * semeia o histórico na primeira mensagem — parte comum das duas entradas
-   * do canal WhatsApp.
+   * do canal WhatsApp. `identidadeResolvida` é false quando o telefone não
+   * bate em nenhuma conta ativa vinculada — quem chama deve responder com
+   * MENSAGEM_IDENTIDADE_NAO_RESOLVIDA sem envolver o modelo.
    */
   #prepararSessaoWhatsapp = async (
     telefoneRemetente: string
-  ): Promise<{ sessionId: string; sessao: ChatbotSessao }> => {
+  ): Promise<{ sessionId: string; sessao: ChatbotSessao; identidadeResolvida: boolean }> => {
     const soDigitos = String(telefoneRemetente ?? "").replace(/\D/g, "");
     // JID da Evolution vem com DDI (55...). O telefone no banco é (XX) XXXXX-XXXX
     // sem DDI, e normalizarTelefone só formata quando recebe 11 dígitos.
@@ -286,13 +294,6 @@ export default class ChatbotService {
     const sessao = this.#sessoes.get(sessionId) ?? this.#criarSessaoVazia();
     this.#sessoes.set(sessionId, sessao);
 
-    // Trava o telefone real do remetente pra esta sessão — sempre, mesmo em
-    // mensagens seguintes. `identificar_usuario_por_telefone` usa este valor
-    // no lugar de qualquer telefone que o modelo (ou um texto malicioso)
-    // alegue, então não dá pra "digitar o telefone de outra pessoa" pelo
-    // WhatsApp e assumir a identidade dela.
-    sessao.telefoneVerificado = nacional;
-
     if (!sessao.usuarioGUID && sessao.historico.length === 0) {
       const resultado = await this.#identificarPorTelefone(sessao, nacional);
       const identificou = resultado.encontrado === true && resultado.semVinculoAtivo !== true;
@@ -301,7 +302,8 @@ export default class ChatbotService {
       }
     }
 
-    return { sessionId, sessao };
+    const identidadeResolvida = !!sessao.usuarioGUID || sessao.usuariosDisponiveis.length > 0 || sessao.escolasDisponiveis.length > 0;
+    return { sessionId, sessao, identidadeResolvida };
   };
 
   /**
@@ -337,10 +339,14 @@ export default class ChatbotService {
           (resultado.escola as { EscolaNome: string } | undefined)?.EscolaNome ?? "sua escola"
         }. Como posso ajudar?`;
 
+    // "_identidade_resolvida_pelo_canal" não é uma ferramenta de verdade (não
+    // está em FERRAMENTAS) — é só a forma de representar, no histórico, que a
+    // identidade já veio resolvida em código antes do modelo rodar. Só
+    // funciona como contexto passado; o modelo não pode "chamar" isso de novo.
     sessao.historico.push(
       { role: "user", parts: [{ text: turnoInicial }] },
-      { role: "model", parts: [{ functionCall: { name: "identificar_usuario_por_telefone", args: {} } }] },
-      { role: "user", parts: [{ functionResponse: { name: "identificar_usuario_por_telefone", response: { output: resultado } } }] },
+      { role: "model", parts: [{ functionCall: { name: "_identidade_resolvida_pelo_canal", args: {} } }] },
+      { role: "user", parts: [{ functionResponse: { name: "_identidade_resolvida_pelo_canal", response: { output: resultado } } }] },
       { role: "model", parts: [{ text: textoConfirmacao }] }
     );
   };
@@ -350,8 +356,6 @@ export default class ChatbotService {
     usuarioGUID: null,
     escolaGUID: null,
     funcoes: [],
-    telefoneVerificado: null,
-    usuarioGUIDTravado: null,
     usuariosDisponiveis: [],
     escolasDisponiveis: [],
     conversasCache: [],
@@ -366,17 +370,17 @@ export default class ChatbotService {
 
   /**
    * Cada ferramenta fecha sobre `sessao` (mutável) — é assim que
-   * `identificar_usuario_por_telefone`/`selecionar_escola` gravam a
-   * identidade resolvida, e é assim que `consultar_tarefas`/
-   * `consultar_materias` a leem, sem que nenhum GUID passe pelas mãos do
-   * modelo.
+   * `selecionar_pessoa`/`selecionar_escola` gravam a identidade resolvida, e
+   * é assim que `consultar_tarefas`/`consultar_materias` a leem, sem que
+   * nenhum GUID passe pelas mãos do modelo.
    */
   /**
-   * Núcleo da identificação por telefone — compartilhado pela ferramenta
-   * `identificar_usuario_por_telefone` (fluxo web, o modelo passa o número) e
-   * pela pré-identificação do canal WhatsApp (o número vem do remetente).
-   * Muta `sessao` (usuarioGUID / escolaGUID / escolasDisponiveis) como efeito
-   * colateral e devolve o mesmo objeto de resultado que o modelo consome.
+   * Núcleo da identificação por telefone — chamado só internamente por
+   * `#prepararSessaoWhatsapp` (o número vem do remetente real da mensagem,
+   * nunca de algo que o modelo passe: não existe ferramenta que aceite
+   * telefone como argumento). Muta `sessao` (usuarioGUID / escolaGUID /
+   * escolasDisponiveis) como efeito colateral e devolve o objeto de
+   * resultado usado só pra montar o histórico sintético (#seedIdentidadeResolvida).
    */
   /**
    * Identificação por telefone — em massa: um telefone normalmente resolve
@@ -482,39 +486,35 @@ export default class ChatbotService {
   #construirFerramentas = (sessao: ChatbotSessao): Record<string, FerramentaHandler> => {
     const handlers: Record<string, FerramentaHandler> = {};
 
-    // Se a identidade já foi travada por autenticação de canal (JWT no site),
-    // a ferramenta de identificação por telefone NEM aparece pro modelo: não
-    // há ambiguidade a resolver, e deixar essa ferramenta chamável permitiria
-    // trocar de identidade no meio da conversa a partir de um telefone
-    // qualquer que o modelo/usuário alegasse.
-    if (!sessao.usuarioGUIDTravado) {
-      handlers.identificar_usuario_por_telefone = async (args) =>
-        // `telefoneVerificado` (canal WhatsApp) sempre vence sobre o que o
-        // modelo passar — fecha a brecha de "digitar o telefone de outra
-        // pessoa" pra assumir a identidade dela dentro da própria conversa.
-        this.#identificarPorTelefone(sessao, sessao.telefoneVerificado ?? String(args.telefone ?? ""));
-
-      // Escolha de pessoa: só enquanto o telefone bateu em mais de uma conta e
-      // nenhuma foi fixada ainda (piloto: várias contas de teste no mesmo número).
-      if (sessao.usuariosDisponiveis.length > 0 && !sessao.usuarioGUID) {
-        handlers.selecionar_pessoa = async (args) => {
-          const usuarioGUID = String(args.usuarioGUID ?? "");
-          // Nunca aceita um UsuarioGUID arbitrário do modelo — só um dos que a
-          // própria identificação já resolveu e ofereceu como opção.
-          const opcaoValida = sessao.usuariosDisponiveis.find((u) => u.UsuarioGUID === usuarioGUID);
-          if (!opcaoValida) {
-            return { error: "UsuarioGUID não corresponde a nenhuma das pessoas oferecidas" };
-          }
-          return this.#resolverIdentidadeUsuario(sessao, { UsuarioGUID: opcaoValida.UsuarioGUID, UsuarioNome: opcaoValida.nome });
-        };
-      }
+    // NÃO existe ferramenta de "identificar por telefone" chamável pelo
+    // modelo — a identidade é 100% resolvida em código, pelo canal
+    // (telefone real do remetente no WhatsApp, ou JWT no site), antes do
+    // modelo sequer rodar (ver #prepararSessaoWhatsapp/enviarMensagem). Se
+    // expuséssemos essa ferramenta, o modelo poderia tratar um telefone dito
+    // na conversa como prova de identidade — exatamente a brecha que fechamos.
+    //
+    // Escolha de pessoa: só enquanto o telefone do canal bateu em mais de uma
+    // conta e nenhuma foi fixada ainda (piloto: várias contas de teste no
+    // mesmo número). `usuariosDisponiveis` só é populado pela identificação
+    // automática, nunca por um telefone que o modelo alegue.
+    if (sessao.usuariosDisponiveis.length > 0 && !sessao.usuarioGUID) {
+      handlers.selecionar_pessoa = async (args) => {
+        const usuarioGUID = String(args.usuarioGUID ?? "");
+        // Nunca aceita um UsuarioGUID arbitrário do modelo — só um dos que a
+        // própria identificação já resolveu e ofereceu como opção.
+        const opcaoValida = sessao.usuariosDisponiveis.find((u) => u.UsuarioGUID === usuarioGUID);
+        if (!opcaoValida) {
+          return { error: "UsuarioGUID não corresponde a nenhuma das pessoas oferecidas" };
+        }
+        return this.#resolverIdentidadeUsuario(sessao, { UsuarioGUID: opcaoValida.UsuarioGUID, UsuarioNome: opcaoValida.nome });
+      };
     }
 
     // Escolha de escola: só enquanto há opções pendentes e nenhuma foi fixada.
     if (sessao.escolasDisponiveis.length > 0 && !sessao.escolaGUID) {
       handlers.selecionar_escola = async (args) => {
         if (!sessao.usuarioGUID) {
-          return { error: "identifique o usuário primeiro (identificar_usuario_por_telefone)" };
+          return { error: "identidade ainda não resolvida" };
         }
         const escolaGUID = String(args.escolaGUID ?? "");
         // Nunca aceita um EscolaGUID arbitrário do modelo — só um dos que a
