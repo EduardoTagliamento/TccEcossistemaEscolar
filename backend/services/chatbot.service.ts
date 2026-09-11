@@ -402,11 +402,32 @@ export default class ChatbotService {
       return this.#resolverIdentidadeUsuario(sessao, usuariosAtivos[0]);
     }
 
-    sessao.usuariosDisponiveis = usuariosAtivos.map((u) => ({ UsuarioGUID: u.UsuarioGUID, nome: u.UsuarioNome }));
+    // Mais de uma conta ativa: só vale a pena oferecer escolha entre as que
+    // TÊM vínculo ativo em alguma escola — uma conta sem vínculo nenhum
+    // (ex.: cadastro de teste incompleto/duplicado) não serve pra nada, e
+    // oferecê-la como opção só confunde quem está escolhendo.
+    const comVinculo = (
+      await Promise.all(
+        usuariosAtivos.map(async (u) => {
+          const vinculos = await this.#escolaxUsuarioxFuncaoService.findEscolasByUsuario(u.UsuarioGUID);
+          const temVinculoAtivo = vinculos.some((v) => v.funcoes.some((f) => f.Status === "Ativo"));
+          return temVinculoAtivo ? u : null;
+        })
+      )
+    ).filter((u): u is (typeof usuariosAtivos)[number] => u !== null);
+
+    if (comVinculo.length === 0) {
+      return { encontrado: true, semVinculoAtivo: true };
+    }
+    if (comVinculo.length === 1) {
+      return this.#resolverIdentidadeUsuario(sessao, comVinculo[0]);
+    }
+
+    sessao.usuariosDisponiveis = comVinculo.map((u) => ({ UsuarioGUID: u.UsuarioGUID, nome: u.UsuarioNome }));
     return {
       encontrado: true,
       precisaEscolherPessoa: true,
-      pessoas: usuariosAtivos.map((u) => ({ UsuarioGUID: u.UsuarioGUID, nome: u.UsuarioNome })),
+      pessoas: comVinculo.map((u) => ({ UsuarioGUID: u.UsuarioGUID, nome: u.UsuarioNome })),
     };
   };
 
