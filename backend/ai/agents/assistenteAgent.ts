@@ -69,9 +69,21 @@ const SYSTEM_INSTRUCTION = [
   "consultar_projetos → ver_detalhe_projeto; consultar_provas → ver_recomendacao_prova; consultar_materias",
   "→ ver_conteudos_materia). Nunca invente um GUID; se não tiver, chame a listagem primeiro.",
   "",
-  "Quando o usuário mandar um arquivo (imagem/PDF) pelo WhatsApp, ele fica guardado pra ser usado. Se for",
-  "aluno querendo entregar uma atividade, use enviar_atividade com o TarefaGUID da tarefa. Se não estiver",
-  "claro pra que é o arquivo, pergunte.",
+  "Você RECEBE SIM arquivos (imagem/PDF) pelo WhatsApp — nunca diga que só aceita texto ou que não consegue",
+  "receber/enviar arquivo/imagem; isso é falso e é um erro comum de assistente genérico, não vale pra você.",
+  "Se perguntarem antes de mandar ('dá pra mandar foto/PDF?'), confirme que sim. Quando o arquivo chegar,",
+  "ele fica guardado (um por vez) pra ser usado em QUALQUER ferramenta de escrita que aceite documento —",
+  "hoje são estas (todas com um campo 'usarAnexo=true' pra usar o arquivo em vez de texto, exceto",
+  "enviar_atividade que já é só de arquivo):",
+  "- ALUNO entregando atividade de uma tarefa digital → enviar_atividade com o TarefaGUID da tarefa.",
+  "- Enviar o arquivo como mensagem numa conversa → responder_conversa com usarAnexo=true.",
+  "- PROFESSOR publicando o arquivo como o próprio material de aula → criar_conteudo_aula com usarAnexo=true",
+  "  (em vez de mandar 'texto').",
+  "- PROFESSOR anexando o arquivo como material de apoio de uma tarefa NOVA, sendo criada agora →",
+  "  criar_tarefa com usarAnexo=true (só vale na criação — anexar a uma tarefa antiga ainda não é suportado).",
+  "- COORDENAÇÃO/DIREÇÃO/SECRETARIA anexando o arquivo a um comunicado → enviar_comunicado com usarAnexo=true.",
+  "Se não estiver claro pra qual dessas ações o arquivo é, pergunte — nunca invente um uso além desses, e",
+  "nunca negue que recebe/envia arquivo.",
   "",
   "Professor: pra criar tarefa (criar_tarefa) ou publicar material de aula (criar_conteudo_aula), primeiro",
   "use listar_minhas_turmas pra pegar o 'alocacaoId' da turma/matéria certa — nunca invente esse id.",
@@ -207,8 +219,10 @@ const FERRAMENTAS: FunctionDeclaration[] = [
   {
     name: "responder_conversa",
     description:
-      "Envia uma mensagem de texto do usuário numa conversa dele. Exige um ConversaGUID vindo de consultar_conversas. " +
-      "Chame primeiro sem 'confirmado' pra obter a confirmação; só chame com confirmado=true após o 'sim' do usuário.",
+      "Envia uma mensagem do usuário numa conversa dele — texto, ou o arquivo (imagem/PDF) recebido pelo " +
+      "WhatsApp (usarAnexo=true, nesse caso não precisa de 'texto'). Exige um ConversaGUID vindo de " +
+      "consultar_conversas. Chame primeiro sem 'confirmado' pra obter a confirmação; só chame com " +
+      "confirmado=true após o 'sim' do usuário.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -218,14 +232,18 @@ const FERRAMENTAS: FunctionDeclaration[] = [
         },
         texto: {
           type: Type.STRING,
-          description: "Conteúdo da mensagem a enviar, exatamente como o usuário quer.",
+          description: "Conteúdo da mensagem a enviar, exatamente como o usuário quer. Omita se usarAnexo=true.",
+        },
+        usarAnexo: {
+          type: Type.BOOLEAN,
+          description: "true = enviar o arquivo (imagem/PDF) já recebido pelo WhatsApp nesta conversa, em vez de texto.",
         },
         confirmado: {
           type: Type.BOOLEAN,
           description: "true só depois que o usuário confirmou explicitamente. Omita ou use false para o passo de confirmação.",
         },
       },
-      required: ["conversaGUID", "texto"],
+      required: ["conversaGUID"],
     },
   },
   {
@@ -247,6 +265,10 @@ const FERRAMENTAS: FunctionDeclaration[] = [
         prazo: { type: Type.STRING, description: "Prazo no formato AAAA-MM-DDTHH:MM (futuro)." },
         tipoEntrega: { type: Type.STRING, description: '"digital" (padrão) ou "fisica".' },
         descricao: { type: Type.STRING, description: "Enunciado/descrição da tarefa (opcional)." },
+        usarAnexo: {
+          type: Type.BOOLEAN,
+          description: "true = anexar o documento (imagem/PDF) já recebido pelo WhatsApp como material de apoio desta tarefa.",
+        },
         confirmado: { type: Type.BOOLEAN, description: "true só após 'sim' explícito do usuário." },
       },
       required: ["alocacaoId", "titulo", "prazo"],
@@ -255,30 +277,40 @@ const FERRAMENTAS: FunctionDeclaration[] = [
   {
     name: "criar_conteudo_aula",
     description:
-      "PROFESSOR publica um material de aula em texto para uma turma. Exige um alocacaoId vindo de listar_minhas_turmas. " +
+      "PROFESSOR publica um material de aula pra uma turma — texto, OU o documento (imagem/PDF) recebido pelo " +
+      "WhatsApp (usarAnexo=true, nesse caso não precisa de 'texto'). Exige um alocacaoId vindo de listar_minhas_turmas. " +
       "Chame primeiro sem 'confirmado'; só chame com confirmado=true após o 'sim' do usuário.",
     parameters: {
       type: Type.OBJECT,
       properties: {
         alocacaoId: { type: Type.STRING, description: "alocacaoId da turma/matéria — exatamente um dos valores de listar_minhas_turmas." },
         titulo: { type: Type.STRING, description: "Título do material." },
-        texto: { type: Type.STRING, description: "Corpo do material, em texto (pode ter parágrafos)." },
+        texto: { type: Type.STRING, description: "Corpo do material, em texto (pode ter parágrafos). Omita se usarAnexo=true." },
+        usarAnexo: {
+          type: Type.BOOLEAN,
+          description: "true = publicar o documento (imagem/PDF) já recebido pelo WhatsApp como o material, em vez de texto.",
+        },
         descricao: { type: Type.STRING, description: "Resumo curto do material (opcional)." },
         confirmado: { type: Type.BOOLEAN, description: "true só após 'sim' explícito do usuário." },
       },
-      required: ["alocacaoId", "titulo", "texto"],
+      required: ["alocacaoId", "titulo"],
     },
   },
   {
     name: "enviar_comunicado",
     description:
-      "COORDENAÇÃO/DIREÇÃO/SECRETARIA publica um comunicado (aviso) para toda a escola selecionada. " +
+      "COORDENAÇÃO/DIREÇÃO/SECRETARIA publica um comunicado (aviso) para toda a escola selecionada, opcionalmente " +
+      "com o documento (imagem/PDF) recebido pelo WhatsApp anexado (usarAnexo=true). " +
       "Chame primeiro sem 'confirmado'; só chame com confirmado=true após o 'sim' do usuário.",
     parameters: {
       type: Type.OBJECT,
       properties: {
         titulo: { type: Type.STRING, description: "Título do comunicado (até 150 caracteres)." },
         texto: { type: Type.STRING, description: "Corpo do comunicado." },
+        usarAnexo: {
+          type: Type.BOOLEAN,
+          description: "true = anexar o documento (imagem/PDF) já recebido pelo WhatsApp a este comunicado.",
+        },
         confirmado: { type: Type.BOOLEAN, description: "true só após 'sim' explícito do usuário." },
       },
       required: ["titulo", "texto"],

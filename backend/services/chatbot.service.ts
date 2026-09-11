@@ -606,13 +606,41 @@ export default class ChatbotService {
       // `confirmado === true` executa de fato (ver SYSTEM_INSTRUCTION).
       handlers.responder_conversa = async (args) => {
         const conversaGUID = String(args.conversaGUID ?? "");
-        const texto = String(args.texto ?? "").trim();
+        const usarAnexo = args.usarAnexo === true;
         const confirmado = args.confirmado === true;
 
         const alvo = sessao.conversasCache.find((c) => c.ConversaGUID === conversaGUID);
         if (!alvo) {
           return { error: "ConversaGUID não corresponde a nenhuma conversa listada — chame consultar_conversas primeiro" };
         }
+
+        // Enviar o arquivo recebido pelo WhatsApp como mensagem (imagem/arquivo).
+        if (usarAnexo) {
+          if (!sessao.anexoPendente) {
+            return { error: "nenhum arquivo recebido — peça pro usuário enviar o arquivo (imagem ou PDF) pelo WhatsApp primeiro" };
+          }
+          if (!confirmado) {
+            return { precisaConfirmacao: true, acao: `enviar o arquivo "${sessao.anexoPendente.fileName}" na conversa "${alvo.nome}"` };
+          }
+
+          const arquivo = sessao.anexoPendente;
+          const pseudoFile = {
+            buffer: arquivo.buffer,
+            originalname: arquivo.fileName,
+            mimetype: arquivo.mimetype,
+            size: arquivo.buffer.length,
+          } as Express.Multer.File;
+
+          const anexo = await this.#anexoService.uploadAnexo(pseudoFile, escolaGUID, usuarioGUID);
+          const tipoMensagem: "Imagem" | "Arquivo" = arquivo.mimetype.startsWith("image/") ? "Imagem" : "Arquivo";
+          await this.#mensagemService.enviar(conversaGUID, usuarioGUID, anexo.AnexoCaminho, tipoMensagem);
+
+          sessao.anexoPendente = null;
+          return { ok: true, enviadaEm: alvo.nome, arquivo: arquivo.fileName };
+        }
+
+        // Enviar texto (fluxo original).
+        const texto = String(args.texto ?? "").trim();
         if (!texto) {
           return { error: "texto da mensagem vazio" };
         }
@@ -993,6 +1021,7 @@ export default class ChatbotService {
           const titulo = String(args.titulo ?? "").trim();
           const descricao = args.descricao ? String(args.descricao).trim() : undefined;
           const tipoEntradaBruto = String(args.tipoEntrega ?? "digital").toLowerCase();
+          const usarAnexo = args.usarAnexo === true;
           const confirmado = args.confirmado === true;
 
           const alvo = sessao.alocacoesCache.find((a) => a.MatProfTurGUID === alocacaoId);
@@ -1006,6 +1035,9 @@ export default class ChatbotService {
           const prazo = this.#parseDataHora(args.prazo);
           if (!prazo) return { error: "prazo inválido — use o formato AAAA-MM-DDTHH:MM" };
           if (prazo.getTime() <= Date.now()) return { error: "o prazo precisa ser no futuro" };
+          if (usarAnexo && !sessao.anexoPendente) {
+            return { error: "nenhum arquivo recebido — peça pro professor enviar o documento (imagem ou PDF) pelo WhatsApp primeiro" };
+          }
 
           const matriculas = (await this.#matriculaDAO.findByTurma(alvo.TurmaGUID)).filter(
             (m) => m.MatriculaStatus === "Ativa"
@@ -1020,8 +1052,22 @@ export default class ChatbotService {
               acao:
                 `criar a tarefa "${titulo}" em ${alvo.turma} (${alvo.materia}), ` +
                 `prazo ${prazo.toISOString().slice(0, 16).replace("T", " ")}, entrega ${tipoEntradaBruto}, ` +
-                `para ${matriculas.length} aluno(s)`,
+                `para ${matriculas.length} aluno(s)` +
+                (usarAnexo ? `, com o arquivo "${sessao.anexoPendente!.fileName}" anexado como material de apoio` : ""),
             };
+          }
+
+          let anexosDescricao: string[] | undefined;
+          if (usarAnexo && sessao.anexoPendente) {
+            const arquivo = sessao.anexoPendente;
+            const pseudoFile = {
+              buffer: arquivo.buffer,
+              originalname: arquivo.fileName,
+              mimetype: arquivo.mimetype,
+              size: arquivo.buffer.length,
+            } as Express.Multer.File;
+            const anexo = await this.#anexoService.uploadAnexo(pseudoFile, escolaGUID, usuarioGUID);
+            anexosDescricao = [anexo.AnexoGUID];
           }
 
           await this.#tarefaService.criarTarefa(
@@ -1032,10 +1078,12 @@ export default class ChatbotService {
               TarefaConteudo: descricao,
               TarefaPrazoData: prazo,
               TarefaTipoEntrega: tipoEntradaBruto as "digital" | "fisica",
+              anexosDescricao,
             },
             usuarioGUID
           );
-          return { ok: true, tarefa: titulo, turma: alvo.turma, alunos: matriculas.length };
+          if (anexosDescricao) sessao.anexoPendente = null;
+          return { ok: true, tarefa: titulo, turma: alvo.turma, alunos: matriculas.length, arquivoAnexado: !!anexosDescricao };
         };
 
         // ESCRITA — publicar material de aula (tipo texto) numa turma.
@@ -1044,6 +1092,7 @@ export default class ChatbotService {
           const titulo = String(args.titulo ?? "").trim();
           const texto = String(args.texto ?? "").trim();
           const descricao = args.descricao ? String(args.descricao).trim() : undefined;
+          const usarAnexo = args.usarAnexo === true;
           const confirmado = args.confirmado === true;
 
           const alvo = sessao.alocacoesCache.find((a) => a.MatProfTurGUID === alocacaoId);
@@ -1051,10 +1100,46 @@ export default class ChatbotService {
             return { error: "alocacaoId não corresponde a nenhuma turma sua — chame listar_minhas_turmas primeiro" };
           }
           if (!titulo) return { error: "título do material vazio" };
-          if (!texto) return { error: "texto do material vazio" };
+          if (usarAnexo) {
+            if (!sessao.anexoPendente) {
+              return { error: "nenhum arquivo recebido — peça pro professor enviar o documento (imagem ou PDF) pelo WhatsApp primeiro" };
+            }
+          } else if (!texto) {
+            return { error: "texto do material vazio" };
+          }
 
           if (!confirmado) {
-            return { precisaConfirmacao: true, acao: `publicar o material "${titulo}" em ${alvo.turma} (${alvo.materia})` };
+            return {
+              precisaConfirmacao: true,
+              acao: usarAnexo
+                ? `publicar o arquivo "${sessao.anexoPendente!.fileName}" como material "${titulo}" em ${alvo.turma} (${alvo.materia})`
+                : `publicar o material "${titulo}" em ${alvo.turma} (${alvo.materia})`,
+            };
+          }
+
+          if (usarAnexo && sessao.anexoPendente) {
+            const arquivo = sessao.anexoPendente;
+            const pseudoFile = {
+              buffer: arquivo.buffer,
+              originalname: arquivo.fileName,
+              mimetype: arquivo.mimetype,
+              size: arquivo.buffer.length,
+            } as Express.Multer.File;
+
+            await this.#conteudoService.criarConteudo(
+              {
+                MateriaGUID: alvo.MateriaGUID,
+                ConteudoTitulo: titulo,
+                ConteudoTipo: "paginado",
+                TurmasGUID: [alvo.TurmaGUID],
+                ConteudoDataPublicacao: new Date(),
+                ConteudoDescricao: descricao,
+              },
+              { arquivosPaginado: [pseudoFile] },
+              usuarioGUID
+            );
+            sessao.anexoPendente = null;
+            return { ok: true, material: titulo, turma: alvo.turma, arquivoAnexado: true };
           }
 
           const html = texto
@@ -1084,15 +1169,37 @@ export default class ChatbotService {
         handlers.enviar_comunicado = async (args) => {
           const titulo = String(args.titulo ?? "").trim();
           const texto = String(args.texto ?? "").trim();
+          const usarAnexo = args.usarAnexo === true;
           const confirmado = args.confirmado === true;
 
           if (!titulo) return { error: "título do comunicado vazio" };
           if (titulo.length > 150) return { error: "título longo demais (máx. 150 caracteres)" };
           if (!texto) return { error: "texto do comunicado vazio" };
           if (texto.length > 4000) return { error: "comunicado longo demais (máx. 4000 caracteres)" };
+          if (usarAnexo && !sessao.anexoPendente) {
+            return { error: "nenhum arquivo recebido — peça pra enviar o documento (imagem ou PDF) pelo WhatsApp primeiro" };
+          }
 
           if (!confirmado) {
-            return { precisaConfirmacao: true, acao: `enviar o comunicado "${titulo}" para toda a escola` };
+            return {
+              precisaConfirmacao: true,
+              acao:
+                `enviar o comunicado "${titulo}" para toda a escola` +
+                (usarAnexo ? `, com o arquivo "${sessao.anexoPendente!.fileName}" anexado` : ""),
+            };
+          }
+
+          let anexoGUIDs: string[] | undefined;
+          if (usarAnexo && sessao.anexoPendente) {
+            const arquivo = sessao.anexoPendente;
+            const pseudoFile = {
+              buffer: arquivo.buffer,
+              originalname: arquivo.fileName,
+              mimetype: arquivo.mimetype,
+              size: arquivo.buffer.length,
+            } as Express.Multer.File;
+            const anexo = await this.#anexoService.uploadAnexo(pseudoFile, escolaGUID, usuarioGUID);
+            anexoGUIDs = [anexo.AnexoGUID];
           }
 
           await this.#avisoService.criarAviso({
@@ -1101,8 +1208,10 @@ export default class ChatbotService {
             AvisoTitulo: titulo,
             AvisoConteudo: texto,
             AvisoAbrangencia: "Escola",
+            AnexoGUIDs: anexoGUIDs,
           });
-          return { ok: true, comunicado: titulo };
+          if (anexoGUIDs) sessao.anexoPendente = null;
+          return { ok: true, comunicado: titulo, arquivoAnexado: !!anexoGUIDs };
         };
       }
     }
