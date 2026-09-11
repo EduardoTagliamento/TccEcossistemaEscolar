@@ -482,7 +482,13 @@ export class AssistenteAgent {
         historico,
         tools,
         SYSTEM_INSTRUCTION,
-        "leve"
+        "leve",
+        // Timeout maior que o padrão (15s): o webhook do WhatsApp já responde
+        // 200 na hora e processa assíncrono (ver ChatbotWebhookController),
+        // então não há pressa externa — e uma chamada com várias ferramentas
+        // declaradas + histórico crescendo pode legitimamente passar de 15s,
+        // sobretudo com o modelo "leve" sob alta demanda (503 visto em produção).
+        30000
       );
 
       historico.push(content);

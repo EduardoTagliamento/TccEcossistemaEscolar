@@ -77,8 +77,18 @@ export default class ChatbotWebhookController {
       }
     }
 
-    void this.#processar(evento).catch((erro) => {
+    void this.#processar(evento).catch(async (erro) => {
       console.error("❌ [ChatbotWebhookController] Falha ao processar mensagem do WhatsApp:", erro);
+      // Sem isso, uma falha aqui (ex.: timeout do Gemini) deixa o usuário sem
+      // resposta nenhuma — silêncio total, sem indicar que algo deu errado.
+      try {
+        await EvolutionApiService.getInstance().sendText(
+          evento.numeroJid,
+          "Tive um problema pra responder agora. Pode tentar de novo em instantes?"
+        );
+      } catch (erroEnvio) {
+        console.error("❌ [ChatbotWebhookController] Falha ao enviar mensagem de erro de fallback:", erroEnvio);
+      }
     });
   };
 
@@ -113,7 +123,7 @@ export default class ChatbotWebhookController {
 
     if (midia) {
       const mimetype: string = midia?.mimetype ?? "";
-      const tamanho = Number(midia?.fileLength ?? 0);
+      const tamanho = this.#extrairTamanho(midia?.fileLength);
       const aceito = MIMES_ANEXO_ACEITOS.some((m) => mimetype.startsWith(m));
       if (aceito && (tamanho === 0 || tamanho <= TAMANHO_MAX_ANEXO_BYTES)) {
         midiaMensagemCru = data;
@@ -131,6 +141,26 @@ export default class ChatbotWebhookController {
       id: key?.id ?? "",
       midiaMensagemCru,
     };
+  };
+
+  /**
+   * `fileLength` no payload da Evolution/Baileys chega como um "Long" de
+   * protobuf serializado em JSON (`{ low, high, unsigned }`), não como number
+   * puro — `Number(fileLength)` nesse formato dá `NaN`, e `NaN <= X` é sempre
+   * false, então TODO arquivo era descartado como "grande demais" mesmo
+   * sendo pequeno (bug real, confirmado em produção 2026-09-11: imagem de
+   * 1 usuário nunca chegava a virar anexoPendente). `high` != 0 significaria
+   * um arquivo teoricamente >4GB — trata como grande demais de propósito.
+   */
+  #extrairTamanho = (valor: unknown): number => {
+    if (typeof valor === "number") return valor;
+    if (valor && typeof valor === "object" && "low" in (valor as Record<string, unknown>)) {
+      const bruto = valor as { low: unknown; high?: unknown };
+      const high = Number(bruto.high ?? 0);
+      if (high !== 0) return Number.MAX_SAFE_INTEGER;
+      return Number(bruto.low) >>> 0;
+    }
+    return 0;
   };
 
   #processar = async (evento: EventoWhatsapp): Promise<void> => {
