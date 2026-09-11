@@ -250,11 +250,16 @@ export default class ChatbotService {
       const resultado = await this.#identificarPorTelefone(sessao, nacional);
       const identificou = resultado.encontrado === true && resultado.semVinculoAtivo !== true;
       if (identificou) {
-        // Semeia o histórico com um par functionCall/functionResponse igual ao
-        // que o loop do agente produziria se o modelo tivesse chamado a
-        // ferramenta — assim o modelo vê a identidade (e, se for o caso, a
-        // lista de escolas) já resolvida e segue o fluxo normal.
+        // Semeia o histórico com um turno user + par functionCall/functionResponse
+        // igual ao que o loop do agente produziria se o modelo tivesse recebido
+        // o telefone e chamado a ferramenta — assim o modelo vê a identidade (e,
+        // se for o caso, a lista de escolas) já resolvida e segue o fluxo normal.
+        // O turno "user" inicial é obrigatório: a API do Gemini exige que todo
+        // turno de functionCall seja precedido por um turno user (ou de
+        // functionResponse) — sem isso, "Please ensure that function call turn
+        // comes immediately after a user turn..." (400 INVALID_ARGUMENT).
         sessao.historico.push(
+          { role: "user", parts: [{ text: `Meu telefone é ${nacional}.` }] },
           { role: "model", parts: [{ functionCall: { name: "identificar_usuario_por_telefone", args: { telefone: nacional } } }] },
           { role: "user", parts: [{ functionResponse: { name: "identificar_usuario_por_telefone", response: { output: resultado } } }] }
         );
