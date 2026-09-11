@@ -91,10 +91,15 @@ export default class ChatbotWebhookController {
     const data = body?.data ?? body;
     const key = data?.key ?? {};
     const remoteJid: string = key?.remoteJid ?? "";
+    const remoteJidAlt: string = key?.remoteJidAlt ?? "";
 
     if (key?.fromMe === true) return null;
-    // Só conversa 1:1. Descarta grupos (@g.us), status@broadcast, newsletter, etc.
-    if (!remoteJid.endsWith("@s.whatsapp.net")) return null;
+    if (remoteJid.endsWith("@g.us")) return null; // grupo
+    // WhatsApp "lid" addressing: remoteJid vem como <id>@lid e o número real
+    // fica em remoteJidAlt. Aceita se QUALQUER um dos dois for um JID de número
+    // (@s.whatsapp.net); descarta status@broadcast, newsletter, lid sem alt.
+    const jidNumero = [remoteJid, remoteJidAlt].find((j) => j.endsWith("@s.whatsapp.net"));
+    if (!jidNumero) return null;
 
     const message = data?.message ?? {};
     const texto: string = message?.conversation ?? message?.extendedTextMessage?.text ?? "";
@@ -121,7 +126,7 @@ export default class ChatbotWebhookController {
     if (!textoFinal && !midiaMensagemCru) return null;
 
     return {
-      numeroJid: remoteJid.split("@")[0],
+      numeroJid: jidNumero.split("@")[0],
       texto: textoFinal,
       id: key?.id ?? "",
       midiaMensagemCru,
