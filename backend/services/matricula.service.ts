@@ -487,6 +487,36 @@ export default class MatriculaService {
   }
 
   /**
+   * Resolve a EscolaGUID de uma matrícula — ela não guarda `EscolaGUID`
+   * própria, só via `TurmaGUID -> turma.EscolaGUID` ou, no caso de
+   * matrícula-sombra de grupo eletivo, via `GrupoEletivoGUID ->
+   * grupoeletivo.EscolaGUID` (mesma ideia de
+   * TarefaAcademicaService#resolverEscolaGUIDPorMatricula). Usado só pelo
+   * guard de chave de API em MatriculaController.show — nunca fez falta
+   * antes porque toda escrita já resolve isso via #turmaDAO diretamente.
+   */
+  async obterEscolaGUID(matriculaGUID: string): Promise<string | null> {
+    const matricula = await this.#matriculaDAO.findById(matriculaGUID);
+    if (!matricula) return null;
+
+    if (matricula.TurmaGUID) {
+      const turma = await this.#turmaDAO.findById(matricula.TurmaGUID);
+      return turma?.EscolaGUID ?? null;
+    }
+
+    if (matricula.GrupoEletivoGUID) {
+      const pool = await this.#database.getPool();
+      const [rows] = await pool.execute(
+        "SELECT EscolaGUID FROM grupoeletivo WHERE GrupoEletivoGUID = ? LIMIT 1",
+        [matricula.GrupoEletivoGUID]
+      );
+      return (rows as any[])[0]?.EscolaGUID ?? null;
+    }
+
+    return null;
+  }
+
+  /**
    * Atualizar matrícula
    */
   async atualizarMatricula(

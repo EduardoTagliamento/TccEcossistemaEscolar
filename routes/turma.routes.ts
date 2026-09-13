@@ -8,6 +8,7 @@ import { EscolaDAO } from "../backend/repositories/escola.repository";
 import { CursoDAO } from "../backend/repositories/curso.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import ApiKeyAuthMiddleware from "../backend/middlewares/apikey-auth.middleware";
 import ConversaGrupoService from "../backend/services/conversa-grupo.service";
 import { ConversaDAO } from "../backend/repositories/conversa.repository";
 import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
@@ -39,11 +40,20 @@ export default class TurmaRoteador {
     );
 
     // GET /api/turma?EscolaGUID=&CursoGUID=&TurmaIsTecnico=&TurmaStatus=
-    this.#router.get("/", this.#turmaController.index);
+    // Aceita chave de API com escopo "turma:leitura" (ver docs/PLANO_IMPLEMENTACAO_API_KEYS.md) —
+    // nesse caso EscolaGUID do filtro é ignorado/forçado pro da própria chave (ApiKeyController).
+    this.#router.get(
+      "/",
+      ApiKeyAuthMiddleware.exigirEscopo("turma:leitura"),
+      this.#turmaController.index
+    );
 
     // GET /api/turma/:guid
+    // Aceita chave de API com escopo "turma:leitura" — a chave só enxerga
+    // turma da própria EscolaGUID (checado no controller).
     this.#router.get(
       "/:guid",
+      ApiKeyAuthMiddleware.exigirEscopo("turma:leitura"),
       TurmaMiddleware.validarGUID,
       this.#turmaController.show
     );

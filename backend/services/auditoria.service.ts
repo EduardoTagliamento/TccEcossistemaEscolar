@@ -19,13 +19,20 @@ import RegistroAuditoria, { AcaoAuditoriaTipo } from "../entities/registroaudito
 import CategoriaAuditoria from "../entities/categoriaauditoria.model";
 import ErrorResponse from "../utils/ErrorResponse";
 
-/** Registro de auditoria com nome/CPF do ator resolvidos — só informativo (exibição), a identidade real continua UsuarioGUIDAtor. */
+/**
+ * Registro de auditoria com nome/CPF do ator resolvidos — só informativo
+ * (exibição), a identidade real continua em UsuarioGUIDAtor/ApiKeyGUIDAtor.
+ * Ator é polimórfico desde docs/PLANO_IMPLEMENTACAO_API_KEYS.md: exatamente
+ * um dos dois (UsuarioGUIDAtor XOR ApiKeyGUIDAtor) vem preenchido —
+ * ApiKeyNomeAtor cobre a exibição pro caso de chave.
+ */
 export interface RegistroAuditoriaComAutor {
   RegistroAuditoriaGUID: string;
   EscolaGUID: string;
-  UsuarioGUIDAtor: string;
+  UsuarioGUIDAtor: string | null;
   UsuarioNomeAtor: string | null;
   UsuarioCPFAtor: string | null;
+  ApiKeyGUIDAtor: string | null;
   AcaoTipo: AcaoAuditoriaTipo;
   EntidadeTipo: string;
   EntidadeGUID: string;
@@ -34,9 +41,11 @@ export interface RegistroAuditoriaComAutor {
   CreatedAt: Date;
 }
 
+/** Exatamente um de `UsuarioGUIDAtor`/`ApiKeyGUIDAtor` deve ser passado — nunca os dois, nunca nenhum. */
 export interface RegistroAuditoriaCreateDTO {
   EscolaGUID: string;
-  UsuarioGUIDAtor: string;
+  UsuarioGUIDAtor?: string;
+  ApiKeyGUIDAtor?: string;
   AcaoTipo: AcaoAuditoriaTipo;
   EntidadeTipo: string;
   EntidadeGUID: string;
@@ -76,10 +85,23 @@ export default class AuditoriaService {
     console.log(`🗂️ AuditoriaService.registrar() - entidade=${input.EntidadeTipo} acao=${input.AcaoTipo}`);
 
     try {
+      const temUsuario = !!input.UsuarioGUIDAtor;
+      const temApiKey = !!input.ApiKeyGUIDAtor;
+      if (temUsuario === temApiKey) {
+        // XOR: os dois presentes ou os dois ausentes é erro de programação
+        // do caller, não uma falha de infra — mas `registrar()` nunca
+        // lança (contrato do método), só loga e engole, igual qualquer
+        // outra falha aqui.
+        throw new Error(
+          "RegistroAuditoriaCreateDTO precisa de exatamente um entre UsuarioGUIDAtor e ApiKeyGUIDAtor"
+        );
+      }
+
       const registro = new RegistroAuditoria();
       registro.RegistroAuditoriaGUID = gerarGUID();
       registro.EscolaGUID = input.EscolaGUID;
-      registro.UsuarioGUIDAtor = input.UsuarioGUIDAtor;
+      registro.UsuarioGUIDAtor = input.UsuarioGUIDAtor ?? null;
+      registro.ApiKeyGUIDAtor = input.ApiKeyGUIDAtor ?? null;
       registro.AcaoTipo = input.AcaoTipo;
       registro.EntidadeTipo = input.EntidadeTipo;
       registro.EntidadeGUID = input.EntidadeGUID;
@@ -102,7 +124,8 @@ export default class AuditoriaService {
     };
 
     const registros = await this.#registroDAO.findAll(filtrosCompletos);
-    const dadosMap = await this.#usuarioDAO.findNomesECPFsByGUIDs([...new Set(registros.map((r) => r.UsuarioGUIDAtor))]);
+    const guidsDeUsuario = registros.map((r) => r.UsuarioGUIDAtor).filter((guid): guid is string => !!guid);
+    const dadosMap = await this.#usuarioDAO.findNomesECPFsByGUIDs([...new Set(guidsDeUsuario)]);
 
     return registros.map((registro) => this.#toDTOComAutor(registro, dadosMap));
   }
@@ -118,7 +141,7 @@ export default class AuditoriaService {
       });
     }
 
-    const dadosMap = await this.#usuarioDAO.findNomesECPFsByGUIDs([registro.UsuarioGUIDAtor]);
+    const dadosMap = await this.#usuarioDAO.findNomesECPFsByGUIDs(registro.UsuarioGUIDAtor ? [registro.UsuarioGUIDAtor] : []);
     return this.#toDTOComAutor(registro, dadosMap);
   }
 
@@ -126,13 +149,14 @@ export default class AuditoriaService {
     registro: RegistroAuditoria,
     dadosMap: Map<string, { UsuarioNome: string; UsuarioCPF: string | null }>
   ): RegistroAuditoriaComAutor {
-    const dados = dadosMap.get(registro.UsuarioGUIDAtor);
+    const dados = registro.UsuarioGUIDAtor ? dadosMap.get(registro.UsuarioGUIDAtor) : undefined;
     return {
       RegistroAuditoriaGUID: registro.RegistroAuditoriaGUID,
       EscolaGUID: registro.EscolaGUID,
       UsuarioGUIDAtor: registro.UsuarioGUIDAtor,
       UsuarioNomeAtor: dados?.UsuarioNome ?? null,
       UsuarioCPFAtor: dados?.UsuarioCPF ?? null,
+      ApiKeyGUIDAtor: registro.ApiKeyGUIDAtor,
       AcaoTipo: registro.AcaoTipo,
       EntidadeTipo: registro.EntidadeTipo,
       EntidadeGUID: registro.EntidadeGUID,

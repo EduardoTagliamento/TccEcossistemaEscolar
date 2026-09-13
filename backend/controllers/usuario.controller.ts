@@ -53,7 +53,14 @@ export default class UsuarioControl {
     console.log("🔵 UsuarioControl.index()");
     try {
       const nome = typeof request.query.nome === "string" ? request.query.nome : undefined;
-      const usuarios = await this.#usuarioService.findAll(nome);
+
+      // Chamada via chave de API: restringe SEMPRE à própria escola da
+      // chave — sem isso, uma chave poderia listar usuário de qualquer
+      // escola (rota histórica sem filtro nenhum, aberta por nome só).
+      // Chamada humana/anônima segue com o comportamento de sempre.
+      const usuarios = request.apiKey
+        ? await this.#usuarioService.findAllByEscola(request.apiKey.EscolaGUID, nome)
+        : await this.#usuarioService.findAll(nome);
 
       response.status(200).json({
         success: true,
@@ -70,6 +77,21 @@ export default class UsuarioControl {
     try {
       const { UsuarioGUID } = request.params;
       const usuario = await this.#usuarioService.findByGUID(UsuarioGUID);
+
+      // Chamada via chave de API: só pode ver usuário com vínculo ativo na
+      // própria escola da chave — sem isso, uma chave poderia enumerar
+      // GUIDs e ler o perfil (CPF, e-mail, telefone) de qualquer pessoa de
+      // qualquer escola.
+      if (request.apiKey) {
+        const pertence = await this.#usuarioService.pertenceAEscola(UsuarioGUID, request.apiKey.EscolaGUID);
+        if (!pertence) {
+          response.status(404).json({
+            success: false,
+            message: "Usuário não encontrado",
+          });
+          return;
+        }
+      }
 
       response.status(200).json({
         success: true,

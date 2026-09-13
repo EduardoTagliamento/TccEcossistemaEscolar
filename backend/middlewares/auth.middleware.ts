@@ -8,6 +8,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { JwtService } from '../utils/JwtService';
 import ErrorResponse from '../utils/ErrorResponse';
+import ApiKeyAuthMiddleware from './apikey-auth.middleware';
 
 // Extender o tipo Request do Express para incluir user
 declare global {
@@ -54,6 +55,14 @@ export class AuthMiddleware {
         });
       }
 
+      // 2.5. Chave de API de parceiro externo (prefixo `baua_`) segue um
+      // fluxo de autenticação totalmente diferente (hash lookup, sem JWT) —
+      // ver backend/middlewares/apikey-auth.middleware.ts.
+      if (ApiKeyAuthMiddleware.ehTokenDeApiKey(token)) {
+        ApiKeyAuthMiddleware.authenticate(req, res, next);
+        return;
+      }
+
       // 3. Verificar e decodificar token
       const decoded = JwtService.verifyToken(token);
 
@@ -96,6 +105,14 @@ export class AuthMiddleware {
 
       if (parts.length === 2 && parts[0] === 'Bearer') {
         const token = parts[1];
+
+        // Chave de API: usa a variante leniente própria (nunca bloqueia,
+        // igual o resto deste método) — ver apikey-auth.middleware.ts.
+        if (ApiKeyAuthMiddleware.ehTokenDeApiKey(token)) {
+          ApiKeyAuthMiddleware.authenticateOpcional(req, res, next);
+          return;
+        }
+
         const decoded = JwtService.verifyToken(token);
 
         req.user = {

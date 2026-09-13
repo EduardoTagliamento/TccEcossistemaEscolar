@@ -18,7 +18,8 @@ const ACOES_VALIDAS: AcaoAuditoriaTipo[] = ["Create", "Update", "Delete"];
 export default class RegistroAuditoria {
   #RegistroAuditoriaGUID!: string;
   #EscolaGUID!: string;
-  #UsuarioGUIDAtor!: string;
+  #UsuarioGUIDAtor!: string | null;
+  #ApiKeyGUIDAtor!: string | null;
   #AcaoTipo!: AcaoAuditoriaTipo;
   #EntidadeTipo!: string;
   #EntidadeGUID!: string;
@@ -36,8 +37,12 @@ export default class RegistroAuditoria {
     return this.#EscolaGUID;
   }
 
-  get UsuarioGUIDAtor(): string {
+  get UsuarioGUIDAtor(): string | null {
     return this.#UsuarioGUIDAtor;
+  }
+
+  get ApiKeyGUIDAtor(): string | null {
+    return this.#ApiKeyGUIDAtor;
   }
 
   get AcaoTipo(): AcaoAuditoriaTipo {
@@ -88,11 +93,26 @@ export default class RegistroAuditoria {
     this.#EscolaGUID = trimmed;
   }
 
-  set UsuarioGUIDAtor(value: string) {
-    if (typeof value !== "string" || value.trim() === "") {
+  set UsuarioGUIDAtor(value: string | null | undefined) {
+    if (value === null || value === undefined || value === "") {
+      this.#UsuarioGUIDAtor = null;
+      return;
+    }
+    if (typeof value !== "string") {
       throw new Error("UsuarioGUIDAtor deve ser uma string não vazia");
     }
     this.#UsuarioGUIDAtor = value;
+  }
+
+  set ApiKeyGUIDAtor(value: string | null | undefined) {
+    if (value === null || value === undefined || value === "") {
+      this.#ApiKeyGUIDAtor = null;
+      return;
+    }
+    if (typeof value !== "string" || value.length !== 36) {
+      throw new Error("ApiKeyGUIDAtor deve ser um UUID v4 (36 caracteres)");
+    }
+    this.#ApiKeyGUIDAtor = value;
   }
 
   set AcaoTipo(value: AcaoAuditoriaTipo) {
@@ -156,6 +176,7 @@ export default class RegistroAuditoria {
       RegistroAuditoriaGUID: this.#RegistroAuditoriaGUID,
       EscolaGUID: this.#EscolaGUID,
       UsuarioGUIDAtor: this.#UsuarioGUIDAtor,
+      ApiKeyGUIDAtor: this.#ApiKeyGUIDAtor,
       AcaoTipo: this.#AcaoTipo,
       EntidadeTipo: this.#EntidadeTipo,
       EntidadeGUID: this.#EntidadeGUID,
@@ -169,7 +190,8 @@ export default class RegistroAuditoria {
     const registro = new RegistroAuditoria();
     registro.RegistroAuditoriaGUID = data.RegistroAuditoriaGUID;
     registro.EscolaGUID = data.EscolaGUID;
-    registro.UsuarioGUIDAtor = data.UsuarioGUIDAtor;
+    registro.UsuarioGUIDAtor = data.UsuarioGUIDAtor ?? null;
+    registro.ApiKeyGUIDAtor = data.ApiKeyGUIDAtor ?? null;
     registro.AcaoTipo = data.AcaoTipo;
     registro.EntidadeTipo = data.EntidadeTipo;
     registro.EntidadeGUID = data.EntidadeGUID;

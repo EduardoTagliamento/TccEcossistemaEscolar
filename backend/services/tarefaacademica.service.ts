@@ -496,6 +496,26 @@ export default class TarefaAcademicaService {
   };
 
   /**
+   * Resolve a EscolaGUID de uma tarefa — ela não carrega `EscolaGUID`
+   * diretamente, só via `matXprofXturxescGUID -> alocação -> turma (ou
+   * grupo eletivo)`. Usado só pelo guard de chave de API em
+   * TarefaAcademicaControl.show — nunca fez falta antes porque toda
+   * escrita já passa por `#alocacaoDAO` diretamente.
+   */
+  async obterEscolaGUID(tarefaGUID: string): Promise<string | null> {
+    const tarefa = await this.#tarefaDAO.findById(tarefaGUID);
+    if (!tarefa) return null;
+
+    const alocacao = await this.#alocacaoDAO.findById(tarefa.matXprofXturxescGUID);
+    if (!alocacao) return null;
+
+    return this.#resolverEscolaGUIDPorMatricula({
+      TurmaGUID: alocacao.TurmaGUID,
+      GrupoEletivoGUID: alocacao.GrupoEletivoGUID,
+    });
+  }
+
+  /**
    * Notifica os alunos atribuídos sobre a nova tarefa (tipo `tarefa_postada`).
    * Quando a tarefa é compartilhada, o texto já menciona isso — não existe
    * um tipo `grupo_novo` separado (ver docs/PLANO_IMPLEMENTACAO_NOTIFICACOES.md, seção 4.4).

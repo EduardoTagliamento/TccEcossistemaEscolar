@@ -107,6 +107,12 @@ export default class ProvaAgendadaControl {
         DataFim: request.query.DataFim ? new Date(request.query.DataFim as string) : undefined,
       };
 
+      // Chamada via chave de API: SEMPRE força a escola da própria chave —
+      // impede uma chave da Escola A listar prova da Escola B.
+      if (request.apiKey) {
+        filters.EscolaGUID = request.apiKey.EscolaGUID;
+      }
+
       const provas = await this.#provaService.listarProvas(filters);
 
       response.status(200).json({
@@ -128,6 +134,20 @@ export default class ProvaAgendadaControl {
     try {
       const { ProvaAgendadaGUID } = request.params;
       const prova = await this.#provaService.buscarProva(ProvaAgendadaGUID);
+
+      // Chamada via chave de API: só pode ver prova da própria escola —
+      // sem isso, uma chave poderia enumerar GUIDs e ler prova de
+      // qualquer outra escola (a rota não filtra por EscolaGUID, só pelo :ProvaAgendadaGUID).
+      if (request.apiKey) {
+        const pertence = await this.#provaService.pertenceAEscola(ProvaAgendadaGUID, request.apiKey.EscolaGUID);
+        if (!pertence) {
+          response.status(404).json({
+            success: false,
+            message: "Prova não encontrada",
+          });
+          return;
+        }
+      }
 
       response.status(200).json({
         success: true,

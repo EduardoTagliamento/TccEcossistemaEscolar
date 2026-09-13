@@ -96,6 +96,13 @@ export class TurmaController {
         filters.EscolaGUID = req.query.EscolaGUID as string;
       }
 
+      // Chamada via chave de API: SEMPRE força a escola da própria chave,
+      // nunca a que o chamador pediu — impede uma chave da Escola A listar
+      // turmas da Escola B só trocando o query param.
+      if (req.apiKey) {
+        filters.EscolaGUID = req.apiKey.EscolaGUID;
+      }
+
       if (req.query.CursoGUID) {
         filters.CursoGUID = req.query.CursoGUID as string;
       }
@@ -141,6 +148,17 @@ export class TurmaController {
       const { guid } = req.params;
 
       const turma = await this.#turmaService.buscarTurma(guid);
+
+      // Chamada via chave de API: só pode ver turma da própria escola —
+      // sem isso, uma chave poderia enumerar GUIDs e ler turma de qualquer
+      // outra escola (a rota não filtra por EscolaGUID, só pelo :guid).
+      if (req.apiKey && turma.EscolaGUID !== req.apiKey.EscolaGUID) {
+        res.status(404).json({
+          success: false,
+          message: "Turma não encontrada",
+        });
+        return;
+      }
 
       res.status(200).json({
         success: true,

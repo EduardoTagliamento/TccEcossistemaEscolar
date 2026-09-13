@@ -34,6 +34,7 @@ import { provaAgendadaRoutes } from "../routes/provaagendada.routes";
 import { calendarioRoutes } from "../routes/calendario.routes";
 import { pendenciaRoutes } from "../routes/pendencia.routes";
 import { eventoRoutes } from "../routes/evento.routes";
+import { apiKeyRoutes } from "../routes/apikey.routes";
 import { anotacaoRouterFactory } from "../routes/anotacao.routes";
 import { avisoRouterFactory } from "../routes/aviso.routes";
 import { sugestaoRouterFactory } from "../routes/sugestao.routes";
@@ -477,6 +478,10 @@ export default class Server {
     // 🎉 Rotas de Evento
     this.#app.use("/api/evento", eventoRoutes());
     console.log("✅ Rotas de Evento registradas em /api/evento");
+
+    // 🔑 Rotas de ApiKey (chaves de API para parceiros externos)
+    this.#app.use("/api/api-key", apiKeyRoutes());
+    console.log("✅ Rotas de ApiKey registradas em /api/api-key");
 
     // 📝 Rotas de Anotação
     const anotacaoRouter = anotacaoRouterFactory();

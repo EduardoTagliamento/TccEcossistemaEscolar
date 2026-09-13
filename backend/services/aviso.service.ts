@@ -141,6 +141,19 @@ export class AvisoService {
     return Promise.all(avisos.map((aviso) => this.#toDTO(aviso)));
   }
 
+  /**
+   * Variante pra chamada autenticada por CHAVE DE API (ver
+   * docs/PLANO_IMPLEMENTACAO_API_KEYS.md) — sem checagem de papel humano
+   * (Coordenação/Secretaria/Direção): a autorização da chave já veio da
+   * Direção ao conceder o escopo `aviso:leitura` na emissão dela, então não
+   * há um "papel" de chave pra checar aqui, só o escopo (verificado antes,
+   * em `ApiKeyAuthMiddleware.exigirEscopo`, na camada de rota).
+   */
+  async listarAvisosViaApiKey(escolaGUID: string): Promise<AvisoDTO[]> {
+    const avisos = await this.avisoDAO.findAll({ EscolaGUID: escolaGUID });
+    return Promise.all(avisos.map((aviso) => this.#toDTO(aviso)));
+  }
+
   // READ (por ID — marca visualização como efeito colateral)
   async buscarAviso(guid: string, usuarioGUID: string): Promise<AvisoDTO> {
     const aviso = await this.avisoDAO.findById(guid);

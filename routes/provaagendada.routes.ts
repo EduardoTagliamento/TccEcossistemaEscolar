@@ -17,6 +17,7 @@ import { AssuntoDAO } from "../backend/repositories/assunto.repository";
 import { MaterialDidaticoCapituloDAO } from "../backend/repositories/materialdidaticocapitulo.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import ApiKeyAuthMiddleware from "../backend/middlewares/apikey-auth.middleware";
 import { provaRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
 export default class ProvaAgendadaRoteador {
@@ -42,8 +43,11 @@ export default class ProvaAgendadaRoteador {
       this.#controle.store
     );
 
+    // Aceita chave de API com escopo "prova:leitura" (ver docs/PLANO_IMPLEMENTACAO_API_KEYS.md) —
+    // EscolaGUID do filtro é ignorado/forçado pro da própria chave (ProvaAgendadaControl).
     this.#router.get(
       "/",
+      ApiKeyAuthMiddleware.exigirEscopo("prova:leitura"),
       this.#middleware.validateFilters,
       this.#controle.index
     );
@@ -61,8 +65,11 @@ export default class ProvaAgendadaRoteador {
       this.#controle.mostrarRecomendacao
     );
 
+    // Aceita chave de API com escopo "prova:leitura" — a chave só enxerga
+    // prova da própria EscolaGUID (checado no controller).
     this.#router.get(
       "/:ProvaAgendadaGUID",
+      ApiKeyAuthMiddleware.exigirEscopo("prova:leitura"),
       this.#middleware.validateIdParam,
       this.#controle.show
     );

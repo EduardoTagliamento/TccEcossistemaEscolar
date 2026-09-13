@@ -38,9 +38,17 @@ export class AvisoController {
     }
   };
 
-  // GET /api/aviso - Listar avisos enviados (só quem pode enviar)
+  // GET /api/aviso - Listar avisos enviados (só quem pode enviar, ou chave de API com escopo "aviso:leitura")
   index = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Chamada via chave de API: escopo já checado em ApiKeyAuthMiddleware.exigirEscopo,
+      // e a escola é sempre a da própria chave — nunca a do query param.
+      if (req.apiKey) {
+        const avisos = await this.avisoService.listarAvisosViaApiKey(req.apiKey.EscolaGUID);
+        res.json({ success: true, data: avisos, total: avisos.length });
+        return;
+      }
+
       const usuarioGUID = req.user?.UsuarioGUID;
       if (!usuarioGUID) {
         res.status(401).json({ success: false, message: 'Usuário não autenticado' });

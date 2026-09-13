@@ -10,6 +10,7 @@ import { MatriculaDAO } from '../backend/repositories/matricula.repository';
 import { UsuarioDAO } from '../backend/repositories/usuario.repository';
 import { AvisoMiddleware } from '../backend/middlewares/aviso.middleware';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
+import ApiKeyAuthMiddleware from '../backend/middlewares/apikey-auth.middleware';
 
 export default class AvisoRoteador {
   #router: Router;
@@ -42,8 +43,10 @@ export default class AvisoRoteador {
     );
 
     // GET /api/aviso - Listar avisos enviados
+    // Aceita chave de API com escopo "aviso:leitura" (ver docs/PLANO_IMPLEMENTACAO_API_KEYS.md).
     this.#router.get(
       '/',
+      ApiKeyAuthMiddleware.exigirEscopo('aviso:leitura'),
       AvisoMiddleware.validarFiltros,
       this.#avisoController.index
     );

@@ -43,6 +43,7 @@ const MODULOS_BASE: Modulo[] = [
   { id: 'secretaria', nome: 'Secretaria', descricao: 'Gerencie a equipe de secretaria', icone: 'file-text' },
   { id: 'coordenacao', nome: 'Coordenação', descricao: 'Gerencie a coordenação', icone: 'star' },
   { id: 'avisos', nome: 'Avisos', descricao: 'Publique comunicados para a escola', icone: 'bell' },
+  { id: 'api-keys', nome: 'Chaves de API', descricao: 'Emita chaves para integrações externas', icone: 'lock' },
 ];
 
 export default function GestaoDadosPage() {
@@ -159,6 +160,7 @@ export default function GestaoDadosPage() {
           {modulos
             .filter((modulo) => modulo.id !== 'coordenacao' || ehDirecaoAtiva)
             .filter((modulo) => modulo.id !== 'avisos' || podePublicarAvisos)
+            .filter((modulo) => modulo.id !== 'api-keys' || ehDirecaoAtiva)
             .map((modulo) => (
             <Link
               key={modulo.id}

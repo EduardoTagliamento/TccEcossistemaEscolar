@@ -148,6 +148,14 @@ export default class TarefaAcademicaControl {
           : undefined,
       };
 
+      // Chamada via chave de API: SEMPRE força a escola da própria chave
+      // (UsuarioGUID já fica undefined nesse caso, já que chave não é
+      // request.user) — impede uma chave da Escola A listar tarefa da
+      // Escola B só trocando o query param.
+      if (request.apiKey) {
+        filters.EscolaGUID = request.apiKey.EscolaGUID;
+      }
+
       const tarefas = await this.#tarefaService.listarTarefas(filters);
 
       response.status(200).json({
@@ -176,6 +184,20 @@ export default class TarefaAcademicaControl {
         TarefaGUID,
         somenteMinhaMatricula ? usuarioGUID : undefined
       );
+
+      // Chamada via chave de API: só pode ver tarefa da própria escola —
+      // sem isso, uma chave poderia enumerar GUIDs e ler tarefa de
+      // qualquer outra escola (a rota não filtra por EscolaGUID, só pelo :TarefaGUID).
+      if (request.apiKey) {
+        const escolaGUID = await this.#tarefaService.obterEscolaGUID(TarefaGUID);
+        if (escolaGUID !== request.apiKey.EscolaGUID) {
+          response.status(404).json({
+            success: false,
+            message: "Tarefa não encontrada",
+          });
+          return;
+        }
+      }
 
       response.status(200).json({
         success: true,

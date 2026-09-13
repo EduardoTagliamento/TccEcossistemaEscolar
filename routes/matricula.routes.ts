@@ -8,6 +8,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuario
 import MysqlDatabase from "../backend/database/MysqlDatabase";
 import { MatriculaMiddleware } from "../backend/middlewares/matricula.middleware";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import ApiKeyAuthMiddleware from "../backend/middlewares/apikey-auth.middleware";
 import ConversaGrupoService from "../backend/services/conversa-grupo.service";
 import { ConversaDAO } from "../backend/repositories/conversa.repository";
 import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
@@ -86,9 +87,12 @@ export function matriculaRouterFactory(): Router {
    * Listar matrículas com filtros opcionais
    * Query: ?UsuarioGUID=X&TurmaGUID=Y&MatriculaStatus=Z
    */
+  // Aceita chave de API com escopo "matricula:leitura" (ver docs/PLANO_IMPLEMENTACAO_API_KEYS.md) —
+  // EscolaGUID do filtro é ignorado/forçado pro da própria chave (MatriculaController).
   router.get(
     "/",
     AuthMiddleware.authenticate,
+    ApiKeyAuthMiddleware.exigirEscopo("matricula:leitura"),
     matriculaController.index
   );
 
@@ -96,9 +100,12 @@ export function matriculaRouterFactory(): Router {
    * GET /api/matricula/:guid
    * Buscar matrícula por GUID (RA customizado ou UUID)
    */
+  // Aceita chave de API com escopo "matricula:leitura" — a chave só enxerga
+  // matrícula da própria EscolaGUID (checado no controller).
   router.get(
     "/:guid",
     AuthMiddleware.authenticate,
+    ApiKeyAuthMiddleware.exigirEscopo("matricula:leitura"),
     MatriculaMiddleware.validarGUID,
     matriculaController.show
   );

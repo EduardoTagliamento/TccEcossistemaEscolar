@@ -1,0 +1,366 @@
+/* ============================================================
+   Gestão de Dados — Chaves de API — Bauá Design System
+   Tokens escopados localmente sob `.container`, mesmo padrão usado em
+   frontend/app/dashboard/[escolaGUID]/gestao-dados/cursos/page.module.css.
+   ============================================================ */
+
+.container {
+  --green-50: #E7F9F0;
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --blue-500: #2F5BEA;
+  --blue-700: #1C3AA0;
+  --gold-500: #FFC02E;
+  --gold-50: #FFF8E6;
+  --gold-700: #A66A00;
+  --danger-600: #C22429;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --line-200: #E2EAE5;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-lg: 0 18px 40px -16px rgba(15, 29, 23, 0.2);
+  --overlay-scrim: rgba(15, 29, 23, 0.5);
+
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-600);
+}
+
+.container :global(*) {
+  box-sizing: border-box;
+}
+
+:global(html[data-theme="dark"]) .container {
+  --green-50: #123324;
+  --green-500: #22D488;
+  --green-600: #17C077;
+  --green-700: #12A063;
+  --blue-500: #5B82FF;
+  --blue-700: #A9BEFF;
+  --gold-50: #3A2C0A;
+  --gold-700: #FFD666;
+  --danger-600: #FF9195;
+  --danger-50: #3A1416;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --line-200: #2A3A31;
+  --surface-50: #0F1712;
+  --white: #16211C;
+  --shadow-lg: 0 18px 40px -16px rgba(0, 0, 0, 0.6);
+  --overlay-scrim: rgba(0, 0, 0, 0.65);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--ink-900);
+}
+
+.subtitulo {
+  font-size: 1rem;
+  color: var(--slate-500);
+  max-width: 640px;
+}
+
+.acoes {
+  display: flex;
+  gap: 1rem;
+}
+
+.botaoNovo {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: none;
+  font-size: 1rem;
+  background: var(--green-500);
+  color: var(--white);
+  white-space: nowrap;
+  height: fit-content;
+}
+
+.botaoNovo:hover {
+  background: var(--green-600);
+}
+
+.prefixo {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.85rem;
+  background: var(--surface-50);
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
+}
+
+.escopos {
+  font-size: 0.85rem;
+  color: var(--slate-500);
+}
+
+.statusAtivo {
+  background: var(--green-50);
+  color: var(--green-700);
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.statusInativo {
+  background: var(--danger-50);
+  color: var(--danger-600);
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.botaoExcluir {
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--line-200);
+  background: var(--white);
+  color: var(--danger-600);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.botaoExcluir:hover {
+  border-color: var(--danger-600);
+  background: var(--danger-50);
+}
+
+/* Modal */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--overlay-scrim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.modalConteudo {
+  padding: 2rem;
+}
+
+.modalTitulo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--ink-900);
+}
+
+.erro {
+  background: var(--danger-50);
+  color: var(--danger-600);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.campoContainer {
+  margin-bottom: 1.25rem;
+}
+
+.label {
+  display: block;
+  font-weight: 500;
+  color: var(--ink-900);
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.obrigatorio {
+  color: var(--danger-600);
+  margin-left: 0.15rem;
+}
+
+.input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--ink-900);
+  background: var(--white);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--green-500);
+}
+
+.escoposLista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-md);
+  background: var(--surface-50);
+}
+
+.escopoItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  color: var(--ink-900);
+  cursor: pointer;
+}
+
+.formAcoes {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.formAcoes .botaoCancelar,
+.formAcoes .botaoSalvar {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.botaoCancelar {
+  background: var(--white);
+  color: var(--slate-600);
+  border: 1.5px solid var(--line-200);
+}
+
+.botaoCancelar:hover {
+  border-color: var(--slate-500);
+  background: var(--surface-50);
+}
+
+.botaoSalvar {
+  background: var(--green-500);
+  color: var(--white);
+  border: none;
+}
+
+.botaoSalvar:hover:not(:disabled) {
+  background: var(--green-600);
+}
+
+.botaoSalvar:disabled,
+.botaoCancelar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Revelação do segredo */
+.avisoRevelacao {
+  background: var(--gold-50);
+  color: var(--gold-700);
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.chaveBox {
+  background: var(--ink-900);
+  color: #E7F9F0;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin-bottom: 1rem;
+}
+
+.chaveBox code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.botaoCopiar {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  background: var(--blue-500);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  transition: background 0.2s;
+}
+
+.botaoCopiar:hover {
+  background: var(--blue-700);
+}
+
+.botaoFechar {
+  width: 100%;
+  padding: 0.75rem 1.5rem;
+  background: var(--white);
+  color: var(--slate-600);
+  border: 1.5px solid var(--line-200);
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.botaoFechar:hover {
+  border-color: var(--slate-500);
+  background: var(--surface-50);
+}

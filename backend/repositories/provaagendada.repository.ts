@@ -19,6 +19,14 @@ export interface ProvaAgendadaFilters {
   ProvaStatus?: "Agendada" | "Realizada" | "Cancelada";
   DataInicio?: Date;
   DataFim?: Date;
+  /**
+   * `provaagendada` não guarda `EscolaGUID` própria — só via a tabela pivô
+   * `provaagendada_turma -> turma.EscolaGUID` (uma prova pode valer pra N
+   * turmas). Filtro via EXISTS (não JOIN) pra não duplicar linha quando a
+   * prova tem mais de uma turma na mesma escola. Ver
+   * docs/PLANO_IMPLEMENTACAO_API_KEYS.md.
+   */
+  EscolaGUID?: string;
 }
 
 /**
@@ -89,12 +97,46 @@ export class ProvaAgendadaDAO {
       params.push(filters.DataFim);
     }
 
+    if (filters?.EscolaGUID) {
+      SQL += ` AND EXISTS (
+        SELECT 1 FROM provaagendada_turma pat
+        INNER JOIN turma t ON t.TurmaGUID = pat.TurmaGUID
+        WHERE pat.ProvaAgendadaGUID = provaagendada.ProvaAgendadaGUID
+          AND t.EscolaGUID = ?
+      )`;
+      params.push(filters.EscolaGUID);
+    }
+
     SQL += " ORDER BY ProvaData ASC;";
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<ProvaAgendadaRow[]>(SQL, params);
 
     return rows.map((row) => this.mapRowToProva(row));
+  };
+
+  /**
+   * Existe alguma atribuição dessa prova numa turma da escola informada?
+   * Usado só pelo guard de chave de API em ProvaAgendadaControl.show — uma
+   * prova pode ter turmas de mais de uma escola? Não (turmas são de uma
+   * escola só), mas a prova em si não guarda EscolaGUID própria, daí a
+   * checagem via pivô em vez de comparar campo a campo.
+   */
+  pertenceAEscola = async (ProvaAgendadaGUID: string, EscolaGUID: string): Promise<boolean> => {
+    console.log("🟢 ProvaAgendadaDAO.pertenceAEscola()");
+
+    const SQL = `
+      SELECT EXISTS (
+        SELECT 1 FROM provaagendada_turma pat
+        INNER JOIN turma t ON t.TurmaGUID = pat.TurmaGUID
+        WHERE pat.ProvaAgendadaGUID = ? AND t.EscolaGUID = ?
+      ) AS existe
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(SQL, [ProvaAgendadaGUID, EscolaGUID]);
+
+    return !!(rows[0] as any)?.existe;
   };
 
   findById = async (ProvaAgendadaGUID: string): Promise<ProvaAgendada | null> => {

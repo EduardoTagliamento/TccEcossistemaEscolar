@@ -153,6 +153,18 @@ export default class UsuarioService {
     return usuarios.map((usuario) => this.toDTO(usuario));
   };
 
+  /** Usado só pelo guard de chave de API — ver UsuarioDAO.findAllByEscola. */
+  findAllByEscola = async (escolaGUID: string, nome?: string): Promise<UsuarioDTO[]> => {
+    console.log("🟣 UsuarioService.findAllByEscola()");
+    const usuarios = await this.#usuarioDAO.findAllByEscola(escolaGUID, nome);
+    return usuarios.map((usuario) => this.toDTO(usuario));
+  };
+
+  /** Usado só pelo guard de chave de API — ver UsuarioDAO.pertenceAEscola. */
+  pertenceAEscola = async (usuarioGUID: string, escolaGUID: string): Promise<boolean> => {
+    return this.#usuarioDAO.pertenceAEscola(usuarioGUID, escolaGUID);
+  };
+
   findByGUID = async (UsuarioGUID: string): Promise<UsuarioDTO> => {
     console.log("🟣 UsuarioService.findByGUID()");
     const usuario = await this.#usuarioDAO.findByGUID(UsuarioGUID);

@@ -439,6 +439,11 @@ export default class ProvaAgendadaService {
     return this.toDTO(prova, atribuicoes);
   };
 
+  /** Usado só pelo guard de chave de API — ver ProvaAgendadaDAO.pertenceAEscola. */
+  pertenceAEscola = async (ProvaAgendadaGUID: string, EscolaGUID: string): Promise<boolean> => {
+    return this.#provaDAO.pertenceAEscola(ProvaAgendadaGUID, EscolaGUID);
+  };
+
   /**
    * Atualiza dados compartilhados da prova (afeta TODAS as turmas)
    */

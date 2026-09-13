@@ -181,6 +181,13 @@ export default class MatriculaController {
         filters.EscolaGUID = EscolaGUID;
       }
 
+      // Chamada via chave de API: SEMPRE força a escola da própria chave,
+      // nunca a que o chamador pediu — impede uma chave da Escola A listar
+      // matrícula da Escola B só trocando o query param.
+      if (req.apiKey) {
+        filters.EscolaGUID = req.apiKey.EscolaGUID;
+      }
+
       const resultado = await this.#matriculaService.listarMatriculas(filters);
 
       res.status(200).json({
@@ -214,6 +221,20 @@ export default class MatriculaController {
       const { guid } = req.params;
 
       const matricula = await this.#matriculaService.buscarMatricula(guid);
+
+      // Chamada via chave de API: só pode ver matrícula da própria escola —
+      // sem isso, uma chave poderia enumerar GUIDs e ler matrícula de
+      // qualquer outra escola (a rota não filtra por EscolaGUID, só pelo :guid).
+      if (req.apiKey) {
+        const escolaGUID = await this.#matriculaService.obterEscolaGUID(guid);
+        if (escolaGUID !== req.apiKey.EscolaGUID) {
+          res.status(404).json({
+            success: false,
+            message: "Matrícula não encontrada",
+          });
+          return;
+        }
+      }
 
       res.status(200).json({
         success: true,

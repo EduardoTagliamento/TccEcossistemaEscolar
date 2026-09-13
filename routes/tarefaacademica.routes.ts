@@ -13,6 +13,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuario
 import { RelacaoAnexosDAO } from "../backend/repositories/relacaoanexos.repository";
 import RelacaoAnexosService from "../backend/services/relacaoanexos.service";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import ApiKeyAuthMiddleware from "../backend/middlewares/apikey-auth.middleware";
 import { CategoriaConteudoDAO } from "../backend/repositories/categoriaconteudo.repository";
 import { MaterialProfessorTurmaDAO } from "../backend/repositories/materiaxprofessorxturma.repository";
 import { TarefaAcademicaQuestaoDAO } from "../backend/repositories/tarefaacademica-questao.repository";
@@ -52,9 +53,12 @@ export default class TarefaAcademicaRoteador {
     );
 
     // GET /api/tarefa - Listar tarefas (com filtros opcionais)
+    // Aceita chave de API com escopo "tarefa:leitura" (ver docs/PLANO_IMPLEMENTACAO_API_KEYS.md) —
+    // EscolaGUID do filtro é ignorado/forçado pro da própria chave (TarefaAcademicaControl).
     this.#router.get(
       "/",
       AuthMiddleware.authenticate,
+      ApiKeyAuthMiddleware.exigirEscopo("tarefa:leitura"),
       this.#middleware.validateFilters,
       this.#controle.index
     );
@@ -90,9 +94,12 @@ export default class TarefaAcademicaRoteador {
     );
 
     // GET /api/tarefa/:TarefaGUID - Buscar tarefa por GUID
+    // Aceita chave de API com escopo "tarefa:leitura" — a chave só enxerga
+    // tarefa da própria EscolaGUID (checado no controller).
     this.#router.get(
       "/:TarefaGUID",
       AuthMiddleware.authenticate,
+      ApiKeyAuthMiddleware.exigirEscopo("tarefa:leitura"),
       this.#middleware.validateIdParam,
       this.#controle.show
     );

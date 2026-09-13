@@ -15,6 +15,7 @@ const LIMIT_MAXIMO = 100;
 export interface RegistroAuditoriaFilters {
   EscolaGUID: string;
   UsuarioGUIDAtor?: string;
+  ApiKeyGUIDAtor?: string;
   AcaoTipo?: AcaoAuditoriaTipo;
   EntidadeTipo?: string;
   CategoriaAuditoriaId?: number;
@@ -37,15 +38,16 @@ export class RegistroAuditoriaDAO {
 
     const query = `
       INSERT INTO registroauditoria (
-        RegistroAuditoriaGUID, EscolaGUID, UsuarioGUIDAtor, AcaoTipo,
+        RegistroAuditoriaGUID, EscolaGUID, UsuarioGUIDAtor, ApiKeyGUIDAtor, AcaoTipo,
         EntidadeTipo, EntidadeGUID, EntidadeDescricao, CategoriaAuditoriaId, CreatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       registro.RegistroAuditoriaGUID,
       registro.EscolaGUID,
       registro.UsuarioGUIDAtor,
+      registro.ApiKeyGUIDAtor,
       registro.AcaoTipo,
       registro.EntidadeTipo,
       registro.EntidadeGUID,
@@ -68,7 +70,7 @@ export class RegistroAuditoriaDAO {
     console.log("🟢 RegistroAuditoriaDAO.findById()");
 
     const query = `
-      SELECT RegistroAuditoriaGUID, EscolaGUID, UsuarioGUIDAtor, AcaoTipo,
+      SELECT RegistroAuditoriaGUID, EscolaGUID, UsuarioGUIDAtor, ApiKeyGUIDAtor, AcaoTipo,
         EntidadeTipo, EntidadeGUID, EntidadeDescricao, CategoriaAuditoriaId, CreatedAt
       FROM registroauditoria
       WHERE RegistroAuditoriaGUID = ?
@@ -87,7 +89,7 @@ export class RegistroAuditoriaDAO {
     console.log("🟢 RegistroAuditoriaDAO.findAll()");
 
     let query = `
-      SELECT RegistroAuditoriaGUID, EscolaGUID, UsuarioGUIDAtor, AcaoTipo,
+      SELECT RegistroAuditoriaGUID, EscolaGUID, UsuarioGUIDAtor, ApiKeyGUIDAtor, AcaoTipo,
         EntidadeTipo, EntidadeGUID, EntidadeDescricao, CategoriaAuditoriaId, CreatedAt
       FROM registroauditoria
       WHERE EscolaGUID = ?
@@ -97,6 +99,10 @@ export class RegistroAuditoriaDAO {
     if (filters.UsuarioGUIDAtor) {
       query += ` AND UsuarioGUIDAtor = ?`;
       params.push(filters.UsuarioGUIDAtor);
+    }
+    if (filters.ApiKeyGUIDAtor) {
+      query += ` AND ApiKeyGUIDAtor = ?`;
+      params.push(filters.ApiKeyGUIDAtor);
     }
     if (filters.AcaoTipo) {
       query += ` AND AcaoTipo = ?`;
@@ -164,6 +170,7 @@ export class RegistroAuditoriaDAO {
       RegistroAuditoriaGUID: row.RegistroAuditoriaGUID,
       EscolaGUID: row.EscolaGUID,
       UsuarioGUIDAtor: row.UsuarioGUIDAtor,
+      ApiKeyGUIDAtor: row.ApiKeyGUIDAtor,
       AcaoTipo: row.AcaoTipo,
       EntidadeTipo: row.EntidadeTipo,
       EntidadeGUID: row.EntidadeGUID,

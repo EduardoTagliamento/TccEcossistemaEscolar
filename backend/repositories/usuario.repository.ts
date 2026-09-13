@@ -148,6 +148,61 @@ export class UsuarioDAO {
   };
 
   /**
+   * Lista usuários com vínculo ATIVO numa escola (join com
+   * `escolaxusuarioxfuncao`) — usada pelo guard de chave de API em
+   * UsuarioControl.index (ver docs/PLANO_IMPLEMENTACAO_API_KEYS.md).
+   * `usuario` não tem `EscolaGUID` própria (uma pessoa pode ter vínculo com
+   * mais de uma escola), daí o DISTINCT — sem ele, alguém com dois vínculos
+   * ativos na mesma escola (raro, mas o schema permite) apareceria 2x.
+   */
+  findAllByEscola = async (escolaGUID: string, nome?: string): Promise<Usuario[]> => {
+    console.log("🟢 UsuarioDAO.findAllByEscola()");
+
+    let SQL = `
+      SELECT DISTINCT u.* FROM usuario u
+      INNER JOIN escolaxusuarioxfuncao euf ON euf.UsuarioGUID = u.UsuarioGUID
+      WHERE u.UsuarioDeletedAt IS NULL
+        AND euf.EscolaGUID = ?
+        AND euf.Status = 'Ativo'
+    `;
+    const params: string[] = [escolaGUID];
+
+    if (nome) {
+      SQL += " AND u.UsuarioNome LIKE ?";
+      params.push(`%${nome}%`);
+    }
+
+    SQL += " ORDER BY u.UsuarioNome;";
+
+    const pool = await this.#database.getPool();
+    const [linhas] = await pool.execute(SQL, params);
+
+    return (linhas as UsuarioRow[]).map((row) => this.mapRowToEntity(row));
+  };
+
+  /**
+   * Tem vínculo ATIVO com essa escola? Usada pelo guard de chave de API em
+   * UsuarioControl.show — sem isso, uma chave poderia enumerar GUIDs e ler
+   * o perfil de qualquer usuário de qualquer escola (a rota não filtra por
+   * EscolaGUID, só pelo :UsuarioGUID).
+   */
+  pertenceAEscola = async (usuarioGUID: string, escolaGUID: string): Promise<boolean> => {
+    console.log("🟢 UsuarioDAO.pertenceAEscola()");
+
+    const SQL = `
+      SELECT EXISTS (
+        SELECT 1 FROM escolaxusuarioxfuncao
+        WHERE UsuarioGUID = ? AND EscolaGUID = ? AND Status = 'Ativo'
+      ) AS existe
+    `;
+
+    const pool = await this.#database.getPool();
+    const [linhas] = await pool.execute(SQL, [usuarioGUID, escolaGUID]);
+
+    return !!(linhas as any[])[0]?.existe;
+  };
+
+  /**
    * Busca por nome (parcial) pensada pra desambiguação de "essa pessoa já é
    * usuária da plataforma?" nas telas de Gestão de Dados (ver
    * docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md) — CPF virou opcional, então

@@ -1,4 +1,5 @@
 import rateLimit from "express-rate-limit";
+import { Request } from "express";
 
 export const provaRateLimitMiddleware = rateLimit({
   windowMs: 60 * 1000,
@@ -59,5 +60,24 @@ export const escritaSensivelRateLimitMiddleware = rateLimit({
   message: {
     success: false,
     message: "Muitas requisições em pouco tempo. Tente novamente em alguns minutos.",
+  },
+});
+
+/**
+ * Limite por CHAVE DE API, não por IP — uma integração de parceiro roda de
+ * um servidor só (poucos IPs, às vezes um só), então o limite por-IP padrão
+ * afetaria igualmente todas as chamadas dela; e um parceiro com bug não pode
+ * consumir a cota de outro. `keyGenerator` usa `req.apiKey.ApiKeyGUID`
+ * (setado por `ApiKeyAuthMiddleware.authenticate` antes desta rodar).
+ */
+export const apiKeyRateLimitMiddleware = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => req.apiKey?.ApiKeyGUID ?? req.ip ?? "sem-ip",
+  message: {
+    success: false,
+    message: "Muitas requisições para esta chave de API. Tente novamente em instantes.",
   },
 });

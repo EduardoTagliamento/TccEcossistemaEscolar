@@ -6,6 +6,7 @@ import UsuarioService from "../backend/services/usuario.service";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import EscolaxUsuarioxFuncaoControl from "../backend/controllers/escolaxusuarioxfuncao.controller";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import ApiKeyAuthMiddleware from "../backend/middlewares/apikey-auth.middleware";
 import { authRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
 export default class UsuarioRoteador {
@@ -64,7 +65,16 @@ export default class UsuarioRoteador {
     );
 
     // GET /api/usuario - Listar usuários (com filtro opcional por nome)
-    this.#router.get("/", this.#usuarioControle.index);
+    // Rota pública/sem autenticação por padrão (comportamento histórico,
+    // preservado); se vier uma chave de API válida com escopo
+    // "usuario:leitura", a listagem é restrita à escola da chave (ver
+    // docs/PLANO_IMPLEMENTACAO_API_KEYS.md e UsuarioControl.index).
+    this.#router.get(
+      "/",
+      AuthMiddleware.optionalAuth,
+      ApiKeyAuthMiddleware.exigirEscopoSeChave("usuario:leitura"),
+      this.#usuarioControle.index
+    );
 
     // GET /api/usuario/busca-cpf?cpf= - Buscar usuário existente por CPF
     // (DEVE vir antes de "/:UsuarioGUID" pra não colidir com ele)
@@ -98,8 +108,12 @@ export default class UsuarioRoteador {
     );
 
     // GET /api/usuario/:UsuarioGUID - Buscar usuário por GUID
+    // Mesma regra da listagem: pública por padrão; chave de API com escopo
+    // "usuario:leitura" só enxerga usuário com vínculo ativo na própria escola.
     this.#router.get(
       "/:UsuarioGUID",
+      AuthMiddleware.optionalAuth,
+      ApiKeyAuthMiddleware.exigirEscopoSeChave("usuario:leitura"),
       this.#usuarioMiddleware.validateGuidParam,
       this.#usuarioControle.show
     );
