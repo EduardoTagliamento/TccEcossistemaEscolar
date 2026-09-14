@@ -76,7 +76,8 @@ type IconName =
   | 'message-circle'
   | 'user'
   | 'shield'
-  | 'clock';
+  | 'clock'
+  | 'code';
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const common: React.SVGProps<SVGSVGElement> = {
@@ -212,6 +213,13 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
         <svg {...common} aria-hidden="true">
           <circle cx="12" cy="12" r="10" />
           <polyline points="12 6 12 12 16 14" />
+        </svg>
+      );
+    case 'code':
+      return (
+        <svg {...common} aria-hidden="true">
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
         </svg>
       );
     default:
@@ -775,6 +783,13 @@ export default function DashboardNavbar() {
                 </Link>
                 <Link href="/selecionar-escola" className={styles.menuItem} onClick={() => setUserMenuAberto(false)}>
                   <Icon name="home" size={17} /> Trocar Escola
+                </Link>
+                <Link
+                  href={`/dashboard/${escolaGUID}/api-docs`}
+                  className={styles.menuItem}
+                  onClick={() => setUserMenuAberto(false)}
+                >
+                  <Icon name="code" size={17} /> Documentação da API
                 </Link>
                 <div className={styles.dropdownDivider} />
                 <button type="button" onClick={handleLogout} className={styles.menuItemDanger}>

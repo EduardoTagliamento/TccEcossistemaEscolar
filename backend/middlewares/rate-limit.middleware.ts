@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { Request } from "express";
 
 export const provaRateLimitMiddleware = rateLimit({
@@ -75,7 +75,7 @@ export const apiKeyRateLimitMiddleware = rateLimit({
   limit: 60,
   standardHeaders: "draft-8",
   legacyHeaders: false,
-  keyGenerator: (req: Request) => req.apiKey?.ApiKeyGUID ?? req.ip ?? "sem-ip",
+  keyGenerator: (req: Request) => req.apiKey?.ApiKeyGUID ?? ipKeyGenerator(req.ip ?? "sem-ip"),
   message: {
     success: false,
     message: "Muitas requisições para esta chave de API. Tente novamente em instantes.",
