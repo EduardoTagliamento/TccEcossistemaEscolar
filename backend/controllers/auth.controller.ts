@@ -9,9 +9,11 @@ import AuthService from '../services/auth.service';
 import ErrorResponse from '../utils/ErrorResponse';
 
 interface LoginRequest {
-  identifier: string; // CPF, email ou telefone
+  identifier: string; // CPF, email, telefone ou (com EscolaGUID) identificador de matrícula
   senha: string;
   lembrar?: boolean;
+  /** Presente quando o login vem de /login/[slug] (frontend já resolveu o slug). */
+  EscolaGUID?: string;
 }
 
 export default class AuthController {
@@ -30,7 +32,7 @@ export default class AuthController {
     try {
       console.log('📥 [AuthController] POST /api/auth/login');
 
-      const { identifier, senha, lembrar } = req.body as LoginRequest;
+      const { identifier, senha, lembrar, EscolaGUID } = req.body as LoginRequest;
 
       // Validações
       if (!identifier || !senha) {
@@ -46,7 +48,12 @@ export default class AuthController {
       }
 
       // Executar login
-      const result = await this.#authService.login({ identifier, senha, lembrar: !!lembrar });
+      const result = await this.#authService.login({
+        identifier,
+        senha,
+        lembrar: !!lembrar,
+        escolaGUID: EscolaGUID || undefined,
+      });
 
       // Renomear 'user' para 'usuario' na resposta
       const { token, user, ...rest } = result;

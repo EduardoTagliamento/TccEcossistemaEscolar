@@ -3,6 +3,7 @@ import { z } from "zod";
 const CNPJ_REGEX = /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/;
 const TELEFONE_REGEX = /^\(\d{2}\) \d{5}-\d{4}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SLUG_REGEX = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const STATUS_ENUM = ["Ativa", "Inativa"] as const;
 
 /**
@@ -48,6 +49,12 @@ function prepararEscola(body: unknown): unknown {
     }
   }
 
+  // Normaliza antes de validar — quem edita o slug pode digitar com
+  // maiúsculas/espaços nas pontas, mas o formato salvo é sempre lowercase.
+  if (typeof escola.EscolaSlug === "string") {
+    escola.EscolaSlug = escola.EscolaSlug.trim().toLowerCase();
+  }
+
   return escola;
 }
 
@@ -62,6 +69,13 @@ export const EscolaCreateBodySchema = z.preprocess(
   z
     .object({
       EscolaNome: z.string({ message: "O campo 'EscolaNome' é obrigatório!" }).min(1, "O campo 'EscolaNome' é obrigatório!"),
+      EscolaSlug: z
+        .string({ message: "O campo 'EscolaSlug' deve ser string." })
+        .min(3, "O campo 'EscolaSlug' deve ter entre 3 e 60 caracteres.")
+        .max(60, "O campo 'EscolaSlug' deve ter entre 3 e 60 caracteres.")
+        .regex(SLUG_REGEX, "O campo 'EscolaSlug' deve conter apenas letras minúsculas, números e hífen (ex.: colegio-sao-jose).")
+        .nullable()
+        .optional(),
       EscolaCNPJ: z.string({ message: "O campo 'EscolaCNPJ' deve ser string." }).regex(CNPJ_REGEX, "O campo 'EscolaCNPJ' deve estar no formato XX.XXX.XXX/XXXX-XX.").nullable().optional(),
       EscolaTelefone: z.string({ message: "O campo 'EscolaTelefone' deve ser string." }).regex(TELEFONE_REGEX, "O campo 'EscolaTelefone' deve estar no formato (XX) XXXXX-XXXX.").nullable().optional(),
       EscolaEmail: z.string({ message: "O campo 'EscolaEmail' deve ser string." }).max(60, "O campo 'EscolaEmail' deve ser um email válido com no máximo 60 caracteres.").regex(EMAIL_REGEX, "O campo 'EscolaEmail' deve ser um email válido com no máximo 60 caracteres.").nullable().optional(),
@@ -81,6 +95,13 @@ export const EscolaUpdateBodySchema = z.preprocess(
   z
     .object({
       EscolaNome: z.string({ message: "O campo 'EscolaNome' deve ser string." }).optional(),
+      EscolaSlug: z
+        .string({ message: "O campo 'EscolaSlug' deve ser string." })
+        .min(3, "O campo 'EscolaSlug' deve ter entre 3 e 60 caracteres.")
+        .max(60, "O campo 'EscolaSlug' deve ter entre 3 e 60 caracteres.")
+        .regex(SLUG_REGEX, "O campo 'EscolaSlug' deve conter apenas letras minúsculas, números e hífen (ex.: colegio-sao-jose).")
+        .nullable()
+        .optional(),
       EscolaCNPJ: z.string({ message: "O campo 'EscolaCNPJ' deve ser string." }).regex(CNPJ_REGEX, "O campo 'EscolaCNPJ' deve estar no formato XX.XXX.XXX/XXXX-XX.").nullable().optional(),
       EscolaTelefone: z.string({ message: "O campo 'EscolaTelefone' deve ser string." }).regex(TELEFONE_REGEX, "O campo 'EscolaTelefone' deve estar no formato (XX) XXXXX-XXXX.").nullable().optional(),
       EscolaEmail: z.string({ message: "O campo 'EscolaEmail' deve ser string." }).max(60, "O campo 'EscolaEmail' deve ser um email válido com no máximo 60 caracteres.").regex(EMAIL_REGEX, "O campo 'EscolaEmail' deve ser um email válido com no máximo 60 caracteres.").nullable().optional(),
@@ -104,4 +125,8 @@ export const EscolaTransferirDirecaoBodySchema = z.object({
 
 export const EscolaIdParamSchema = z.object({
   EscolaGUID: z.string({ message: "O parâmetro 'EscolaGUID' é obrigatório!" }).min(1, "O parâmetro 'EscolaGUID' é obrigatório!"),
+});
+
+export const EscolaSlugParamSchema = z.object({
+  EscolaSlug: z.string({ message: "O parâmetro 'EscolaSlug' é obrigatório!" }).min(1, "O parâmetro 'EscolaSlug' é obrigatório!"),
 });

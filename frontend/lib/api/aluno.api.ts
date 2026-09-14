@@ -26,6 +26,8 @@ export interface Usuario {
 
 export interface Matricula {
   MatriculaGUID: string;
+  /** Identificador de login editável (separado da PK) — usado no login por escola (/login/[slug]). */
+  MatriculaIdentificador: string | null;
   UsuarioGUID: string;
   TurmaGUID: string;
   MatriculaDataEntrada: Date;
@@ -453,4 +455,30 @@ export async function atualizarMatricula(
     console.error('Erro ao atualizar matrícula:', erro);
     throw erro;
   }
+}
+
+/**
+ * Atualiza SÓ o identificador de login da matrícula (Secretaria,
+ * Coordenação ou Direção) — endpoint dedicado, separado de atualizarMatricula
+ * (ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §5).
+ */
+export async function atualizarIdentificadorMatricula(
+  matriculaGUID: string,
+  matriculaIdentificador: string
+): Promise<Matricula> {
+  const response = await fetch(`${API_URL}/matricula/${matriculaGUID}/identificador`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getAuthToken()}`
+    },
+    body: JSON.stringify({ MatriculaIdentificador: matriculaIdentificador })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erro ao atualizar identificador da matrícula');
+  }
+
+  return data.data;
 }

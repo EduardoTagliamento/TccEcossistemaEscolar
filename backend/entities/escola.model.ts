@@ -8,6 +8,7 @@
 export default class Escola {
   #EscolaGUID!: string;
   #EscolaNome: string | null = null;
+  #EscolaSlug: string | null = null;
   #EscolaCNPJ: string | null = null;
   #EscolaTelefone: string | null = null;
   #EscolaEmail: string | null = null;
@@ -67,6 +68,33 @@ export default class Escola {
     }
 
     this.#EscolaNome = nome;
+  }
+
+  // ========== Slug (link de login individual da escola) ==========
+  get EscolaSlug(): string | null {
+    return this.#EscolaSlug;
+  }
+
+  set EscolaSlug(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#EscolaSlug = null;
+      return;
+    }
+
+    if (typeof value !== "string") {
+      throw new Error("EscolaSlug deve ser uma string.");
+    }
+
+    const slug = value.trim().toLowerCase();
+    if (slug.length < 3 || slug.length > 60) {
+      throw new Error("EscolaSlug deve ter entre 3 e 60 caracteres.");
+    }
+
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) {
+      throw new Error("EscolaSlug deve conter apenas letras minúsculas, números e hífen (ex.: colegio-sao-jose).");
+    }
+
+    this.#EscolaSlug = slug;
   }
 
   // ========== CNPJ ==========

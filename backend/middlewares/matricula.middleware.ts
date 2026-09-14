@@ -3,6 +3,7 @@ import ErrorResponse from "../utils/ErrorResponse";
 import {
   CriarMatriculaBodySchema,
   AtualizarMatriculaBodySchema,
+  AtualizarIdentificadorBodySchema,
   TransferenciaBodySchema,
   MatriculaGUIDParamSchema,
   ehCorpoEmMassa,
@@ -30,4 +31,6 @@ export class MatriculaMiddleware {
   static validarTransferencia = zodValidate(TransferenciaBodySchema, "body", "", { semDetails: true });
 
   static validarGUID = zodValidate(MatriculaGUIDParamSchema, "params", "", { semDetails: true });
+
+  static validarAtualizacaoIdentificador = zodValidate(AtualizarIdentificadorBodySchema, "body", "", { semDetails: true });
 }

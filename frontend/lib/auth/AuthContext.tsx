@@ -49,7 +49,7 @@ interface AuthContextData {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (identifier: string, senha: string, lembrar?: boolean) => Promise<void>;
+  login: (identifier: string, senha: string, lembrar?: boolean, escolaGUID?: string) => Promise<Usuario>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -137,8 +137,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Login
-  const login = async (identifier: string, senha: string, lembrar?: boolean) => {
+  // Login — `escolaGUID` presente só quando vem de /login/[slug] (frontend
+  // já resolveu o slug pra EscolaGUID antes de chamar); habilita a
+  // resolução por identificador de matrícula no backend, escopada a essa
+  // escola (ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §4.2).
+  const login = async (identifier: string, senha: string, lembrar?: boolean, escolaGUID?: string) => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/auth/login', {
@@ -146,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ identifier, senha, lembrar }),
+        body: JSON.stringify({ identifier, senha, lembrar, EscolaGUID: escolaGUID }),
       });
 
       const data = await response.json();
@@ -161,6 +164,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('@baua:token', newToken);
       setToken(newToken);
       setUsuario(userData);
+
+      // Retornado (além de setar o estado do contexto) pra quem chama poder
+      // decidir o redirecionamento sem esperar o próximo render — usado por
+      // /login/[escolaSlug] pra checar acesso à escola antes de navegar
+      // (ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §4.3).
+      return userData as Usuario;
     } catch (error) {
       throw error;
     } finally {

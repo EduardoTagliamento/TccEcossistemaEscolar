@@ -135,6 +135,18 @@ export default function AlunosPage() {
           label: `${turma.TurmaSerie} ${turma.TurmaNome}`
         }))
       ]
+    },
+    // Identificador de login editável (matrícula/RA) — só existe depois de
+    // criado (o padrão é copiar o MatriculaGUID na criação, no backend), por
+    // isso desabilitado no formulário de cadastro novo. Usado no login pela
+    // tela /login/[slug] da escola. Ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md.
+    {
+      id: 'MatriculaIdentificador',
+      label: 'Identificador de login (matrícula/RA)',
+      tipo: 'text',
+      obrigatorio: false,
+      placeholder: 'Ex.: 2024-0042',
+      desabilitado: !alunoEditando
     }
   ];
 
@@ -200,7 +212,8 @@ export default function AlunosPage() {
       UsuarioEmail: '',
       UsuarioTelefone: '',
       UsuarioDataNascimento: '',
-      TurmaGUID: ''
+      TurmaGUID: '',
+      MatriculaIdentificador: ''
     });
     limparBuscaCandidato();
   };
@@ -249,6 +262,18 @@ export default function AlunosPage() {
           });
         }
 
+        // Atualizar identificador de login apenas se mudou (endpoint dedicado)
+        const identificadorAtual = alunoEditando.matricula.MatriculaIdentificador || alunoEditando.matricula.MatriculaGUID;
+        if (
+          valoresFormulario.MatriculaIdentificador &&
+          valoresFormulario.MatriculaIdentificador.trim() !== identificadorAtual
+        ) {
+          await AlunoAPI.atualizarIdentificadorMatricula(
+            alunoEditando.matricula.MatriculaGUID,
+            valoresFormulario.MatriculaIdentificador.trim()
+          );
+        }
+
         alert('Aluno atualizado com sucesso!');
       } else {
         // Criar novo aluno (ou só vincular, se a pessoa já foi encontrada pela busca por nome)
@@ -291,7 +316,8 @@ export default function AlunosPage() {
       UsuarioDataNascimento: aluno.usuario.UsuarioDataNascimento
         ? String(aluno.usuario.UsuarioDataNascimento).split('T')[0]
         : '',
-      TurmaGUID: aluno.matricula.TurmaGUID
+      TurmaGUID: aluno.matricula.TurmaGUID,
+      MatriculaIdentificador: aluno.matricula.MatriculaIdentificador || aluno.matricula.MatriculaGUID
     });
     setModalAberto(true);
   };

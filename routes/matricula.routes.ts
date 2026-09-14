@@ -111,6 +111,20 @@ export function matriculaRouterFactory(): Router {
   );
 
   /**
+   * PATCH /api/matricula/:guid/identificador
+   * Atualizar só o identificador de login da matrícula (Secretaria,
+   * Coordenação ou Direção — checado no service, não no middleware)
+   * DEVE VIR ANTES de /:guid genérico.
+   */
+  router.patch(
+    "/:guid/identificador",
+    AuthMiddleware.authenticate,
+    MatriculaMiddleware.validarGUID,
+    MatriculaMiddleware.validarAtualizacaoIdentificador,
+    matriculaController.atualizarIdentificador
+  );
+
+  /**
    * PUT /api/matricula/:guid
    * Atualizar matrícula
    */

@@ -4,6 +4,7 @@ import Escola from "../entities/escola.model";
 interface EscolaRow {
   EscolaGUID: string;
   EscolaNome: string | null;
+  EscolaSlug: string | null;
   EscolaCNPJ: string | null;
   EscolaTelefone: string | null;
   EscolaEmail: string | null;
@@ -33,13 +34,14 @@ export class EscolaDAO {
 
     const SQL = `
       INSERT INTO escola
-      (EscolaGUID, EscolaNome, EscolaCNPJ, EscolaTelefone, EscolaEmail, EscolaEndereco,
+      (EscolaGUID, EscolaNome, EscolaSlug, EscolaCNPJ, EscolaTelefone, EscolaEmail, EscolaEndereco,
        EscolaCorPriEs, EscolaCorPriCl, EscolaCorSecEs, EscolaCorSecCl, EscolaIcone, EscolaLogo, EscolaStatus, EscolaIsTecnica)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       escola.EscolaGUID,
       escola.EscolaNome,
+      escola.EscolaSlug,
       escola.EscolaCNPJ,
       escola.EscolaTelefone,
       escola.EscolaEmail,
@@ -77,13 +79,14 @@ export class EscolaDAO {
 
     const SQL = `
       UPDATE escola
-      SET EscolaNome = ?, EscolaCNPJ = ?, EscolaTelefone = ?, EscolaEmail = ?, EscolaEndereco = ?,
+      SET EscolaNome = ?, EscolaSlug = ?, EscolaCNPJ = ?, EscolaTelefone = ?, EscolaEmail = ?, EscolaEndereco = ?,
           EscolaCorPriEs = ?, EscolaCorPriCl = ?, EscolaCorSecEs = ?, EscolaCorSecCl = ?,
           EscolaIcone = ?, EscolaLogo = ?, EscolaStatus = ?, EscolaIsTecnica = ?
       WHERE EscolaGUID = ?;
     `;
     const params = [
       escola.EscolaNome,
+      escola.EscolaSlug,
       escola.EscolaCNPJ,
       escola.EscolaTelefone,
       escola.EscolaEmail,
@@ -162,12 +165,24 @@ export class EscolaDAO {
     return resultado[0] || null;
   };
 
+  /**
+   * Busca escola pelo slug de URL (link de login individual, ex.
+   * /login/colegio-sao-jose) — usado pelo endpoint público de branding.
+   */
+  findBySlug = async (EscolaSlug: string): Promise<Escola | null> => {
+    console.log("🟢 EscolaDAO.findBySlug()");
+
+    const resultado = await this.findByField("EscolaSlug", EscolaSlug.trim().toLowerCase());
+    return resultado[0] || null;
+  };
+
   findByField = async (field: string, value: unknown): Promise<Escola[]> => {
     console.log(`🟢 EscolaDAO.findByField() - Campo: ${field}, Valor: ${value}`);
 
     const allowedFields = [
       "EscolaGUID",
       "EscolaNome",
+      "EscolaSlug",
       "EscolaCNPJ",
       "EscolaEmail",
       "EscolaStatus",
@@ -194,6 +209,7 @@ export class EscolaDAO {
       const escola = new Escola();
       escola.EscolaGUID = row.EscolaGUID;
       escola.EscolaNome = row.EscolaNome;
+      escola.EscolaSlug = row.EscolaSlug;
       escola.EscolaCNPJ = row.EscolaCNPJ;
       escola.EscolaTelefone = row.EscolaTelefone;
       escola.EscolaEmail = row.EscolaEmail;

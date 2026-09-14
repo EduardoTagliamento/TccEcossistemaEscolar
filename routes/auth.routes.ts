@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import MysqlDatabase from '../backend/database/MysqlDatabase';
 import { UsuarioDAO } from '../backend/repositories/usuario.repository';
+import { MatriculaDAO } from '../backend/repositories/matricula.repository';
 import AuthService from '../backend/services/auth.service';
 import AuthController from '../backend/controllers/auth.controller';
 import { AuthMiddleware } from '../backend/middlewares/auth.middleware';
@@ -15,7 +16,10 @@ import { authRateLimitMiddleware } from '../backend/middlewares/rate-limit.middl
 // Instanciar dependências
 const database = new MysqlDatabase();
 const usuarioDAO = new UsuarioDAO(database);
-const authService = new AuthService(usuarioDAO);
+// MatriculaDAO habilita a resolução por identificador de matrícula quando o
+// login vem de /login/[slug] (EscolaGUID no body) — ver AuthService.resolverPorMatricula.
+const matriculaDAO = new MatriculaDAO(database);
+const authService = new AuthService(usuarioDAO, matriculaDAO);
 const authController = new AuthController(authService);
 
 // Criar router

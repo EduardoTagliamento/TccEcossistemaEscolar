@@ -17,6 +17,14 @@
 export default class Matricula {
   // Campos privados (encapsulamento)
   #MatriculaGUID!: string;
+  /**
+   * Identificador de login editável, separado da PK (`MatriculaGUID`) —
+   * por padrão uma cópia do GUID na criação, mas a secretaria pode trocar
+   * depois sem afetar a FK usada em tarefaacademica_matricula,
+   * conteudoprogresso etc. Usado como identificador alternativo de login
+   * na tela por escola (ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md).
+   */
+  #MatriculaIdentificador: string | null = null;
   #UsuarioGUID!: string;
   #TurmaGUID: string | null = null;
   #GrupoEletivoGUID: string | null = null;
@@ -30,6 +38,10 @@ export default class Matricula {
 
   get MatriculaGUID(): string {
     return this.#MatriculaGUID;
+  }
+
+  get MatriculaIdentificador(): string | null {
+    return this.#MatriculaIdentificador;
   }
 
   get UsuarioGUID(): string {
@@ -75,6 +87,21 @@ export default class Matricula {
       throw new Error('MatriculaGUID deve ter entre 1 e 36 caracteres');
     }
     this.#MatriculaGUID = trimmed;
+  }
+
+  set MatriculaIdentificador(value: string | null) {
+    if (value === null || value === undefined || value === "") {
+      this.#MatriculaIdentificador = null;
+      return;
+    }
+    if (typeof value !== "string") {
+      throw new Error("MatriculaIdentificador deve ser uma string.");
+    }
+    const trimmed = value.trim();
+    if (trimmed.length < 1 || trimmed.length > 36) {
+      throw new Error("MatriculaIdentificador deve ter entre 1 e 36 caracteres.");
+    }
+    this.#MatriculaIdentificador = trimmed;
   }
 
   set UsuarioGUID(value: string) {
@@ -184,6 +211,7 @@ export default class Matricula {
   toJSON() {
     return {
       MatriculaGUID: this.#MatriculaGUID,
+      MatriculaIdentificador: this.#MatriculaIdentificador,
       UsuarioGUID: this.#UsuarioGUID,
       TurmaGUID: this.#TurmaGUID,
       GrupoEletivoGUID: this.#GrupoEletivoGUID,
@@ -201,6 +229,7 @@ export default class Matricula {
   static fromDatabase(data: any): Matricula {
     const matricula = new Matricula();
     matricula.MatriculaGUID = data.MatriculaGUID;
+    matricula.MatriculaIdentificador = data.MatriculaIdentificador ?? null;
     matricula.UsuarioGUID = data.UsuarioGUID;
     matricula.TurmaGUID = data.TurmaGUID ?? null;
     matricula.GrupoEletivoGUID = data.GrupoEletivoGUID ?? null;

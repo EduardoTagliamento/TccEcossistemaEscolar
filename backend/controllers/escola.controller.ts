@@ -42,6 +42,27 @@ export default class EscolaControl {
     }
   };
 
+  /**
+   * GET /api/escola/publico/slug/:EscolaSlug
+   * Branding público (SEM autenticação) — só nome/cores/ícone, usado pela
+   * tela /login/[slug] pra pintar a página antes do login.
+   */
+  publicoPorSlug = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("🔵 EscolaControl.publicoPorSlug()");
+    try {
+      const { EscolaSlug } = request.params;
+      const escola = await this.#escolaService.buscarPublicoPorSlug(EscolaSlug);
+
+      response.status(200).json({
+        success: true,
+        message: "Executado com sucesso",
+        data: escola,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   show = async (request: Request, response: Response, next: NextFunction) => {
     console.log("🔵 EscolaControl.show()");
     try {

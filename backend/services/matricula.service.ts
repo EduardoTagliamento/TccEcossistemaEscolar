@@ -19,6 +19,8 @@ import TarefaAcademicaMatricula from "../entities/tarefaacademica-matricula.mode
  */
 export interface MatriculaDTO {
   MatriculaGUID: string;
+  /** Identificador de login editável, separado da PK — ver entities/matricula.model.ts. */
+  MatriculaIdentificador: string | null;
   UsuarioGUID: string;
   TurmaGUID: string | null;
   /** Preenchido só em matrículas-sombra de grupo eletivo (ver docs/PLANO_IMPLEMENTACAO_GRUPO_ELETIVO.md) */
@@ -32,6 +34,8 @@ export interface MatriculaDTO {
 
 export interface MatriculaCreateDTO {
   MatriculaGUID?: string; // Opcional: RA customizado OU gera UUID
+  /** Opcional: identificador de login editável — se ausente, copia o MatriculaGUID (ver criarMatricula). */
+  MatriculaIdentificador?: string;
   /** Preenchido quando o cliente já resolveu o aluno via busca por nome. */
   UsuarioGUID?: string;
   /** Opcional — CPF deixou de ser obrigatório/identificador de busca. Ainda
@@ -216,9 +220,12 @@ export default class MatriculaService {
     // 5. MatriculaGUID: usar fornecido OU gerar UUID
     const matriculaGUID = data.MatriculaGUID?.trim() || gerarGUID();
 
-    // 6. Criar entidade
+    // 6. Criar entidade — MatriculaIdentificador: usa o fornecido OU copia o
+    // MatriculaGUID recém-resolvido (padrão = matriculaGUID, editável depois
+    // via PATCH /api/matricula/:guid/identificador).
     const matricula = new Matricula();
     matricula.MatriculaGUID = matriculaGUID;
+    matricula.MatriculaIdentificador = data.MatriculaIdentificador?.trim() || matriculaGUID;
     matricula.UsuarioGUID = usuario.UsuarioGUID;
     matricula.TurmaGUID = data.TurmaGUID;
     matricula.MatriculaDataEntrada = data.MatriculaDataEntrada || new Date();
@@ -368,6 +375,12 @@ export default class MatriculaService {
       // 6. Criar nova matrícula no destino
       const novaMatricula = new Matricula();
       novaMatricula.MatriculaGUID = gerarGUID(); // Sempre gera novo UUID na transferência
+      // Transferência sempre gera GUID novo, então o identificador antigo
+      // (se a origem tinha um customizado) não é preservado automaticamente
+      // aqui — mantém o mesmo padrão simples de "copia o GUID novo" já usado
+      // em criarMatricula; a secretaria pode reeditar depois se quiser manter
+      // o identificador antigo.
+      novaMatricula.MatriculaIdentificador = novaMatricula.MatriculaGUID;
       novaMatricula.UsuarioGUID = aluno.UsuarioGUID;
       novaMatricula.TurmaGUID = data.TurmaDestinoGUID;
       novaMatricula.MatriculaDataEntrada = data.DataTransferencia;
@@ -378,13 +391,14 @@ export default class MatriculaService {
 
       const queryInserir = `
         INSERT INTO matricula
-        (MatriculaGUID, UsuarioGUID, TurmaGUID, MatriculaDataEntrada,
+        (MatriculaGUID, MatriculaIdentificador, UsuarioGUID, TurmaGUID, MatriculaDataEntrada,
          MatriculaDataSaida, MatriculaStatus, MatriculaCreatedAt, MatriculaUpdatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       await connection.execute(queryInserir, [
         novaMatricula.MatriculaGUID,
+        novaMatricula.MatriculaIdentificador,
         novaMatricula.UsuarioGUID,
         novaMatricula.TurmaGUID,
         novaMatricula.MatriculaDataEntrada,
@@ -436,6 +450,7 @@ export default class MatriculaService {
       return {
         matriculaAnterior: {
           MatriculaGUID: matriculaOrigem.MatriculaGUID,
+          MatriculaIdentificador: matriculaOrigem.MatriculaIdentificador ?? null,
           UsuarioGUID: matriculaOrigem.UsuarioGUID,
           TurmaGUID: matriculaOrigem.TurmaGUID,
           GrupoEletivoGUID: null,
@@ -586,6 +601,83 @@ export default class MatriculaService {
   }
 
   /**
+   * Atualiza SÓ o MatriculaIdentificador (endpoint dedicado — PATCH
+   * /api/matricula/:guid/identificador) — separado de atualizarMatricula
+   * porque a permissão é diferente (Secretaria, Coordenação OU Direção,
+   * igual à de criação/transferência) e não deveria se misturar com as
+   * regras de transição de status da matrícula em si. Ver
+   * docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §1 decisão #3 e §5.
+   */
+  async atualizarIdentificador(
+    matriculaGUID: string,
+    novoIdentificador: string,
+    usuarioGUIDAtor: string
+  ): Promise<MatriculaDTO> {
+    const matricula = await this.#matriculaDAO.findById(matriculaGUID);
+    if (!matricula) {
+      throw new ErrorResponse(404, 'Matrícula não encontrada', {
+        message: `Não existe matrícula com id ${matriculaGUID}`,
+      });
+    }
+
+    const escolaGUID = await this.obterEscolaGUID(matriculaGUID);
+    if (!escolaGUID) {
+      throw new ErrorResponse(500, 'Escola não resolvida', {
+        message: 'Não foi possível resolver a escola desta matrícula',
+      });
+    }
+
+    // Secretaria, Coordenação OU Direção (decisão #3 da spec) — diferente de
+    // validarPermissaoEscrita (só Coordenação/Direção), usado nas demais
+    // operações de matrícula; editar o identificador de acesso é rotina de
+    // secretaria do dia a dia, não uma decisão institucional.
+    const podeEditar = await this.#escolaxUsuarioxFuncaoDAO.isCoordSecretariaOuDirecaoEmEscola(usuarioGUIDAtor, escolaGUID);
+    if (!podeEditar) {
+      throw new ErrorResponse(403, 'Sem permissão', {
+        message: 'Você não tem permissão para editar o identificador de matrícula. Apenas Secretaria, Coordenação ou Direção podem.',
+      });
+    }
+
+    const identificador = novoIdentificador.trim();
+    if (!identificador) {
+      throw new ErrorResponse(400, 'Identificador inválido', {
+        message: 'O identificador não pode ser vazio',
+      });
+    }
+
+    // Unicidade POR ESCOLA (decisão #1 da spec) — verificação em código,
+    // já que `matricula` não tem EscolaGUID própria pra uma UNIQUE KEY de
+    // banco direta (ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §3.2).
+    if (identificador !== matricula.MatriculaIdentificador) {
+      const conflito = await this.#matriculaDAO.findByIdentificadorEEscola(identificador, escolaGUID);
+      if (conflito && conflito.MatriculaGUID !== matriculaGUID) {
+        throw new ErrorResponse(409, 'Identificador já em uso', {
+          message: `O identificador "${identificador}" já está em uso por outro aluno nesta escola.`,
+        });
+      }
+    }
+
+    const atualizada = await this.#matriculaDAO.updateIdentificador(matriculaGUID, identificador);
+    if (!atualizada) {
+      throw new ErrorResponse(500, 'Erro ao atualizar identificador', {
+        message: 'Não foi possível atualizar o identificador da matrícula',
+      });
+    }
+
+    void getAuditoriaService().registrar({
+      EscolaGUID: escolaGUID,
+      UsuarioGUIDAtor: usuarioGUIDAtor,
+      AcaoTipo: "Update",
+      EntidadeTipo: "matricula",
+      EntidadeGUID: matriculaGUID,
+      EntidadeDescricao: `Identificador de login alterado`,
+      CategoriaAuditoriaId: 3, // DadosPessoais
+    });
+
+    return this.toDTO(atualizada);
+  }
+
+  /**
    * Excluir matrícula (cancela)
    */
   async excluirMatricula(matriculaGUID: string, usuarioGUIDAtor: string): Promise<void> {
@@ -714,6 +806,7 @@ export default class MatriculaService {
   private toDTO(matricula: Matricula): MatriculaDTO {
     return {
       MatriculaGUID: matricula.MatriculaGUID,
+      MatriculaIdentificador: matricula.MatriculaIdentificador,
       UsuarioGUID: matricula.UsuarioGUID,
       TurmaGUID: matricula.TurmaGUID,
       GrupoEletivoGUID: matricula.GrupoEletivoGUID,
@@ -904,6 +997,7 @@ export default class MatriculaService {
         // Criar nova matrícula
         const novaMatricula = new Matricula();
         novaMatricula.MatriculaGUID = dados.MatriculaGUID || gerarGUID();
+        novaMatricula.MatriculaIdentificador = dados.MatriculaIdentificador?.trim() || novaMatricula.MatriculaGUID;
         novaMatricula.UsuarioGUID = aluno.UsuarioGUID;
         novaMatricula.TurmaGUID = turmaGUID;
         novaMatricula.MatriculaDataEntrada = dados.MatriculaDataEntrada || new Date();

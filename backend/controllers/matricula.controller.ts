@@ -67,6 +67,7 @@ export default class MatriculaController {
 
         const createData: MatriculaCreateDTO = {
           MatriculaGUID: matricula.MatriculaGUID,
+          MatriculaIdentificador: matricula.MatriculaIdentificador,
           UsuarioGUID: matricula.UsuarioGUID,
           UsuarioCPF: matricula.UsuarioCPF,
           TurmaGUID: matricula.TurmaGUID,
@@ -308,6 +309,47 @@ export default class MatriculaController {
         res.status(500).json({
           success: false,
           message: "Erro interno ao atualizar matrícula",
+        });
+      }
+    }
+  };
+
+  /**
+   * PATCH /api/matricula/:guid/identificador
+   * Atualizar só o identificador de login da matrícula (Secretaria,
+   * Coordenação ou Direção)
+   *
+   * Body: { MatriculaIdentificador: string }
+   */
+  atualizarIdentificador = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { guid } = req.params;
+      const { MatriculaIdentificador } = req.body;
+      const usuarioGUIDAtor = req.user?.UsuarioGUID || '';
+
+      const matriculaAtualizada = await this.#matriculaService.atualizarIdentificador(
+        guid,
+        MatriculaIdentificador,
+        usuarioGUIDAtor
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Identificador atualizado com sucesso",
+        data: matriculaAtualizada,
+      });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error("Erro ao atualizar identificador da matrícula:", error);
+        res.status(500).json({
+          success: false,
+          message: "Erro interno ao atualizar identificador da matrícula",
         });
       }
     }

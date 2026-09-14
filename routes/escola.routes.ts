@@ -8,6 +8,7 @@ import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuario
 import { ExclusaoEscolaDAO } from "../backend/repositories/exclusao-escola.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
+import { authRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
 
 export default class EscolaRoteador {
   #router: Router;
@@ -23,6 +24,19 @@ export default class EscolaRoteador {
 
   createRoutes = () => {
     console.log("⬆️ EscolaRoteador.createRoutes()");
+
+    // ⚠️ ROTA PÚBLICA — DE PROPÓSITO SEM AuthMiddleware.authenticate.
+    // Único endpoint de Escola sem autenticação: expõe só branding (nome,
+    // cores, ícone) pra pintar /login/[slug] antes do usuário logar. NUNCA
+    // adicione CNPJ/telefone/email/endereço/status na resposta (ver
+    // EscolaService.buscarPublicoPorSlug) nem coloque auth aqui — se
+    // precisar de auth, crie outra rota, não altere esta.
+    this.#router.get(
+      "/publico/slug/:EscolaSlug",
+      authRateLimitMiddleware,
+      this.#escolaMiddleware.validateSlugParam,
+      this.#escolaControle.publicoPorSlug
+    );
 
     this.#router.post(
       "/",

@@ -6,13 +6,22 @@
 
 import bcrypt from 'bcrypt';
 import { UsuarioDAO } from '../repositories/usuario.repository';
+import { MatriculaDAO } from '../repositories/matricula.repository';
 import { JwtService } from '../utils/JwtService';
 import ErrorResponse from '../utils/ErrorResponse';
 
 interface LoginCredentials {
-  identifier: string; // CPF, email ou telefone
+  identifier: string; // CPF, email, telefone ou (com escolaGUID) identificador de matrícula
   senha: string;
   lembrar?: boolean; // "Lembrar de mim" — sessão mais longa (30d em vez de 24h)
+  /**
+   * Presente quando o login vem de /login/[slug] (frontend já resolveu o
+   * slug pra EscolaGUID antes de chamar este endpoint) — habilita a
+   * tentativa de resolução por MatriculaIdentificador escopada a essa
+   * escola. Ausente = comportamento idêntico ao login geral de hoje.
+   * Ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §4.2.
+   */
+  escolaGUID?: string;
 }
 
 interface LoginResponse {
@@ -36,10 +45,12 @@ interface LoginResponse {
 
 export default class AuthService {
   #usuarioDAO: UsuarioDAO;
+  #matriculaDAO?: MatriculaDAO;
 
-  constructor(usuarioDAO: UsuarioDAO) {
+  constructor(usuarioDAO: UsuarioDAO, matriculaDAO?: MatriculaDAO) {
     console.log('⬆️  AuthService.constructor()');
     this.#usuarioDAO = usuarioDAO;
+    this.#matriculaDAO = matriculaDAO;
   }
 
   /**
@@ -47,9 +58,12 @@ export default class AuthService {
    * têm ambos 11 dígitos quando limpos, então `detectIdentifierType` sozinho
    * não distingue um do outro (bug real: todo login por CPF caía em
    * telefone, nunca achava ninguém). Tenta CPF primeiro, telefone depois,
-   * só quando o formato é ambíguo.
+   * só quando o formato é ambíguo. Quando `escolaGUID` é informado (login
+   * por /login/[slug]) e nenhum dos três caminhos acha o usuário, tenta
+   * resolver como MatriculaIdentificador escopado a essa escola — ver
+   * docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §4.2.
    */
-  private async resolverUsuarioPorIdentificador(identifier: string) {
+  private async resolverUsuarioPorIdentificador(identifier: string, escolaGUID?: string) {
     if (identifier.includes('@')) {
       const formatted = this.formatIdentifier(identifier, 'email');
       console.log(`🔍 [AuthService] Tentativa de login via email: ${formatted}`);
@@ -60,7 +74,9 @@ export default class AuthService {
     if (cleaned.length !== 11) {
       const formatted = this.formatIdentifier(identifier, 'cpf');
       console.log(`🔍 [AuthService] Tentativa de login via cpf: ${formatted}`);
-      return this.#usuarioDAO.findByCPF(formatted);
+      const porCPF = await this.#usuarioDAO.findByCPF(formatted);
+      if (porCPF) return porCPF;
+      return this.resolverPorMatricula(identifier, escolaGUID);
     }
 
     const cpfFormatado = this.formatIdentifier(identifier, 'cpf');
@@ -70,7 +86,27 @@ export default class AuthService {
 
     const telefoneFormatado = this.formatIdentifier(identifier, 'telefone');
     console.log(`🔍 [AuthService] CPF não encontrado, tentando telefone: ${telefoneFormatado}`);
-    return this.#usuarioDAO.findByTelefone(telefoneFormatado);
+    const porTelefone = await this.#usuarioDAO.findByTelefone(telefoneFormatado);
+    if (porTelefone) return porTelefone;
+
+    return this.resolverPorMatricula(identifier, escolaGUID);
+  }
+
+  /**
+   * Último recurso de resolução, só quando `escolaGUID` foi informado
+   * (login vindo de /login/[slug]) — matrícula pertence a uma escola
+   * específica, então login por matrícula sem escola conhecida seria
+   * ambíguo entre escolas. Senha continua sendo a do Usuario (bcrypt),
+   * não existe senha por matrícula.
+   */
+  private async resolverPorMatricula(identifier: string, escolaGUID?: string) {
+    if (!escolaGUID || !this.#matriculaDAO) return null;
+
+    console.log(`🔍 [AuthService] Tentativa de login via matrícula (escola ${escolaGUID}): ${identifier.trim()}`);
+    const matricula = await this.#matriculaDAO.findByIdentificadorEEscola(identifier.trim(), escolaGUID);
+    if (!matricula) return null;
+
+    return this.#usuarioDAO.findByGUID(matricula.UsuarioGUID);
   }
 
   /**
@@ -101,18 +137,24 @@ export default class AuthService {
    */
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     try {
-      const { identifier, senha, lembrar } = credentials;
+      const { identifier, senha, lembrar, escolaGUID } = credentials;
 
       // 1. Buscar usuário no banco — CPF e telefone têm os dois exatamente
       // 11 dígitos quando limpos (XXX.XXX.XXX-XX = 9+2, (XX) XXXXX-XXXX =
       // 2+9), então contar dígitos não distingue um do outro. Tenta CPF
       // primeiro, cai pra telefone só se não achar — cobre os dois sem
-      // depender de adivinhar qual é qual.
-      const usuario = await this.resolverUsuarioPorIdentificador(identifier);
+      // depender de adivinhar qual é qual. Com escolaGUID informado, cai
+      // por último pra matrícula escopada a essa escola (ver
+      // resolverUsuarioPorIdentificador).
+      const usuario = await this.resolverUsuarioPorIdentificador(identifier, escolaGUID);
 
       if (!usuario) {
         throw new ErrorResponse(401, 'Credenciais inválidas', {
-          message: 'CPF, email, telefone ou senha incorretos',
+          // Não indica qual dos quatro caminhos falhou — mesma política de
+          // não vazar qual parte da credencial estava errada.
+          message: escolaGUID
+            ? 'Matrícula, CPF, email, telefone ou senha incorretos'
+            : 'CPF, email, telefone ou senha incorretos',
         });
       }
 
@@ -122,7 +164,9 @@ export default class AuthService {
       if (!senhaCorreta) {
         console.warn(`⚠️  [AuthService] Senha incorreta para usuário ${usuario.UsuarioGUID}`);
         throw new ErrorResponse(401, 'Credenciais inválidas', {
-          message: 'CPF, email, telefone ou senha incorretos',
+          message: escolaGUID
+            ? 'Matrícula, CPF, email, telefone ou senha incorretos'
+            : 'CPF, email, telefone ou senha incorretos',
         });
       }
 

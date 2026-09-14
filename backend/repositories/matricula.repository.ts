@@ -18,6 +18,7 @@ export interface MatriculaFilters {
  */
 interface MatriculaRow extends RowDataPacket {
   MatriculaGUID: string;
+  MatriculaIdentificador: string | null;
   UsuarioGUID: string;
   TurmaGUID: string | null;
   GrupoEletivoGUID: string | null;
@@ -50,6 +51,7 @@ export class MatriculaDAO {
     const query = `
       INSERT INTO matricula (
         MatriculaGUID,
+        MatriculaIdentificador,
         UsuarioGUID,
         TurmaGUID,
         GrupoEletivoGUID,
@@ -58,11 +60,12 @@ export class MatriculaDAO {
         MatriculaStatus,
         MatriculaCreatedAt,
         MatriculaUpdatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
       matricula.MatriculaGUID,
+      matricula.MatriculaIdentificador,
       matricula.UsuarioGUID,
       matricula.TurmaGUID,
       matricula.GrupoEletivoGUID,
@@ -202,6 +205,52 @@ export class MatriculaDAO {
     }
 
     return this.mapRows(rows as MatriculaRow[])[0];
+  }
+
+  /**
+   * Busca matrícula por MatriculaIdentificador DENTRO DE UMA ESCOLA
+   * específica — usado no login por escola (/login/[slug]), quando o
+   * identificador digitado não é CPF/e-mail/telefone reconhecido. `matricula`
+   * não tem EscolaGUID própria, por isso o LEFT JOIN duplo (matrícula normal
+   * via turma, matrícula-sombra de grupo eletivo via grupoeletivo) — ver
+   * docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §3.2/§4.2.
+   */
+  async findByIdentificadorEEscola(identificador: string, escolaGUID: string): Promise<Matricula | null> {
+    const query = `
+      SELECT m.* FROM matricula m
+      LEFT JOIN turma t ON t.TurmaGUID = m.TurmaGUID
+      LEFT JOIN grupoeletivo g ON g.GrupoEletivoGUID = m.GrupoEletivoGUID
+      WHERE m.MatriculaIdentificador = ?
+        AND (t.EscolaGUID = ? OR g.EscolaGUID = ?)
+      LIMIT 1
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(query, [identificador, escolaGUID, escolaGUID]);
+
+    if (!rows || (rows as MatriculaRow[]).length === 0) {
+      return null;
+    }
+
+    return this.mapRows(rows as MatriculaRow[])[0];
+  }
+
+  /**
+   * Atualiza só o MatriculaIdentificador — endpoint dedicado
+   * (PATCH /api/matricula/:guid/identificador), separado do update() geral
+   * de matrícula pra deixar explícita a permissão diferenciada (ver
+   * MatriculaService.atualizarIdentificador).
+   */
+  async updateIdentificador(matriculaGUID: string, identificador: string): Promise<Matricula | null> {
+    const query = `
+      UPDATE matricula
+      SET MatriculaIdentificador = ?, MatriculaUpdatedAt = ?
+      WHERE MatriculaGUID = ?
+    `;
+
+    const pool = await this.#database.getPool();
+    await pool.execute(query, [identificador, new Date(), matriculaGUID]);
+    return this.findById(matriculaGUID);
   }
 
   /**
@@ -400,6 +449,7 @@ export class MatriculaDAO {
     return rows.map((row) => {
       const matricula = new Matricula();
       matricula.MatriculaGUID = row.MatriculaGUID;
+      matricula.MatriculaIdentificador = row.MatriculaIdentificador;
       matricula.UsuarioGUID = row.UsuarioGUID;
       matricula.TurmaGUID = row.TurmaGUID;
       matricula.GrupoEletivoGUID = row.GrupoEletivoGUID;

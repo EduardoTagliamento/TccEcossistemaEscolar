@@ -21,6 +21,7 @@ export interface TransferirDirecaoResultadoDTO {
 export interface EscolaDTO {
   EscolaGUID: string;
   EscolaNome: string | null;
+  EscolaSlug: string | null;
   EscolaCNPJ: string | null;
   EscolaTelefone: string | null;
   EscolaEmail: string | null;
@@ -34,6 +35,23 @@ export interface EscolaDTO {
   EscolaIsTecnica: boolean;
   EscolaCreatedAt: string | null; // ISO string
   EscolaUpdatedAt: string | null; // ISO string
+}
+
+/**
+ * Branding público de escola (endpoint SEM autenticação, usado pela tela
+ * /login/[EscolaSlug] pra pintar a página antes do usuário logar) — nunca
+ * inclui CNPJ, telefone, email, endereço ou status (dados internos, sem
+ * motivo de estar numa rota pública). Ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §4.1.
+ */
+export interface EscolaPublicoDTO {
+  EscolaGUID: string;
+  EscolaSlug: string | null;
+  EscolaNome: string | null;
+  EscolaCorPriEs: string | null;
+  EscolaCorPriCl: string | null;
+  EscolaCorSecEs: string | null;
+  EscolaCorSecCl: string | null;
+  EscolaIcone: string | null; // base64
 }
 
 export default class EscolaService {
@@ -76,6 +94,12 @@ export default class EscolaService {
     const escola = new Escola();
     escola.EscolaGUID = (jsonEscola.EscolaGUID as string) || gerarGUID();
     escola.EscolaNome = (jsonEscola.EscolaNome as string | null) ?? null;
+    // Slug: usa o informado (já normalizado/validado pelo schema) OU gera
+    // automaticamente a partir do nome — quem cria a escola não precisa
+    // pensar em URL nesse momento (ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §1 decisão #6).
+    escola.EscolaSlug = jsonEscola.EscolaSlug
+      ? (jsonEscola.EscolaSlug as string)
+      : await this.gerarSlugUnico(escola.EscolaNome || "escola");
     escola.EscolaCNPJ = (jsonEscola.EscolaCNPJ as string | null) ?? null;
     escola.EscolaTelefone = (jsonEscola.EscolaTelefone as string | null) ?? null;
     escola.EscolaEmail = (jsonEscola.EscolaEmail as string | null) ?? null;
@@ -167,6 +191,27 @@ export default class EscolaService {
     return this.toDTO(escola);
   };
 
+  /**
+   * Branding público por slug (SEM autenticação) — usado por /login/[slug]
+   * pra pintar a tela antes do login. 404 genérico tanto se o slug não
+   * existe quanto se a escola está Inativa — não dá pra diferenciar os dois
+   * casos numa rota pública sem dar dica a quem estiver testando slugs por
+   * força bruta (ver docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md, §4.1).
+   */
+  buscarPublicoPorSlug = async (EscolaSlug: string): Promise<EscolaPublicoDTO> => {
+    console.log("🟣 EscolaService.buscarPublicoPorSlug()");
+
+    const escola = await this.#escolaDAO.findBySlug(EscolaSlug);
+
+    if (!escola || escola.EscolaStatus !== "Ativa") {
+      throw new ErrorResponse(404, "Escola não encontrada", {
+        message: "Não existe escola com este link.",
+      });
+    }
+
+    return this.toDTOPublico(escola);
+  };
+
   updateEscola = async (
     EscolaGUID: string,
     jsonEscola: Record<string, unknown>,
@@ -196,12 +241,32 @@ export default class EscolaService {
       await this.validarPermissaoRepresentanteLegal(usuarioGUIDAtor!, EscolaGUID);
     }
 
+    // Slug é branding público-facing, mesma categoria de decisão que
+    // cor/logo — mas não precisa da checagem extra de representante legal
+    // (essa é específica das 4 cores, ver comentário abaixo); já basta ser
+    // Direção, checado no início deste método.
+    if (jsonEscola.EscolaSlug !== undefined && jsonEscola.EscolaSlug !== existente.EscolaSlug) {
+      const novoSlug = (jsonEscola.EscolaSlug as string | null) ?? null;
+      if (novoSlug) {
+        const conflito = await this.#escolaDAO.findBySlug(novoSlug);
+        if (conflito && conflito.EscolaGUID !== EscolaGUID) {
+          throw new ErrorResponse(409, "Slug já em uso", {
+            message: `O link "${novoSlug}" já está em uso por outra escola. Escolha outro.`,
+          });
+        }
+      }
+    }
+
     const escola = new Escola();
     escola.EscolaGUID = EscolaGUID;
     escola.EscolaNome =
       jsonEscola.EscolaNome !== undefined
         ? (jsonEscola.EscolaNome as string | null)
         : existente.EscolaNome;
+    escola.EscolaSlug =
+      jsonEscola.EscolaSlug !== undefined
+        ? (jsonEscola.EscolaSlug as string | null)
+        : existente.EscolaSlug;
     escola.EscolaCNPJ =
       jsonEscola.EscolaCNPJ !== undefined
         ? (jsonEscola.EscolaCNPJ  as string | null)
@@ -610,10 +675,37 @@ export default class EscolaService {
     }
   }
 
+  /**
+   * Gera um slug a partir do nome (slugify simples, sem dependência
+   * externa) e resolve conflito com sufixo numérico incremental
+   * (colegio-sao-jose, colegio-sao-jose-2, ...) — ver §1 decisão #6.
+   */
+  private async gerarSlugUnico(nomeBase: string): Promise<string> {
+    const base =
+      nomeBase
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || "escola";
+
+    let slug = base;
+    let sufixo = 2;
+    while (await this.#escolaDAO.findBySlug(slug)) {
+      const candidato = `${base}-${sufixo}`;
+      slug = candidato.slice(0, 60);
+      sufixo++;
+    }
+
+    return slug;
+  }
+
   private toDTO(escola: Escola): EscolaDTO {
     return {
       EscolaGUID: escola.EscolaGUID,
       EscolaNome: escola.EscolaNome,
+      EscolaSlug: escola.EscolaSlug,
       EscolaCNPJ: escola.EscolaCNPJ,
       EscolaTelefone: escola.EscolaTelefone,
       EscolaEmail: escola.EscolaEmail,
@@ -627,6 +719,19 @@ export default class EscolaService {
       EscolaIsTecnica: escola.EscolaIsTecnica,
       EscolaCreatedAt: escola.EscolaCreatedAt ? escola.EscolaCreatedAt.toISOString() : null,
       EscolaUpdatedAt: escola.EscolaUpdatedAt ? escola.EscolaUpdatedAt.toISOString() : null,
+    };
+  }
+
+  private toDTOPublico(escola: Escola): EscolaPublicoDTO {
+    return {
+      EscolaGUID: escola.EscolaGUID,
+      EscolaSlug: escola.EscolaSlug,
+      EscolaNome: escola.EscolaNome,
+      EscolaCorPriEs: escola.EscolaCorPriEs,
+      EscolaCorPriCl: escola.EscolaCorPriCl,
+      EscolaCorSecEs: escola.EscolaCorSecEs,
+      EscolaCorSecCl: escola.EscolaCorSecCl,
+      EscolaIcone: escola.EscolaIcone ? escola.EscolaIcone.toString("base64") : null,
     };
   }
 }

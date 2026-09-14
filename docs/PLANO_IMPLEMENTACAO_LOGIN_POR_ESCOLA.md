@@ -1,7 +1,7 @@
 # Planejamento: Login Individual por Escola
 
 **Data:** 14 de Setembro de 2026
-**Status:** Planejado — decisões de negócio da §1 validadas em 14/09/2026, pronto para detalhamento técnico/implementação
+**Status:** Implementado (código) em 14/09/2026 — migrations criadas mas **não executadas** contra o banco (ver §6); falta rodar `add-escola-slug.ts` e `add-matricula-identificador.ts` antes da feature funcionar de ponta a ponta.
 **Escopo:** Dar a cada escola um link de login próprio (`/login/[slug]`), com a marca visual da escola (cores + ícone) em vez da marca genérica "Bauá", permitindo login por CPF, e-mail, telefone **ou** um identificador de matrícula editável pela escola — sem substituir o login geral multi-escola que já existe hoje.
 
 ---
@@ -147,21 +147,27 @@ Ver decisão #2 da §1 (recomendação: sempre pular `/selecionar-escola` e ir d
 
 ---
 
-## 6. Fases de implementação sugeridas
+## 6. Fases de implementação — status em 14/09/2026
 
-1. **Schema + backend básico, sem UI:** migration de `EscolaSlug` (com backfill das escolas existentes) e `MatriculaIdentificador` (com backfill = cópia de `MatriculaGUID`); getters/setters nas entidades; `EscolaDAO.findBySlug`/`MatriculaDAO.findUsuarioByIdentificadorEEscola`; endpoint público `GET /api/escola/publico/slug/:EscolaSlug`. Validável por request manual/Postman, sem nenhuma tela nova ainda.
-2. **Extensão do login:** `AuthService.login`/`resolverUsuarioPorIdentificador` aceitando `EscolaGUID` opcional + tentativa de matrícula (§4.2); `AuthController`/`routes/auth.routes.ts` repassando o campo novo. Endpoint `PATCH /api/matricula/:MatriculaGUID/identificador` com checagem de permissão (decisão #3).
-3. **Configuração do slug pela escola:** campo `EscolaSlug` + botão "copiar link" na seção "Identidade da Escola" de `frontend/app/dashboard/[escolaGUID]/configuracoes/page.tsx`; geração automática de slug no fluxo de `frontend/app/criar-escola/page.tsx`.
-4. **Extensão de `AuthBrandShell`:** props novas para cor primária/secundária/ícone/nome customizados, com fallback para a marca "Bauá" quando ausentes (usado por `/login` geral, que não muda).
-5. **Nova rota `/login/[escolaSlug]`:** busca branding via endpoint público, aplica tema no `AuthBrandShell`, formulário com campo extra "Matrícula, CPF, e-mail ou telefone", lógica de pós-login descrita em §4.3 (redirecionamento direto + tratamento de erro de acesso).
-6. **Tela de edição de `MatriculaIdentificador` para Secretaria/Coordenação:** provavelmente na tela onde a matrícula já é gerenciada hoje (Gestão de Dados → Matrículas/Alunos — a localizar no frontend na hora da implementação, fora do que foi investigado nesta spec).
+Todas as 6 fases têm código escrito. **Nenhuma migration foi executada contra o banco** — os dois `.ts` (`backend/database/migrations/add-escola-slug.ts` e `add-matricula-identificador.ts`) são idempotentes e devem ser rodados manualmente, um de cada vez, com `npx tsx backend/database/migrations/<arquivo>.ts` (padrão do projeto, sem `npm run migrate`). Sem isso, os endpoints novos vão falhar em runtime (coluna inexistente).
+
+1. ✅ **Schema + backend básico, sem UI:** migrations criadas (`2026-09-14-add-escola-slug.{sql,ts}`, `2026-09-14-add-matricula-identificador.{sql,ts}`, com backfill); getters/setters em `Escola`/`Matricula`; `EscolaDAO.findBySlug`/`MatriculaDAO.findByIdentificadorEEscola`; endpoint público `GET /api/escola/publico/slug/:EscolaSlug`. **Pendente:** rodar as migrations.
+2. ✅ **Extensão do login:** `AuthService.login`/`resolverUsuarioPorIdentificador` aceitando `escolaGUID` opcional + tentativa de matrícula (§4.2); `AuthController`/`routes/auth.routes.ts` repassando `EscolaGUID`. Endpoint `PATCH /api/matricula/:guid/identificador` com checagem de permissão (Secretaria/Coordenação/Direção, decisão #3).
+3. ✅ **Configuração do slug pela escola:** campo `EscolaSlug` + botão "Copiar link" na seção "Identidade da Escola" de `frontend/app/dashboard/[escolaGUID]/configuracoes/page.tsx`. Geração automática de slug fica no backend (`EscolaService.gerarSlugUnico`, chamado em `createEscola`) — `frontend/app/criar-escola/page.tsx` não precisou de mudança, o slug é gerado no servidor a partir do nome sem exigir input extra no cadastro.
+4. ✅ **Extensão de `AuthBrandShell`:** prop `tema` (cor primária/secundária/ícone/nome), com fallback para a marca "Bauá" quando ausente (usado por `/login` geral, que não muda).
+5. ✅ **Nova rota `/login/[escolaSlug]`:** busca branding via endpoint público, aplica `tema` no `AuthBrandShell`, formulário com campo extra "Matrícula, CPF, e-mail ou telefone", lógica de pós-login (redirecionamento direto pro dashboard da escola + erro específico de acesso).
+6. ✅ **Edição de `MatriculaIdentificador` para Secretaria/Coordenação:** adicionado em `frontend/app/dashboard/[escolaGUID]/gestao-dados/alunos/page.tsx` (campo no formulário de edição de aluno, chamando o endpoint da fase 2).
+
+Backend (`tsc --noEmit`, todo o projeto, modo strict) e frontend (`tsc --noEmit`, Next.js) compilam sem erros com essas mudanças.
 
 ---
 
-## 7. Pontos ainda em aberto (assunções que adotei — revisar antes de codar)
+## 7. Pontos que ficaram em aberto na spec — como foram resolvidos na implementação
 
-- **Unicidade do `MatriculaIdentificador` por escola sem coluna `EscolaGUID` na tabela (§3.2):** assumi verificação em código (opção "a") em vez de desnormalizar `EscolaGUID` na tabela `matricula` (opção "b"). Isso é uma assunção técnica que precisa de "ok" — a opção (a) tem uma janela de corrida teórica (dois `INSERT`/`UPDATE` concorrentes com o mesmo identificador na mesma escola) que uma `UNIQUE KEY` de banco eliminaria de vez.
-- **Formato do slug e do identificador de matrícula (§1, decisões #6 e #7):** assumi valores razoáveis (slug tipo `kebab-case`, identificador livre até 36 chars) só para poder desenhar a coluna/regex — nenhum dos dois foi validado com o responsável do produto.
-- **Onde exatamente entra a edição de `MatriculaIdentificador` no frontend (fase 6, §6):** não localizei neste levantamento a tela atual de gestão de matrículas/alunos (só confirmei o backend em `matricula.repository.ts`/`matricula.service.ts`) — a localização exata da tela fica para investigação no início da implementação dessa fase.
-- **Rate limit do endpoint público de branding (§4.1):** assumi reaproveitar `authRateLimitMiddleware` sem que isso tenha sido pedido — é uma extrapolação de segurança, não um requisito do usuário; pode ser revisado (ou nem ser necessário, se o endpoint só expuser dados não sensíveis mesmo sob enumeração de slugs).
-- **Campo `EscolaGUID` no corpo de `POST /api/auth/login` (§4.2 item 1):** assumi que o frontend vai resolver o slug para `EscolaGUID` (via §4.1) e mandar esse `EscolaGUID` já resolvido no login, em vez de mandar o slug direto e o backend resolver de novo — evita um round-trip extra, mas nunca foi confirmado como preferência de design de API.
+Todas as 7 decisões da §1 foram validadas com o usuário em 14/09/2026 (todas seguindo a recomendação original). Os pontos abaixo eram detalhes técnicos que a spec deixava como assunção — aqui, o que a implementação de fato fez:
+
+- **Unicidade do `MatriculaIdentificador` por escola sem coluna `EscolaGUID` na tabela (§3.2):** implementado como opção "a" (verificação em código, em `MatriculaService.atualizarIdentificador`/`criarMatricula`, via `MatriculaDAO.findByIdentificadorEEscola`), como recomendado. Fica registrado que essa opção tem uma janela de corrida teórica (dois `INSERT`/`UPDATE` concorrentes com o mesmo identificador na mesma escola) que uma `UNIQUE KEY` de banco (opção "b", desnormalizar `EscolaGUID`) eliminaria de vez — não implementada por não ter sido pedida.
+- **Formato do slug e do identificador de matrícula:** validados como recomendado (§1, decisões #6 e #7) — slug `kebab-case` (3-60 chars), identificador livre até 36 chars.
+- **Onde entra a edição de `MatriculaIdentificador` no frontend (fase 6):** localizado e implementado em `frontend/app/dashboard/[escolaGUID]/gestao-dados/alunos/page.tsx` (formulário de edição de aluno já existente).
+- **Rate limit do endpoint público de branding (§4.1):** implementado reaproveitando `authRateLimitMiddleware` na rota `GET /api/escola/publico/slug/:EscolaSlug`, como recomendado.
+- **Campo `EscolaGUID` no corpo de `POST /api/auth/login` (§4.2 item 1):** implementado como recomendado — o frontend (`/login/[escolaSlug]`) resolve o slug para `EscolaGUID` via o endpoint público e manda esse `EscolaGUID` já resolvido no login (`AuthContext.login` recebe `escolaGUID` como 4º parâmetro).

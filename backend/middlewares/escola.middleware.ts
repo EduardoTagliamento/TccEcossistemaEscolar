@@ -4,6 +4,7 @@ import {
   EscolaUpdateBodySchema,
   EscolaTransferirDirecaoBodySchema,
   EscolaIdParamSchema,
+  EscolaSlugParamSchema,
 } from "../schemas/escola.schema";
 import { zodValidate } from "../utils/zodValidate";
 
@@ -23,4 +24,6 @@ export default class EscolaMiddleware {
   validateTransferirDirecaoBody = zodValidate(EscolaTransferirDirecaoBodySchema, "body");
 
   validateIdParam = zodValidate(EscolaIdParamSchema, "params");
+
+  validateSlugParam = zodValidate(EscolaSlugParamSchema, "params");
 }

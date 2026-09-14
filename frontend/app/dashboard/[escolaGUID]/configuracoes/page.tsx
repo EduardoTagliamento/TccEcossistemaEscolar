@@ -48,6 +48,8 @@ export default function ConfiguracoesEscolaPage() {
   const [isDirecao, setIsDirecao] = useState(false);
   const [escolaNome, setEscolaNome] = useState('');
   const [escolaEmail, setEscolaEmail] = useState('');
+  const [escolaSlug, setEscolaSlug] = useState('');
+  const [linkCopiado, setLinkCopiado] = useState(false);
   const [corPriEs, setCorPriEs] = useState('#1E3A8A');
   const [corPriCl, setCorPriCl] = useState('#FFFFFF');
   const [corSecEs, setCorSecEs] = useState('#FF5733');
@@ -131,6 +133,7 @@ export default function ConfiguracoesEscolaPage() {
       const { escola } = await EscolaAPI.buscarEscola(escolaGUID);
       setEscolaNome(escola.EscolaNome || '');
       setEscolaEmail(escola.EscolaEmail || '');
+      setEscolaSlug(escola.EscolaSlug || '');
       setCorPriEs(comHash(escola.EscolaCorPriEs, '#1E3A8A'));
       setCorPriCl(comHash(escola.EscolaCorPriCl, '#FFFFFF'));
       setCorSecEs(comHash(escola.EscolaCorSecEs, '#FF5733'));
@@ -192,9 +195,20 @@ export default function ConfiguracoesEscolaPage() {
         return;
       }
 
+      const slugNormalizado = escolaSlug.trim().toLowerCase();
+      if (slugNormalizado && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slugNormalizado)) {
+        setErroIdentidade('O link deve conter apenas letras minúsculas, números e hífen (ex.: colegio-sao-jose)');
+        return;
+      }
+      if (slugNormalizado && (slugNormalizado.length < 3 || slugNormalizado.length > 60)) {
+        setErroIdentidade('O link deve ter entre 3 e 60 caracteres');
+        return;
+      }
+
       const dados: EscolaAPI.AtualizarEscolaDados = {
         EscolaNome: escolaNome.trim(),
         EscolaEmail: escolaEmail.trim() || null,
+        EscolaSlug: slugNormalizado || null,
         EscolaCorPriEs: corPriEs,
         EscolaCorPriCl: corPriCl,
         EscolaCorSecEs: corSecEs,
@@ -213,6 +227,7 @@ export default function ConfiguracoesEscolaPage() {
 
       setEscolaNome(escola.EscolaNome || '');
       setEscolaEmail(escola.EscolaEmail || '');
+      setEscolaSlug(escola.EscolaSlug || '');
       setCorPriEs(comHash(escola.EscolaCorPriEs, corPriEs));
       setCorPriCl(comHash(escola.EscolaCorPriCl, corPriCl));
       setCorSecEs(comHash(escola.EscolaCorSecEs, corSecEs));
@@ -505,6 +520,40 @@ export default function ConfiguracoesEscolaPage() {
               placeholder="contato@suaescola.com.br"
               disabled={salvandoIdentidade}
             />
+          </div>
+
+          <div className={styles.campoContainer}>
+            <label className={styles.label}>Link de login desta escola</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                className={styles.input}
+                style={{ maxWidth: '280px' }}
+                value={escolaSlug}
+                onChange={(e) => setEscolaSlug(e.target.value)}
+                placeholder="colegio-sao-jose"
+                disabled={salvandoIdentidade}
+              />
+              <button
+                type="button"
+                className={styles.botaoRemover}
+                disabled={!escolaSlug.trim()}
+                onClick={() => {
+                  const url = `${window.location.origin}/login/${escolaSlug.trim().toLowerCase()}`;
+                  navigator.clipboard.writeText(url).then(() => {
+                    setLinkCopiado(true);
+                    setTimeout(() => setLinkCopiado(false), 2000);
+                  });
+                }}
+              >
+                {linkCopiado ? 'Copiado!' : 'Copiar link'}
+              </button>
+            </div>
+            <span className={styles.uploadDica}>
+              Link individual desta escola — quem acessar por ele vê as cores/ícone da escola e pode entrar com
+              matrícula, CPF, e-mail ou telefone. Alterar o link muda a URL: quem tinha o link antigo salvo precisa do
+              novo.
+            </span>
           </div>
 
           <div className={styles.campoContainer}>

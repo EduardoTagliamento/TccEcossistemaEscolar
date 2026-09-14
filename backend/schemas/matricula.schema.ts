@@ -29,6 +29,16 @@ export const CriarMatriculaBodySchema = z.object({
           .max(36, "MatriculaGUID deve ter entre 1 e 36 caracteres")
           .optional()
           .nullable(),
+        // Identificador de login editável, separado da PK — se ausente,
+        // MatriculaService.criarMatricula copia o MatriculaGUID (ver
+        // docs/PLANO_IMPLEMENTACAO_LOGIN_POR_ESCOLA.md).
+        MatriculaIdentificador: z
+          .string()
+          .trim()
+          .min(1, "MatriculaIdentificador deve ter entre 1 e 36 caracteres")
+          .max(36, "MatriculaIdentificador deve ter entre 1 e 36 caracteres")
+          .optional()
+          .nullable(),
         // GUID (já resolvido pelo cliente via busca por nome) tem prioridade
         // sobre CPF, que agora é opcional — ver
         // docs/PLANO_MIGRACAO_USUARIO_PK_GUID.md.
@@ -104,6 +114,14 @@ export const TransferenciaBodySchema = z.object({
       message: "Turma origem e destino devem ser diferentes",
       path: ["TurmaOrigemGUID"],
     }),
+});
+
+export const AtualizarIdentificadorBodySchema = z.object({
+  MatriculaIdentificador: z
+    .string({ message: "MatriculaIdentificador é obrigatório" })
+    .trim()
+    .min(1, "MatriculaIdentificador deve ter entre 1 e 36 caracteres")
+    .max(36, "MatriculaIdentificador deve ter entre 1 e 36 caracteres"),
 });
 
 export const MatriculaGUIDParamSchema = z.object({

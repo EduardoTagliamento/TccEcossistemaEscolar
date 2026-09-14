@@ -21,6 +21,7 @@ function getHeaders(): HeadersInit {
 export interface Escola {
   EscolaGUID: string;
   EscolaNome: string | null;
+  EscolaSlug: string | null;
   EscolaCNPJ: string | null;
   EscolaTelefone: string | null;
   EscolaEmail: string | null;
@@ -38,6 +39,8 @@ export interface Escola {
 
 export interface AtualizarEscolaDados {
   EscolaNome?: string | null;
+  /** Link de login individual (/login/[EscolaSlug]) — só Direção pode editar. */
+  EscolaSlug?: string | null;
   EscolaCNPJ?: string | null;
   EscolaTelefone?: string | null;
   EscolaEmail?: string | null;
@@ -49,6 +52,35 @@ export interface AtualizarEscolaDados {
   EscolaIcone?: string | null; // base64 sem prefixo data:*, ou null/"" para remover
   EscolaStatus?: 'Ativa' | 'Inativa';
   EscolaIsTecnica?: boolean;
+}
+
+export interface EscolaPublico {
+  EscolaGUID: string;
+  EscolaSlug: string | null;
+  EscolaNome: string | null;
+  EscolaCorPriEs: string | null;
+  EscolaCorPriCl: string | null;
+  EscolaCorSecEs: string | null;
+  EscolaCorSecCl: string | null;
+  EscolaIcone: string | null; // base64
+}
+
+/**
+ * Buscar branding público da escola pelo slug (SEM autenticação) — usado
+ * pela tela /login/[slug] pra pintar a página antes do login. Só retorna
+ * nome/cores/ícone (ver EscolaService.buscarPublicoPorSlug no backend).
+ */
+export async function buscarEscolaPublicaPorSlug(escolaSlug: string): Promise<EscolaPublico> {
+  const response = await fetch(`${API_URL}/escola/publico/slug/${encodeURIComponent(escolaSlug)}`, {
+    method: 'GET',
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Escola não encontrada');
+  }
+
+  return data.data;
 }
 
 /**
