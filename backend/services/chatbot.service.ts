@@ -71,6 +71,8 @@ interface ChatbotSessao {
   usuarioGUID: string | null;
   escolaGUID: string | null;
   funcoes: string[];
+  /** Telefone (só dígitos, sem DDI) do canal WhatsApp desta sessão — null no canal web. Guardado pra `trocar_conta` conseguir refazer a identificação sem esperar o modelo "lembrar" do número. */
+  telefoneCanal: string | null;
   /** Contas ativas encontradas pelo telefone quando mais de uma bate (piloto: várias contas de teste no mesmo número). */
   usuariosDisponiveis: { UsuarioGUID: string; nome: string }[];
   escolasDisponiveis: EscolaOpcao[];
@@ -297,6 +299,7 @@ export default class ChatbotService {
     const sessionId = `wa:${nacional}`;
     const sessao = this.#sessoes.get(sessionId) ?? this.#criarSessaoVazia();
     this.#sessoes.set(sessionId, sessao);
+    sessao.telefoneCanal = nacional;
 
     if (!sessao.usuarioGUID && sessao.historico.length === 0) {
       const resultado = await this.#identificarPorTelefone(sessao, nacional);
@@ -360,6 +363,7 @@ export default class ChatbotService {
     usuarioGUID: null,
     escolaGUID: null,
     funcoes: [],
+    telefoneCanal: null,
     usuariosDisponiveis: [],
     escolasDisponiveis: [],
     conversasCache: [],
@@ -530,6 +534,37 @@ export default class ChatbotService {
         sessao.escolaGUID = opcaoValida.EscolaGUID;
         sessao.funcoes = opcaoValida.funcoes;
         return { ok: true, escola: { EscolaGUID: opcaoValida.EscolaGUID, EscolaNome: opcaoValida.EscolaNome }, papeis: opcaoValida.funcoes };
+      };
+    }
+
+    // Trocar de conta: só faz sentido com identidade já resolvida e telefone
+    // conhecido (canal WhatsApp — no canal web a identidade vem do JWT, não
+    // há "outra conta" pra oferecer). Reseta a sessão e refaz a identificação
+    // do zero, repopulando usuariosDisponiveis quando o telefone tiver mais
+    // de uma conta com vínculo ativo — é assim que selecionar_pessoa volta a
+    // ficar disponível na iteração seguinte do loop do agente.
+    if (sessao.usuarioGUID && sessao.telefoneCanal) {
+      handlers.trocar_conta = async () => {
+        sessao.usuarioGUID = null;
+        sessao.escolaGUID = null;
+        sessao.funcoes = [];
+        sessao.escolasDisponiveis = [];
+        sessao.usuariosDisponiveis = [];
+        // Limpa caches dependentes de identidade — nunca deixar uma ferramenta
+        // de escrita da conta nova aceitar um GUID cacheado pela conta antiga.
+        sessao.conversasCache = [];
+        sessao.tarefasCache = [];
+        sessao.alocacoesCache = [];
+        sessao.avisosCache = [];
+        sessao.projetosCache = [];
+        sessao.provasCache = [];
+        sessao.materiasCache = [];
+
+        const resultado = await this.#identificarPorTelefone(sessao, sessao.telefoneCanal!);
+        if (resultado.encontrado !== true || resultado.semVinculoAtivo === true) {
+          return { error: "Não encontrei nenhuma outra conta vinculada a este telefone pra trocar." };
+        }
+        return resultado;
       };
     }
 

@@ -54,6 +54,11 @@ const SYSTEM_INSTRUCTION = [
   "1b. Se você foi identificado mas há mais de uma PESSOA associada a este contato (telefone compartilhado),",
   "   pergunte qual delas o usuário quer usar e chame selecionar_pessoa com o UsuarioGUID correspondente —",
   "   nunca invente um GUID, use somente um dos que vieram na lista de opções.",
+  "1c. Se o usuário pedir pra trocar de conta, sair da conta atual, ou usar outra conta (só faz sentido no",
+  "   WhatsApp, quando o telefone tem mais de uma conta vinculada), chame trocar_conta — ela reinicia a",
+  "   identificação e devolve a lista de contas disponíveis; pergunte de novo qual delas ele quer usar e",
+  "   chame selecionar_pessoa como no passo 1b. Nunca diga que não é capaz de trocar de conta — a ferramenta",
+  "   existe exatamente pra isso.",
   "2. Se a identificação retornar mais de uma escola, pergunte em qual escola o usuário quer continuar e",
   "   chame selecionar_escola com o EscolaGUID correspondente à resposta dele — nunca invente um GUID,",
   "   use somente um dos que vieram na lista de opções.",
@@ -139,6 +144,15 @@ const FERRAMENTAS: FunctionDeclaration[] = [
         },
       },
       required: ["escolaGUID"],
+    },
+  },
+  {
+    name: "trocar_conta",
+    description:
+      "Só no WhatsApp: esquece a conta/escola atualmente resolvida nesta conversa e reinicia a identificação — use quando o usuário pedir explicitamente pra trocar de conta, sair da conta atual, ou usar outra das contas associadas a este telefone. Não recebe parâmetros. Depois de chamar, pergunte de novo qual conta ele quer usar entre as opções que a resposta trouxer.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
     },
   },
   {
