@@ -114,7 +114,7 @@ export default class ApiKey {
   }
 
   set ApiKeyPrefixo(value: string) {
-    if (!value || value.length > 16) {
+    if (!value || value.length > 24) {
       throw new Error("ApiKeyPrefixo inválido");
     }
     this.#ApiKeyPrefixo = value;

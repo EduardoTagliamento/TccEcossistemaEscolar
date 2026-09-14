@@ -24,7 +24,7 @@ CREATE TABLE `apikey` (
   `ApiKeyGUID` CHAR(36) NOT NULL,
   `EscolaGUID` CHAR(36) NOT NULL COMMENT 'Escola dona da chave — uma chave só acessa dados dessa escola',
   `ApiKeyNome` VARCHAR(100) NOT NULL COMMENT 'Rótulo livre escolhido por quem emitiu, ex. "Integração Secretaria Digital"',
-  `ApiKeyPrefixo` VARCHAR(16) NOT NULL COMMENT 'Parte visível do token pra sempre (ex. baua_live_51h4f8a2), só identificação',
+  `ApiKeyPrefixo` VARCHAR(24) NOT NULL COMMENT 'Parte visível do token pra sempre (ex. baua_live_51h4f8a2, 18 caracteres), só identificação',
   `ApiKeyHashSecreto` CHAR(64) NOT NULL COMMENT 'SHA-256 (hex) do token completo — o valor em si nunca é persistido',
   `ApiKeyEscopos` JSON NOT NULL COMMENT 'Array de strings, ex. ["usuario:leitura","turma:leitura"]',
   `ApiKeyStatus` ENUM('Ativa','Revogada') NOT NULL DEFAULT 'Ativa',
@@ -61,3 +61,18 @@ ALTER TABLE `registroauditoria`
 -- AuditoriaService.registrar() (lança se vier 0 ou 2 preenchidos); não há
 -- nenhuma escrita direta nesta tabela vinda de fora desse método, então a
 -- ausência do CHECK no banco não abre brecha real.
+
+-- ---------------------------------------------------
+-- 3. Correção pós-deploy: ApiKeyPrefixo era curto demais
+-- ---------------------------------------------------
+-- O prefixo visível gerado em ApiKeyService#gerarToken() é
+-- "baua_live_" (10 caracteres) + 8 caracteres do segredo = 18
+-- caracteres, mas a coluna acima (e o setter da entidade) foi criada como
+-- VARCHAR(16) — todo POST /api/api-key em produção falhava com 500 (a
+-- entidade rejeitava o prefixo antes mesmo de tentar o INSERT). Detectado
+-- em 2026-09-13 ao testar a tela de Chaves de API pela primeira vez.
+-- Rode este ALTER isoladamente (a tabela já existe em produção — não
+-- repita a CREATE TABLE acima):
+--
+-- ALTER TABLE `apikey` MODIFY COLUMN `ApiKeyPrefixo` VARCHAR(24) NOT NULL
+--   COMMENT 'Parte visível do token pra sempre (ex. baua_live_51h4f8a2, 18 caracteres), só identificação';
