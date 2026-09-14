@@ -16,6 +16,11 @@ dist/
 build/
 *.tsbuildinfo
 
+# Next.js
+.next/
+frontend/.next/
+out/
+
 # Logs
 logs/
 *.log
