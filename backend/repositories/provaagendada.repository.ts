@@ -14,6 +14,13 @@ interface ProvaAgendadaRow extends RowDataPacket {
   UpdatedAt: Date;
 }
 
+export interface ProvaAgendadaAnexoRow extends RowDataPacket {
+  AnexoGUID: string;
+  AnexoNomeOriginal: string | null;
+  AnexoCaminho: string;
+  AnexoTamanho: number | null;
+}
+
 export interface ProvaAgendadaFilters {
   MateriaGUID?: string;
   ProvaStatus?: "Agendada" | "Realizada" | "Cancelada";
@@ -240,6 +247,27 @@ export class ProvaAgendadaDAO {
 
     const pool = await this.#database.getPool();
     await pool.execute(SQL, [ProvaAgendadaGUID, AnexoGUID]);
+  };
+
+  /**
+   * Busca os anexos (materiais de apoio) vinculados a uma prova — o lado de
+   * escrita (vincularAnexo) já existia desde o refactor de normalização;
+   * faltava só o de leitura.
+   */
+  buscarAnexos = async (ProvaAgendadaGUID: string): Promise<ProvaAgendadaAnexoRow[]> => {
+    console.log("🟢 ProvaAgendadaDAO.buscarAnexos()");
+
+    const SQL = `
+      SELECT a.AnexoGUID, a.AnexoNomeOriginal, a.AnexoCaminho, a.AnexoTamanho
+      FROM anexo a
+      INNER JOIN relacaoanexosprova rap ON rap.AnexoGUID = a.AnexoGUID
+      WHERE rap.ProvaAgendadaGUID = ?
+      ORDER BY a.CreatedAt ASC;
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(SQL, [ProvaAgendadaGUID]);
+    return rows as ProvaAgendadaAnexoRow[];
   };
 
   /**

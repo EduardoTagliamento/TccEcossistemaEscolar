@@ -18,6 +18,7 @@ import PendenciaService from "./pendencia.service";
 import GrupoTarefaService from "./grupotarefa.service";
 import UploadService from "./upload.service";
 import { getProvaAgendadaRecomendacaoService, RecomendacaoDTO } from "./provaagendadarecomendacao.service";
+import { getProvaAgendadaService } from "./provaagendada.service";
 import { getAuditoriaService } from "./auditoria.service";
 import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
 import { MatriculaDAO } from "../repositories/matricula.repository";
@@ -83,6 +84,8 @@ interface ChatbotSessao {
   projetosCache: { ProjetoGUID: string; nome: string }[];
   provasCache: { ProvaAgendadaGUID: string; titulo: string }[];
   materiasCache: { MateriaGUID: string; TurmaGUID: string; nome: string }[];
+  /** Itens tipo "material" (conteúdo) do último board de ver_conteudos_materia — whitelist pra ver_detalhe_conteudo. */
+  conteudosCache: { ConteudoGUID: string; titulo: string }[];
   /** Arquivo recebido pelo WhatsApp aguardando ser consumido por uma ferramenta (ex.: enviar_atividade). */
   anexoPendente: { buffer: Buffer; mimetype: string; fileName: string } | null;
 }
@@ -373,6 +376,7 @@ export default class ChatbotService {
     projetosCache: [],
     provasCache: [],
     materiasCache: [],
+    conteudosCache: [],
     anexoPendente: null,
   });
 
@@ -559,6 +563,7 @@ export default class ChatbotService {
         sessao.projetosCache = [];
         sessao.provasCache = [];
         sessao.materiasCache = [];
+        sessao.conteudosCache = [];
 
         const resultado = await this.#identificarPorTelefone(sessao, sessao.telefoneCanal!);
         if (resultado.encontrado !== true || resultado.semVinculoAtivo === true) {
@@ -844,6 +849,23 @@ export default class ChatbotService {
         };
       };
 
+      handlers.ver_anexos_prova = async (args) => {
+        const provaGUID = String(args.provaGUID ?? "");
+        const alvo = sessao.provasCache.find((p) => p.ProvaAgendadaGUID === provaGUID);
+        if (!alvo) {
+          return { error: "ProvaAgendadaGUID não corresponde a nenhuma prova listada — chame consultar_provas primeiro" };
+        }
+
+        const anexos = await getProvaAgendadaService().buscarAnexos(provaGUID);
+        if (anexos.length === 0) {
+          return { prova: alvo.titulo, anexos: [], mensagem: "Essa prova não tem nenhum material de apoio anexado." };
+        }
+        return {
+          prova: alvo.titulo,
+          anexos: anexos.map((a) => ({ nome: a.AnexoNomeOriginal ?? "arquivo", url: a.AnexoCaminho })),
+        };
+      };
+
       handlers.consultar_pendencias = async (args) => {
         const incluirConcluidas = args.incluirConcluidas === true;
         // O service já faz o gate: quem não é Coord/Sec/Dir só vê as próprias.
@@ -905,18 +927,49 @@ export default class ChatbotService {
           }
 
           const board = await this.#categoriaConteudoService.buscarCategoriasCompletas(materiaGUID, alvo.TurmaGUID, usuarioGUID);
-          const mapItem = (i: any) => ({
-            tipo: this.#rotularTipoItem(i.Tipo),
-            titulo: i.Titulo,
-            estado: i.Estado,
-            nota: i.Nota ?? undefined,
-            percentual: i.Percentual ?? undefined,
-          });
+          sessao.conteudosCache = [];
+          const mapItem = (i: any) => {
+            const ehMaterial = String(i.Tipo).startsWith("conteudo");
+            if (ehMaterial) sessao.conteudosCache.push({ ConteudoGUID: i.ItemGUID, titulo: i.Titulo });
+            return {
+              tipo: this.#rotularTipoItem(i.Tipo),
+              titulo: i.Titulo,
+              estado: i.Estado,
+              nota: i.Nota ?? undefined,
+              percentual: i.Percentual ?? undefined,
+              // Só materiais (tipo "conteudo_*") têm detalhe navegável — ver_detalhe_conteudo.
+              // Tarefas/provas aqui são só visão geral; use consultar_tarefas/consultar_provas pra agir nelas.
+              conteudoGUID: ehMaterial ? i.ItemGUID : undefined,
+            };
+          };
 
           return {
             materia: alvo.nome,
             categorias: board.categorias.map((c) => ({ nome: c.CategoriaNome || "(sem nome)", itens: c.Itens.map(mapItem) })),
             semCategoria: board.itensSemCategoria.map(mapItem),
+          };
+        };
+
+        handlers.ver_detalhe_conteudo = async (args) => {
+          const conteudoGUID = String(args.conteudoGUID ?? "");
+          const alvo = sessao.conteudosCache.find((c) => c.ConteudoGUID === conteudoGUID);
+          if (!alvo) {
+            return { error: "conteudoGUID não corresponde a nenhum material listado — chame ver_conteudos_materia primeiro" };
+          }
+
+          const c = await this.#conteudoService.buscarConteudo(conteudoGUID);
+          return {
+            titulo: c.ConteudoTitulo,
+            tipo: c.ConteudoTipo,
+            descricao: c.ConteudoDescricao ?? undefined,
+            publicadoEm: c.ConteudoDataPublicacao,
+            texto: c.Texto?.ConteudoHtml ?? undefined,
+            video: c.Cronometrado
+              ? { url: c.Cronometrado.LinkUrl ?? c.Cronometrado.ArquivoUrl ?? undefined, duracaoSegundos: c.Cronometrado.DuracaoSegundos ?? undefined }
+              : undefined,
+            paginas: c.Paginado
+              ? c.Paginado.Arquivos.slice().sort((a, b) => a.Ordem - b.Ordem).map((a) => ({ ordem: a.Ordem, url: a.ArquivoUrl }))
+              : undefined,
           };
         };
 
@@ -994,13 +1047,13 @@ export default class ChatbotService {
             turma: t.TurmaNome ?? t.GrupoEletivoNome ?? undefined,
             prazo: t.TarefaPrazoData,
             tipoEntrega: t.TarefaTipoEntrega,
-            materiaisApoio: (t.AnexosDescricao ?? []).map((x) => ({ nome: x.AnexoNomeOriginal })),
+            materiaisApoio: (t.AnexosDescricao ?? []).map((x) => ({ nome: x.AnexoNomeOriginal, url: x.AnexoCaminho })),
             minhaEntrega: minha
               ? {
                   feito: minha.TarefaFeito,
                   nota: minha.TarefaNota ?? undefined,
                   avaliadaEm: minha.TarefaAvaliadoEm ?? undefined,
-                  anexosEnviados: (minha.AnexosEntrega ?? []).map((x: any) => ({ nome: x.AnexoNomeOriginal })),
+                  anexosEnviados: (minha.AnexosEntrega ?? []).map((x: any) => ({ nome: x.AnexoNomeOriginal, url: x.AnexoCaminho })),
                 }
               : undefined,
           };

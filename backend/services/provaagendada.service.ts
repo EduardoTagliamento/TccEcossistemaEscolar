@@ -21,6 +21,7 @@ import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
 import { getAuditoriaService } from "./auditoria.service";
 import { getProvaAgendadaRecomendacaoService } from "./provaagendadarecomendacao.service";
+import MysqlDatabase from "../database/MysqlDatabase";
 
 const DATA_VALIDACAO_TOLERANCIA_MS = 60 * 1000;
 
@@ -31,6 +32,13 @@ export interface TurmaResumoDTO {
   TurmaGUID: string;
   TurmaNome: string;
   TurmaSerie: string;
+}
+
+export interface ProvaAgendadaAnexoDTO {
+  AnexoGUID: string;
+  AnexoNomeOriginal: string | null;
+  AnexoCaminho: string;
+  AnexoTamanho: number | null;
 }
 
 export interface ProvaAgendadaDTO {
@@ -439,6 +447,23 @@ export default class ProvaAgendadaService {
     return this.toDTO(prova, atribuicoes);
   };
 
+  /**
+   * Materiais de apoio (anexos) vinculados à prova na criação — o lado de
+   * escrita já existia (ver #store, ProvaAgendadaDAO.vincularAnexo);
+   * faltava só expor de volta pra leitura (ex.: chatbot, tela de detalhe).
+   */
+  buscarAnexos = async (ProvaAgendadaGUID: string): Promise<ProvaAgendadaAnexoDTO[]> => {
+    console.log("🟣 ProvaAgendadaService.buscarAnexos()");
+
+    const rows = await this.#provaDAO.buscarAnexos(ProvaAgendadaGUID);
+    return rows.map((r) => ({
+      AnexoGUID: r.AnexoGUID,
+      AnexoNomeOriginal: r.AnexoNomeOriginal,
+      AnexoCaminho: r.AnexoCaminho,
+      AnexoTamanho: r.AnexoTamanho,
+    }));
+  };
+
   /** Usado só pelo guard de chave de API — ver ProvaAgendadaDAO.pertenceAEscola. */
   pertenceAEscola = async (ProvaAgendadaGUID: string, EscolaGUID: string): Promise<boolean> => {
     return this.#provaDAO.pertenceAEscola(ProvaAgendadaGUID, EscolaGUID);
@@ -695,4 +720,29 @@ export default class ProvaAgendadaService {
       UpdatedAt: prova.UpdatedAt ? prova.UpdatedAt.toISOString() : null,
     };
   };
+}
+
+let instanciaSingleton: ProvaAgendadaService | null = null;
+
+/** Singleton lazy — mesmo padrão de getProvaAgendadaRecomendacaoService/getAuditoriaService, pra consumidores (ex.: ChatbotService) que não têm essa DI já montada. */
+export function getProvaAgendadaService(): ProvaAgendadaService {
+  if (!instanciaSingleton) {
+    const database = MysqlDatabase.getInstance();
+    instanciaSingleton = new ProvaAgendadaService(
+      new ProvaAgendadaDAO(database),
+      new ProvaAgendadaTurmaDAO(database),
+      new AnexoDAO(database),
+      new TurmaDAO(database),
+      new MateriaDAO(database),
+      new CategoriaConteudoDAO(database),
+      new ProvaAgendadaVisualizacaoDAO(database),
+      new MatriculaDAO(database),
+      new MaterialProfessorTurmaDAO(database),
+      new ProvaAgendadaAssuntoDAO(database),
+      new AssuntoDAO(database),
+      new MaterialDidaticoCapituloDAO(database),
+      new UsuarioDAO(database)
+    );
+  }
+  return instanciaSingleton;
 }

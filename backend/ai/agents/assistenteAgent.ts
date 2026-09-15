@@ -71,8 +71,14 @@ const SYSTEM_INSTRUCTION = [
   "Toda ferramenta 'ver_detalhe_*' / 'ver_mensagens_*' / 'ver_recomendacao_*' exige um GUID que veio da",
   "ferramenta de listagem correspondente (consultar_conversas → ver_mensagens_conversa; consultar_tarefas →",
   "ver_detalhe_tarefa / marcar_tarefa_feita / enviar_atividade; consultar_avisos → ver_detalhe_aviso;",
-  "consultar_projetos → ver_detalhe_projeto; consultar_provas → ver_recomendacao_prova; consultar_materias",
-  "→ ver_conteudos_materia). Nunca invente um GUID; se não tiver, chame a listagem primeiro.",
+  "consultar_projetos → ver_detalhe_projeto; consultar_provas → ver_recomendacao_prova / ver_anexos_prova;",
+  "consultar_materias → ver_conteudos_materia → ver_detalhe_conteudo, só pra itens tipo 'material'). Nunca",
+  "invente um GUID; se não tiver, chame a listagem primeiro.",
+  "",
+  "Anexos pra ENVIAR ao usuário (diferente de receber arquivo dele, ver abaixo): ver_detalhe_tarefa,",
+  "ver_anexos_prova e ver_detalhe_conteudo trazem link direto de arquivo quando existir — se o usuário pedir",
+  "pra ver/baixar o material de apoio de uma tarefa, prova ou conteúdo, chame a ferramenta certa e mande o",
+  "link (nunca invente um link nem diga que não tem como mostrar anexo nesses três casos).",
   "",
   "Você RECEBE SIM arquivos (imagem/PDF) pelo WhatsApp — nunca diga que só aceita texto ou que não consegue",
   "receber/enviar arquivo/imagem; isso é falso e é um erro comum de assistente genérico, não vale pra você.",
@@ -168,13 +174,25 @@ const FERRAMENTAS: FunctionDeclaration[] = [
   {
     name: "ver_conteudos_materia",
     description:
-      "ALUNO vê tudo que o professor postou numa matéria — conteúdos/materiais, tarefas e provas, organizados por categoria, com o estado/nota do aluno em cada item. Exige um MateriaGUID vindo de consultar_materias.",
+      "ALUNO vê tudo que o professor postou numa matéria — conteúdos/materiais, tarefas e provas, organizados por categoria, com o estado/nota do aluno em cada item. Exige um MateriaGUID vindo de consultar_materias. Itens de material (tipo 'material') trazem um conteudoGUID — use ver_detalhe_conteudo pra abrir o conteúdo completo de um deles.",
     parameters: {
       type: Type.OBJECT,
       properties: {
         materiaGUID: { type: Type.STRING, description: "MateriaGUID — exatamente um dos valores de consultar_materias." },
       },
       required: ["materiaGUID"],
+    },
+  },
+  {
+    name: "ver_detalhe_conteudo",
+    description:
+      "ALUNO vê o conteúdo completo de um material de aula (descrição, texto, ou os links dos arquivos — vídeo/arquivo único, ou uma página por link se for material paginado, conforme o tipo). Exige um conteudoGUID vindo de ver_conteudos_materia — só funciona pra itens do tipo 'material', não tarefas nem provas. Se o usuário pedir pra ver/baixar o arquivo, mande o(s) link(s) na resposta.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        conteudoGUID: { type: Type.STRING, description: "conteudoGUID — exatamente um dos valores de ver_conteudos_materia." },
+      },
+      required: ["conteudoGUID"],
     },
   },
   {
@@ -348,7 +366,7 @@ const FERRAMENTAS: FunctionDeclaration[] = [
   {
     name: "ver_detalhe_tarefa",
     description:
-      "ALUNO vê o detalhe de uma tarefa: enunciado completo, materiais de apoio anexados, e o status/nota da própria entrega. Exige um TarefaGUID vindo de consultar_tarefas.",
+      "ALUNO vê o detalhe de uma tarefa: enunciado completo, materiais de apoio anexados (com link direto pro arquivo), e o status/nota/anexos da própria entrega. Exige um TarefaGUID vindo de consultar_tarefas. Se o usuário pedir pra ver/baixar um anexo, mande o link (campo 'url') na resposta.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -420,6 +438,18 @@ const FERRAMENTAS: FunctionDeclaration[] = [
     name: "ver_recomendacao_prova",
     description:
       "Mostra a recomendação de estudo gerada por IA para uma prova (resumo, vídeos, páginas de livro). Exige um ProvaAgendadaGUID vindo de consultar_provas.",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        provaGUID: { type: Type.STRING, description: "ProvaAgendadaGUID — exatamente um dos valores de consultar_provas." },
+      },
+      required: ["provaGUID"],
+    },
+  },
+  {
+    name: "ver_anexos_prova",
+    description:
+      "Lista os materiais de apoio (arquivos) que o professor anexou a uma prova, com link direto pra cada um. Exige um ProvaAgendadaGUID vindo de consultar_provas. Se não tiver nenhum anexo, diz isso claramente.",
     parameters: {
       type: Type.OBJECT,
       properties: {
