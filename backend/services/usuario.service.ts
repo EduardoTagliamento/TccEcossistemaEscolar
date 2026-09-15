@@ -59,6 +59,10 @@ export interface BatchCreateResponse {
 export default class UsuarioService {
   #usuarioDAO: UsuarioDAO;
   private readonly SALT_ROUNDS = 10;
+  /** Sentinela que aluno.api.ts manda em UsuarioSenha pra indicar "gere uma
+   * senha de verdade e avise por e-mail/WhatsApp" — qualquer outro valor é
+   * tratado como senha real definida pelo próprio usuário. */
+  private static readonly SENHA_PLACEHOLDER_ADMIN = "senha_temporaria_gerada_automaticamente";
 
   constructor(usuarioDAODependency: UsuarioDAO) {
     console.log("⬆️  UsuarioService.constructor()");
@@ -107,41 +111,48 @@ export default class UsuarioService {
       usuario.UsuarioDataNascimento = new Date(jsonUsuario.UsuarioDataNascimento as string);
     }
 
-    // Senha temporária SEMPRE gerada aqui, nunca confiada do cliente — o
-    // frontend manda um literal placeholder ('senha_temporaria_gerada_
-    // automaticamente', ver aluno.api.ts) esperando que o service substitua
-    // por uma senha de verdade, mas isso nunca foi implementado: a conta
-    // ficava com essa string literal como senha real, e ninguém era
-    // notificado (nem e-mail, nem WhatsApp) — bug real, não só da Maria.
-    const senhaTemporaria = gerarSenhaTemporaria(usuario.UsuarioNome);
-    const senhaHash = await bcrypt.hash(senhaTemporaria, this.SALT_ROUNDS);
+    // Duas origens chamam essa rota com sentidos opostos pra UsuarioSenha:
+    // cadastro feito por admin/coordenação (aluno.api.ts) manda o placeholder
+    // SENHA_PLACEHOLDER_ADMIN esperando que o service gere a senha de
+    // verdade e avise o usuário por e-mail/WhatsApp; auto-cadastro
+    // (app/cadastro/page.tsx) manda a senha real que a pessoa acabou de
+    // criar e confirmar, e espera que ELA seja usada. Gerar senha temporária
+    // sempre, ignorando o campo, sobrescrevia a senha do auto-cadastro sem
+    // avisar ninguém (a pessoa saía logada com uma senha que não escolheu).
+    const senhaRecebida = typeof jsonUsuario.UsuarioSenha === "string" ? jsonUsuario.UsuarioSenha : null;
+    const ehPlaceholderAdmin = !senhaRecebida || senhaRecebida === UsuarioService.SENHA_PLACEHOLDER_ADMIN;
+
+    const senhaTemporaria = ehPlaceholderAdmin ? gerarSenhaTemporaria(usuario.UsuarioNome) : undefined;
+    const senhaHash = await bcrypt.hash(senhaTemporaria ?? senhaRecebida!, this.SALT_ROUNDS);
     usuario.UsuarioSenha = senhaHash;
 
     await this.#usuarioDAO.create(usuario);
 
-    const linkLogin = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : "http://localhost:3000/login";
-    if (usuario.UsuarioEmail) {
-      EmailAlunoService.enviarEmailNovoAluno({
-        para: usuario.UsuarioEmail,
-        nomeAluno: usuario.UsuarioNome,
-        nomeEscola: escolaNome,
-        cpf: usuario.UsuarioCPF ?? "",
-        senhaTemporaria,
-        linkLogin,
-      }).catch((erro) => {
-        console.error("Erro ao enviar email de boas-vindas (criação individual):", erro);
-      });
-    }
-    if (usuario.UsuarioTelefone) {
-      WhatsappCredenciaisService.enviarCredenciaisNovoUsuario({
-        para: usuario.UsuarioTelefone,
-        nomeUsuario: usuario.UsuarioNome,
-        nomeEscola: escolaNome,
-        senhaTemporaria,
-        linkLogin,
-      }).catch((erro) => {
-        console.error("Erro ao enviar credenciais por WhatsApp (criação individual):", erro);
-      });
+    if (senhaTemporaria) {
+      const linkLogin = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : "http://localhost:3000/login";
+      if (usuario.UsuarioEmail) {
+        EmailAlunoService.enviarEmailNovoAluno({
+          para: usuario.UsuarioEmail,
+          nomeAluno: usuario.UsuarioNome,
+          nomeEscola: escolaNome,
+          cpf: usuario.UsuarioCPF ?? "",
+          senhaTemporaria,
+          linkLogin,
+        }).catch((erro) => {
+          console.error("Erro ao enviar email de boas-vindas (criação individual):", erro);
+        });
+      }
+      if (usuario.UsuarioTelefone) {
+        WhatsappCredenciaisService.enviarCredenciaisNovoUsuario({
+          para: usuario.UsuarioTelefone,
+          nomeUsuario: usuario.UsuarioNome,
+          nomeEscola: escolaNome,
+          senhaTemporaria,
+          linkLogin,
+        }).catch((erro) => {
+          console.error("Erro ao enviar credenciais por WhatsApp (criação individual):", erro);
+        });
+      }
     }
 
     return { usuario: this.toDTO(usuario), senhaTemporaria };
