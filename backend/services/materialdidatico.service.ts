@@ -7,7 +7,6 @@ import { MaterialDidaticoPaginaDAO } from "../repositories/materialdidaticopagin
 import { MaterialDidaticoCapituloDAO } from "../repositories/materialdidaticocapitulo.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
-import { UsuarioDAO } from "../repositories/usuario.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import R2StorageService from "./r2storage.service";
 import { getExtracaoPaginaAgent } from "../ai/agents/extracaoPaginaAgent";
@@ -31,15 +30,13 @@ export default class MaterialDidaticoService {
   #capituloDAO: MaterialDidaticoCapituloDAO;
   #materiaDAO: MateriaDAO;
   #escolaxUsuarioxFuncaoDAO: EscolaxUsuarioxFuncaoDAO;
-  #usuarioDAO: UsuarioDAO;
 
   constructor(
     materialDAODependency: MaterialDidaticoDAO,
     paginaDAODependency: MaterialDidaticoPaginaDAO,
     capituloDAODependency: MaterialDidaticoCapituloDAO,
     materiaDAODependency: MateriaDAO,
-    escolaxUsuarioxFuncaoDAODependency: EscolaxUsuarioxFuncaoDAO,
-    usuarioDAODependency: UsuarioDAO
+    escolaxUsuarioxFuncaoDAODependency: EscolaxUsuarioxFuncaoDAO
   ) {
     console.log("⬆️  MaterialDidaticoService.constructor()");
     this.#materialDAO = materialDAODependency;
@@ -47,16 +44,7 @@ export default class MaterialDidaticoService {
     this.#capituloDAO = capituloDAODependency;
     this.#materiaDAO = materiaDAODependency;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAODependency;
-    this.#usuarioDAO = usuarioDAODependency;
   }
-
-  #resolverCPFAtor = async (usuarioGUID: string): Promise<string> => {
-    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
-    if (!usuario?.UsuarioCPF) {
-      throw new ErrorResponse(403, "Usuário sem CPF cadastrado");
-    }
-    return usuario.UsuarioCPF;
-  };
 
   /** Cadastro do livro é fluxo de Direção/Coordenação (não passa pela tela de Matérias, que eles não acessam). */
   #validarPermissaoEscrita = async (escolaGUID: string, usuarioGUID: string): Promise<void> => {
@@ -80,7 +68,7 @@ export default class MaterialDidaticoService {
     material.MaterialDidaticoGUID = gerarGUID();
     material.EscolaGUID = escolaGUID;
     material.Titulo = titulo;
-    material.CriadoPorGUID = await this.#resolverCPFAtor(usuarioGUID);
+    material.CriadoPorGUID = usuarioGUID;
 
     await this.#materialDAO.create(material);
     return material;
@@ -208,8 +196,7 @@ export default class MaterialDidaticoService {
       });
     }
 
-    const usuarioCPF = await this.#resolverCPFAtor(usuarioGUID);
-    await this.#paginaDAO.revisar(paginaGUID, usuarioCPF, textoRevisado.trim());
+    await this.#paginaDAO.revisar(paginaGUID, usuarioGUID, textoRevisado.trim());
   };
 
   /**

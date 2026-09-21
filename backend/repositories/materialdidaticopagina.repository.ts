@@ -8,7 +8,7 @@ interface MaterialDidaticoPaginaRow {
   ArquivoUrl: string;
   TextoExtraido: string | null;
   StatusExtracao: MaterialDidaticoPaginaStatus;
-  RevisadoPorCPF: string | null;
+  RevisadoPorGUID: string | null;
   RevisadoEm: Date | null;
   ExtraidoEm: Date | null;
 }
@@ -58,7 +58,7 @@ export class MaterialDidaticoPaginaDAO {
     return this.mapRows(rows as MaterialDidaticoPaginaRow[]);
   };
 
-  /** Faixa de páginas de um capítulo, já revisadas (RevisadoPorCPF preenchido) — únicas que "valem" pra grounding (spec item 10). */
+  /** Faixa de páginas de um capítulo, já revisadas (RevisadoPorGUID preenchido) — únicas que "valem" pra grounding (spec item 10). */
   findRevisadasNaFaixa = async (
     materialDidaticoGUID: string,
     paginaInicio: number,
@@ -68,7 +68,7 @@ export class MaterialDidaticoPaginaDAO {
 
     const SQL = `
       SELECT * FROM materialdidaticopagina
-      WHERE MaterialDidaticoGUID = ? AND NumeroPagina BETWEEN ? AND ? AND RevisadoPorCPF IS NOT NULL
+      WHERE MaterialDidaticoGUID = ? AND NumeroPagina BETWEEN ? AND ? AND RevisadoPorGUID IS NOT NULL
       ORDER BY NumeroPagina ASC
     `;
     const pool = await this.#database.getPool();
@@ -93,16 +93,16 @@ export class MaterialDidaticoPaginaDAO {
   };
 
   /** Revisão humana obrigatória (spec item 10) — só depois disso o texto "vale" oficialmente. */
-  revisar = async (guid: string, revisadoPorCPF: string, textoRevisado: string): Promise<void> => {
+  revisar = async (guid: string, revisadoPorGUID: string, textoRevisado: string): Promise<void> => {
     console.log("🟢 MaterialDidaticoPaginaDAO.revisar()");
 
     const SQL = `
       UPDATE materialdidaticopagina
-      SET TextoExtraido = ?, RevisadoPorCPF = ?, RevisadoEm = CURRENT_TIMESTAMP
+      SET TextoExtraido = ?, RevisadoPorGUID = ?, RevisadoEm = CURRENT_TIMESTAMP
       WHERE MaterialDidaticoPaginaGUID = ?
     `;
     const pool = await this.#database.getPool();
-    await pool.execute(SQL, [textoRevisado, revisadoPorCPF, guid]);
+    await pool.execute(SQL, [textoRevisado, revisadoPorGUID, guid]);
   };
 
   private mapRows(rows: MaterialDidaticoPaginaRow[]): MaterialDidaticoPagina[] {
@@ -114,7 +114,7 @@ export class MaterialDidaticoPaginaDAO {
       pagina.ArquivoUrl = row.ArquivoUrl;
       pagina.TextoExtraido = row.TextoExtraido;
       pagina.StatusExtracao = row.StatusExtracao;
-      pagina.RevisadoPorCPF = row.RevisadoPorCPF;
+      pagina.RevisadoPorGUID = row.RevisadoPorGUID;
       pagina.RevisadoEm = row.RevisadoEm ? new Date(row.RevisadoEm) : null;
       pagina.ExtraidoEm = row.ExtraidoEm ? new Date(row.ExtraidoEm) : null;
       return pagina;

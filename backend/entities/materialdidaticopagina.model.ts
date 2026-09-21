@@ -13,7 +13,10 @@ export default class MaterialDidaticoPagina {
   #ArquivoUrl!: string;
   #TextoExtraido: string | null = null;
   #StatusExtracao: MaterialDidaticoPaginaStatus = "Pendente";
-  #RevisadoPorCPF: string | null = null;
+  // Coluna real em produção é `RevisadoPorGUID` (char(12), tamanho de
+  // UsuarioGUID) — guarda o GUID de quem revisou, não o CPF (mesmo mismatch
+  // de nome já corrigido em MaterialDidatico.CriadoPorGUID).
+  #RevisadoPorGUID: string | null = null;
   #RevisadoEm: Date | null = null;
   #ExtraidoEm: Date | null = null;
 
@@ -81,12 +84,12 @@ export default class MaterialDidaticoPagina {
     this.#StatusExtracao = value;
   }
 
-  get RevisadoPorCPF(): string | null {
-    return this.#RevisadoPorCPF;
+  get RevisadoPorGUID(): string | null {
+    return this.#RevisadoPorGUID;
   }
 
-  set RevisadoPorCPF(value: string | null) {
-    this.#RevisadoPorCPF = value && value.trim() ? value.trim() : null;
+  set RevisadoPorGUID(value: string | null) {
+    this.#RevisadoPorGUID = value && value.trim() ? value.trim() : null;
   }
 
   get RevisadoEm(): Date | null {
