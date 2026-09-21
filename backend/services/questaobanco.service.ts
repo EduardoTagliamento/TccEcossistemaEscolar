@@ -3,10 +3,13 @@ import MysqlDatabase from "../database/MysqlDatabase";
 import QuestaoBanco, { QuestaoBancoDificuldade } from "../entities/questaobanco.model";
 import QuestaoBancoAlternativa from "../entities/questaobancoalternativa.model";
 import Vestibular from "../entities/vestibular.model";
+import Anexo from "../entities/anexo.model";
 import { QuestaoBancoDAO, QuestaoBancoFiltros } from "../repositories/questaobanco.repository";
 import { QuestaoBancoAlternativaDAO } from "../repositories/questaobancoalternativa.repository";
 import { VestibularDAO } from "../repositories/vestibular.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
+import { RelacaoAnexosDAO } from "../repositories/relacaoanexos.repository";
+import { AnexoDAO } from "../repositories/anexo.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 
 export interface AlternativaDTO {
@@ -14,6 +17,7 @@ export interface AlternativaDTO {
   AlternativaTexto: string;
   AlternativaCorreta: boolean;
   AlternativaOrdem: number;
+  Anexos: Anexo[];
 }
 
 export interface QuestaoBancoDTO {
@@ -25,6 +29,7 @@ export interface QuestaoBancoDTO {
   Enunciado: string;
   VideoResolucaoUrl: string | null;
   Alternativas: AlternativaDTO[];
+  Anexos: Anexo[];
   CreatedAt: string | null;
 }
 
@@ -35,7 +40,9 @@ export interface QuestaoBancoCreateDTO {
   Dificuldade: QuestaoBancoDificuldade;
   Enunciado: string;
   VideoResolucaoUrl?: string | null;
-  Alternativas: { Texto: string; Correta: boolean }[];
+  Alternativas: { Texto: string; Correta: boolean; AnexoGUIDs?: string[] }[];
+  /** Imagem(ns) do enunciado — ex.: gráfico/mapa/tirinha de uma questão de vestibular. */
+  AnexoGUIDs?: string[];
 }
 
 /**
@@ -48,18 +55,24 @@ export default class QuestaoBancoService {
   #alternativaDAO: QuestaoBancoAlternativaDAO;
   #vestibularDAO: VestibularDAO;
   #usuarioDAO: UsuarioDAO;
+  #relacaoAnexosDAO: RelacaoAnexosDAO;
+  #anexoDAO: AnexoDAO;
 
   constructor(
     questaoDAODependency: QuestaoBancoDAO,
     alternativaDAODependency: QuestaoBancoAlternativaDAO,
     vestibularDAODependency: VestibularDAO,
-    usuarioDAODependency: UsuarioDAO
+    usuarioDAODependency: UsuarioDAO,
+    relacaoAnexosDAODependency: RelacaoAnexosDAO,
+    anexoDAODependency: AnexoDAO
   ) {
     console.log("⬆️  QuestaoBancoService.constructor()");
     this.#questaoDAO = questaoDAODependency;
     this.#alternativaDAO = alternativaDAODependency;
     this.#vestibularDAO = vestibularDAODependency;
     this.#usuarioDAO = usuarioDAODependency;
+    this.#relacaoAnexosDAO = relacaoAnexosDAODependency;
+    this.#anexoDAO = anexoDAODependency;
   }
 
   criarQuestao = async (data: QuestaoBancoCreateDTO, usuarioGUID: string): Promise<QuestaoBancoDTO> => {
@@ -100,7 +113,39 @@ export default class QuestaoBancoService {
     });
     await this.#alternativaDAO.createBatch(alternativas);
 
-    return this.toDTO(questao, alternativas);
+    // Anexo já foi enviado antes via POST /api/anexo (mesmo limite de
+    // mimetype/tamanho de qualquer outro anexo do sistema) — aqui só vincula
+    // o(s) AnexoGUID(s) já existente(s), mesma regra de posse usada em
+    // SugestaoService.criarSugestao: só dá pra anexar arquivo que você mesmo
+    // enviou. Imagem pode ir no enunciado, em cada alternativa, ou nos dois.
+    await this.vincularAnexos(data.AnexoGUIDs, usuarioGUID, (anexoGUID) =>
+      this.#relacaoAnexosDAO.vincularAnexoQuestaoBanco(anexoGUID, questao.QuestaoBancoGUID)
+    );
+    for (let i = 0; i < data.Alternativas.length; i++) {
+      await this.vincularAnexos(data.Alternativas[i].AnexoGUIDs, usuarioGUID, (anexoGUID) =>
+        this.#relacaoAnexosDAO.vincularAnexoQuestaoBancoAlternativa(anexoGUID, alternativas[i].AlternativaGUID)
+      );
+    }
+
+    return this.toDTO(questao, alternativas, [], alternativas.map(() => []));
+  };
+
+  private vincularAnexos = async (
+    anexoGUIDs: string[] | undefined,
+    usuarioGUID: string,
+    vincular: (anexoGUID: string) => Promise<void>
+  ): Promise<void> => {
+    if (!anexoGUIDs || anexoGUIDs.length === 0) return;
+    for (const anexoGUID of anexoGUIDs) {
+      const anexo = await this.#anexoDAO.findById(anexoGUID);
+      if (!anexo) {
+        throw new ErrorResponse(404, `Anexo ${anexoGUID} não encontrado`);
+      }
+      if (anexo.UsuarioGUID !== usuarioGUID) {
+        throw new ErrorResponse(403, "Você só pode anexar arquivos que você mesmo enviou");
+      }
+      await vincular(anexoGUID);
+    }
   };
 
   listarQuestoes = async (filtros: QuestaoBancoFiltros): Promise<QuestaoBancoDTO[]> => {
@@ -110,7 +155,11 @@ export default class QuestaoBancoService {
     return Promise.all(
       questoes.map(async (questao) => {
         const alternativas = await this.#alternativaDAO.findByQuestao(questao.QuestaoBancoGUID);
-        return this.toDTO(questao, alternativas);
+        const anexosQuestao = await this.#relacaoAnexosDAO.findAnexosByQuestaoBanco(questao.QuestaoBancoGUID);
+        const anexosAlternativas = await Promise.all(
+          alternativas.map((a) => this.#relacaoAnexosDAO.findAnexosByQuestaoBancoAlternativa(a.AlternativaGUID))
+        );
+        return this.toDTO(questao, alternativas, anexosQuestao, anexosAlternativas);
       })
     );
   };
@@ -144,7 +193,12 @@ export default class QuestaoBancoService {
     return vestibular;
   };
 
-  private toDTO(questao: QuestaoBanco, alternativas: QuestaoBancoAlternativa[]): QuestaoBancoDTO {
+  private toDTO(
+    questao: QuestaoBanco,
+    alternativas: QuestaoBancoAlternativa[],
+    anexosQuestao: Anexo[] = [],
+    anexosAlternativas: Anexo[][] = []
+  ): QuestaoBancoDTO {
     return {
       QuestaoBancoGUID: questao.QuestaoBancoGUID,
       MateriaGlobalGUID: questao.MateriaGlobalGUID,
@@ -153,12 +207,14 @@ export default class QuestaoBancoService {
       Dificuldade: questao.Dificuldade,
       Enunciado: questao.Enunciado,
       VideoResolucaoUrl: questao.VideoResolucaoUrl,
-      Alternativas: alternativas.map((a) => ({
+      Alternativas: alternativas.map((a, indice) => ({
         AlternativaGUID: a.AlternativaGUID,
         AlternativaTexto: a.AlternativaTexto,
         AlternativaCorreta: a.AlternativaCorreta,
         AlternativaOrdem: a.AlternativaOrdem,
+        Anexos: anexosAlternativas[indice] ?? [],
       })),
+      Anexos: anexosQuestao,
       CreatedAt: questao.CreatedAt ? questao.CreatedAt.toISOString() : null,
     };
   }
@@ -178,7 +234,9 @@ export function getQuestaoBancoService(): QuestaoBancoService {
       new QuestaoBancoDAO(database),
       new QuestaoBancoAlternativaDAO(database),
       new VestibularDAO(database),
-      new UsuarioDAO(database)
+      new UsuarioDAO(database),
+      new RelacaoAnexosDAO(database),
+      new AnexoDAO(database)
     );
   }
   return instanciaSingleton;

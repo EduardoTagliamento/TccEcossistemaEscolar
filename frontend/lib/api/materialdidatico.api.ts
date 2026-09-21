@@ -18,7 +18,7 @@ export interface MaterialDidatico {
   MaterialDidaticoGUID: string;
   EscolaGUID: string;
   Titulo: string;
-  CriadoPorCPF: string;
+  CriadoPorGUID: string;
   CreatedAt: string | null;
 }
 

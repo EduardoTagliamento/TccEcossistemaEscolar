@@ -197,6 +197,49 @@ export class RelacaoAnexosDAO {
   }
 
   /**
+   * Vincular anexo ao enunciado de uma questão do banco (extração de vestibular
+   * com imagem — ver Peça 3 de F:\Area de Trabalho\ivros\SPEC_EXTRACAO_LIVROS_P4ED.md).
+   * Mesmo formato de vincularAnexoSugestao/vincularAnexoAviso.
+   */
+  async vincularAnexoQuestaoBanco(anexoGUID: string, questaoBancoGUID: string): Promise<void> {
+    console.log("🟢 RelacaoAnexosDAO.vincularAnexoQuestaoBanco()");
+
+    const relacaoGUID = gerarGUID();
+
+    const query = `
+      INSERT INTO relacaoanexosquestaobanco (
+        RelacaoAnexoQuestaoBancoGUID,
+        AnexoGUID,
+        QuestaoBancoGUID
+      ) VALUES (?, ?, ?)
+    `;
+
+    const pool = await this.#database.getPool();
+    await pool.execute<ResultSetHeader>(query, [relacaoGUID, anexoGUID, questaoBancoGUID]);
+  }
+
+  /**
+   * Vincular anexo a uma alternativa de questão do banco (mesma necessidade de
+   * imagem, mas GUID de recurso diferente — ver nota na migration proposta).
+   */
+  async vincularAnexoQuestaoBancoAlternativa(anexoGUID: string, alternativaGUID: string): Promise<void> {
+    console.log("🟢 RelacaoAnexosDAO.vincularAnexoQuestaoBancoAlternativa()");
+
+    const relacaoGUID = gerarGUID();
+
+    const query = `
+      INSERT INTO relacaoanexosquestaobancoalternativa (
+        RelacaoAnexoQuestaoBancoAlternativaGUID,
+        AnexoGUID,
+        AlternativaGUID
+      ) VALUES (?, ?, ?)
+    `;
+
+    const pool = await this.#database.getPool();
+    await pool.execute<ResultSetHeader>(query, [relacaoGUID, anexoGUID, alternativaGUID]);
+  }
+
+  /**
    * Buscar anexos de uma tarefa acadêmica
    */
   async findAnexosByTarefa(tarefaGUID: string): Promise<Anexo[]> {
@@ -359,9 +402,63 @@ export class RelacaoAnexosDAO {
   }
 
   /**
+   * Buscar anexos do enunciado de uma questão do banco.
+   */
+  async findAnexosByQuestaoBanco(questaoBancoGUID: string): Promise<Anexo[]> {
+    console.log("🟢 RelacaoAnexosDAO.findAnexosByQuestaoBanco()");
+
+    const query = `
+      SELECT
+        a.AnexoGUID,
+        a.UsuarioGUID,
+        a.EscolaGUID,
+        a.AnexoCaminho,
+        a.AnexoNomeOriginal,
+        a.AnexoTamanho,
+        a.CreatedAt
+      FROM anexo a
+      JOIN relacaoanexosquestaobanco ra ON ra.AnexoGUID = a.AnexoGUID
+      WHERE ra.QuestaoBancoGUID = ?
+      ORDER BY a.CreatedAt ASC
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [questaoBancoGUID]);
+
+    return (rows as any[]).map((row: any) => this.#mapRowToAnexo(row));
+  }
+
+  /**
+   * Buscar anexos de uma alternativa de questão do banco.
+   */
+  async findAnexosByQuestaoBancoAlternativa(alternativaGUID: string): Promise<Anexo[]> {
+    console.log("🟢 RelacaoAnexosDAO.findAnexosByQuestaoBancoAlternativa()");
+
+    const query = `
+      SELECT
+        a.AnexoGUID,
+        a.UsuarioGUID,
+        a.EscolaGUID,
+        a.AnexoCaminho,
+        a.AnexoNomeOriginal,
+        a.AnexoTamanho,
+        a.CreatedAt
+      FROM anexo a
+      JOIN relacaoanexosquestaobancoalternativa ra ON ra.AnexoGUID = a.AnexoGUID
+      WHERE ra.AlternativaGUID = ?
+      ORDER BY a.CreatedAt ASC
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(query, [alternativaGUID]);
+
+    return (rows as any[]).map((row: any) => this.#mapRowToAnexo(row));
+  }
+
+  /**
    * Remover vínculo entre anexo e recurso.
    * O GUID de vínculo é único globalmente (gerarGUID), mas pode estar em
-   * qualquer uma das 5 tabelas de recurso — tenta nas cinco.
+   * qualquer uma das 7 tabelas de recurso — tenta nas sete.
    */
   async delete(relacaoGUID: string): Promise<boolean> {
     console.log("🟢 RelacaoAnexosDAO.delete()");
@@ -412,8 +509,24 @@ export class RelacaoAnexosDAO {
       "DELETE FROM relacaoanexosgrupoprojeto WHERE RelacaoAnexoGrupoProjetoGUID = ?",
       [relacaoGUID]
     );
+    if (resultGrupoProjeto.affectedRows > 0) {
+      return true;
+    }
 
-    return resultGrupoProjeto.affectedRows > 0;
+    const [resultQuestaoBanco] = await pool.execute<ResultSetHeader>(
+      "DELETE FROM relacaoanexosquestaobanco WHERE RelacaoAnexoQuestaoBancoGUID = ?",
+      [relacaoGUID]
+    );
+    if (resultQuestaoBanco.affectedRows > 0) {
+      return true;
+    }
+
+    const [resultQuestaoBancoAlternativa] = await pool.execute<ResultSetHeader>(
+      "DELETE FROM relacaoanexosquestaobancoalternativa WHERE RelacaoAnexoQuestaoBancoAlternativaGUID = ?",
+      [relacaoGUID]
+    );
+
+    return resultQuestaoBancoAlternativa.affectedRows > 0;
   }
 
   /**

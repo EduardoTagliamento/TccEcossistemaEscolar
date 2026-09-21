@@ -5,7 +5,7 @@ interface MaterialDidaticoRow {
   MaterialDidaticoGUID: string;
   EscolaGUID: string;
   Titulo: string;
-  CriadoPorCPF: string;
+  CriadoPorGUID: string;
   CreatedAt: Date;
 }
 
@@ -20,9 +20,9 @@ export class MaterialDidaticoDAO {
   create = async (material: MaterialDidatico): Promise<void> => {
     console.log("🟢 MaterialDidaticoDAO.create()");
 
-    const SQL = `INSERT INTO materialdidatico (MaterialDidaticoGUID, EscolaGUID, Titulo, CriadoPorCPF) VALUES (?, ?, ?, ?)`;
+    const SQL = `INSERT INTO materialdidatico (MaterialDidaticoGUID, EscolaGUID, Titulo, CriadoPorGUID) VALUES (?, ?, ?, ?)`;
     const pool = await this.#database.getPool();
-    await pool.execute(SQL, [material.MaterialDidaticoGUID, material.EscolaGUID, material.Titulo, material.CriadoPorCPF]);
+    await pool.execute(SQL, [material.MaterialDidaticoGUID, material.EscolaGUID, material.Titulo, material.CriadoPorGUID]);
   };
 
   findById = async (guid: string): Promise<MaterialDidatico | null> => {
@@ -60,7 +60,7 @@ export class MaterialDidaticoDAO {
       material.MaterialDidaticoGUID = row.MaterialDidaticoGUID;
       material.EscolaGUID = row.EscolaGUID;
       material.Titulo = row.Titulo;
-      material.CriadoPorCPF = row.CriadoPorCPF;
+      material.CriadoPorGUID = row.CriadoPorGUID;
       material.CreatedAt = row.CreatedAt ? new Date(row.CreatedAt) : null;
       return material;
     });

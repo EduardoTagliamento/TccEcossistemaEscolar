@@ -80,7 +80,7 @@ export default class MaterialDidaticoService {
     material.MaterialDidaticoGUID = gerarGUID();
     material.EscolaGUID = escolaGUID;
     material.Titulo = titulo;
-    material.CriadoPorCPF = await this.#resolverCPFAtor(usuarioGUID);
+    material.CriadoPorGUID = await this.#resolverCPFAtor(usuarioGUID);
 
     await this.#materialDAO.create(material);
     return material;

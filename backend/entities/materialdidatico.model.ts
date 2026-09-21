@@ -8,7 +8,12 @@ export default class MaterialDidatico {
   #MaterialDidaticoGUID!: string;
   #EscolaGUID!: string;
   #Titulo!: string;
-  #CriadoPorCPF!: string;
+  // Nome de coluna real em produção é `CriadoPorGUID`, mas o valor é um CPF —
+  // `materialdidatico` foi deixada de fora da migração CPF->GUID do projeto
+  // (ver docs/concluidas/PROGRESSO_MIGRACAO_USUARIO_GUID.md); o nome da coluna
+  // ficou errado desde a criação da tabela e só foi descoberto agora porque
+  // essa rota nunca tinha sido exercitada de verdade em produção.
+  #CriadoPorGUID!: string;
   #CreatedAt: Date | null = null;
 
   constructor() {
@@ -51,15 +56,15 @@ export default class MaterialDidatico {
     this.#Titulo = value.trim();
   }
 
-  get CriadoPorCPF(): string {
-    return this.#CriadoPorCPF;
+  get CriadoPorGUID(): string {
+    return this.#CriadoPorGUID;
   }
 
-  set CriadoPorCPF(value: string) {
+  set CriadoPorGUID(value: string) {
     if (typeof value !== "string" || value.trim() === "") {
-      throw new Error("CriadoPorCPF deve ser uma string não vazia.");
+      throw new Error("CriadoPorGUID deve ser uma string não vazia.");
     }
-    this.#CriadoPorCPF = value.trim();
+    this.#CriadoPorGUID = value.trim();
   }
 
   get CreatedAt(): Date | null {

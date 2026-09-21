@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Banner Ecossistema Escolar</title>
+<style>
+  @page { size: 90cm 120cm; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 90cm;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
+  }
+  .page { width: 90cm; min-height: 120cm; padding: 2cm 2.2cm; }
+
+  .logos { display: flex; justify-content: space-between; align-items: flex-start; }
+  .logos img { height: 3cm; }
+
+  .title { text-align: center; font-size: 2.55cm; line-height: 1.15; font-weight: bold; margin: 0.8cm 0 0.45cm; }
+  .authors { text-align: center; font-size: 1.45cm; font-style: italic; font-weight: bold; margin: 0 0 0.4cm; }
+  .affiliation { text-align: center; font-size: 1.05cm; margin: 0 0 1.3cm; }
+
+  .columns { display: flex; gap: 2.2cm; align-items: flex-start; }
+  .col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .heading {
+    background: linear-gradient(to bottom, #2f5fa8, #1c3f73);
+    color: #fff; font-weight: bold; font-size: 1.6cm;
+    padding: 0.4cm 0.6cm; margin: 0 0 0.65cm;
+    text-shadow: 0.05cm 0.05cm 0.15cm rgba(255,255,255,0.85);
+  }
+  .body-text { font-size: 1.22cm; line-height: 1.48; text-align: justify; margin: 0 0 1.3cm; }
+  .body-text p { margin: 0 0 0.65cm; text-indent: 1.1cm; }
+  .body-text p:last-child { margin-bottom: 0; }
+
+  .figure { margin: 0 0 1.3cm; text-align: center; page-break-inside: avoid; }
+  .figure img { width: 100%; display: block; }
+  .figure .caption { font-size: 0.98cm; margin-bottom: 0.4cm; }
+  .figure .fonte { font-size: 0.92cm; margin-top: 0.4cm; }
+
+  .fig-row { display: flex; gap: 0.6cm; margin: 0 0 0.4cm; page-break-inside: avoid; }
+  .fig-row .figure { flex: 1; margin-bottom: 0; }
+  .fig-row-fonte { font-size: 0.92cm; text-align: center; margin: 0 0 1cm; }
+
+  .refs { font-size: 1cm; line-height: 1.42; }
+  .refs p { margin: 0 0 0.55cm; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="logos">
+    <img src="banner_html_assets/fve.jpeg" alt="FVE">
+    <img src="banner_html_assets/univap.png" alt="UniVap">
+  </div>
+
+  <div class="title">ECOSSISTEMA ESCOLAR: DESENVOLVIMENTO DE UMA PLATAFORMA DIGITAL PARA GESTÃO E COMUNICAÇÃO ACADÊMICA</div>
+  <div class="authors">Eduardo Tagliamento Barbosa, Henrique Cruz Dallatorre, Vithor Maximus Borges Queiroz, Alberson Wander Sá dos Santos, Hélio Lourenço Esperidião Ferreira.</div>
+  <div class="affiliation">Colégio Técnico Antônio Teixeira Fernandes, Fundação Valeparaibana de Ensino, Curso Técnico em Informática, Brasil, São José dos Campos, SP, 12245-020</div>
+
+  <div class="columns">
+    <div class="col">
+      <div class="heading">INTRODUÇÃO</div>
+      <div class="body-text">
+        <p>Instituições de ensino brasileiras costumam depender de múltiplos sistemas isolados para tarefas interdependentes, como diário de classe, comunicados aos responsáveis e controle de tarefas e provas. Essa fragmentação dificulta o acompanhamento integrado do desempenho e da rotina escolar.</p>
+        <p>Soluções já consolidadas, como Google Classroom e Moodle, cobrem parcialmente a organização de atividades, mas concentram-se pouco na comunicação institucional em tempo real e não oferecem apoio personalizado ao estudo.</p>
+        <p>O objetivo deste trabalho é apresentar o desenvolvimento do Ecossistema Escolar, uma plataforma digital que integra gestão acadêmica, comunicação institucional em tempo real e recursos de inteligência artificial generativa para apoio ao estudo.</p>
+      </div>
+
+      <div class="heading">METODOLOGIA</div>
+      <div class="body-text">
+        <p>O sistema foi desenvolvido em TypeScript, com back-end em Node.js seguindo o padrão MVC, e banco de dados relacional MySQL. A comunicação em tempo real utiliza WebSocket, e o envio de avisos é feito via Evolution API, integrada ao WhatsApp.</p>
+        <p>A segurança e a proteção de dados pessoais foram tratadas como parte da arquitetura: autenticação por JWT, senhas em hash (bcrypt), identificadores não sensíveis (GUID) em vez de CPF, e acesso escopado por escola e função, em diálogo com a LGPD (Lei nº 13.709/2018).</p>
+      </div>
+
+      <div class="heading">RESULTADOS</div>
+      <div class="body-text">
+        <p>O desenvolvimento resultou em um sistema funcional que centraliza calendário acadêmico, tarefas, provas, comunicação entre usuários e recomendações de estudo geradas por inteligência artificial (Google Gemini), a partir de conteúdo real cadastrado pelos professores. A validação foi conduzida por meio de testes funcionais manuais e testes de endpoints via Postman, cobrindo os principais fluxos de uso de cada perfil (aluno, professor, coordenação, direção e secretaria).</p>
+      </div>
+
+      <div class="fig-row">
+        <div class="figure">
+          <div class="caption">Figura 1 - Recomendação de estudo por IA.</div>
+          <img src="banner_html_assets/recomendacao.png" alt="Recomendação de estudo por IA">
+        </div>
+        <div class="figure">
+          <div class="caption">Figura 2 - Arquitetura dos agentes de inteligência artificial.</div>
+          <img src="banner_html_assets/agentesIA.png" alt="Arquitetura dos agentes de IA">
+        </div>
+      </div>
+      <div class="fig-row-fonte">Fonte: Autores (2026).</div>
+    </div>
+
+    <div class="col">
+      <div class="figure">
+        <div class="caption">Figura 3 - Arquitetura do servidor: banco de dados (tabelas de escola, usuário e função) e autenticação.</div>
+        <img src="banner_html_assets/arquitetura.png" alt="Arquitetura do servidor">
+        <div class="fonte">Fonte: Autores (2026).</div>
+      </div>
+
+      <div class="heading">DISCUSSÃO</div>
+      <div class="body-text">
+        <p>Em relação a soluções já consolidadas, como Google Classroom e Moodle, o Ecossistema Escolar se diferencia por centralizar comunicação instantânea, notificações via WhatsApp e apoio ao estudo por inteligência artificial em uma única plataforma.</p>
+        <p>Embora ainda não possua o mesmo grau de maturidade dessas plataformas, o sistema demonstrou potencial para atender necessidades específicas de instituições que hoje dependem de ferramentas isoladas para comunicação e organização acadêmica.</p>
+      </div>
+
+      <div class="heading">CONCLUSÕES</div>
+      <div class="body-text">
+        <p>O sistema desenvolvido atende ao problema de fragmentação identificado, integrando organização acadêmica, comunicação escolar e apoio aos estudos em um único ambiente digital. Como trabalhos futuros, recomenda-se a ampliação dos recursos de inteligência artificial e a realização de testes formais de desempenho e usabilidade com os usuários finais.</p>
+      </div>
+
+      <div class="heading">REFERÊNCIAS</div>
+      <div class="refs">
+        <p>BRASIL. Lei nº 13.709, de 14 de agosto de 2018. Lei Geral de Proteção de Dados Pessoais (LGPD). Diário Oficial da União: seção 1, Brasília, DF, 15 ago. 2018.</p>
+        <p>G1. Censo Escolar registra aumento na evasão escolar do Ensino Médio. Jornal Nacional, 22 fev. 2024.</p>
+        <p>MORAIS, Marcio. Diferenças entre IA Tradicional e IA Generativa (Preditiva). [20--].</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

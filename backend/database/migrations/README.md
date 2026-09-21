@@ -57,6 +57,24 @@ WHERE TABLE_NAME = 'escola'
 
 Se retornar resultado, a migration já foi executada.
 
+### ✅ 2026-09-20-questaobanco-anexo-imagem.sql
+**Status:** Pendente de execução
+**Descrição:** Cria `relacaoanexosquestaobanco` e `relacaoanexosquestaobancoalternativa` (suporte
+a imagem em questões do banco de vestibular, mesmo padrão de `relacaoanexosaviso`)
+**Necessário para:** Peça 3 da extração de livros P4ED (questões de vestibular com imagem —
+ver `F:\Area de Trabalho\ivros\SPEC_EXTRACAO_LIVROS_P4ED.md`)
+
+**O que faz:**
+- Cria as duas tabelas pivot + FKs pra `anexo`, `questaobanco` e `questaobancoalternativa`
+
+**Como verificar se já foi executado:**
+```sql
+SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_NAME IN ('relacaoanexosquestaobanco', 'relacaoanexosquestaobancoalternativa');
+```
+
+Se devolver as duas linhas, já foi executada.
+
 ## 🎯 Próximas Etapas
 
 Após executar a migration `add-escola-is-tecnica`, você estará pronto para:
