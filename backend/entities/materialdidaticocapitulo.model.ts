@@ -99,4 +99,18 @@ export default class MaterialDidaticoCapitulo {
       throw new Error("PaginaFim deve ser maior ou igual a PaginaInicio.");
     }
   }
+
+  // Ver nota em MaterialDidatico.toJSON() — mesmo motivo (campos privados +
+  // getters não são enumeráveis, JSON.stringify devolveria {} sem isto).
+  toJSON() {
+    return {
+      MaterialDidaticoCapituloGUID: this.MaterialDidaticoCapituloGUID,
+      MaterialDidaticoGUID: this.MaterialDidaticoGUID,
+      MateriaGUID: this.MateriaGUID,
+      Titulo: this.Titulo,
+      PaginaInicio: this.PaginaInicio,
+      PaginaFim: this.PaginaFim,
+      AssuntoGUID: this.AssuntoGUID,
+    };
+  }
 }

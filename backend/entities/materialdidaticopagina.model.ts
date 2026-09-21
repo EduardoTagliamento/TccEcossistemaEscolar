@@ -107,4 +107,20 @@ export default class MaterialDidaticoPagina {
   set ExtraidoEm(value: Date | null) {
     this.#ExtraidoEm = value ?? null;
   }
+
+  // Ver nota em MaterialDidatico.toJSON() — mesmo motivo (campos privados +
+  // getters não são enumeráveis, JSON.stringify devolveria {} sem isto).
+  toJSON() {
+    return {
+      MaterialDidaticoPaginaGUID: this.MaterialDidaticoPaginaGUID,
+      MaterialDidaticoGUID: this.MaterialDidaticoGUID,
+      NumeroPagina: this.NumeroPagina,
+      ArquivoUrl: this.ArquivoUrl,
+      TextoExtraido: this.TextoExtraido,
+      StatusExtracao: this.StatusExtracao,
+      RevisadoPorGUID: this.RevisadoPorGUID,
+      RevisadoEm: this.RevisadoEm,
+      ExtraidoEm: this.ExtraidoEm,
+    };
+  }
 }

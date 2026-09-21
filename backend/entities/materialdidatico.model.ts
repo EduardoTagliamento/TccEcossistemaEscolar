@@ -74,4 +74,18 @@ export default class MaterialDidatico {
   set CreatedAt(value: Date | null) {
     this.#CreatedAt = value ?? null;
   }
+
+  // Campos são privados (#field) com getters — sem isso, JSON.stringify(res.json())
+  // devolve {} pra essa classe, porque campos privados e getters de protótipo não
+  // são enumeráveis. Só foi descoberto agora porque essa rota nunca tinha sido
+  // exercitada de verdade em produção.
+  toJSON() {
+    return {
+      MaterialDidaticoGUID: this.MaterialDidaticoGUID,
+      EscolaGUID: this.EscolaGUID,
+      Titulo: this.Titulo,
+      CriadoPorGUID: this.CriadoPorGUID,
+      CreatedAt: this.CreatedAt,
+    };
+  }
 }
