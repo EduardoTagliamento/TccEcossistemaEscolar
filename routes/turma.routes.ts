@@ -1,9 +1,12 @@
 import { Router } from "express";
 import MysqlDatabase from "../backend/database/MysqlDatabase";
 import { TurmaController } from "../backend/controllers/turma.controller";
+import { TurmaGrupoWhatsappController } from "../backend/controllers/turmagrupowhatsapp.controller";
 import { TurmaMiddleware } from "../backend/middlewares/turma.middleware";
 import TurmaService from "../backend/services/turma.service";
+import TurmaGrupoWhatsappService from "../backend/services/turmagrupowhatsapp.service";
 import { TurmaDAO } from "../backend/repositories/turma.repository";
+import { TurmaGrupoWhatsappDAO } from "../backend/repositories/turmagrupowhatsapp.repository";
 import { EscolaDAO } from "../backend/repositories/escola.repository";
 import { CursoDAO } from "../backend/repositories/curso.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
@@ -19,11 +22,13 @@ import { uploadCapaMiddleware, handleMulterError } from "../backend/middlewares/
 export default class TurmaRoteador {
   #router: Router;
   #turmaController: TurmaController;
+  #turmaGrupoWhatsappController: TurmaGrupoWhatsappController;
 
-  constructor(turmaController: TurmaController) {
+  constructor(turmaController: TurmaController, turmaGrupoWhatsappController: TurmaGrupoWhatsappController) {
     console.log("⬆️  TurmaRoteador.constructor()");
     this.#router = Router();
     this.#turmaController = turmaController;
+    this.#turmaGrupoWhatsappController = turmaGrupoWhatsappController;
   }
 
   createRoutes = () => {
@@ -89,6 +94,44 @@ export default class TurmaRoteador {
       this.#turmaController.destroy
     );
 
+    // ===== Grupo de WhatsApp da turma (ver docs/spec-resumo-ia-prova-grupo-whatsapp.md, repo interceptacaoAVA) =====
+
+    // GET /api/turma/:guid/grupo-whatsapp — vínculo atual (ou null)
+    this.#router.get(
+      "/:guid/grupo-whatsapp",
+      TurmaMiddleware.validarGUID,
+      this.#turmaGrupoWhatsappController.show
+    );
+
+    // GET /api/turma/:guid/grupo-whatsapp/disponiveis — grupos já existentes pra vínculo manual
+    // DEVE VIR ANTES da rota POST genérica de vínculo, mesmo sendo GET (evita ambiguidade de leitura do código)
+    this.#router.get(
+      "/:guid/grupo-whatsapp/disponiveis",
+      TurmaMiddleware.validarGUID,
+      this.#turmaGrupoWhatsappController.listarDisponiveis
+    );
+
+    // POST /api/turma/:guid/grupo-whatsapp/criar-automatico — BAUÁ cria o grupo com os alunos já com telefone
+    this.#router.post(
+      "/:guid/grupo-whatsapp/criar-automatico",
+      TurmaMiddleware.validarGUID,
+      this.#turmaGrupoWhatsappController.criarAutomatico
+    );
+
+    // POST /api/turma/:guid/grupo-whatsapp — vincula manualmente um grupo já existente { jid }
+    this.#router.post(
+      "/:guid/grupo-whatsapp",
+      TurmaMiddleware.validarGUID,
+      this.#turmaGrupoWhatsappController.vincular
+    );
+
+    // DELETE /api/turma/:guid/grupo-whatsapp — desvincula (pré-requisito pra vincular outro)
+    this.#router.delete(
+      "/:guid/grupo-whatsapp",
+      TurmaMiddleware.validarGUID,
+      this.#turmaGrupoWhatsappController.desvincular
+    );
+
     return this.#router;
   };
 }
@@ -108,7 +151,19 @@ export const turmaRouterFactory = () => {
   );
   const turmaService = new TurmaService(turmaDAO, escolaDAO, cursoDAO, escolaxUsuarioxFuncaoDAO, usuarioDAO, conversaGrupoService);
   const turmaController = new TurmaController(turmaService);
-  const roteador = new TurmaRoteador(turmaController);
+
+  const turmaGrupoWhatsappDAO = new TurmaGrupoWhatsappDAO(database);
+  const turmaGrupoWhatsappService = new TurmaGrupoWhatsappService(
+    turmaGrupoWhatsappDAO,
+    turmaDAO,
+    usuarioDAO,
+    escolaxUsuarioxFuncaoDAO,
+    database,
+    conversaGrupoService
+  );
+  const turmaGrupoWhatsappController = new TurmaGrupoWhatsappController(turmaGrupoWhatsappService);
+
+  const roteador = new TurmaRoteador(turmaController, turmaGrupoWhatsappController);
 
   return roteador.createRoutes();
 };

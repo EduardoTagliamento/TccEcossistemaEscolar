@@ -25,6 +25,12 @@ interface SendTextResponse {
 
 type StatusEntrega = "DELIVERED" | "ERROR" | "UNKNOWN";
 
+export interface GrupoWhatsapp {
+  jid: string;
+  nome: string;
+  tamanho: number;
+}
+
 export class EvolutionApiService {
   private static instance: EvolutionApiService;
 
@@ -188,6 +194,132 @@ export class EvolutionApiService {
       console.error('⚠️ [EvolutionApiService] Falha ao verificar status de entrega:', erro?.message ?? erro);
       return 'UNKNOWN';
     }
+  }
+
+  /**
+   * Cria um grupo de WhatsApp com os participantes informados e retorna o
+   * JID do grupo criado (`...@g.us`). Usado pela criação automática de
+   * grupo por turma — ver docs/spec-resumo-ia-prova-grupo-whatsapp.md
+   * (repo interceptacaoAVA).
+   *
+   * @param nome - Nome/assunto do grupo (ex.: "3º A")
+   * @param telefones - DDI+DDD+número, só dígitos, um por participante
+   * @throws Error se a API falhar ou não retornar um JID
+   */
+  public async criarGrupo(nome: string, telefones: string[]): Promise<{ jid: string }> {
+    console.log(`📵 [EvolutionApiService] Criando grupo "${nome}" com ${telefones.length} participante(s)`);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.#baseUrl}/group/create/${this.#instanceName}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: this.#apiKey },
+        body: JSON.stringify({ subject: nome, participants: telefones }),
+      });
+    } catch (erro: any) {
+      throw new Error(`Falha ao criar grupo via Evolution API: ${erro?.message ?? erro}`);
+    }
+
+    const data: any = await response.json().catch(() => null);
+    if (!response.ok) {
+      const mensagemErro = data?.message ?? data?.response?.message ?? response.statusText;
+      throw new Error(`Evolution API não conseguiu criar o grupo: ${mensagemErro}`);
+    }
+
+    // A resposta varia por versão da Evolution API — tenta os formatos conhecidos.
+    const jid = data?.id ?? data?.groupJid ?? data?.group?.id ?? null;
+    if (!jid) {
+      throw new Error("Evolution API criou o grupo mas não retornou o JID (resposta em formato inesperado).");
+    }
+
+    console.log(`✅ [EvolutionApiService] Grupo criado: ${jid}`);
+    return { jid };
+  }
+
+  /**
+   * Lista todos os grupos em que a instância (o BAUÁ) está presente —
+   * usado no fallback de vínculo manual (buscar grupo já existente pra
+   * linkar a uma turma).
+   */
+  public async listarGrupos(): Promise<GrupoWhatsapp[]> {
+    console.log(`📵 [EvolutionApiService] Listando grupos da instância`);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.#baseUrl}/group/fetchAllGroups/${this.#instanceName}?getParticipants=false`, {
+        method: "GET",
+        headers: { apikey: this.#apiKey },
+      });
+    } catch (erro: any) {
+      throw new Error(`Falha ao listar grupos via Evolution API: ${erro?.message ?? erro}`);
+    }
+
+    const data: any = await response.json().catch(() => null);
+    if (!response.ok) {
+      const mensagemErro = data?.message ?? data?.response?.message ?? response.statusText;
+      throw new Error(`Evolution API não conseguiu listar os grupos: ${mensagemErro}`);
+    }
+
+    const grupos = Array.isArray(data) ? data : [];
+    return grupos.map((g: any) => ({
+      jid: g.id,
+      nome: g.subject ?? "",
+      tamanho: g.size ?? 0,
+    }));
+  }
+
+  /**
+   * Adiciona ou remove participantes de um grupo já existente — usado pra
+   * sincronizar membro (aluno entrou na turma, ou teve o telefone cadastrado
+   * depois de já estar matriculado) e pra remover quem saiu/foi transferido.
+   * Nunca lança se a Evolution API responder com sucesso mesmo que algum
+   * participante individual já estivesse no estado desejado (idempotente
+   * do lado da própria API).
+   *
+   * @param grupoJID - JID do grupo (`...@g.us`)
+   * @param telefones - DDI+DDD+número, só dígitos, um por participante
+   * @param acao - "add" ou "remove"
+   */
+  public async atualizarParticipantesGrupo(
+    grupoJID: string,
+    telefones: string[],
+    acao: "add" | "remove"
+  ): Promise<void> {
+    if (telefones.length === 0) return;
+
+    console.log(
+      `📵 [EvolutionApiService] ${acao === "add" ? "Adicionando" : "Removendo"} ${telefones.length} participante(s) no grupo ${grupoJID}`
+    );
+
+    let response: Response;
+    try {
+      response = await fetch(
+        `${this.#baseUrl}/group/updateParticipant/${this.#instanceName}?groupJid=${encodeURIComponent(grupoJID)}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", apikey: this.#apiKey },
+          body: JSON.stringify({ action: acao, participants: telefones }),
+        }
+      );
+    } catch (erro: any) {
+      throw new Error(`Falha ao atualizar participantes do grupo via Evolution API: ${erro?.message ?? erro}`);
+    }
+
+    const data: any = await response.json().catch(() => null);
+    if (!response.ok) {
+      const mensagemErro = data?.message ?? data?.response?.message ?? response.statusText;
+      throw new Error(`Evolution API não conseguiu atualizar participantes do grupo: ${mensagemErro}`);
+    }
+  }
+
+  /** Adiciona um único participante — atalho de `atualizarParticipantesGrupo`. */
+  public async adicionarParticipante(grupoJID: string, telefone: string): Promise<void> {
+    await this.atualizarParticipantesGrupo(grupoJID, [telefone], "add");
+  }
+
+  /** Remove um único participante — atalho de `atualizarParticipantesGrupo`. */
+  public async removerParticipante(grupoJID: string, telefone: string): Promise<void> {
+    await this.atualizarParticipantesGrupo(grupoJID, [telefone], "remove");
   }
 
   /**

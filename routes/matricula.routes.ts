@@ -14,6 +14,8 @@ import { ConversaDAO } from "../backend/repositories/conversa.repository";
 import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
 import { TarefaAcademicaDAO } from "../backend/repositories/tarefaacademica.repository";
 import { TarefaAcademicaMatriculaDAO } from "../backend/repositories/tarefaacademica-matricula.repository";
+import TurmaGrupoWhatsappService from "../backend/services/turmagrupowhatsapp.service";
+import { TurmaGrupoWhatsappDAO } from "../backend/repositories/turmagrupowhatsapp.repository";
 
 /**
  * Factory para criar router de Matrícula com dependências injetadas
@@ -44,6 +46,14 @@ export function matriculaRouterFactory(): Router {
   );
   const tarefaDAO = new TarefaAcademicaDAO(database);
   const tarefaMatriculaDAO = new TarefaAcademicaMatriculaDAO(database);
+  const turmaGrupoWhatsappService = new TurmaGrupoWhatsappService(
+    new TurmaGrupoWhatsappDAO(database),
+    turmaDAO,
+    usuarioDAO,
+    escolaxUsuarioxFuncaoDAO,
+    database,
+    conversaGrupoService
+  );
   const matriculaService = new MatriculaService(
     matriculaDAO,
     turmaDAO,
@@ -52,7 +62,8 @@ export function matriculaRouterFactory(): Router {
     database,
     conversaGrupoService,
     tarefaDAO,
-    tarefaMatriculaDAO
+    tarefaMatriculaDAO,
+    turmaGrupoWhatsappService
   );
 
   const matriculaController = new MatriculaController(matriculaService);

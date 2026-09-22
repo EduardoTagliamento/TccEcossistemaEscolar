@@ -13,6 +13,7 @@ import { getAuditoriaService } from "./auditoria.service";
 import { TarefaAcademicaDAO } from "../repositories/tarefaacademica.repository";
 import { TarefaAcademicaMatriculaDAO } from "../repositories/tarefaacademica-matricula.repository";
 import TarefaAcademicaMatricula from "../entities/tarefaacademica-matricula.model";
+import TurmaGrupoWhatsappService from "./turmagrupowhatsapp.service";
 
 /**
  * DTOs para transferência de dados
@@ -94,6 +95,7 @@ export default class MatriculaService {
   #conversaGrupoService?: ConversaGrupoService;
   #tarefaDAO?: TarefaAcademicaDAO;
   #tarefaMatriculaDAO?: TarefaAcademicaMatriculaDAO;
+  #turmaGrupoWhatsappService?: TurmaGrupoWhatsappService;
 
   constructor(
     matriculaDAO: MatriculaDAO,
@@ -103,7 +105,8 @@ export default class MatriculaService {
     database: MysqlDatabase,
     conversaGrupoService?: ConversaGrupoService,
     tarefaDAO?: TarefaAcademicaDAO,
-    tarefaMatriculaDAO?: TarefaAcademicaMatriculaDAO
+    tarefaMatriculaDAO?: TarefaAcademicaMatriculaDAO,
+    turmaGrupoWhatsappService?: TurmaGrupoWhatsappService
   ) {
     this.#matriculaDAO = matriculaDAO;
     this.#turmaDAO = turmaDAO;
@@ -113,6 +116,7 @@ export default class MatriculaService {
     this.#conversaGrupoService = conversaGrupoService;
     this.#tarefaDAO = tarefaDAO;
     this.#tarefaMatriculaDAO = tarefaMatriculaDAO;
+    this.#turmaGrupoWhatsappService = turmaGrupoWhatsappService;
   }
 
   /**
@@ -251,6 +255,13 @@ export default class MatriculaService {
         matriculaCriada.TurmaGUID!,
         usuario.UsuarioGUID
       );
+    }
+
+    // 8.0.1 Adicionar ao grupo de WhatsApp da turma, se houver um vinculado
+    // e o aluno já tiver telefone (sem telefone, entra depois via
+    // sincronizarMembroPorTelefonePreenchido — ver UsuarioService.updateUsuario).
+    if (this.#turmaGrupoWhatsappService) {
+      await this.#turmaGrupoWhatsappService.sincronizarMembro(matriculaCriada.TurmaGUID!, usuario.UsuarioGUID, "adicionar");
     }
 
     // 8.1 Atribuir tarefas individuais já existentes na turma (com prazo
@@ -423,6 +434,12 @@ export default class MatriculaService {
         await this.#conversaGrupoService.adicionarMembroTurma(turmaDestino.TurmaGUID, aluno.UsuarioGUID);
       }
 
+      // Mesma coisa pro grupo de WhatsApp: sai do grupo da turma de origem, entra no de destino.
+      if (this.#turmaGrupoWhatsappService) {
+        await this.#turmaGrupoWhatsappService.sincronizarMembro(turmaOrigem.TurmaGUID, aluno.UsuarioGUID, "remover");
+        await this.#turmaGrupoWhatsappService.sincronizarMembro(turmaDestino.TurmaGUID, aluno.UsuarioGUID, "adicionar");
+      }
+
       // Atribuir tarefas individuais já existentes na turma de destino —
       // mesmo motivo do fluxo individual (ver criarMatricula).
       await this.#atribuirTarefasExistentes(novaMatricula.MatriculaGUID, turmaDestino.TurmaGUID);
@@ -577,14 +594,20 @@ export default class MatriculaService {
 
     // 5. Remover do grupo de conversa se saiu da turma
     const statusSaida: MatriculaDTO['MatriculaStatus'][] = ['Transferida', 'Cancelada', 'Concluida'];
-    if (
-      this.#conversaGrupoService &&
-      data.MatriculaStatus &&
-      statusSaida.includes(data.MatriculaStatus)
-    ) {
+    const saiuDaTurma = !!(data.MatriculaStatus && statusSaida.includes(data.MatriculaStatus));
+    if (this.#conversaGrupoService && saiuDaTurma) {
       await this.#conversaGrupoService.removerMembroTurma(
         matriculaAtualizada.TurmaGUID!,
         matriculaAtualizada.UsuarioGUID
+      );
+    }
+
+    // 5.1 Mesma coisa pro grupo de WhatsApp da turma.
+    if (this.#turmaGrupoWhatsappService && saiuDaTurma) {
+      await this.#turmaGrupoWhatsappService.sincronizarMembro(
+        matriculaAtualizada.TurmaGUID!,
+        matriculaAtualizada.UsuarioGUID,
+        "remover"
       );
     }
 
@@ -723,6 +746,11 @@ export default class MatriculaService {
         matricula.TurmaGUID!,
         matricula.UsuarioGUID
       );
+    }
+
+    // 5.1 Mesma coisa pro grupo de WhatsApp da turma.
+    if (this.#turmaGrupoWhatsappService) {
+      await this.#turmaGrupoWhatsappService.sincronizarMembro(matricula.TurmaGUID!, matricula.UsuarioGUID, "remover");
     }
 
     void getAuditoriaService().registrar({
@@ -1017,6 +1045,12 @@ export default class MatriculaService {
         // individual (ver criarMatricula); em massa nunca fazia isso.
         if (this.#conversaGrupoService) {
           await this.#conversaGrupoService.adicionarMembroTurma(turmaGUID, aluno.UsuarioGUID);
+        }
+
+        // Mesma coisa pro grupo de WhatsApp — quem não tem telefone ainda
+        // entra depois, via sincronizarMembroPorTelefonePreenchido.
+        if (this.#turmaGrupoWhatsappService) {
+          await this.#turmaGrupoWhatsappService.sincronizarMembro(turmaGUID, aluno.UsuarioGUID, "adicionar");
         }
 
         // Atribuir tarefas individuais já existentes na turma — mesmo motivo

@@ -7,6 +7,7 @@ import { gerarGUIDUsuario } from "../utils/helpers/guid.helper";
 import { normalizarTelefone } from "../utils/helpers/telefone.helper";
 import { EmailAlunoService } from "./email-aluno.service";
 import { WhatsappCredenciaisService } from "./whatsapp-credenciais.service";
+import TurmaGrupoWhatsappService from "./turmagrupowhatsapp.service";
 
 export interface UsuarioDTO {
   UsuarioGUID: string;
@@ -58,15 +59,17 @@ export interface BatchCreateResponse {
 
 export default class UsuarioService {
   #usuarioDAO: UsuarioDAO;
+  #turmaGrupoWhatsappService?: TurmaGrupoWhatsappService;
   private readonly SALT_ROUNDS = 10;
   /** Sentinela que aluno.api.ts manda em UsuarioSenha pra indicar "gere uma
    * senha de verdade e avise por e-mail/WhatsApp" — qualquer outro valor é
    * tratado como senha real definida pelo próprio usuário. */
   private static readonly SENHA_PLACEHOLDER_ADMIN = "senha_temporaria_gerada_automaticamente";
 
-  constructor(usuarioDAODependency: UsuarioDAO) {
+  constructor(usuarioDAODependency: UsuarioDAO, turmaGrupoWhatsappService?: TurmaGrupoWhatsappService) {
     console.log("⬆️  UsuarioService.constructor()");
     this.#usuarioDAO = usuarioDAODependency;
+    this.#turmaGrupoWhatsappService = turmaGrupoWhatsappService;
   }
 
   createUsuario = async (
@@ -255,6 +258,11 @@ export default class UsuarioService {
       }
     }
 
+    // Telefone ANTES da atualização — usado depois pra detectar a transição
+    // "estava vazio, passou a ter valor" (ver hook de sincronização de grupo
+    // de WhatsApp mais abaixo).
+    const telefoneAntes = existente.UsuarioTelefone;
+
     // Atualizar campos (manter valores existentes se não fornecidos)
     if (jsonUsuario.UsuarioNome !== undefined || jsonUsuario.UsuarioSobrenome !== undefined) {
       const nomeNormalizado = this.normalizeNomeCompleto(jsonUsuario, existente.UsuarioNome);
@@ -314,6 +322,18 @@ export default class UsuarioService {
     if (!atualizado) {
       throw new ErrorResponse(500, "Erro ao atualizar usuário", {
         message: "Não foi possível atualizar o usuário no banco de dados",
+      });
+    }
+
+    // Telefone acabou de ser preenchido pela primeira vez (estava vazio) —
+    // sincroniza esse aluno pro grupo de WhatsApp de cada turma em que ele
+    // já está matriculado (cobre "aluno entrou sem telefone, telefone
+    // cadastrado depois" — ver docs/spec-resumo-ia-prova-grupo-whatsapp.md
+    // no repo interceptacaoAVA). Fire-and-forget: nunca bloqueia nem falha
+    // a atualização do usuário por causa disso.
+    if (!telefoneAntes && existente.UsuarioTelefone && this.#turmaGrupoWhatsappService) {
+      this.#turmaGrupoWhatsappService.sincronizarMembroPorTelefonePreenchido(existente.UsuarioGUID).catch((erro) => {
+        console.error("🔴 UsuarioService.updateUsuario() — falha ao sincronizar grupo de WhatsApp (não bloqueia):", erro);
       });
     }
 

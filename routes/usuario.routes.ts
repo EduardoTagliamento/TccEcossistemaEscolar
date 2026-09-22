@@ -8,6 +8,13 @@ import EscolaxUsuarioxFuncaoControl from "../backend/controllers/escolaxusuariox
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 import ApiKeyAuthMiddleware from "../backend/middlewares/apikey-auth.middleware";
 import { authRateLimitMiddleware } from "../backend/middlewares/rate-limit.middleware";
+import TurmaGrupoWhatsappService from "../backend/services/turmagrupowhatsapp.service";
+import { TurmaGrupoWhatsappDAO } from "../backend/repositories/turmagrupowhatsapp.repository";
+import { TurmaDAO } from "../backend/repositories/turma.repository";
+import ConversaGrupoService from "../backend/services/conversa-grupo.service";
+import { ConversaDAO } from "../backend/repositories/conversa.repository";
+import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
+import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 
 export default class UsuarioRoteador {
   #router: Router;
@@ -125,12 +132,6 @@ export default class UsuarioRoteador {
 export const usuarioRouterFactory = () => {
   const database = new MysqlDatabase();
   
-  // Usuario dependencies
-  const usuarioDAO = new UsuarioDAO(database);
-  const usuarioService = new UsuarioService(usuarioDAO);
-  const usuarioControle = new UsuarioControl(usuarioService);
-  const usuarioMiddleware = new UsuarioMiddleware();
-  
   // EscolaxUsuarioxFuncao dependencies (para rota de escolas do usuário)
   const { EscolaxUsuarioxFuncaoDAO } = require("../backend/repositories/escolaxusuarioxfuncao.repository");
   const { UsuarioxEscolaAcessoDAO } = require("../backend/repositories/usuarioxescolaacesso.repository");
@@ -138,6 +139,26 @@ export const usuarioRouterFactory = () => {
   const EscolaxUsuarioxFuncaoService = require("../backend/services/escolaxusuarioxfuncao.service").default;
 
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
+
+  // Usuario dependencies
+  const usuarioDAO = new UsuarioDAO(database);
+  const conversaGrupoService = new ConversaGrupoService(
+    new ConversaDAO(database),
+    new ConversaGrupoDAO(database),
+    new MatriculaDAO(database),
+    usuarioDAO
+  );
+  const turmaGrupoWhatsappService = new TurmaGrupoWhatsappService(
+    new TurmaGrupoWhatsappDAO(database),
+    new TurmaDAO(database),
+    usuarioDAO,
+    escolaxUsuarioxFuncaoDAO,
+    database,
+    conversaGrupoService
+  );
+  const usuarioService = new UsuarioService(usuarioDAO, turmaGrupoWhatsappService);
+  const usuarioControle = new UsuarioControl(usuarioService);
+  const usuarioMiddleware = new UsuarioMiddleware();
   const usuarioxEscolaAcessoDAO = new UsuarioxEscolaAcessoDAO(database);
   const escolaDAOParaVinculo = new EscolaDAO(database);
   const escolaxUsuarioxFuncaoService = new EscolaxUsuarioxFuncaoService(escolaxUsuarioxFuncaoDAO, usuarioxEscolaAcessoDAO, usuarioDAO, escolaDAOParaVinculo);

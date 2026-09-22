@@ -48,6 +48,40 @@ function comTimeout<T>(promise: Promise<T>, timeoutMs: number, origem: string): 
 }
 
 /**
+ * Retry com backoff pra erros TRANSIENTES do Gemini (503 UNAVAILABLE — "high
+ * demand", ou 429 RESOURCE_EXHAUSTED) — descoberto em produção durante o
+ * piloto da Peça 2/3 da extração de livros P4ED: um pico de indisponibilidade
+ * momentânea do Gemini derrubava uma fração aleatória de um lote de chamadas
+ * simultâneas, sem chance de recuperação (nenhum retry existia antes disso).
+ * Erros não-transientes (chave inválida, resposta vazia, timeout nosso) NÃO
+ * são retentados — sobem direto pro catch de cada método, que already
+ * embrulha em IAIndisponivelError como antes.
+ */
+const MAX_TENTATIVAS_TRANSIENTE = 3;
+const BACKOFF_BASE_MS = 1000;
+
+function eErroTransiente(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return /"code"\s*:\s*503/.test(msg) || /UNAVAILABLE/.test(msg) || /"code"\s*:\s*429/.test(msg) || /RESOURCE_EXHAUSTED/.test(msg);
+}
+
+async function comRetryTransiente<T>(fn: () => Promise<T>, origem: string): Promise<T> {
+  let ultimoErro: unknown;
+  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS_TRANSIENTE; tentativa++) {
+    try {
+      return await fn();
+    } catch (error) {
+      ultimoErro = error;
+      if (!eErroTransiente(error) || tentativa === MAX_TENTATIVAS_TRANSIENTE) throw error;
+      const esperaMs = BACKOFF_BASE_MS * 2 ** (tentativa - 1);
+      console.log(`🤖 ${origem}: erro transiente (tentativa ${tentativa}/${MAX_TENTATIVAS_TRANSIENTE}), retry em ${esperaMs}ms`);
+      await new Promise((r) => setTimeout(r, esperaMs));
+    }
+  }
+  throw ultimoErro;
+}
+
+/**
  * Wrapper fino do SDK do Gemini — só chama a API e devolve texto/JSON já
  * parseado. Não acessa banco, não conhece regra de negócio (contrato de
  * `backend/ai/README.txt`); quem monta prompt e interpreta o resultado são
@@ -74,10 +108,9 @@ export class GeminiProvider {
 
     try {
       const client = this.#getClient();
-      const response = await comTimeout(
-        client.models.generateContent({ model: MODELO_POR_TIER[tier], contents: prompt }),
-        timeoutMs,
-        "Gemini"
+      const response = await comRetryTransiente(
+        () => comTimeout(client.models.generateContent({ model: MODELO_POR_TIER[tier], contents: prompt }), timeoutMs, "Gemini"),
+        "GeminiProvider.gerarTexto"
       );
 
       const texto = response.text;
@@ -108,13 +141,17 @@ export class GeminiProvider {
 
     try {
       const client = this.#getClient();
-      const response = await comTimeout(
-        client.models.generateContent({
-          model: MODELO_POR_TIER[tier],
-          contents: createUserContent([prompt, createPartFromBase64(imagemBase64, mimeType)]),
-        }),
-        timeoutMs,
-        "Gemini"
+      const response = await comRetryTransiente(
+        () =>
+          comTimeout(
+            client.models.generateContent({
+              model: MODELO_POR_TIER[tier],
+              contents: createUserContent([prompt, createPartFromBase64(imagemBase64, mimeType)]),
+            }),
+            timeoutMs,
+            "Gemini"
+          ),
+        "GeminiProvider.gerarTextoComImagem"
       );
 
       const texto = response.text;
@@ -149,14 +186,18 @@ export class GeminiProvider {
 
     try {
       const client = this.#getClient();
-      const response = await comTimeout(
-        client.models.generateContent({
-          model: MODELO_POR_TIER[tier],
-          contents,
-          config: { tools, systemInstruction },
-        }),
-        timeoutMs,
-        "Gemini"
+      const response = await comRetryTransiente(
+        () =>
+          comTimeout(
+            client.models.generateContent({
+              model: MODELO_POR_TIER[tier],
+              contents,
+              config: { tools, systemInstruction },
+            }),
+            timeoutMs,
+            "Gemini"
+          ),
+        "GeminiProvider.conversarComFerramentas"
       );
 
       const content = response.candidates?.[0]?.content;
@@ -186,17 +227,21 @@ export class GeminiProvider {
 
     try {
       const client = this.#getClient();
-      const response = await comTimeout(
-        client.models.generateContent({
-          model: MODELO_POR_TIER[tier],
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: schema,
-          },
-        }),
-        timeoutMs,
-        "Gemini"
+      const response = await comRetryTransiente(
+        () =>
+          comTimeout(
+            client.models.generateContent({
+              model: MODELO_POR_TIER[tier],
+              contents: prompt,
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: schema,
+              },
+            }),
+            timeoutMs,
+            "Gemini"
+          ),
+        "GeminiProvider.gerarEstruturado"
       );
 
       const texto = response.text;
