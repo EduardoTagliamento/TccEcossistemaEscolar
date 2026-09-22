@@ -63,8 +63,8 @@ export default class TurmaGrupoWhatsapp {
   }
 
   set CriadoPorUsuarioGUID(value: string) {
-    if (typeof value !== "string" || value.trim().length !== 36) {
-      throw new Error("CriadoPorUsuarioGUID deve ser um UUID válido (36 caracteres).");
+    if (typeof value !== "string" || value.trim() === "") {
+      throw new Error("CriadoPorUsuarioGUID deve ser uma string não vazia.");
     }
     this.#CriadoPorUsuarioGUID = value.trim();
   }
