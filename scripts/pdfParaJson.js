@@ -1,6 +1,8 @@
 // Extrai o texto de cada página de um PDF DIRETO do arquivo (sem IA/OCR) + detecta e recorta cada
-// imagem raster embutida (sem linha decorativa), retornando 1 objeto por página no formato
-// { numero, texto, caracteres, titulos, cabecalhoRodape, possivelTabela, possivelFormula, imagens }.
+// imagem raster embutida (sem linha decorativa), retornando uma hierarquia capítulo > páginas:
+// { capitulos: [{ indice, arquivo, paginaInicio, paginaFim, paginas: [{ numero, texto, caracteres,
+// titulos, cabecalhoRodape, possivelTabela, possivelFormula, imagens }] }] } — sem `opcoes.capitulos`
+// (ver abaixo), sai como 1 capítulo só cobrindo o PDF inteiro.
 //
 // Algoritmo validado no projeto "ivros" (extração em lote de ~50 livros didáticos reais, com
 // revisão de qualidade manual) — ver `F:\Area de Trabalho\ivros\scripts\processar_conteudo_livro.js`,
@@ -212,12 +214,35 @@ function normalizarBorda(texto) {
   return texto.replace(/\d+/g, "#").trim();
 }
 
+/** `capitulos`: array opcional de `{arquivo, paginaInicio, paginaFim}` (1-indexado, inclusive), na
+ * ordem de leitura — útil quando o PDF foi montado a partir de fragmentos por capítulo e o caller
+ * já sabe essa fronteira (ex.: `unificar_capitulos.js` do projeto "ivros" persiste isso como
+ * `<nome>.capitulos.json` ao lado do PDF unificado). Sem isso, o resultado sai com 1 capítulo só,
+ * cobrindo o PDF inteiro.
+ *
+ * Hierarquia livro > capítulo > páginas (em vez de lista linear de página com um campo `capitulo`
+ * repetido em cada uma) — mais barato pra IA consumir 1 capítulo por vez: sem escanear o livro
+ * inteiro filtrando por índice, sem repetir metadado de capítulo página a página. */
+function agruparPorCapitulo(paginas, capitulos, caminhoPdf) {
+  if (!capitulos) {
+    return [{ indice: 1, arquivo: path.basename(caminhoPdf), paginaInicio: 1, paginaFim: paginas.length, paginas }];
+  }
+  return capitulos.map((c, i) => ({
+    indice: i + 1,
+    arquivo: c.arquivo,
+    paginaInicio: c.paginaInicio,
+    paginaFim: c.paginaFim,
+    paginas: paginas.filter((p) => p.numero >= c.paginaInicio && p.numero <= c.paginaFim),
+  }));
+}
+
 /**
  * @param {string} caminhoPdf
  * @param {object} [opcoes]
  * @param {string} [opcoes.pastaPaginasImg] pasta com `pagina-0001.jpg`, etc. (escala `opcoes.escala`) — se omitido, imagens não são recortadas pra arquivo, só descritas (posição/tamanho) no JSON.
  * @param {string} [opcoes.pastaSaidaRecortes] pasta onde salvar os recortes de imagem (default: `<pastaPaginasImg>/../recortes`)
  * @param {number} [opcoes.escala] escala usada pra renderizar `pastaPaginasImg` (default 1.5)
+ * @param {Array} [opcoes.capitulos] ver `agruparPorCapitulo` acima
  */
 async function converterPdfParaJson(caminhoPdf, opcoes = {}) {
   const { getDocument, OPS } = await import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -359,14 +384,16 @@ async function converterPdfParaJson(caminhoPdf, opcoes = {}) {
     };
   });
 
-  return { paginas, totalImagensRecortadas };
+  const capitulos = agruparPorCapitulo(paginas, opcoes.capitulos, caminhoPdf);
+
+  return { capitulos, totalImagensRecortadas };
 }
 
 async function cli() {
   const args = process.argv.slice(2);
   const caminhoPdf = args[0];
   if (!caminhoPdf || caminhoPdf.startsWith("--")) {
-    console.error("Uso: node scripts/pdfParaJson.js <caminho.pdf> [--paginas-img <pasta>] [--saida <arquivo.json>]");
+    console.error("Uso: node scripts/pdfParaJson.js <caminho.pdf> [--paginas-img <pasta>] [--saida <arquivo.json>] [--capitulos <arquivo.json>]");
     process.exit(1);
   }
   function argValor(nome) {
@@ -375,12 +402,15 @@ async function cli() {
   }
   const pastaPaginasImg = argValor("--paginas-img");
   const saida = argValor("--saida") || caminhoPdf.replace(/\.pdf$/i, ".json");
+  const caminhoCapitulos = argValor("--capitulos");
+  const capitulos = caminhoCapitulos ? JSON.parse(fs.readFileSync(caminhoCapitulos, "utf8")) : null;
 
   const inicio = Date.now();
-  const { paginas, totalImagensRecortadas } = await converterPdfParaJson(caminhoPdf, { pastaPaginasImg });
-  fs.writeFileSync(saida, JSON.stringify({ arquivo: path.basename(caminhoPdf), totalPaginas: paginas.length, paginas }, null, 1));
+  const { capitulos: capitulosComPaginas, totalImagensRecortadas } = await converterPdfParaJson(caminhoPdf, { pastaPaginasImg, capitulos });
+  const totalPaginas = capitulosComPaginas.reduce((soma, c) => soma + c.paginas.length, 0);
+  fs.writeFileSync(saida, JSON.stringify({ arquivo: path.basename(caminhoPdf), totalPaginas, capitulos: capitulosComPaginas }, null, 1));
   const segundos = ((Date.now() - inicio) / 1000).toFixed(1);
-  console.log(`OK: ${paginas.length} páginas, ${totalImagensRecortadas} imagem(ns) recortada(s) em ${segundos}s -> ${saida}`);
+  console.log(`OK: ${totalPaginas} páginas (${capitulosComPaginas.length} capítulo(s)), ${totalImagensRecortadas} imagem(ns) recortada(s) em ${segundos}s -> ${saida}`);
 }
 
 if (require.main === module) {

@@ -22,7 +22,11 @@ import { ProvaAgendadaRecomendacaoDAO } from "../repositories/provaagendadarecom
 import { TurmaGrupoWhatsappDAO } from "../repositories/turmagrupowhatsapp.repository";
 import { ProvaAgendadaTurmaResumoEnvioDAO } from "../repositories/provaagendadaturmaresumoenvio.repository";
 import ProvaAgendadaTurmaResumoEnvio from "../entities/provaagendadaturmaresumoenvio.model";
+import { RecomendacaoVideo } from "../entities/provaagendadarecomendacao.model";
 import EvolutionApiService from "../external/EvolutionApiService";
+
+/** Quantos vídeos recomendados entram na mensagem do grupo — o resto fica só no banco/app. */
+const MAX_VIDEOS_NA_MENSAGEM = 3;
 
 interface ProvaTurmaAmanhaRow extends RowDataPacket {
   ProvaAgendadaGUID: string;
@@ -141,7 +145,7 @@ export class ResumoProvaGrupoScheduler {
       return;
     }
 
-    const mensagem = this.#montarMensagem(row, recomendacao!.ResumoTexto!);
+    const mensagem = this.#montarMensagem(row, recomendacao!.ResumoTexto!, recomendacao!.VideosJson);
 
     // Caso 2: turma sem grupo vinculado ainda — manda pro telefone de teste
     // como preview (identificando a turma/prova), em vez de pular.
@@ -158,17 +162,26 @@ export class ResumoProvaGrupoScheduler {
     await this.#registrarEnvio(row, "GrupoReal");
   }
 
-  #montarMensagem(row: ProvaTurmaAmanhaRow, resumo: string): string {
+  #montarMensagem(row: ProvaTurmaAmanhaRow, resumo: string, videos: RecomendacaoVideo[] | null): string {
     const materiaLinha = row.MateriaNome ? `📘 ${row.MateriaNome}` : null;
+    const videosBloco = this.#montarBlocoVideos(videos);
     const linhas = [
       `*${row.ProvaTitulo}*`,
       materiaLinha,
       "",
       resumo,
+      videosBloco,
       "",
       "powered by *BAUÁ* 🐦‍⬛",
     ].filter((linha): linha is string => linha !== null);
     return linhas.join("\n");
+  }
+
+  #montarBlocoVideos(videos: RecomendacaoVideo[] | null): string | null {
+    if (!videos || videos.length === 0) return null;
+    const escolhidos = videos.slice(0, MAX_VIDEOS_NA_MENSAGEM);
+    const linhas = escolhidos.map((v) => `▶️ ${v.titulo} (${v.canal})\n${v.url}`);
+    return ["", "🎥 *Vídeos recomendados*", "", ...linhas].join("\n");
   }
 
   async #mandarParaTelefoneTeste(mensagem: string, row: ProvaTurmaAmanhaRow): Promise<void> {

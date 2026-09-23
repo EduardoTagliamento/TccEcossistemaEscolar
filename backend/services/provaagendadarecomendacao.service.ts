@@ -244,11 +244,18 @@ export default class ProvaAgendadaRecomendacaoService {
   #erroParaTexto = (erro: unknown): string => (erro instanceof Error ? erro.message : String(erro));
 
   #montarContexto = (assuntoNomes: string[], provaDescricao: string | null, materiaNome: string | null): string => {
+    // ProvaDescricao SEMPRE entra quando existe — é o sinal mais específico
+    // que o professor deu (ex.: "MATOPIBA, revolução verde, terraceamento").
+    // Antes disto, um assunto classificado (ex.: "Geografia Agrária")
+    // substituía a descricao inteira no contexto, apagando esses detalhes
+    // do prompt da IA mesmo quando o professor os escreveu explicitamente.
+    const descricao = provaDescricao?.trim() || null;
     if (assuntoNomes.length > 0) {
       const materiaPrefixo = materiaNome ? `${materiaNome} — ` : "";
-      return `${materiaPrefixo}${assuntoNomes.join(", ")}`;
+      const base = `${materiaPrefixo}${assuntoNomes.join(", ")}`;
+      return descricao ? `${base} (${descricao})` : base;
     }
-    const partes = [materiaNome, provaDescricao?.trim()].filter((parte): parte is string => !!parte);
+    const partes = [materiaNome, descricao].filter((parte): parte is string => !!parte);
     return partes.length > 0 ? partes.join(" — ") : "conteúdo geral da matéria";
   };
 
