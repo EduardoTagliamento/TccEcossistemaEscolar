@@ -44,6 +44,7 @@ export default function ProfessoresPage() {
   const [resultadoBatch, setResultadoBatch] = useState<ProfessorAPI.BatchCreateResponse | null>(null);
 
   const [professorEditando, setProfessorEditando] = useState<ProfessorAPI.Professor | null>(null);
+  const [abaEdicao, setAbaEdicao] = useState<'dados' | 'materias' | 'alocacoes'>('dados');
   const [modoAlocacao, setModoAlocacao] = useState<'turma' | 'grupo'>('turma');
   const [novaAlocacaoTurma, setNovaAlocacaoTurma] = useState('');
   const [novaAlocacaoGrupoEletivo, setNovaAlocacaoGrupoEletivo] = useState('');
@@ -383,6 +384,7 @@ export default function ProfessoresPage() {
   const handleEditar = (professor: ProfessorAPI.Professor) => {
     limparBuscaCandidato();
     setProfessorEditando(professor);
+    setAbaEdicao('dados');
     setValoresFormulario({
       UsuarioCPF: professor.UsuarioCPF,
       UsuarioNome: professor.UsuarioNome,
@@ -738,51 +740,81 @@ export default function ProfessoresPage() {
                 </button>
               </p>
             )}
-            <BaseFormularioCadastro
-              titulo={professorEditando ? "Editar Professor" : "Novo Professor"}
-              campos={camposFormularioEfetivos}
-              valores={valoresFormulario}
-              onChange={handleChangeFormulario}
-              onSubmit={handleSubmitFormulario}
-              onCancel={() => {
-                setModalAberto(false);
-                setProfessorEditando(null);
-                setNovaAlocacaoTurma('');
-                setNovaAlocacaoGrupoEletivo('');
-                setNovaAlocacaoMateria('');
-                setErroAlocacao('');
-                setAvisoConflito(null);
-                resetarFormulario();
-              }}
-              loading={salvandoFormulario}
-              erro={erroFormulario}
-              botaoTexto={professorEditando ? "Salvar Alterações" : usuarioExistente ? "Vincular Professor" : "Criar Professor"}
-            />
-            {professorEditando ? (
-              <div className={styles.ajuda}>
-                <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: 10, marginBottom: 10 }}>
-                  <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <strong><Icon name="check-circle" size={16} /> Matérias que pode lecionar:</strong>
-                    {!editandoMateriasQualificadas && (
-                      <button
-                        onClick={abrirEdicaoMateriasQualificadas}
-                        style={{ background: 'none', border: '1px solid #cbd5e0', borderRadius: 4, padding: '2px 8px', fontSize: 12, cursor: 'pointer' }}
-                      >
-                        Editar
-                      </button>
-                    )}
-                  </p>
-                  {editandoMateriasQualificadas ? (
-                    <div>
-                      <p className={styles.textoSecundario} style={{ marginBottom: 6 }}>
-                        Só matérias marcadas aqui aparecem na caixa "Matéria" ao alocar este professor numa turma.
-                      </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 160, overflowY: 'auto', padding: 4, border: '1px solid #e2e8f0', borderRadius: 4 }}>
-                        {materias.map((m) => (
-                          <label key={m.MateriaGUID} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+
+            {professorEditando && (
+              <div className={styles.tabs}>
+                <button
+                  type="button"
+                  className={`${styles.tab} ${abaEdicao === 'dados' ? styles.tabAtiva : ''}`}
+                  onClick={() => setAbaEdicao('dados')}
+                >
+                  <Icon name="user" size={14} /> Dados
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.tab} ${abaEdicao === 'materias' ? styles.tabAtiva : ''}`}
+                  onClick={() => setAbaEdicao('materias')}
+                >
+                  <Icon name="check-circle" size={14} /> Matérias que pode lecionar
+                  {materiasQualificadas.length > 0 && <span className={styles.tabBadge}>{materiasQualificadas.length}</span>}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.tab} ${abaEdicao === 'alocacoes' ? styles.tabAtiva : ''}`}
+                  onClick={() => setAbaEdicao('alocacoes')}
+                >
+                  <Icon name="grid" size={14} /> Alocações
+                  {alocacoesProfessor.length > 0 && <span className={styles.tabBadge}>{alocacoesProfessor.length}</span>}
+                </button>
+              </div>
+            )}
+
+            {(!professorEditando || abaEdicao === 'dados') && (
+              <BaseFormularioCadastro
+                titulo={professorEditando ? "Editar Professor" : "Novo Professor"}
+                campos={camposFormularioEfetivos}
+                valores={valoresFormulario}
+                onChange={handleChangeFormulario}
+                onSubmit={handleSubmitFormulario}
+                onCancel={() => {
+                  setModalAberto(false);
+                  setProfessorEditando(null);
+                  setNovaAlocacaoTurma('');
+                  setNovaAlocacaoGrupoEletivo('');
+                  setNovaAlocacaoMateria('');
+                  setErroAlocacao('');
+                  setAvisoConflito(null);
+                  resetarFormulario();
+                }}
+                loading={salvandoFormulario}
+                erro={erroFormulario}
+                botaoTexto={professorEditando ? "Salvar Alterações" : usuarioExistente ? "Vincular Professor" : "Criar Professor"}
+              />
+            )}
+            {professorEditando && abaEdicao === 'materias' && (
+              <div className={styles.abaConteudo}>
+                <p className={styles.textoSecundario} style={{ marginBottom: 12 }}>
+                  Só matérias marcadas aqui aparecem na caixa "Matéria" ao alocar este professor numa turma, na aba Alocações.
+                </p>
+                {editandoMateriasQualificadas ? (
+                  <div className={styles.secaoCard}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 220, overflowY: 'auto' }}>
+                      {materias.map((m) => {
+                        const marcada = selecaoMateriasQualificadas.has(m.MateriaGUID);
+                        return (
+                          <label
+                            key={m.MateriaGUID}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer',
+                              padding: '5px 10px', borderRadius: 'var(--radius-pill)',
+                              border: `1px solid ${marcada ? 'var(--green-500)' : 'var(--line-200)'}`,
+                              background: marcada ? 'var(--green-50)' : 'var(--white)',
+                              color: marcada ? 'var(--green-700)' : 'var(--slate-600)',
+                            }}
+                          >
                             <input
                               type="checkbox"
-                              checked={selecaoMateriasQualificadas.has(m.MateriaGUID)}
+                              checked={marcada}
                               onChange={(e) => {
                                 const nova = new Set(selecaoMateriasQualificadas);
                                 if (e.target.checked) nova.add(m.MateriaGUID);
@@ -792,282 +824,299 @@ export default function ProfessoresPage() {
                             />
                             {m.MateriaNome}
                           </label>
-                        ))}
-                      </div>
-                      {erroMateriasQualificadas && <p style={{ color: '#e53e3e', fontSize: 12, marginTop: 4 }}>{erroMateriasQualificadas}</p>}
-                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                        <button
-                          onClick={salvarMateriasQualificadas}
-                          disabled={salvandoMateriasQualificadas}
-                          style={{ padding: '4px 14px', background: '#3182ce', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, opacity: salvandoMateriasQualificadas ? 0.5 : 1 }}
-                        >
-                          {salvandoMateriasQualificadas ? '...' : 'Salvar'}
-                        </button>
-                        <button
-                          onClick={() => setEditandoMateriasQualificadas(false)}
-                          disabled={salvandoMateriasQualificadas}
-                          style={{ padding: '4px 14px', background: 'none', border: '1px solid #cbd5e0', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
+                        );
+                      })}
                     </div>
-                  ) : materiasQualificadasQuery.isLoading ? (
-                    <p className={styles.textoSecundario}>Carregando...</p>
-                  ) : materiasQualificadas.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {erroMateriasQualificadas && <p style={{ color: 'var(--danger-600)', fontSize: 12, marginTop: 8 }}>{erroMateriasQualificadas}</p>}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button
+                        onClick={salvarMateriasQualificadas}
+                        disabled={salvandoMateriasQualificadas}
+                        className={styles.botaoNovo}
+                        style={{ padding: '0.45rem 1.1rem', fontSize: 13, opacity: salvandoMateriasQualificadas ? 0.6 : 1 }}
+                      >
+                        {salvandoMateriasQualificadas ? 'Salvando...' : 'Salvar'}
+                      </button>
+                      <button
+                        onClick={() => setEditandoMateriasQualificadas(false)}
+                        disabled={salvandoMateriasQualificadas}
+                        className={styles.botaoCancelar}
+                        style={{ width: 'auto', marginTop: 0, padding: '0.45rem 1.1rem', fontSize: 13 }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : materiasQualificadasQuery.isLoading ? (
+                  <p className={styles.textoSecundario}>Carregando...</p>
+                ) : materiasQualificadas.length > 0 ? (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
                       {materiasQualificadas.map((m) => (
-                        <span key={m.MateriaGUID} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f0fff4', border: '1px solid #9ae6b4', borderRadius: 12, padding: '2px 10px', fontSize: 13 }}>
-                          {m.MateriaNome}
-                        </span>
+                        <span key={m.MateriaGUID} className={styles.badgeTecnico}>{m.MateriaNome}</span>
                       ))}
                     </div>
-                  ) : (
-                    <p className={styles.textoSecundario}>
-                      Nenhuma matéria associada ainda — clique em "Editar" antes de alocar este professor numa turma.
+                    <button
+                      onClick={abrirEdicaoMateriasQualificadas}
+                      className={styles.botaoEditar}
+                      style={{ width: 'auto', height: 'auto', padding: '0.4rem 0.9rem', fontSize: 13, gap: 6 }}
+                    >
+                      <Icon name="edit" size={14} /> Editar matérias
+                    </button>
+                  </>
+                ) : (
+                  <div className={styles.secaoCard} style={{ textAlign: 'center' }}>
+                    <p className={styles.textoSecundario} style={{ marginBottom: 10 }}>
+                      Nenhuma matéria associada ainda.
                     </p>
-                  )}
-                </div>
+                    <button onClick={abrirEdicaoMateriasQualificadas} className={styles.botaoNovo} style={{ padding: '0.45rem 1.1rem', fontSize: 13 }}>
+                      Associar matérias
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {professorEditando && abaEdicao === 'alocacoes' && (
+              <div className={styles.abaConteudo}>
                 {carregandoAlocacoes ? (
-                  <p>Carregando alocações...</p>
+                  <p className={styles.textoSecundario}>Carregando alocações...</p>
                 ) : (
                   <>
-                    <p><strong><Icon name="book-open" size={16} /> Matérias:</strong></p>
-                    {(() => {
-                      const materiasUnicas = [...new Map(
-                        alocacoesProfessor.map(a => [a.MateriaGUID, a])
-                      ).values()];
-                      return materiasUnicas.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '4px 0 8px 0' }}>
-                          {materiasUnicas.map(a => {
-                            const m = materias.find(m => m.MateriaGUID === a.MateriaGUID);
-                            const qtdTurmas = alocacoesProfessor.filter(al => al.MateriaGUID === a.MateriaGUID).length;
-                            return (
-                              <span key={a.MateriaGUID} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ebf4ff', border: '1px solid #bee3f8', borderRadius: 12, padding: '2px 10px', fontSize: 13 }}>
-                                {m?.MateriaNome ?? a.MateriaGUID}
-                                {qtdTurmas > 1 && <span style={{ fontSize: 11, color: '#718096' }}>({qtdTurmas} turmas)</span>}
-                                <button
-                                  onClick={() => handleDesassociarMateriaTodas(a.MateriaGUID)}
-                                  title="Remover de todas as turmas"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e53e3e', padding: '0 2px', fontSize: 15, lineHeight: 1 }}
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className={styles.textoSecundario} style={{ marginBottom: 8 }}>Nenhuma matéria associada.</p>
-                      );
-                    })()}
-
-                    <p style={{ borderTop: '1px solid #e2e8f0', paddingTop: 8 }}><strong><Icon name="grid" size={16} /> Alocações por turma:</strong></p>
-                    {(() => {
-                      const porTurma = alocacoesProfessor.reduce<Record<string, ProfessorAPI.Alocacao[]>>(
-                        (acc, a) => {
-                          const chave = a.TurmaGUID ?? a.GrupoEletivoGUID ?? 'desconhecido';
-                          if (!acc[chave]) acc[chave] = [];
-                          acc[chave].push(a);
-                          return acc;
-                        },
-                        {}
-                      );
-                      const entradas = Object.entries(porTurma);
-                      return entradas.length > 0 ? (
-                        <ul style={{ margin: '4px 0 0 0', paddingLeft: 16 }}>
-                          {entradas.map(([chaveGrupo, alocacoes]) => {
-                            const ehGrupoEletivo = !!alocacoes[0].GrupoEletivoGUID;
-                            const t = ehGrupoEletivo ? null : turmas.find(t => t.TurmaGUID === chaveGrupo);
-                            const grupo = ehGrupoEletivo ? gruposEletivos.find(g => g.GrupoEletivoGUID === chaveGrupo) : null;
+                    {alocacoesProfessor.length > 0 ? (
+                      <table className={styles.tabelaAlocacoes}>
+                        <thead>
+                          <tr>
+                            <th>Turma</th>
+                            <th>Matéria</th>
+                            <th>Aulas/sem</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {alocacoesProfessor.map((a) => {
+                            const ehGrupoEletivo = !!a.GrupoEletivoGUID;
+                            const t = ehGrupoEletivo ? null : turmas.find(t => t.TurmaGUID === a.TurmaGUID);
+                            const grupo = ehGrupoEletivo ? gruposEletivos.find(g => g.GrupoEletivoGUID === a.GrupoEletivoGUID) : null;
                             const nomeTurma = ehGrupoEletivo
-                              ? `🔀 ${grupo?.GrupoEletivoNome ?? chaveGrupo}`
-                              : (t ? `${t.TurmaSerie} ${t.TurmaNome}` : chaveGrupo);
+                              ? `🔀 ${grupo?.GrupoEletivoNome ?? a.GrupoEletivoGUID}`
+                              : (t ? `${t.TurmaSerie} ${t.TurmaNome}` : a.TurmaGUID);
+                            const m = materias.find(m => m.MateriaGUID === a.MateriaGUID);
+                            const editandoEsta = editandoAulasPorSemana === a.MatProfTurGUID;
+                            const qtdTurmasMesmaMateria = alocacoesProfessor.filter(al => al.MateriaGUID === a.MateriaGUID).length;
                             return (
-                              <li key={chaveGrupo} style={{ marginBottom: 4 }}>
-                                <strong>{nomeTurma}:</strong>{' '}
-                                {alocacoes.map((a, idx) => {
-                                  const m = materias.find(m => m.MateriaGUID === a.MateriaGUID);
-                                  const editandoEsta = editandoAulasPorSemana === a.MatProfTurGUID;
-                                  return (
-                                    <span key={a.MatProfTurGUID} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, marginRight: 6 }}>
-                                      {m?.MateriaNome ?? a.MateriaGUID}
-                                      {editandoEsta ? (
-                                        <>
-                                          <input
-                                            type="number"
-                                            min={1}
-                                            max={20}
-                                            value={valorAulasPorSemanaEditando}
-                                            onChange={e => setValorAulasPorSemanaEditando(e.target.value)}
-                                            placeholder="padrão"
-                                            style={{ width: 48, padding: '1px 4px', fontSize: 11, marginLeft: 4 }}
-                                          />
-                                          <button
-                                            onClick={() => salvarAulasPorSemana(a.MatProfTurGUID)}
-                                            title="Salvar aulas/semana"
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2f855a', fontSize: 12 }}
-                                          >
-                                            <Icon name="check" size={14} />
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <span
-                                          onClick={() => {
-                                            setEditandoAulasPorSemana(a.MatProfTurGUID);
-                                            setValorAulasPorSemanaEditando(a.AulasPorSemana?.toString() ?? '');
-                                          }}
-                                          title="Definir aulas/semana nesta turma (em branco = usa o padrão da matéria)"
-                                          style={{ fontSize: 11, color: '#718096', cursor: 'pointer', marginLeft: 2 }}
-                                        >
-                                          ({a.AulasPorSemana ?? 'padrão'}x/sem)
-                                        </span>
-                                      )}
+                              <tr key={a.MatProfTurGUID}>
+                                <td>{nomeTurma}</td>
+                                <td>
+                                  {m?.MateriaNome ?? a.MateriaGUID}
+                                  {qtdTurmasMesmaMateria > 1 && (
+                                    <button
+                                      onClick={() => handleDesassociarMateriaTodas(a.MateriaGUID)}
+                                      title={`Remover "${m?.MateriaNome ?? a.MateriaGUID}" de todas as ${qtdTurmasMesmaMateria} turmas`}
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate-400)', fontSize: 11, marginLeft: 6, textDecoration: 'underline' }}
+                                    >
+                                      remover de todas ({qtdTurmasMesmaMateria})
+                                    </button>
+                                  )}
+                                </td>
+                                <td>
+                                  {editandoEsta ? (
+                                    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        max={20}
+                                        value={valorAulasPorSemanaEditando}
+                                        onChange={e => setValorAulasPorSemanaEditando(e.target.value)}
+                                        placeholder="padrão"
+                                        style={{ width: 50, padding: '2px 4px', fontSize: 12, borderRadius: 4, border: '1px solid var(--line-200)' }}
+                                      />
                                       <button
-                                        onClick={() => handleDesassociarMateria(a.MatProfTurGUID)}
-                                        title="Desassociar"
-                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e53e3e', padding: '0 2px', fontSize: 14, lineHeight: 1 }}
+                                        onClick={() => salvarAulasPorSemana(a.MatProfTurGUID)}
+                                        title="Salvar aulas/semana"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--green-600)', display: 'inline-flex' }}
                                       >
-                                        ×
+                                        <Icon name="check" size={14} />
                                       </button>
-                                      {idx < alocacoes.length - 1 && ','}
                                     </span>
-                                  );
-                                })}
-                              </li>
+                                  ) : (
+                                    <span
+                                      onClick={() => {
+                                        setEditandoAulasPorSemana(a.MatProfTurGUID);
+                                        setValorAulasPorSemanaEditando(a.AulasPorSemana?.toString() ?? '');
+                                      }}
+                                      title="Definir aulas/semana nesta turma (em branco = usa o padrão da matéria)"
+                                      style={{ cursor: 'pointer', color: 'var(--slate-500)' }}
+                                    >
+                                      {a.AulasPorSemana ?? 'padrão'}x
+                                    </span>
+                                  )}
+                                </td>
+                                <td style={{ textAlign: 'right' }}>
+                                  <button
+                                    onClick={() => handleDesassociarMateria(a.MatProfTurGUID)}
+                                    title="Desassociar"
+                                    className={styles.botaoRemoverLinha}
+                                  >
+                                    <Icon name="x" size={14} />
+                                  </button>
+                                </td>
+                              </tr>
                             );
                           })}
-                        </ul>
-                      ) : (
-                        <p className={styles.textoSecundario}>Nenhuma alocação ativa.</p>
-                      );
-                    })()}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className={styles.textoSecundario} style={{ marginBottom: 14 }}>Nenhuma alocação ativa.</p>
+                    )}
 
-                    <div style={{ marginTop: 12, borderTop: '1px solid #e2e8f0', paddingTop: 10 }}>
-                      <p style={{ marginBottom: 6 }}><strong><Icon name="plus-circle" size={16} /> Nova alocação:</strong></p>
-                      <div style={{ display: 'flex', gap: 10, marginBottom: 6, fontSize: 13 }}>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                          <input
-                            type="radio"
-                            checked={modoAlocacao === 'turma'}
-                            onChange={() => { setModoAlocacao('turma'); setErroAlocacao(''); setAvisoConflito(null); }}
-                          />
-                          Turma
-                        </label>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                          <input
-                            type="radio"
-                            checked={modoAlocacao === 'grupo'}
-                            onChange={() => { setModoAlocacao('grupo'); setErroAlocacao(''); setAvisoConflito(null); }}
-                          />
-                          <Icon name="repeat" size={12} /> Grupo Eletivo (turma mista)
-                        </label>
+                    <div className={styles.secaoCard}>
+                      <div className={styles.secaoTitulo}>
+                        <Icon name="plus-circle" size={16} /> Nova alocação
                       </div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {modoAlocacao === 'turma' ? (
-                          <select
-                            value={novaAlocacaoTurma}
-                            onChange={e => { setNovaAlocacaoTurma(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
-                            style={{ flex: 1, minWidth: 120, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
+
+                      <div style={{ marginBottom: 12 }}>
+                        <span className={styles.campoLabel}>Tipo</span>
+                        <div className={styles.segmentado}>
+                          <button
+                            type="button"
+                            className={`${styles.segmentadoOpcao} ${modoAlocacao === 'turma' ? styles.segmentadoAtivo : ''}`}
+                            onClick={() => { setModoAlocacao('turma'); setErroAlocacao(''); setAvisoConflito(null); }}
                           >
-                            <option value="">Turma...</option>
-                            {turmas.map(t => (
-                              <option key={t.TurmaGUID} value={t.TurmaGUID}>{t.TurmaSerie} {t.TurmaNome}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <select
-                            value={novaAlocacaoGrupoEletivo}
-                            onChange={e => { setNovaAlocacaoGrupoEletivo(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
-                            style={{ flex: 1, minWidth: 120, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
+                            Turma
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.segmentadoOpcao} ${modoAlocacao === 'grupo' ? styles.segmentadoAtivo : ''}`}
+                            onClick={() => { setModoAlocacao('grupo'); setErroAlocacao(''); setAvisoConflito(null); }}
                           >
-                            <option value="">Grupo eletivo...</option>
-                            {gruposEletivos.map(g => (
-                              <option key={g.GrupoEletivoGUID} value={g.GrupoEletivoGUID}>{g.GrupoEletivoNome}</option>
-                            ))}
-                          </select>
-                        )}
-                        <select
-                          value={novaAlocacaoMateria}
-                          onChange={e => { setNovaAlocacaoMateria(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
-                          style={{ flex: 1, minWidth: 120, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
-                        >
-                          <option value="">Matéria...</option>
-                          {materias
-                            // Só matérias que o professor está associado (ver "Matérias que pode
-                            // lecionar" acima) — nova limitação: professor só leciona o que está
-                            // qualificado pra lecionar.
-                            .filter(m => materiasQualificadasGUIDs.has(m.MateriaGUID))
-                            .filter(m => modoAlocacao === 'grupo'
-                              ? (!novaAlocacaoGrupoEletivo || !alocacoesProfessor.some(
-                                  a => a.MateriaGUID === m.MateriaGUID && a.GrupoEletivoGUID === novaAlocacaoGrupoEletivo
-                                ))
-                              : (!novaAlocacaoTurma || !alocacoesProfessor.some(
-                                  a => a.MateriaGUID === m.MateriaGUID && a.TurmaGUID === novaAlocacaoTurma
-                                )))
-                            .map(m => (
-                              <option key={m.MateriaGUID} value={m.MateriaGUID}>{m.MateriaNome}</option>
-                            ))}
-                          {materiasQualificadasGUIDs.size === 0 && (
-                            <option value="" disabled>Associe matérias a este professor primeiro (acima)</option>
+                            <Icon name="repeat" size={12} /> Grupo Eletivo
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 0.8fr', gap: 10 }}>
+                        <div>
+                          <label className={styles.campoLabel}>{modoAlocacao === 'turma' ? 'Turma' : 'Grupo eletivo'}</label>
+                          {modoAlocacao === 'turma' ? (
+                            <select
+                              value={novaAlocacaoTurma}
+                              onChange={e => { setNovaAlocacaoTurma(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
+                              className={styles.selectCompacto}
+                            >
+                              <option value="">Selecione...</option>
+                              {turmas.map(t => (
+                                <option key={t.TurmaGUID} value={t.TurmaGUID}>{t.TurmaSerie} {t.TurmaNome}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <select
+                              value={novaAlocacaoGrupoEletivo}
+                              onChange={e => { setNovaAlocacaoGrupoEletivo(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
+                              className={styles.selectCompacto}
+                            >
+                              <option value="">Selecione...</option>
+                              {gruposEletivos.map(g => (
+                                <option key={g.GrupoEletivoGUID} value={g.GrupoEletivoGUID}>{g.GrupoEletivoNome}</option>
+                              ))}
+                            </select>
                           )}
-                        </select>
-                        <input
-                          type="number"
-                          min={1}
-                          max={20}
-                          value={novaAlocacaoAulasPorSemana}
-                          onChange={e => setNovaAlocacaoAulasPorSemana(e.target.value)}
-                          placeholder="Aulas/sem (padrão)"
-                          title="Aulas por semana nesta turma (em branco = usa o padrão da matéria)"
-                          style={{ width: 110, padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e0', fontSize: 13 }}
-                        />
-                        <button
-                          onClick={handleAssociarMateria}
-                          disabled={salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : !novaAlocacaoTurma)}
-                          style={{ padding: '4px 14px', background: '#3182ce', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, opacity: (salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : !novaAlocacaoTurma)) ? 0.5 : 1 }}
-                        >
-                          {salvandoAlocacao ? '...' : 'Associar'}
-                        </button>
+                        </div>
+                        <div>
+                          <label className={styles.campoLabel}>Matéria</label>
+                          <select
+                            value={novaAlocacaoMateria}
+                            onChange={e => { setNovaAlocacaoMateria(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
+                            className={styles.selectCompacto}
+                          >
+                            <option value="">Selecione...</option>
+                            {materias
+                              // Só matérias que o professor está associado (ver aba "Matérias que
+                              // pode lecionar") — nova limitação: professor só leciona o que está
+                              // qualificado pra lecionar.
+                              .filter(m => materiasQualificadasGUIDs.has(m.MateriaGUID))
+                              .filter(m => modoAlocacao === 'grupo'
+                                ? (!novaAlocacaoGrupoEletivo || !alocacoesProfessor.some(
+                                    a => a.MateriaGUID === m.MateriaGUID && a.GrupoEletivoGUID === novaAlocacaoGrupoEletivo
+                                  ))
+                                : (!novaAlocacaoTurma || !alocacoesProfessor.some(
+                                    a => a.MateriaGUID === m.MateriaGUID && a.TurmaGUID === novaAlocacaoTurma
+                                  )))
+                              .map(m => (
+                                <option key={m.MateriaGUID} value={m.MateriaGUID}>{m.MateriaNome}</option>
+                              ))}
+                            {materiasQualificadasGUIDs.size === 0 && (
+                              <option value="" disabled>Associe matérias primeiro (aba anterior)</option>
+                            )}
+                          </select>
+                        </div>
+                        <div>
+                          <label className={styles.campoLabel}>Aulas/sem</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={novaAlocacaoAulasPorSemana}
+                            onChange={e => setNovaAlocacaoAulasPorSemana(e.target.value)}
+                            placeholder="padrão"
+                            title="Aulas por semana nesta turma (em branco = usa o padrão da matéria)"
+                            className={styles.selectCompacto}
+                          />
+                        </div>
                       </div>
+
                       {novaAlocacaoTurma && modoAlocacao === 'turma' && (() => {
                         const jaLeciona = alocacoesProfessor
                           .filter(a => a.TurmaGUID === novaAlocacaoTurma)
                           .map(a => materias.find(m => m.MateriaGUID === a.MateriaGUID)?.MateriaNome ?? a.MateriaGUID);
                         return jaLeciona.length > 0 ? (
-                          <p style={{ fontSize: 11, color: '#718096', marginTop: 4 }}>
+                          <p style={{ fontSize: 12, color: 'var(--slate-500)', marginTop: 8 }}>
                             Já leciona nesta turma: {jaLeciona.join(', ')}
                           </p>
                         ) : null;
                       })()}
-                      {erroAlocacao && <p style={{ color: '#e53e3e', fontSize: 12, marginTop: 4 }}>{erroAlocacao}</p>}
+                      {erroAlocacao && <p style={{ color: 'var(--danger-600)', fontSize: 12, marginTop: 8 }}>{erroAlocacao}</p>}
                       {avisoConflito && (
-                        <div style={{ marginTop: 8, padding: 8, background: '#fffbeb', border: '1px solid #fbd38d', borderRadius: 4 }}>
-                          <p style={{ fontSize: 12, marginBottom: 6 }}>
+                        <div style={{ marginTop: 10, padding: 10, background: 'var(--warning-50)', border: '1px solid var(--warning-500)', borderRadius: 'var(--radius-sm)' }}>
+                          <p style={{ fontSize: 12, marginBottom: 8, color: 'var(--warning-700)' }}>
                             <Icon name="alert-triangle" size={14} /> <strong>{avisoConflito.materiaNome}</strong> já é lecionada por <strong>{avisoConflito.professorNome}</strong> em <strong>{avisoConflito.turmaNome}</strong>. Confirmar mesmo assim?
                           </p>
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div style={{ display: 'flex', gap: 8 }}>
                             <button
                               onClick={() => { avisoConflito.confirmar(); setAvisoConflito(null); }}
-                              style={{ padding: '3px 10px', background: '#e53e3e', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                              style={{ padding: '0.3rem 0.75rem', background: 'var(--danger-500)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 12 }}
                             >
                               Confirmar
                             </button>
                             <button
                               onClick={() => setAvisoConflito(null)}
-                              style={{ padding: '3px 10px', background: '#e2e8f0', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 12 }}
+                              style={{ padding: '0.3rem 0.75rem', background: 'var(--surface-muted)', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 12 }}
                             >
                               Cancelar
                             </button>
                           </div>
                         </div>
                       )}
+
+                      <button
+                        onClick={handleAssociarMateria}
+                        disabled={salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : !novaAlocacaoTurma)}
+                        className={styles.botaoNovo}
+                        style={{
+                          marginTop: 12, padding: '0.5rem 1.2rem', fontSize: 13, width: 'auto',
+                          opacity: (salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : !novaAlocacaoTurma)) ? 0.5 : 1,
+                        }}
+                      >
+                        {salvandoAlocacao ? 'Associando...' : 'Associar'}
+                      </button>
                     </div>
                   </>
                 )}
               </div>
-            ) : (
-              <div className={styles.ajuda}>
+            )}
+
+            {!professorEditando && (
+              <div className={styles.ajuda} style={{ padding: '0 1.25rem 1.25rem' }}>
                 <p><strong><Icon name="help-circle" size={16} /> Dica:</strong> Você pode deixar Matérias e Turmas em branco e adicioná-las depois.</p>
                 <p><strong><Icon name="file-text" size={16} /> Formato:</strong> Separe matérias e turmas por vírgula. Ex: "Matemática, Física"</p>
               </div>

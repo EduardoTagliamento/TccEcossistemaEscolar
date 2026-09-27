@@ -648,6 +648,169 @@
   color: var(--warning-700);
 }
 
+/* Abas dentro de um modal de edição (ex.: Dados / Matérias / Alocações
+   no modal de professor) — troca a antiga pilha única de seções por
+   navegação explícita, cada aba isolada. */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 1.25rem;
+  border-bottom: 1px solid var(--line-200);
+  margin-top: 1.25rem;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.7rem 0.25rem;
+  margin-bottom: -1px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--slate-500);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--ink-900);
+}
+
+.tabAtiva {
+  color: var(--green-700);
+  border-bottom-color: var(--green-500);
+}
+
+.tabBadge {
+  background: var(--surface-muted);
+  color: var(--slate-500);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.05rem 0.4rem;
+  border-radius: var(--radius-pill);
+}
+
+.tabAtiva .tabBadge {
+  background: var(--green-50);
+  color: var(--green-700);
+}
+
+.abaConteudo {
+  padding: 1.25rem;
+}
+
+/* Cartão de seção dentro de uma aba (ex.: editor de matérias qualificadas,
+   formulário de nova alocação). */
+.secaoCard {
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  background: var(--surface-50);
+}
+
+.secaoTitulo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin-bottom: 0.85rem;
+}
+
+.campoLabel {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.3rem;
+}
+
+.segmentado {
+  display: inline-flex;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.segmentadoOpcao {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8125rem;
+  background: var(--white);
+  color: var(--slate-500);
+  border: none;
+  cursor: pointer;
+}
+
+.segmentadoOpcao + .segmentadoOpcao {
+  border-left: 1px solid var(--line-200);
+}
+
+.segmentadoAtivo {
+  background: var(--green-50);
+  color: var(--green-700);
+  font-weight: 600;
+}
+
+.selectCompacto {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-200);
+  font-size: 0.8125rem;
+  background: var(--white);
+  color: var(--ink-900);
+}
+
+.tabelaAlocacoes {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  margin-bottom: 1rem;
+}
+
+.tabelaAlocacoes th {
+  text-align: left;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--slate-400);
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--line-200);
+}
+
+.tabelaAlocacoes td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--line-100);
+  vertical-align: middle;
+  color: var(--slate-600);
+}
+
+.botaoRemoverLinha {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--danger-500);
+  padding: 3px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+
+.botaoRemoverLinha:hover {
+  color: var(--danger-600);
+  background: var(--danger-50);
+}
+
 /* Botões */
 .botaoFechar,
 .botaoCancelar {
