@@ -5,6 +5,8 @@ import {
   CriarAlocacaoBodySchema,
   AtualizarAlocacaoBodySchema,
   AlocacaoGUIDParamSchema,
+  ProfessorMateriasQualificadasParamsSchema,
+  DefinirMateriasQualificadasBodySchema,
   ehCorpoEmMassaAlocacao,
 } from "../schemas/professor.schema";
 import { zodValidate } from "../utils/zodValidate";
@@ -34,4 +36,8 @@ export class ProfessorMiddleware {
   static validarAtualizacaoAlocacao = zodValidate(AtualizarAlocacaoBodySchema, "body", "", { semDetails: true });
 
   static validarGUID = zodValidate(AlocacaoGUIDParamSchema, "params", "", { semDetails: true });
+
+  static validarMateriasQualificadasParams = zodValidate(ProfessorMateriasQualificadasParamsSchema, "params", "", { semDetails: true });
+
+  static validarDefinirMateriasQualificadas = zodValidate(DefinirMateriasQualificadasBodySchema, "body", "", { semDetails: true });
 }

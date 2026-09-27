@@ -81,6 +81,19 @@ export const AtualizarAlocacaoBodySchema = z.object({
     ),
 });
 
+export const ProfessorMateriasQualificadasParamsSchema = z.object({
+  usuarioGUID: z
+    .string({ message: "Informe o professor" })
+    .regex(USUARIO_GUID_REGEX, "Identificador do professor inválido"),
+  escolaGUID: z
+    .string({ message: "Escola inválida" })
+    .regex(GUID_REGEX, "Escola inválida"),
+});
+
+export const DefinirMateriasQualificadasBodySchema = z.object({
+  MateriaGUIDs: z.array(z.string().regex(GUID_REGEX, "Matéria inválida")),
+});
+
 export const AlocacaoGUIDParamSchema = z.object({
   guid: z
     .string({ message: "Informe uma alocação válida" })

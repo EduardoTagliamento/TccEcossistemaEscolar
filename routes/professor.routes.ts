@@ -10,6 +10,7 @@ import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { MateriaCustomizacaoDAO } from "../backend/repositories/materiacustomizacao.repository";
 import { EscolaDAO } from "../backend/repositories/escola.repository";
 import { GrupoEletivoDAO } from "../backend/repositories/grupoeletivo.repository";
+import { ProfessorMateriaDAO } from "../backend/repositories/professormateria.repository";
 import MysqlDatabase from "../backend/database/MysqlDatabase";
 import { ProfessorMiddleware } from "../backend/middlewares/professor.middleware";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
@@ -45,6 +46,7 @@ export function professorRouterFactory(): Router {
   const customizacaoDAO = new MateriaCustomizacaoDAO(database);
   const escolaDAO = new EscolaDAO(database);
   const grupoEletivoDAO = new GrupoEletivoDAO(database);
+  const professorMateriaDAO = new ProfessorMateriaDAO(database);
 
   const professorService = new ProfessorService(
     alocacaoDAO,
@@ -55,7 +57,8 @@ export function professorRouterFactory(): Router {
     usuarioDAO,
     customizacaoDAO,
     escolaDAO,
-    grupoEletivoDAO
+    grupoEletivoDAO,
+    professorMateriaDAO
   );
 
   const professorController = new ProfessorController(professorService);
@@ -148,6 +151,30 @@ export function professorRouterFactory(): Router {
     AuthMiddleware.authenticate,
     ProfessorMiddleware.validarGUID,
     professorController.excluirAlocacao
+  );
+
+  /**
+   * GET /api/professor/:usuarioGUID/escolas/:escolaGUID/materias-qualificadas
+   * Matérias que o professor está qualificado a lecionar (independente de turma)
+   */
+  router.get(
+    "/:usuarioGUID/escolas/:escolaGUID/materias-qualificadas",
+    AuthMiddleware.authenticate,
+    ProfessorMiddleware.validarMateriasQualificadasParams,
+    professorController.listarMateriasQualificadas
+  );
+
+  /**
+   * PUT /api/professor/:usuarioGUID/escolas/:escolaGUID/materias-qualificadas
+   * Define o conjunto completo de matérias que o professor pode lecionar
+   * Body: { MateriaGUIDs: string[] }
+   */
+  router.put(
+    "/:usuarioGUID/escolas/:escolaGUID/materias-qualificadas",
+    AuthMiddleware.authenticate,
+    ProfessorMiddleware.validarMateriasQualificadasParams,
+    ProfessorMiddleware.validarDefinirMateriasQualificadas,
+    professorController.definirMateriasQualificadas
   );
 
   /**

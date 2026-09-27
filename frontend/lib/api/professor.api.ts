@@ -50,6 +50,13 @@ export interface Materia {
   EscolaGUID: string;
 }
 
+export interface MateriaQualificada {
+  ProfessorMateriaGUID: string;
+  MateriaGUID: string;
+  MateriaNome: string;
+  ProfessorMateriaStatus: 'Ativa' | 'Inativa';
+}
+
 export interface Turma {
   TurmaGUID: string;
   TurmaNome: string;
@@ -450,6 +457,55 @@ export async function excluirAlocacao(alocacaoGUID: string): Promise<void> {
     const error = await response.json();
     throw new Error(error.message || 'Erro ao excluir alocação');
   }
+}
+
+/**
+ * Matérias que o professor está qualificado a lecionar (independente de turma)
+ * — usada pra restringir a caixa "Matéria" da seção "Nova Alocação".
+ */
+export async function listarMateriasQualificadas(
+  usuarioGUID: string,
+  escolaGUID: string
+): Promise<MateriaQualificada[]> {
+  const response = await fetch(
+    `${API_URL}/professor/${usuarioGUID}/escolas/${escolaGUID}/materias-qualificadas`,
+    { method: 'GET', headers: getHeaders() }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao listar matérias qualificadas');
+  }
+
+  const resultado = await response.json();
+  return resultado.data || [];
+}
+
+/**
+ * Define o conjunto completo de matérias que o professor pode lecionar
+ * (substitui a lista anterior).
+ */
+export async function definirMateriasQualificadas(
+  usuarioGUID: string,
+  escolaGUID: string,
+  materiaGUIDs: string[]
+): Promise<MateriaQualificada[]> {
+  const response = await fetch(
+    `${API_URL}/professor/${usuarioGUID}/escolas/${escolaGUID}/materias-qualificadas`,
+    {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({ MateriaGUIDs: materiaGUIDs }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao definir matérias qualificadas');
+  }
+
+  const resultado = await response.json();
+  return resultado.data || [];
 }
 
 /**

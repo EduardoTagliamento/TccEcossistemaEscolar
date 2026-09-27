@@ -14,7 +14,7 @@ import * as GrupoEletivoAPI from '@/lib/api/grupoeletivo.api';
 import { UsuarioBusca } from '@/lib/api/usuario.api';
 import { useBuscaUsuarioPorNome } from '@/lib/usuario/useBuscaUsuarioPorNome';
 import ListaCandidatosUsuario from '@/components/gestao-dados/ListaCandidatosUsuario';
-import { useProfessores, useAlocacoesProfessor } from '@/lib/professor/useProfessorQueries';
+import { useProfessores, useAlocacoesProfessor, useMateriasQualificadas } from '@/lib/professor/useProfessorQueries';
 import { exportarParaPlanilha } from '@/lib/utils/exportarPlanilha';
 import {
   useCriarProfessor,
@@ -106,6 +106,37 @@ export default function ProfessoresPage() {
   const alocacoesProfessor = (alocacoesQuery.data?.alocacoes ?? []).filter((a) => a.AlocacaoStatus === 'Ativa');
   const carregandoAlocacoes = alocacoesQuery.isLoading;
   const carregando = professoresQuery.isLoading || carregandoAuxiliares;
+
+  // Matérias que o professor pode lecionar (independente de turma) — restringe a caixa "Matéria"
+  // da seção "Nova Alocação" abaixo, pra só oferecer matérias que ele está associado.
+  const materiasQualificadasQuery = useMateriasQualificadas(professorEditando?.UsuarioGUID ?? undefined, escolaGUID, !!professorEditando);
+  const materiasQualificadas = materiasQualificadasQuery.data ?? [];
+  const materiasQualificadasGUIDs = new Set(materiasQualificadas.map((m) => m.MateriaGUID));
+  const [editandoMateriasQualificadas, setEditandoMateriasQualificadas] = useState(false);
+  const [selecaoMateriasQualificadas, setSelecaoMateriasQualificadas] = useState<Set<string>>(new Set());
+  const [salvandoMateriasQualificadas, setSalvandoMateriasQualificadas] = useState(false);
+  const [erroMateriasQualificadas, setErroMateriasQualificadas] = useState('');
+
+  const abrirEdicaoMateriasQualificadas = () => {
+    setSelecaoMateriasQualificadas(new Set(materiasQualificadasGUIDs));
+    setErroMateriasQualificadas('');
+    setEditandoMateriasQualificadas(true);
+  };
+
+  const salvarMateriasQualificadas = async () => {
+    if (!professorEditando) return;
+    setSalvandoMateriasQualificadas(true);
+    setErroMateriasQualificadas('');
+    try {
+      await ProfessorAPI.definirMateriasQualificadas(professorEditando.UsuarioGUID, escolaGUID, [...selecaoMateriasQualificadas]);
+      await materiasQualificadasQuery.refetch();
+      setEditandoMateriasQualificadas(false);
+    } catch (err: any) {
+      setErroMateriasQualificadas(err?.message || 'Erro ao salvar matérias que o professor pode lecionar');
+    } finally {
+      setSalvandoMateriasQualificadas(false);
+    }
+  };
 
   const criarProfessorMutation = useCriarProfessor();
   const atualizarProfessorMutation = useAtualizarProfessor();
@@ -729,6 +760,74 @@ export default function ProfessoresPage() {
             />
             {professorEditando ? (
               <div className={styles.ajuda}>
+                <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: 10, marginBottom: 10 }}>
+                  <p style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <strong><Icon name="check-circle" size={16} /> Matérias que pode lecionar:</strong>
+                    {!editandoMateriasQualificadas && (
+                      <button
+                        onClick={abrirEdicaoMateriasQualificadas}
+                        style={{ background: 'none', border: '1px solid #cbd5e0', borderRadius: 4, padding: '2px 8px', fontSize: 12, cursor: 'pointer' }}
+                      >
+                        Editar
+                      </button>
+                    )}
+                  </p>
+                  {editandoMateriasQualificadas ? (
+                    <div>
+                      <p className={styles.textoSecundario} style={{ marginBottom: 6 }}>
+                        Só matérias marcadas aqui aparecem na caixa "Matéria" ao alocar este professor numa turma.
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 160, overflowY: 'auto', padding: 4, border: '1px solid #e2e8f0', borderRadius: 4 }}>
+                        {materias.map((m) => (
+                          <label key={m.MateriaGUID} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={selecaoMateriasQualificadas.has(m.MateriaGUID)}
+                              onChange={(e) => {
+                                const nova = new Set(selecaoMateriasQualificadas);
+                                if (e.target.checked) nova.add(m.MateriaGUID);
+                                else nova.delete(m.MateriaGUID);
+                                setSelecaoMateriasQualificadas(nova);
+                              }}
+                            />
+                            {m.MateriaNome}
+                          </label>
+                        ))}
+                      </div>
+                      {erroMateriasQualificadas && <p style={{ color: '#e53e3e', fontSize: 12, marginTop: 4 }}>{erroMateriasQualificadas}</p>}
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                        <button
+                          onClick={salvarMateriasQualificadas}
+                          disabled={salvandoMateriasQualificadas}
+                          style={{ padding: '4px 14px', background: '#3182ce', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13, opacity: salvandoMateriasQualificadas ? 0.5 : 1 }}
+                        >
+                          {salvandoMateriasQualificadas ? '...' : 'Salvar'}
+                        </button>
+                        <button
+                          onClick={() => setEditandoMateriasQualificadas(false)}
+                          disabled={salvandoMateriasQualificadas}
+                          style={{ padding: '4px 14px', background: 'none', border: '1px solid #cbd5e0', borderRadius: 4, cursor: 'pointer', fontSize: 13 }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : materiasQualificadasQuery.isLoading ? (
+                    <p className={styles.textoSecundario}>Carregando...</p>
+                  ) : materiasQualificadas.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {materiasQualificadas.map((m) => (
+                        <span key={m.MateriaGUID} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#f0fff4', border: '1px solid #9ae6b4', borderRadius: 12, padding: '2px 10px', fontSize: 13 }}>
+                          {m.MateriaNome}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className={styles.textoSecundario}>
+                      Nenhuma matéria associada ainda — clique em "Editar" antes de alocar este professor numa turma.
+                    </p>
+                  )}
+                </div>
                 {carregandoAlocacoes ? (
                   <p>Carregando alocações...</p>
                 ) : (
@@ -895,6 +994,10 @@ export default function ProfessoresPage() {
                         >
                           <option value="">Matéria...</option>
                           {materias
+                            // Só matérias que o professor está associado (ver "Matérias que pode
+                            // lecionar" acima) — nova limitação: professor só leciona o que está
+                            // qualificado pra lecionar.
+                            .filter(m => materiasQualificadasGUIDs.has(m.MateriaGUID))
                             .filter(m => modoAlocacao === 'grupo'
                               ? (!novaAlocacaoGrupoEletivo || !alocacoesProfessor.some(
                                   a => a.MateriaGUID === m.MateriaGUID && a.GrupoEletivoGUID === novaAlocacaoGrupoEletivo
@@ -905,6 +1008,9 @@ export default function ProfessoresPage() {
                             .map(m => (
                               <option key={m.MateriaGUID} value={m.MateriaGUID}>{m.MateriaNome}</option>
                             ))}
+                          {materiasQualificadasGUIDs.size === 0 && (
+                            <option value="" disabled>Associe matérias a este professor primeiro (acima)</option>
+                          )}
                         </select>
                         <input
                           type="number"

@@ -1,7 +1,9 @@
 import MaterialProfessorTurma from "../entities/materiaxprofessorxturma.model";
 import Usuario from "../entities/usuario.model";
 import EscolaxUsuarioxFuncao from "../entities/escolaxusuarioxfuncao.model";
+import ProfessorMateria from "../entities/professormateria.model";
 import { MaterialProfessorTurmaDAO, AlocacaoFilters } from "../repositories/materiaxprofessorxturma.repository";
+import { ProfessorMateriaDAO, ProfessorMateriaComNomeDTO } from "../repositories/professormateria.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
@@ -135,6 +137,7 @@ export default class ProfessorService {
   #customizacaoDAO?: MateriaCustomizacaoDAO;
   #escolaDAO?: EscolaDAO;
   #grupoEletivoDAO?: GrupoEletivoDAO;
+  #professorMateriaDAO?: ProfessorMateriaDAO;
 
   constructor(
     alocacaoDAO: MaterialProfessorTurmaDAO,
@@ -145,7 +148,8 @@ export default class ProfessorService {
     usuarioDAO: UsuarioDAO,
     customizacaoDAO?: MateriaCustomizacaoDAO,
     escolaDAO?: EscolaDAO,
-    grupoEletivoDAO?: GrupoEletivoDAO
+    grupoEletivoDAO?: GrupoEletivoDAO,
+    professorMateriaDAO?: ProfessorMateriaDAO
   ) {
     this.#alocacaoDAO = alocacaoDAO;
     this.#materiaDAO = materiaDAO;
@@ -156,6 +160,115 @@ export default class ProfessorService {
     this.#customizacaoDAO = customizacaoDAO;
     this.#escolaDAO = escolaDAO;
     this.#grupoEletivoDAO = grupoEletivoDAO;
+    this.#professorMateriaDAO = professorMateriaDAO;
+  }
+
+  /**
+   * Matérias que o professor está QUALIFICADO a lecionar numa escola
+   * (independente de turma — ver docs no topo de professormateria.model.ts).
+   * Usado pra popular a caixa "Matéria" da seção "Nova Alocação" em
+   * gestão-dados/professores, filtrada só pro que o professor pode lecionar.
+   */
+  async listarMateriasQualificadas(usuarioGUID: string, escolaGUID: string): Promise<ProfessorMateriaComNomeDTO[]> {
+    if (!this.#professorMateriaDAO) {
+      throw new ErrorResponse(500, "Serviço mal configurado");
+    }
+    return this.#professorMateriaDAO.findAtivasComNomePorProfessor(usuarioGUID, escolaGUID);
+  }
+
+  /**
+   * Define o conjunto COMPLETO de matérias que o professor pode lecionar
+   * (substitui o que já existia — desativa o que saiu da lista, reativa/cria
+   * o que entrou). Só Coordenação/Direção pode chamar.
+   */
+  async definirMateriasQualificadas(
+    usuarioGUID: string,
+    escolaGUID: string,
+    materiaGUIDs: string[],
+    usuarioLogadoGUID: string
+  ): Promise<ProfessorMateriaComNomeDTO[]> {
+    if (!this.#professorMateriaDAO) {
+      throw new ErrorResponse(500, "Serviço mal configurado");
+    }
+
+    await this.validarPermissaoEscrita(usuarioLogadoGUID, escolaGUID);
+
+    // Professor precisa existir e estar ativo na escola
+    const vinculo = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(usuarioGUID, escolaGUID, 3);
+    if (!vinculo) {
+      throw new ErrorResponse(403, 'Usuário não é professor nesta escola', {
+        message: 'O identificador informado não está vinculado como professor nesta escola',
+      });
+    }
+    if (vinculo.Status !== 'Ativo') {
+      throw new ErrorResponse(403, 'Professor inativo', {
+        message: 'O professor não está com status ativo nesta escola',
+      });
+    }
+
+    // Cada matéria precisa existir e ser da mesma escola
+    const idsUnicos = [...new Set(materiaGUIDs)];
+    for (const materiaGUID of idsUnicos) {
+      const materia = await this.#materiaDAO.findById(materiaGUID);
+      if (!materia) {
+        throw new ErrorResponse(404, 'Matéria não encontrada', { message: `Não existe matéria com id ${materiaGUID}` });
+      }
+      if (materia.EscolaGUID !== escolaGUID) {
+        throw new ErrorResponse(400, 'Matéria de outra escola', {
+          message: `A matéria ${materiaGUID} não pertence a esta escola`,
+        });
+      }
+    }
+
+    const existentes = await this.#professorMateriaDAO.findAtivasComNomePorProfessor(usuarioGUID, escolaGUID);
+    const existentesGUIDs = new Set(existentes.map((e) => e.MateriaGUID));
+
+    // Remove (desativa) o que saiu da lista
+    for (const existente of existentes) {
+      if (!idsUnicos.includes(existente.MateriaGUID)) {
+        await this.#professorMateriaDAO.update(existente.ProfessorMateriaGUID, 'Inativa');
+      }
+    }
+
+    // Adiciona o que entrou (cria novo, ou reativa se já existia inativo)
+    for (const materiaGUID of idsUnicos) {
+      if (existentesGUIDs.has(materiaGUID)) continue; // já ativo, nada a fazer
+
+      const inativaExistente = await this.#professorMateriaDAO.findByUsuarioEMateria(usuarioGUID, materiaGUID);
+      if (inativaExistente) {
+        await this.#professorMateriaDAO.update(inativaExistente.ProfessorMateriaGUID, 'Ativa');
+        continue;
+      }
+
+      const qualificacao = new ProfessorMateria();
+      qualificacao.ProfessorMateriaGUID = gerarGUID();
+      qualificacao.EscolaGUID = escolaGUID;
+      qualificacao.UsuarioGUID = usuarioGUID;
+      qualificacao.MateriaGUID = materiaGUID;
+      qualificacao.ProfessorMateriaStatus = 'Ativa';
+      qualificacao.CreatedAt = new Date();
+      qualificacao.UpdatedAt = new Date();
+      qualificacao.validar();
+
+      await this.#professorMateriaDAO.create(qualificacao);
+    }
+
+    return this.#professorMateriaDAO.findAtivasComNomePorProfessor(usuarioGUID, escolaGUID);
+  }
+
+  /**
+   * Professor está qualificado pra lecionar esta matéria? (usado antes de
+   * criar uma alocação — ver criarAlocacao/criarAlocacaoGrupoEletivo).
+   */
+  private async validarQualificacaoMateria(usuarioGUID: string, materiaGUID: string): Promise<void> {
+    if (!this.#professorMateriaDAO) return; // serviço sem esse DAO configurado — não bloqueia (compat)
+
+    const qualificacao = await this.#professorMateriaDAO.findByUsuarioEMateria(usuarioGUID, materiaGUID);
+    if (!qualificacao || qualificacao.ProfessorMateriaStatus !== 'Ativa') {
+      throw new ErrorResponse(403, 'Professor não qualificado nesta matéria', {
+        message: 'Este professor não está associado a esta matéria. Associe-o em "Matérias que pode lecionar" antes de criar a alocação.',
+      });
+    }
   }
 
   /** Grid de seleção de matéria (professor) — matérias que ele leciona, já com a capa/cor. */
@@ -376,6 +489,11 @@ export default class ProfessorService {
       });
     }
 
+    // 5.1. Validar que o professor está qualificado pra lecionar esta matéria
+    // (ver docs em professormateria.model.ts — evita alocar em matéria que
+    // ninguém associou ao professor ainda).
+    await this.validarQualificacaoMateria(data.UsuarioGUID, data.MateriaGUID!);
+
     // 6. Validar duplicidade
     const professorGUID = data.UsuarioGUID;
     const existente = await this.#alocacaoDAO.findByMateriaTurmaProfessor(
@@ -473,6 +591,10 @@ export default class ProfessorService {
         message: 'O professor não está com status ativo nesta escola',
       });
     }
+
+    // Validar que o professor está qualificado pra lecionar esta matéria
+    // (mesma regra de criarAlocacao — ver docs em professormateria.model.ts).
+    await this.validarQualificacaoMateria(data.UsuarioGUID, data.MateriaGUID!);
 
     const professorGUID = data.UsuarioGUID;
     const existente = await this.#alocacaoDAO.findByMateriaGrupoProfessor(

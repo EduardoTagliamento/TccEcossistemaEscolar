@@ -436,6 +436,56 @@ export default class ProfessorController {
   };
 
   /**
+   * GET /api/professor/:usuarioGUID/escolas/:escolaGUID/materias-qualificadas
+   * Matérias que o professor está qualificado a lecionar (independente de turma)
+   */
+  listarMateriasQualificadas = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { usuarioGUID, escolaGUID } = req.params;
+
+      const materias = await this.#professorService.listarMateriasQualificadas(usuarioGUID, escolaGUID);
+
+      res.status(200).json({ success: true, data: materias, total: materias.length });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({ success: false, message: error.message, details: error.details });
+      } else {
+        console.error("Erro ao listar matérias qualificadas:", error);
+        res.status(500).json({ success: false, message: "Erro interno ao listar matérias qualificadas" });
+      }
+    }
+  };
+
+  /**
+   * PUT /api/professor/:usuarioGUID/escolas/:escolaGUID/materias-qualificadas
+   * Define o conjunto completo de matérias que o professor pode lecionar
+   * Body: { MateriaGUIDs: string[] }
+   */
+  definirMateriasQualificadas = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { usuarioGUID, escolaGUID } = req.params;
+      const { MateriaGUIDs } = req.body;
+      const usuarioLogadoGUID = req.user?.UsuarioGUID || '';
+
+      const materias = await this.#professorService.definirMateriasQualificadas(
+        usuarioGUID,
+        escolaGUID,
+        Array.isArray(MateriaGUIDs) ? MateriaGUIDs : [],
+        usuarioLogadoGUID
+      );
+
+      res.status(200).json({ success: true, message: "Matérias qualificadas atualizadas com sucesso", data: materias });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({ success: false, message: error.message, details: error.details });
+      } else {
+        console.error("Erro ao definir matérias qualificadas:", error);
+        res.status(500).json({ success: false, message: "Erro interno ao definir matérias qualificadas" });
+      }
+    }
+  };
+
+  /**
    * GET /api/professor/materias-com-capa?EscolaGUID=X
    * Grid de seleção de matéria (módulo Matérias) — já com capa/cor
    */
