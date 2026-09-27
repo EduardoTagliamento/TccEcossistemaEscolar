@@ -1,0 +1,21 @@
+--- paragrafo 22 ---
+Como o processo prevê apenas uma oportunidade de correção, os autores devem ser cuidadosos com a apresentação técnica e também com a sintaxe e a ortografia, sob pena de recusa do trabalho. Todas as instruções devem ser lidas antes do início da digitação do artigo.
+
+--- paragrafo 23 ---
+Todo e qualquer projeto que envolva seres humanos - Comitê de Ética em Pesquisa (CEP) - ou animais - Comitê de Ética no Uso de Animais (CEUA) - direta ou indiretamente, deve apresentar o respectivo protocolo de aprovação. Trabalhos que não apresentarem o número do protocolo de aprovação, serão rejeitados. Vale ressaltar que todo estudo na área de Educação, realizado em escolas, que não façam parte de projetos, tem que ter registro CEP, exceto os artigos resultantes de Programas de Órgãos de Fomento, como é o caso do PIBID/CAPES.
+
+--- paragrafo 24 ---
+O XXX INIC / XXVI EPG / XVI INID prevê a opção de apresentação de Trabalhos em Desenvolvimento, de modo a viabilizar a submissão de tais propostas à crítica de aspectos como relevância do tema, abordagem metodológica etc. Tais trabalhos devem conter, também, resultados preliminares, que permitam uma avaliação de mérito.
+
+--- paragrafo 29 ---
+Extensão do Artigo: O tamanho máximo dos artigos é de seis páginas, e o mínimo quatro páginas. Artigos em Word com mais de seis páginas e menos de quatro páginas serão recusados. 
+
+--- paragrafo 40 ---
+Estilo: Use seções separadas para Introdução, Metodologia, Resultados, Discussão, Conclusão, Referências e Agradecimentos (opcional). Os títulos das seções (recuo 0) devem ser apresentados em negrito (10 pontos), com uma linha em branco antes e depois de cada título (10 pontos). Use apenas tais títulos como cabeçalhos, evitando cabeçalhos de segunda ordem. Para enfatizar o início de subseções, inicie um novo parágrafo, redigindo adequadamente a sua primeira sentença, que deve endereçar o novo assunto.
+
+--- paragrafo 100 ---
+Agradecimentos
+
+--- paragrafo 102 ---
+Quaisquer agradecimentos a pessoas ou órgãos financiadores devem ser colocados nessa seção, após as referências. Exemplo de instituição de fomento:
+
