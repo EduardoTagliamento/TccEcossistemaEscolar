@@ -20,6 +20,8 @@ export default class Conteudo {
   #ConteudoTipo!: ConteudoTipo;
   #ConteudoDescricao: string | null = null;
   #ConteudoDataPublicacao!: Date;
+  /** Ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md — quem de fato criou, quando não foi o próprio professor (UsuarioGUID acima nunca muda). Conteúdo não tem modo de agendamento (§2.3 da spec: publica direto na confirmação). */
+  #CriadoPorRepresentanteUsuarioGUID: string | null = null;
   #CreatedAt: Date | null = null;
   #UpdatedAt: Date | null = null;
 
@@ -154,6 +156,15 @@ export default class Conteudo {
       throw new Error("ConteudoDataPublicacao deve ser uma data válida.");
     }
     this.#ConteudoDataPublicacao = value;
+  }
+
+  // ========== CriadoPorRepresentanteUsuarioGUID ==========
+  get CriadoPorRepresentanteUsuarioGUID(): string | null {
+    return this.#CriadoPorRepresentanteUsuarioGUID;
+  }
+
+  set CriadoPorRepresentanteUsuarioGUID(value: string | null) {
+    this.#CriadoPorRepresentanteUsuarioGUID = value && value.trim() ? value.trim() : null;
   }
 
   // ========== CreatedAt ==========

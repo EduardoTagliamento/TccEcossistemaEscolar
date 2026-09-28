@@ -21,6 +21,7 @@ import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
 import { getAuditoriaService } from "./auditoria.service";
 import { getProvaAgendadaRecomendacaoService } from "./provaagendadarecomendacao.service";
+import { getRepresentanteLancamentoService } from "./representantelancamento.service";
 import MysqlDatabase from "../database/MysqlDatabase";
 
 const DATA_VALIDACAO_TOLERANCIA_MS = 60 * 1000;
@@ -76,6 +77,17 @@ export interface ProvaAgendadaCreateDTO {
   AssuntoGUIDs?: string[];
   /** Capítulo de MaterialDidatico referenciado (spec item 9) — opcional. */
   MaterialDidaticoCapituloGUID?: string | null;
+  /**
+   * Lançamento por Representante (ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md)
+   * — quando presente, `usuarioGUID` passado a `criarProva` já é o do PROFESSOR
+   * (resolvido pelo chamador), e este campo só registra à parte quem de fato
+   * criou. Dispara a propagação pras turmas irmãs após a criação.
+   */
+  CriadoPorRepresentanteUsuarioGUID?: string;
+  /** Modo de agendamento da origem, pra replay do cálculo automático na propagação (§2.2 da spec). */
+  ModoAutomatico?: boolean;
+  SemanaBase?: string;
+  DiaSemana?: import("../utils/gradeHoraria.util").DiaSemana;
 }
 
 export interface ProvaAgendadaUpdateDTO {
@@ -321,6 +333,10 @@ export default class ProvaAgendadaService {
     prova.ProvaDescricao = data.ProvaDescricao ? data.ProvaDescricao.trim() : null;
     prova.ProvaStatus = "Agendada";
     prova.MaterialDidaticoCapituloGUID = data.MaterialDidaticoCapituloGUID ?? null;
+    prova.CriadoPorRepresentanteUsuarioGUID = data.CriadoPorRepresentanteUsuarioGUID ?? null;
+    prova.ProvaModoAutomatico = !!data.ModoAutomatico;
+    prova.ProvaSemanaBase = data.ModoAutomatico ? data.SemanaBase ?? null : null;
+    prova.ProvaDiaSemana = data.ModoAutomatico ? data.DiaSemana ?? null : null;
 
     const provaCriada = await this.#provaDAO.create(prova);
 
@@ -378,6 +394,26 @@ export default class ProvaAgendadaService {
       .catch((error) => {
         console.error("🔴 ProvaAgendadaService: geração de recomendação de estudo falhou:", error);
       });
+
+    // Lançamento por Representante: dispara o fan-out pras turmas irmãs
+    // (mesmo professor + mesma matéria + mesma série) — fire-and-forget,
+    // nunca atrasa nem derruba a criação da prova em si.
+    if (data.CriadoPorRepresentanteUsuarioGUID) {
+      void getRepresentanteLancamentoService().dispararPropagacao({
+        tipo: "Prova",
+        origemGUID: provaCriada.ProvaAgendadaGUID,
+        turmaOrigemGUID: data.TurmasGUID[0],
+        materiaGUID: data.MateriaGUID,
+        professorUsuarioGUID: usuarioGUID,
+        professorNome: (await this.#usuarioDAO.findByGUID(usuarioGUID))?.UsuarioNome ?? "Seu professor",
+        resumoConteudo: provaCriada.ProvaTitulo + (provaCriada.ProvaDescricao ? ` — ${provaCriada.ProvaDescricao}` : ""),
+        modoAgendamento: {
+          modoAutomatico: provaCriada.ProvaModoAutomatico,
+          semanaBase: provaCriada.ProvaSemanaBase ?? undefined,
+          diaSemana: (provaCriada.ProvaDiaSemana as any) ?? undefined,
+        },
+      });
+    }
 
     return this.toDTO(provaCriada, atribuicoes);
   };

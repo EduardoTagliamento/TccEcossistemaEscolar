@@ -25,6 +25,7 @@ import { MatriculaDAO } from "../repositories/matricula.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { normalizarTelefone } from "../utils/helpers/telefone.helper";
+import { getRepresentanteLancamentoService } from "./representantelancamento.service";
 import { gerarGUID } from "../utils/helpers/guid.helper";
 import ErrorResponse from "../utils/ErrorResponse";
 
@@ -88,6 +89,15 @@ interface ChatbotSessao {
   conteudosCache: { ConteudoGUID: string; titulo: string }[];
   /** Arquivo recebido pelo WhatsApp aguardando ser consumido por uma ferramenta (ex.: enviar_atividade). */
   anexoPendente: { buffer: Buffer; mimetype: string; fileName: string } | null;
+  /**
+   * Turmas onde o usuário é Representante/Vice-Representante ativo — só
+   * populado se não vazio (ver Lançamento por Representante). Controla se as
+   * ferramentas consultar_propagacoes_pendentes/confirmar_.../recusar_...
+   * ficam disponíveis nesta sessão; resolvido uma vez, na identificação.
+   */
+  representanteDeTurmas: { TurmaGUID: string }[];
+  /** Whitelist de PropagacaoGUID do último consultar_propagacoes_pendentes — mesmo padrão de tarefasCache/conversasCache. */
+  propagacoesPendentesCache: { PropagacaoGUID: string }[];
 }
 
 export interface EnviarMensagemResultado {
@@ -378,6 +388,8 @@ export default class ChatbotService {
     materiasCache: [],
     conteudosCache: [],
     anexoPendente: null,
+    representanteDeTurmas: [],
+    propagacoesPendentesCache: [],
   });
 
   /**
@@ -461,6 +473,17 @@ export default class ChatbotService {
     }
 
     sessao.usuarioGUID = usuario.UsuarioGUID;
+
+    // Lançamento por Representante: resolvido uma vez aqui (não a cada
+    // mensagem) — barato (1 query) e controla o gating das ferramentas
+    // consultar_propagacoes_pendentes/confirmar_.../recusar_... abaixo.
+    try {
+      const turmas = await getRepresentanteLancamentoService().listarTurmasOndeERepresentante(usuario.UsuarioGUID);
+      sessao.representanteDeTurmas = turmas.map((t) => ({ TurmaGUID: t.TurmaGUID }));
+    } catch (error) {
+      console.error("🔴 ChatbotService#resolverIdentidadeUsuario: falha ao resolver turmas de representante:", error);
+    }
+
     const opcoes: EscolaOpcao[] = vinculosAtivos.map((v) => ({
       EscolaGUID: v.escola.EscolaGUID,
       EscolaNome: v.escola.EscolaNome,
@@ -564,6 +587,8 @@ export default class ChatbotService {
         sessao.provasCache = [];
         sessao.materiasCache = [];
         sessao.conteudosCache = [];
+        sessao.representanteDeTurmas = [];
+        sessao.propagacoesPendentesCache = [];
 
         const resultado = await this.#identificarPorTelefone(sessao, sessao.telefoneCanal!);
         if (resultado.encontrado !== true || resultado.semVinculoAtivo === true) {
@@ -577,6 +602,62 @@ export default class ChatbotService {
     if (sessao.usuarioGUID && sessao.escolaGUID) {
       const usuarioGUID = sessao.usuarioGUID;
       const escolaGUID = sessao.escolaGUID;
+
+      // Lançamento por Representante (ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md)
+      // — só existe se o usuário for Representante/Vice-Representante de
+      // pelo menos uma turma (resolvido uma vez em #resolverIdentidadeUsuario).
+      if (sessao.representanteDeTurmas.length > 0) {
+        handlers.consultar_propagacoes_pendentes = async () => {
+          const pendentes = await getRepresentanteLancamentoService().listarPendentesComResumoParaUsuario(usuarioGUID);
+          sessao.propagacoesPendentesCache = pendentes.map((p) => ({ PropagacaoGUID: p.PropagacaoGUID }));
+          return {
+            pendentes: pendentes.map((p) => ({
+              PropagacaoGUID: p.PropagacaoGUID,
+              tipo: p.tipo,
+              resumo: p.resumo,
+              turma: p.turma,
+            })),
+          };
+        };
+
+        handlers.confirmar_lancamento_representante = async (args) => {
+          const propagacaoGUID = String(args.propagacaoGUID ?? "");
+          if (!sessao.propagacoesPendentesCache.some((p) => p.PropagacaoGUID === propagacaoGUID)) {
+            return { error: "PropagacaoGUID não corresponde a nenhuma pendência listada — chame consultar_propagacoes_pendentes primeiro" };
+          }
+          const resultado = await getRepresentanteLancamentoService().confirmarPropagacao(propagacaoGUID, usuarioGUID);
+          if (!resultado.ok) {
+            return {
+              naoResolvido: true,
+              motivo: resultado.motivo,
+              aviso: "Não consegui calcular a data/horário automaticamente pra essa turma — isso precisa ser resolvido manualmente com o professor ou a coordenação.",
+            };
+          }
+          sessao.propagacoesPendentesCache = sessao.propagacoesPendentesCache.filter((p) => p.PropagacaoGUID !== propagacaoGUID);
+          return { ok: true };
+        };
+
+        handlers.recusar_lancamento_representante_com_edicao = async (args) => {
+          const propagacaoGUID = String(args.propagacaoGUID ?? "");
+          const novoConteudo = String(args.novoConteudo ?? "").trim();
+          if (!sessao.propagacoesPendentesCache.some((p) => p.PropagacaoGUID === propagacaoGUID)) {
+            return { error: "PropagacaoGUID não corresponde a nenhuma pendência listada — chame consultar_propagacoes_pendentes primeiro" };
+          }
+          if (!novoConteudo) {
+            return { error: "Informe o conteúdo diferente que o usuário quer usar" };
+          }
+          const resultado = await getRepresentanteLancamentoService().recusarComEdicaoPropagacao(propagacaoGUID, usuarioGUID, novoConteudo);
+          if (!resultado.ok) {
+            return {
+              naoResolvido: true,
+              motivo: resultado.motivo,
+              aviso: "Não consegui calcular a data/horário automaticamente pra essa turma — isso precisa ser resolvido manualmente com o professor ou a coordenação.",
+            };
+          }
+          sessao.propagacoesPendentesCache = sessao.propagacoesPendentesCache.filter((p) => p.PropagacaoGUID !== propagacaoGUID);
+          return { ok: true };
+        };
+      }
 
       // Calendário: disponível pra qualquer papel.
       handlers.consultar_calendario = async (args) => {

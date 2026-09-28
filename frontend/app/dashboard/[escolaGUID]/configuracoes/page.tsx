@@ -78,6 +78,12 @@ export default function ConfiguracoesEscolaPage() {
   const [periodoTardeFim, setPeriodoTardeFim] = useState('17:00');
   const [intervaloVariado, setIntervaloVariado] = useState(false);
 
+  // ===== Lançamento por Representante (temporário) — ver
+  // docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md (apenas Direção) =====
+  const [permiteLancamentoRepresentante, setPermiteLancamentoRepresentante] = useState(false);
+  const [salvandoFlagRepresentante, setSalvandoFlagRepresentante] = useState(false);
+  const [erroFlagRepresentante, setErroFlagRepresentante] = useState('');
+
   // Modo fixo: uma lista única de intervalos, aplicada a todos os dias letivos
   const [intervalosFixos, setIntervalosFixos] = useState<IntervaloLinha[]>([
     { IntervaloInicio: '09:50', IntervaloFim: '10:05' },
@@ -91,6 +97,28 @@ export default function ConfiguracoesEscolaPage() {
       carregarConfiguracao();
     }
   }, [escolaGUID]);
+
+  useEffect(() => {
+    if (escolaGUID && isDirecao) {
+      EscolaConfiguracaoAPI.obterFlagLancamentoPorRepresentante(escolaGUID)
+        .then(setPermiteLancamentoRepresentante)
+        .catch((err) => console.error('Erro ao carregar flag de lançamento por representante:', err));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [escolaGUID, isDirecao]);
+
+  const alternarFlagRepresentante = async (valor: boolean) => {
+    setSalvandoFlagRepresentante(true);
+    setErroFlagRepresentante('');
+    try {
+      await EscolaConfiguracaoAPI.definirFlagLancamentoPorRepresentante(escolaGUID, valor);
+      setPermiteLancamentoRepresentante(valor);
+    } catch (err: any) {
+      setErroFlagRepresentante(err.message || 'Erro ao salvar configuração');
+    } finally {
+      setSalvandoFlagRepresentante(false);
+    }
+  };
 
   useEffect(() => {
     if (escolaGUID && usuario) {
@@ -796,6 +824,43 @@ export default function ConfiguracoesEscolaPage() {
           {salvando ? 'Salvando...' : 'Salvar Configurações'}
         </button>
       </div>
+
+      {isDirecao && (
+        <div className={styles.secao}>
+          <div className={styles.secaoTituloLinha}>
+            <h2 className={styles.secaoTitulo}>Lançamento por Representante</h2>
+            <span className={styles.secaoNota}>Visível apenas para a Direção</span>
+          </div>
+
+          <p style={{ color: '#6B7280', fontSize: 14, lineHeight: 1.6, marginBottom: 16 }}>
+            Recurso temporário: enquanto os professores ainda não estão usando o sistema, permite que o
+            Representante/Vice-Representante de cada turma crie prova, tarefa e conteúdo em nome do professor
+            responsável. A criação é sempre marcada como feita por representante, e as outras turmas do mesmo
+            professor/matéria recebem uma confirmação via WhatsApp antes de replicar o lançamento.
+          </p>
+
+          {erroFlagRepresentante && <div className={styles.erro}>{erroFlagRepresentante}</div>}
+
+          <label className={styles.switchRow}>
+            <span className={styles.switchControl}>
+              <input
+                type="checkbox"
+                className={styles.switchInput}
+                checked={permiteLancamentoRepresentante}
+                disabled={salvandoFlagRepresentante}
+                onChange={(e) => alternarFlagRepresentante(e.target.checked)}
+              />
+              <span className={styles.switchTrack}>
+                <span className={styles.switchThumb} />
+              </span>
+            </span>
+            <span className={styles.switchLabel}>
+              Permitir que representantes de turma lancem em nome do professor
+              {salvandoFlagRepresentante && ' (salvando...)'}
+            </span>
+          </label>
+        </div>
+      )}
 
       {isDirecao && (
         <div className={styles.secao} style={{ border: '1px solid #FCA5A5', background: '#FEF2F2', borderRadius: 8 }}>

@@ -10,6 +10,10 @@ interface ProvaAgendadaRow extends RowDataPacket {
   ProvaDescricao: string | null;
   ProvaStatus: "Agendada" | "Realizada" | "Cancelada";
   MaterialDidaticoCapituloGUID: string | null;
+  CriadoPorRepresentanteUsuarioGUID: string | null;
+  ProvaModoAutomatico: number | boolean;
+  ProvaSemanaBase: string | null;
+  ProvaDiaSemana: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }
@@ -59,8 +63,9 @@ export class ProvaAgendadaDAO {
 
     const SQL = `
       INSERT INTO provaagendada
-      (ProvaAgendadaGUID, MateriaGUID, ProvaTitulo, ProvaData, ProvaDescricao, ProvaStatus, MaterialDidaticoCapituloGUID)
-      VALUES (?, ?, ?, ?, ?, ?, ?);
+      (ProvaAgendadaGUID, MateriaGUID, ProvaTitulo, ProvaData, ProvaDescricao, ProvaStatus, MaterialDidaticoCapituloGUID,
+       CriadoPorRepresentanteUsuarioGUID, ProvaModoAutomatico, ProvaSemanaBase, ProvaDiaSemana)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       prova.ProvaAgendadaGUID,
@@ -70,6 +75,10 @@ export class ProvaAgendadaDAO {
       prova.ProvaDescricao,
       prova.ProvaStatus,
       prova.MaterialDidaticoCapituloGUID,
+      prova.CriadoPorRepresentanteUsuarioGUID,
+      prova.ProvaModoAutomatico,
+      prova.ProvaSemanaBase,
+      prova.ProvaDiaSemana,
     ];
 
     const pool = await this.#database.getPool();
@@ -282,6 +291,10 @@ export class ProvaAgendadaDAO {
     prova.ProvaDescricao = row.ProvaDescricao;
     prova.ProvaStatus = row.ProvaStatus;
     prova.MaterialDidaticoCapituloGUID = row.MaterialDidaticoCapituloGUID;
+    prova.CriadoPorRepresentanteUsuarioGUID = row.CriadoPorRepresentanteUsuarioGUID;
+    prova.ProvaModoAutomatico = !!row.ProvaModoAutomatico;
+    prova.ProvaSemanaBase = row.ProvaSemanaBase;
+    prova.ProvaDiaSemana = row.ProvaDiaSemana;
     prova.CreatedAt = row.CreatedAt;
     prova.UpdatedAt = row.UpdatedAt;
     return prova;

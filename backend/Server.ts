@@ -31,6 +31,7 @@ import uploadRoutes from "../routes/upload.routes";
 import { anexoRoutes } from "../routes/anexo.routes";
 import { tarefaAcademicaRoutes } from "../routes/tarefaacademica.routes";
 import { provaAgendadaRoutes } from "../routes/provaagendada.routes";
+import { representanteLancamentoRoutes } from "../routes/representantelancamento.routes";
 import { calendarioRoutes } from "../routes/calendario.routes";
 import { pendenciaRoutes } from "../routes/pendencia.routes";
 import { eventoRoutes } from "../routes/evento.routes";
@@ -468,6 +469,7 @@ export default class Server {
 
     // 📝 Rotas de Prova Agendada
     this.#app.use("/api/prova", provaAgendadaRoutes);
+    this.#app.use("/api/representante", representanteLancamentoRoutes);
     console.log("✅ Rotas de Prova Agendada registradas em /api/prova");
 
     // 📅 Rotas de Calendário

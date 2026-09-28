@@ -15,10 +15,12 @@ import { MatriculaDAO } from "../repositories/matricula.repository";
 import { CategoriaConteudoDAO } from "../repositories/categoriaconteudo.repository";
 import { MaterialProfessorTurmaDAO } from "../repositories/materiaxprofessorxturma.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
+import MysqlDatabase from "../database/MysqlDatabase";
 import ErrorResponse from "../utils/ErrorResponse";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
 import { getAuditoriaService } from "./auditoria.service";
+import { getRepresentanteLancamentoService } from "./representantelancamento.service";
 
 /**
  * DTOs - Estruturas normalizadas (1 tarefa → N alunos)
@@ -89,6 +91,17 @@ export interface TarefaAcademicaCreateDTO {
   TarefaMaxPessoas?: number | null;
   /** Agendamento automático: prazo específico por aluno (MatriculaGUID -> data). Sobrescreve TarefaPrazoData para o aluno correspondente. */
   DatasPorMatricula?: Record<string, Date>;
+  /**
+   * Lançamento por Representante (ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md)
+   * — quando presente, `usuarioGUID` passado a `criarTarefa` já é o do
+   * PROFESSOR (resolvido pelo chamador); este campo só registra à parte quem
+   * de fato criou. Dispara a propagação pras turmas irmãs após a criação.
+   */
+  CriadoPorRepresentanteUsuarioGUID?: string;
+  /** Modo de agendamento da origem, pra replay do cálculo automático na propagação (§2.2 da spec). */
+  ModoAutomatico?: boolean;
+  SemanaBase?: string;
+  DiaSemana?: import("../utils/gradeHoraria.util").DiaSemana;
 }
 
 // Batch agora é o mesmo que Create (sempre atribui para N alunos)
@@ -402,7 +415,12 @@ export default class TarefaAcademicaService {
     tarefa.TarefaCompartilhada = data.TarefaCompartilhada || false;
     tarefa.TarefaMinPessoas = data.TarefaMinPessoas || null;
     tarefa.TarefaMaxPessoas = data.TarefaMaxPessoas || null;
-    
+
+    tarefa.CriadoPorRepresentanteUsuarioGUID = data.CriadoPorRepresentanteUsuarioGUID ?? null;
+    tarefa.TarefaPrazoModoAutomatico = !!data.ModoAutomatico;
+    tarefa.TarefaPrazoSemanaBase = data.ModoAutomatico ? data.SemanaBase ?? null : null;
+    tarefa.TarefaPrazoDiaSemana = data.ModoAutomatico ? data.DiaSemana ?? null : null;
+
     // Validar campos de tarefa compartilhada
     tarefa.validarCompartilhada();
 
@@ -431,6 +449,30 @@ export default class TarefaAcademicaService {
         if (anexo) {
           await this.#tarefaDAO.vincularAnexo(tarefaCriada.TarefaGUID, anexoGUID, "tarefa");
         }
+      }
+    }
+
+    // Lançamento por Representante: dispara o fan-out pras turmas irmãs
+    // (mesmo professor + mesma matéria + mesma série) — fire-and-forget,
+    // nunca atrasa nem derruba a criação da tarefa em si.
+    if (data.CriadoPorRepresentanteUsuarioGUID) {
+      const alocacaoOrigem = await this.#alocacaoDAO.findById(data.matXprofXturxescGUID);
+      if (alocacaoOrigem && alocacaoOrigem.TurmaGUID) {
+        const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
+        void getRepresentanteLancamentoService().dispararPropagacao({
+          tipo: "Tarefa",
+          origemGUID: tarefaCriada.TarefaGUID,
+          turmaOrigemGUID: alocacaoOrigem.TurmaGUID,
+          materiaGUID: alocacaoOrigem.MateriaGUID,
+          professorUsuarioGUID: usuarioGUID,
+          professorNome: professor?.UsuarioNome ?? "Seu professor",
+          resumoConteudo: tarefaCriada.TarefaTitulo + (tarefaCriada.TarefaConteudo ? ` — ${tarefaCriada.TarefaConteudo}` : ""),
+          modoAgendamento: {
+            modoAutomatico: tarefaCriada.TarefaPrazoModoAutomatico,
+            semanaBase: tarefaCriada.TarefaPrazoSemanaBase ?? undefined,
+            diaSemana: (tarefaCriada.TarefaPrazoDiaSemana as any) ?? undefined,
+          },
+        });
       }
     }
 
@@ -2421,4 +2463,26 @@ export default class TarefaAcademicaService {
 
     return this.#mapRespostaParaDTO(atualizada);
   };
+}
+
+let instanciaSingleton: TarefaAcademicaService | null = null;
+
+/** Singleton pra uso fora do grafo de DI das rotas (ex.: RepresentanteLancamentoController) — mesmo padrão de getProvaAgendadaService(). */
+export function getTarefaAcademicaService(): TarefaAcademicaService {
+  if (!instanciaSingleton) {
+    const database = MysqlDatabase.getInstance();
+    instanciaSingleton = new TarefaAcademicaService(
+      new TarefaAcademicaDAO(database),
+      new TarefaAcademicaMatriculaDAO(database),
+      new AnexoDAO(database),
+      new MatriculaDAO(database),
+      new CategoriaConteudoDAO(database),
+      new MaterialProfessorTurmaDAO(database),
+      new TarefaAcademicaQuestaoDAO(database),
+      new TarefaAcademicaAlternativaDAO(database),
+      new TarefaAcademicaRespostaDAO(database),
+      new UsuarioDAO(database)
+    );
+  }
+  return instanciaSingleton;
 }

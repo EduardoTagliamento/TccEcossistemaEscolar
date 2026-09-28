@@ -21,6 +21,11 @@ export default class ProvaAgendada {
   #ProvaDescricao: string | null = null;
   #ProvaStatus: "Agendada" | "Realizada" | "Cancelada" = "Agendada";
   #MaterialDidaticoCapituloGUID: string | null = null;
+  /** Ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md — quem de fato criou, quando não foi o próprio professor (UsuarioGUID acima nunca muda). */
+  #CriadoPorRepresentanteUsuarioGUID: string | null = null;
+  #ProvaModoAutomatico: boolean = false;
+  #ProvaSemanaBase: string | null = null;
+  #ProvaDiaSemana: string | null = null;
   #CreatedAt: Date | null = null;
   #UpdatedAt: Date | null = null;
 
@@ -132,6 +137,40 @@ export default class ProvaAgendada {
 
   set MaterialDidaticoCapituloGUID(value: string | null) {
     this.#MaterialDidaticoCapituloGUID = value && value.trim() ? value.trim() : null;
+  }
+
+  // ========== CriadoPorRepresentanteUsuarioGUID ==========
+  get CriadoPorRepresentanteUsuarioGUID(): string | null {
+    return this.#CriadoPorRepresentanteUsuarioGUID;
+  }
+
+  set CriadoPorRepresentanteUsuarioGUID(value: string | null) {
+    this.#CriadoPorRepresentanteUsuarioGUID = value && value.trim() ? value.trim() : null;
+  }
+
+  // ========== ProvaModoAutomatico / ProvaSemanaBase / ProvaDiaSemana ==========
+  get ProvaModoAutomatico(): boolean {
+    return this.#ProvaModoAutomatico;
+  }
+
+  set ProvaModoAutomatico(value: boolean) {
+    this.#ProvaModoAutomatico = !!value;
+  }
+
+  get ProvaSemanaBase(): string | null {
+    return this.#ProvaSemanaBase;
+  }
+
+  set ProvaSemanaBase(value: string | null) {
+    this.#ProvaSemanaBase = value && value.trim() ? value.trim() : null;
+  }
+
+  get ProvaDiaSemana(): string | null {
+    return this.#ProvaDiaSemana;
+  }
+
+  set ProvaDiaSemana(value: string | null) {
+    this.#ProvaDiaSemana = value && value.trim() ? value.trim() : null;
   }
 
   // ========== CreatedAt ==========

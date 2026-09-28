@@ -262,6 +262,31 @@ export class ConversaGrupoDAO {
     return (rows as ConversaGrupoMembroRow[]).map((r) => ConversaGrupoMembro.fromDatabase(r));
   }
 
+  /**
+   * Turmas onde este usuário é Representante ou Vice-Representante ativo —
+   * usado pelo fluxo de Lançamento por Representante (ver
+   * docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md) pra saber, no
+   * chatbot, se vale a pena expor as ferramentas de criar/confirmar
+   * lançamento em nome do professor.
+   */
+  async findTurmasOndeERepresentante(
+    usuarioGUID: string
+  ): Promise<{ TurmaGUID: string; TurmaNome: string; MembroFuncao: MembroFuncaoType }[]> {
+    console.log('🟢 ConversaGrupoDAO.findTurmasOndeERepresentante()');
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(
+      `SELECT cg.ConversaGrupoRefGUID AS TurmaGUID, t.TurmaNome, cgm.MembroFuncao
+       FROM conversa_grupo_membro cgm
+       INNER JOIN conversa_grupo cg ON cg.ConversaGUID = cgm.ConversaGUID
+       INNER JOIN turma t ON t.TurmaGUID = cg.ConversaGrupoRefGUID
+       WHERE cgm.MembroUsuarioGUID = ? AND cgm.MembroStatus = 'Ativo'
+         AND cg.ConversaGrupoTipo = 'Turma'
+         AND cgm.MembroFuncao IN ('Representante', 'Vice-Representante')`,
+      [usuarioGUID]
+    );
+    return rows as { TurmaGUID: string; TurmaNome: string; MembroFuncao: MembroFuncaoType }[];
+  }
+
   async findGruposTarefasExpirados(): Promise<GrupoTarefaExpiradoRow[]> {
     console.log('🟢 ConversaGrupoDAO.findGruposTarefasExpirados()');
     const pool = await this.#database.getPool();

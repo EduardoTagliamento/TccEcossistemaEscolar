@@ -103,6 +103,37 @@ export class EscolaConfiguracaoDAO {
     return configs[0] || null;
   };
 
+  /**
+   * Flag de "Lançamento por Representante" (ver
+   * docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md) — lida/gravada
+   * direto, fora do fluxo de EscolaConfiguracao/create/update, porque é
+   * independente da configuração de horário letivo (que exige os demais
+   * campos obrigatórios preenchidos e pode nem existir ainda pra uma escola).
+   */
+  getPermiteLancamentoPorRepresentante = async (escolaGUID: string): Promise<boolean> => {
+    console.log("🟢 EscolaConfiguracaoDAO.getPermiteLancamentoPorRepresentante()");
+
+    const SQL = `SELECT PermiteLancamentoPorRepresentante FROM escolaconfiguracao WHERE EscolaGUID = ? LIMIT 1`;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL, [escolaGUID]);
+    const list = rows as { PermiteLancamentoPorRepresentante: number | boolean }[];
+    if (list.length === 0) return false;
+    return !!list[0].PermiteLancamentoPorRepresentante;
+  };
+
+  definirPermiteLancamentoPorRepresentante = async (escolaGUID: string, valor: boolean): Promise<void> => {
+    console.log("🟢 EscolaConfiguracaoDAO.definirPermiteLancamentoPorRepresentante()");
+
+    const SQL = `UPDATE escolaconfiguracao SET PermiteLancamentoPorRepresentante = ? WHERE EscolaGUID = ?`;
+    const pool = await this.#database.getPool();
+    const [resultado] = await pool.execute(SQL, [valor, escolaGUID]);
+    if ((resultado as { affectedRows: number }).affectedRows === 0) {
+      throw new Error(
+        `Não existe escolaconfiguracao para a escola ${escolaGUID} — configure o horário letivo antes de ativar esta flag.`
+      );
+    }
+  };
+
   findIntervalosByConfiguracao = async (
     escolaConfiguracaoGUID: string
   ): Promise<EscolaConfiguracaoIntervalo[]> => {

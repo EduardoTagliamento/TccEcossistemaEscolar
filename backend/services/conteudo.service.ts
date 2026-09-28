@@ -22,6 +22,8 @@ import { RowDataPacket } from "mysql2";
 import { pool } from "../database/mysql";
 import { getNotificacaoService } from "./notificacao.service";
 import { getAuditoriaService } from "./auditoria.service";
+import { getRepresentanteLancamentoService } from "./representantelancamento.service";
+import MysqlDatabase from "../database/MysqlDatabase";
 
 export interface ConteudoTurmaDTO {
   TurmaGUID: string;
@@ -84,6 +86,15 @@ export interface ConteudoCreateDTO {
 
   // tipo "texto"
   ConteudoHtml?: string;
+
+  /**
+   * Lançamento por Representante (ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md)
+   * — quando presente, `usuarioGUID` passado a `criarConteudo` já é o do
+   * PROFESSOR (resolvido pelo chamador); este campo só registra à parte quem
+   * de fato criou. Conteúdo não tem modo de agendamento (§2.3 — publica
+   * direto na confirmação), diferente de Prova/Tarefa.
+   */
+  CriadoPorRepresentanteUsuarioGUID?: string;
 }
 
 export interface ConteudoUpdateDTO {
@@ -234,6 +245,7 @@ export default class ConteudoService {
     conteudo.ConteudoTipo = data.ConteudoTipo;
     conteudo.ConteudoDescricao = data.ConteudoDescricao || null;
     conteudo.ConteudoDataPublicacao = dataBase;
+    conteudo.CriadoPorRepresentanteUsuarioGUID = data.CriadoPorRepresentanteUsuarioGUID ?? null;
 
     await this.#conteudoDAO.create(conteudo);
 
@@ -274,6 +286,23 @@ export default class ConteudoService {
         EntidadeGUID: conteudo.ConteudoGUID,
         EntidadeDescricao: conteudo.ConteudoTitulo,
         CategoriaAuditoriaId: 2,
+      });
+    }
+
+    // Lançamento por Representante: dispara o fan-out pras turmas irmãs
+    // (mesmo professor + mesma matéria + mesma série) — fire-and-forget,
+    // nunca atrasa nem derruba a criação do conteúdo em si. Sem modo de
+    // agendamento (§2.3 da spec: Conteúdo publica direto na confirmação).
+    if (data.CriadoPorRepresentanteUsuarioGUID) {
+      const professor = await this.#usuarioDAO.findByGUID(usuarioGUID);
+      void getRepresentanteLancamentoService().dispararPropagacao({
+        tipo: "Conteudo",
+        origemGUID: conteudo.ConteudoGUID,
+        turmaOrigemGUID: data.TurmasGUID[0],
+        materiaGUID: data.MateriaGUID,
+        professorUsuarioGUID: usuarioGUID,
+        professorNome: professor?.UsuarioNome ?? "Seu professor",
+        resumoConteudo: conteudo.ConteudoTitulo + (conteudo.ConteudoDescricao ? ` — ${conteudo.ConteudoDescricao}` : ""),
       });
     }
 
@@ -744,4 +773,26 @@ export default class ConteudoService {
 
     return dto;
   };
+}
+
+let instanciaSingleton: ConteudoService | null = null;
+
+/** Singleton pra uso fora do grafo de DI das rotas (ex.: RepresentanteLancamentoController) — mesmo padrão de getProvaAgendadaService(). */
+export function getConteudoService(): ConteudoService {
+  if (!instanciaSingleton) {
+    const database = MysqlDatabase.getInstance();
+    instanciaSingleton = new ConteudoService(
+      new ConteudoDAO(database),
+      new ConteudoTurmaDAO(database),
+      new ConteudoCronometradoDAO(database),
+      new ConteudoTextoDAO(database),
+      new ConteudoPaginadoArquivoDAO(database),
+      new MateriaDAO(database),
+      new TurmaDAO(database),
+      new CategoriaConteudoDAO(database),
+      new MaterialProfessorTurmaDAO(database),
+      new UsuarioDAO(database)
+    );
+  }
+  return instanciaSingleton;
 }

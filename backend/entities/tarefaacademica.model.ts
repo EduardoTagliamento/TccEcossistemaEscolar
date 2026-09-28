@@ -33,6 +33,12 @@ export default class TarefaAcademica {
   #TarefaMinPessoas: number | null = null;
   #TarefaMaxPessoas: number | null = null;
 
+  // Lançamento por Representante (ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md)
+  #CriadoPorRepresentanteUsuarioGUID: string | null = null;
+  #TarefaPrazoModoAutomatico: boolean = false;
+  #TarefaPrazoSemanaBase: string | null = null;
+  #TarefaPrazoDiaSemana: string | null = null;
+
   constructor() {
     console.log("⬆️  TarefaAcademica.constructor()");
   }
@@ -155,6 +161,39 @@ export default class TarefaAcademica {
       throw new Error('TarefaTipoEntrega deve ser "digital", "fisica" ou "lista".');
     }
     this.#TarefaTipoEntrega = value;
+  }
+
+  // ========== CriadoPorRepresentanteUsuarioGUID / modo de agendamento ==========
+  get CriadoPorRepresentanteUsuarioGUID(): string | null {
+    return this.#CriadoPorRepresentanteUsuarioGUID;
+  }
+
+  set CriadoPorRepresentanteUsuarioGUID(value: string | null) {
+    this.#CriadoPorRepresentanteUsuarioGUID = value && value.trim() ? value.trim() : null;
+  }
+
+  get TarefaPrazoModoAutomatico(): boolean {
+    return this.#TarefaPrazoModoAutomatico;
+  }
+
+  set TarefaPrazoModoAutomatico(value: boolean) {
+    this.#TarefaPrazoModoAutomatico = !!value;
+  }
+
+  get TarefaPrazoSemanaBase(): string | null {
+    return this.#TarefaPrazoSemanaBase;
+  }
+
+  set TarefaPrazoSemanaBase(value: string | null) {
+    this.#TarefaPrazoSemanaBase = value && value.trim() ? value.trim() : null;
+  }
+
+  get TarefaPrazoDiaSemana(): string | null {
+    return this.#TarefaPrazoDiaSemana;
+  }
+
+  set TarefaPrazoDiaSemana(value: string | null) {
+    this.#TarefaPrazoDiaSemana = value && value.trim() ? value.trim() : null;
   }
 
   // ========== CreatedAt ==========

@@ -10,6 +10,7 @@ interface ConteudoRow {
   ConteudoTipo: ConteudoTipo;
   ConteudoDescricao: string | null;
   ConteudoDataPublicacao: Date;
+  CriadoPorRepresentanteUsuarioGUID: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }
@@ -41,8 +42,8 @@ export class ConteudoDAO {
 
     const SQL = `
       INSERT INTO conteudo
-      (ConteudoGUID, MateriaGUID, UsuarioGUID, CategoriaGUID, ConteudoTitulo, ConteudoTipo, ConteudoDescricao, ConteudoDataPublicacao)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+      (ConteudoGUID, MateriaGUID, UsuarioGUID, CategoriaGUID, ConteudoTitulo, ConteudoTipo, ConteudoDescricao, ConteudoDataPublicacao, CriadoPorRepresentanteUsuarioGUID)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       conteudo.ConteudoGUID,
@@ -53,6 +54,7 @@ export class ConteudoDAO {
       conteudo.ConteudoTipo,
       conteudo.ConteudoDescricao,
       conteudo.ConteudoDataPublicacao,
+      conteudo.CriadoPorRepresentanteUsuarioGUID,
     ];
 
     const pool = await this.#database.getPool();
@@ -161,6 +163,7 @@ export class ConteudoDAO {
       conteudo.ConteudoTipo = row.ConteudoTipo;
       conteudo.ConteudoDescricao = row.ConteudoDescricao;
       conteudo.ConteudoDataPublicacao = new Date(row.ConteudoDataPublicacao);
+      conteudo.CriadoPorRepresentanteUsuarioGUID = row.CriadoPorRepresentanteUsuarioGUID;
       conteudo.CreatedAt = new Date(row.CreatedAt);
       conteudo.UpdatedAt = new Date(row.UpdatedAt);
       return conteudo;

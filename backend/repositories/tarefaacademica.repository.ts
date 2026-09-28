@@ -14,6 +14,10 @@ interface TarefaAcademicaRow extends RowDataPacket {
   TarefaCompartilhada: boolean;
   TarefaMinPessoas: number | null;
   TarefaMaxPessoas: number | null;
+  CriadoPorRepresentanteUsuarioGUID: string | null;
+  TarefaPrazoModoAutomatico: number | boolean;
+  TarefaPrazoSemanaBase: string | null;
+  TarefaPrazoDiaSemana: string | null;
   CreatedAt: Date;
   UpdatedAt: Date;
 }
@@ -61,8 +65,9 @@ export class TarefaAcademicaDAO {
       INSERT INTO tarefaacademica
       (TarefaGUID, matXprofXturxescGUID, TarefaTitulo, TarefaConteudo,
        TarefaPostagemData, TarefaPrazoData, TarefaTipoEntrega, CategoriaGUID,
-       TarefaCompartilhada, TarefaMinPessoas, TarefaMaxPessoas)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+       TarefaCompartilhada, TarefaMinPessoas, TarefaMaxPessoas,
+       CriadoPorRepresentanteUsuarioGUID, TarefaPrazoModoAutomatico, TarefaPrazoSemanaBase, TarefaPrazoDiaSemana)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       tarefa.TarefaGUID,
@@ -76,6 +81,10 @@ export class TarefaAcademicaDAO {
       tarefa.TarefaCompartilhada,
       tarefa.TarefaMinPessoas,
       tarefa.TarefaMaxPessoas,
+      tarefa.CriadoPorRepresentanteUsuarioGUID,
+      tarefa.TarefaPrazoModoAutomatico,
+      tarefa.TarefaPrazoSemanaBase,
+      tarefa.TarefaPrazoDiaSemana,
     ];
 
     const pool = await this.#database.getPool();
@@ -429,6 +438,10 @@ export class TarefaAcademicaDAO {
     tarefa.TarefaCompartilhada = Boolean(row.TarefaCompartilhada);
     tarefa.TarefaMinPessoas = row.TarefaMinPessoas;
     tarefa.TarefaMaxPessoas = row.TarefaMaxPessoas;
+    tarefa.CriadoPorRepresentanteUsuarioGUID = row.CriadoPorRepresentanteUsuarioGUID;
+    tarefa.TarefaPrazoModoAutomatico = !!row.TarefaPrazoModoAutomatico;
+    tarefa.TarefaPrazoSemanaBase = row.TarefaPrazoSemanaBase;
+    tarefa.TarefaPrazoDiaSemana = row.TarefaPrazoDiaSemana;
     tarefa.CreatedAt = row.CreatedAt;
     tarefa.UpdatedAt = row.UpdatedAt;
     return tarefa;

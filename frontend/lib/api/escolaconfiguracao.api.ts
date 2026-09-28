@@ -154,3 +154,36 @@ export async function salvarConfiguracao(
     avisos: result.data.avisos || [],
   };
 }
+
+// ==================== LANÇAMENTO POR REPRESENTANTE ====================
+// Flag temporária — ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md.
+// Vive em /api/representante (não /api/escola-configuracao) porque é lida/
+// gravada direto na coluna, fora do fluxo de horário letivo acima.
+
+export async function obterFlagLancamentoPorRepresentante(escolaGUID: string): Promise<boolean> {
+  const response = await fetch(`${API_URL}/representante/escolas/${escolaGUID}/flag`, {
+    headers: getHeaders(),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao obter configuração de lançamento por representante');
+  }
+
+  return !!result.data.PermiteLancamentoPorRepresentante;
+}
+
+export async function definirFlagLancamentoPorRepresentante(escolaGUID: string, valor: boolean): Promise<void> {
+  const response = await fetch(`${API_URL}/representante/escolas/${escolaGUID}/flag`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ PermiteLancamentoPorRepresentante: valor }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao salvar configuração de lançamento por representante');
+  }
+}
