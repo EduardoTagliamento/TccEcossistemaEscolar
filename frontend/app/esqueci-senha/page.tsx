@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { Poppins, Figtree, Baloo_2, JetBrains_Mono } from 'next/font/google';
+import { poppins, figtree, baloo2, jetbrainsMono } from '@/lib/fonts';
 import Link from 'next/link';
 import AuthBrandShell from '@/components/auth/AuthBrandShell';
 import AuthButton from '@/components/auth/AuthButton';
@@ -9,31 +9,6 @@ import AuthInput from '@/components/auth/AuthInput';
 import AuthIcon from '@/components/auth/AuthIcon';
 import BauaLogo from '@/components/auth/BauaLogo';
 import styles from './page.module.css';
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-const figtree = Figtree({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
-  display: 'swap',
-});
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-wordmark',
-  display: 'swap',
-});
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '700'],
-  variable: '--font-mono',
-  display: 'swap',
-});
 
 export default function EsqueciSenhaPage() {
   const [email, setEmail] = useState('');

@@ -3,7 +3,7 @@
 import { useState, FormEvent, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
+import { poppins, figtree, baloo2 } from '@/lib/fonts';
 import { useAuth } from '@/lib/auth/AuthContext';
 import AuthBrandShell from '@/components/auth/AuthBrandShell';
 import AuthInput from '@/components/auth/AuthInput';
@@ -15,25 +15,6 @@ import styles from './page.module.css';
 
 // Tipografia da marca Bauá (tokens/fonts.css do design system):
 // Poppins -> display/headings · Figtree -> corpo/UI · Baloo 2 -> wordmark "bauá"
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-const figtree = Figtree({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
-  display: 'swap',
-});
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-wordmark',
-  display: 'swap',
-});
-
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>

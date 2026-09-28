@@ -3,32 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
+import { poppins, figtree, baloo2 } from '@/lib/fonts';
 import { useAuth } from '@/lib/auth/AuthContext';
 import AuthGreenShell from '@/components/auth/AuthGreenShell';
 import AuthIcon from '@/components/auth/AuthIcon';
 import BauaLogo from '@/components/auth/BauaLogo';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-const figtree = Figtree({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
-  display: 'swap',
-});
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-wordmark',
-  display: 'swap',
-});
 
 interface Funcao {
   EscolaxUsuarioxFuncaoId: number;

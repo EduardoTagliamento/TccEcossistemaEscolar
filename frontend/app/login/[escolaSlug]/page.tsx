@@ -3,7 +3,7 @@
 import { useState, FormEvent, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
+import { poppins, figtree, baloo2 } from '@/lib/fonts';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { buscarEscolaPublicaPorSlug, EscolaPublico } from '@/lib/api/escola.api';
 import AuthBrandShell from '@/components/auth/AuthBrandShell';
@@ -13,28 +13,6 @@ import AuthIcon from '@/components/auth/AuthIcon';
 import Loader from '@/components/Loader';
 import { validarCPF } from '@/lib/validators/cpf';
 import styles from '../page.module.css';
-
-// Mesmas fontes de /login (marca Bauá) — reaproveitadas mesmo com tema de
-// escola, já que só o painel de marca (cor/ícone/nome) muda, a tipografia
-// do app continua igual.
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-const figtree = Figtree({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
-  display: 'swap',
-});
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-wordmark',
-  display: 'swap',
-});
 
 export default function LoginEscolaPage() {
   return (

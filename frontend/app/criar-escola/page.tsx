@@ -2,7 +2,7 @@
 
 import { useState, FormEvent, useEffect, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Poppins, Figtree, Baloo_2, JetBrains_Mono } from 'next/font/google';
+import { poppins, figtree, baloo2, jetbrainsMono } from '@/lib/fonts';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { validarEmail } from '@/lib/validators/email';
 import ColorPicker from '@/components/ColorPicker';
@@ -12,31 +12,6 @@ import AuthButton from '@/components/auth/AuthButton';
 import AuthIcon from '@/components/auth/AuthIcon';
 import Loader from '@/components/Loader';
 import styles from './page.module.css';
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-const figtree = Figtree({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
-  display: 'swap',
-});
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-wordmark',
-  display: 'swap',
-});
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '700'],
-  variable: '--font-mono',
-  display: 'swap',
-});
 
 export default function CriarEscolaPage() {
   const router = useRouter();

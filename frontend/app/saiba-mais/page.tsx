@@ -1,33 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
+import { poppins, figtree, baloo2 } from '@/lib/fonts';
 import styles from './page.module.css';
 
 // Mesma tipografia da marca Bauá usada na landing page (frontend/app/page.tsx),
 // tokens/fonts.css do design system: Poppins -> títulos, Figtree -> corpo/UI,
 // Baloo 2 -> wordmark "bauá" no cabeçalho.
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-
-const figtree = Figtree({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
-  display: 'swap',
-});
-
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-wordmark',
-  display: 'swap',
-});
-
 type IconName = 'arrow-left' | 'arrow-right' | 'check-circle' | 'award';
 
 // Componente Icon local, mesmo padrão de frontend/app/page.tsx (página irmã):

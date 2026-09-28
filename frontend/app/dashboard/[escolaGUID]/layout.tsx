@@ -1,4 +1,4 @@
-import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
+import { poppins, figtree, baloo2 } from '@/lib/fonts';
 import { SocketProvider } from '@/lib/socket/SocketContext';
 import { ChatUIProvider } from '@/lib/chat/ChatUIContext';
 import DashboardNavbar from './_components/DashboardNavbar';
@@ -31,27 +31,6 @@ import SugestaoFlutuante from './_components/SugestaoFlutuante';
  *   Variables no wrapper, disponíveis pra qualquer página filha que
  *   referencie `var(--font-display)`/`var(--font-body)`/`var(--font-wordmark)`.
  */
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-
-const figtree = Figtree({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
-  display: 'swap',
-});
-
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-wordmark',
-  display: 'swap',
-});
-
 export default function DashboardEscolaLayout({ children }: { children: React.ReactNode }) {
   return (
     <SocketProvider>

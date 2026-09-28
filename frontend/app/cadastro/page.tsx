@@ -3,7 +3,7 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Poppins, Figtree, Baloo_2 } from 'next/font/google';
+import { poppins, figtree, baloo2 } from '@/lib/fonts';
 import { validarCPF, formatarCPF, limparCPF } from '@/lib/validators/cpf';
 import { validarEmail, normalizarEmail } from '@/lib/validators/email';
 import { validarTelefone, formatarTelefone, limparTelefone } from '@/lib/validators/telefone';
@@ -14,25 +14,6 @@ import AuthButton from '@/components/auth/AuthButton';
 import AuthIcon from '@/components/auth/AuthIcon';
 import BauaLogo from '@/components/auth/BauaLogo';
 import styles from './page.module.css';
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-display',
-  display: 'swap',
-});
-const figtree = Figtree({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-body',
-  display: 'swap',
-});
-const baloo2 = Baloo_2({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-wordmark',
-  display: 'swap',
-});
 
 const STRENGTH_CLASS: Record<string, string> = {
   fraca: 'strengthFraca',
