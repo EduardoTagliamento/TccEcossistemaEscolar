@@ -29,6 +29,12 @@ export default class RepresentanteLancamentoRoteador {
     this.#router.use(AuthMiddleware.authenticate);
 
     this.#router.get(
+      "/escolas/:escolaGUID/minhas-alocacoes",
+      this.#middleware.validarEscolaParams,
+      this.#controle.listarMinhasAlocacoes
+    );
+
+    this.#router.get(
       "/turmas/:turmaGUID/permissao",
       this.#middleware.validarTurmaParams,
       this.#controle.verificarPermissao

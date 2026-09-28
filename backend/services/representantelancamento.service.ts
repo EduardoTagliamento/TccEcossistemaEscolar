@@ -78,6 +78,7 @@ export default class RepresentanteLancamentoService {
   #tarefaDAO: TarefaAcademicaDAO;
   #tarefaMatriculaDAO: TarefaAcademicaMatriculaDAO;
   #matriculaDAO: MatriculaDAO;
+  #materiaDAO: MateriaDAO;
 
   constructor(
     propagacaoDAO: RepresentanteLancamentoPropagacaoDAO,
@@ -93,7 +94,8 @@ export default class RepresentanteLancamentoService {
     conteudoTurmaDAO: ConteudoTurmaDAO,
     tarefaDAO: TarefaAcademicaDAO,
     tarefaMatriculaDAO: TarefaAcademicaMatriculaDAO,
-    matriculaDAO: MatriculaDAO
+    matriculaDAO: MatriculaDAO,
+    materiaDAO: MateriaDAO
   ) {
     console.log("⬆️  RepresentanteLancamentoService.constructor()");
     this.#propagacaoDAO = propagacaoDAO;
@@ -103,6 +105,7 @@ export default class RepresentanteLancamentoService {
     this.#escolaConfiguracaoDAO = escolaConfiguracaoDAO;
     this.#horarioTurmaService = horarioTurmaService;
     this.#usuarioDAO = usuarioDAO;
+    this.#materiaDAO = materiaDAO;
     this.#provaDAO = provaDAO;
     this.#provaTurmaDAO = provaTurmaDAO;
     this.#conteudoDAO = conteudoDAO;
@@ -135,11 +138,47 @@ export default class RepresentanteLancamentoService {
   };
 
   /**
-   * Reúne o que o controller precisa pra montar a origem de uma Tarefa
-   * criada por representante: o professor responsável, a alocação
-   * (matXprofXturxescGUID) e as matrículas ativas da turma (destinatários).
-   * `null` se o professor não leciona essa matéria nesta turma.
+   * Alocações (matéria+professor) das turmas onde o usuário é representante,
+   * já com nomes resolvidos — usado pelo frontend (seletor de "em qual turma/
+   * matéria lançar") e espelha o que o chatbot monta em
+   * listar_minhas_turmas_representante. Só inclui turmas cuja escola tem a
+   * flag `PermiteLancamentoPorRepresentante` ligada.
    */
+  listarAlocacoesOndeERepresentante = async (
+    usuarioGUID: string,
+    escolaGUID: string
+  ): Promise<{ MatProfTurGUID: string; MateriaGUID: string; MateriaNome: string; TurmaGUID: string; TurmaNome: string; ProfessorNome: string }[]> => {
+    console.log("🟣 RepresentanteLancamentoService.listarAlocacoesOndeERepresentante()");
+
+    const flagLigada = await this.#escolaConfiguracaoDAO.getPermiteLancamentoPorRepresentante(escolaGUID);
+    if (!flagLigada) return [];
+
+    const turmas = await this.listarTurmasOndeERepresentante(usuarioGUID);
+    const resultado: { MatProfTurGUID: string; MateriaGUID: string; MateriaNome: string; TurmaGUID: string; TurmaNome: string; ProfessorNome: string }[] = [];
+
+    for (const t of turmas) {
+      const turma = await this.#turmaDAO.findById(t.TurmaGUID);
+      if (!turma || turma.EscolaGUID !== escolaGUID) continue;
+
+      const alocacoes = (await this.#matProfTurDAO.findByTurma(t.TurmaGUID)).filter((a) => a.AlocacaoStatus === 'Ativa');
+      for (const a of alocacoes) {
+        const [professor, materia] = await Promise.all([
+          this.#usuarioDAO.findByGUID(a.UsuarioGUID),
+          this.#materiaDAO.findById(a.MateriaGUID),
+        ]);
+        resultado.push({
+          MatProfTurGUID: a.MatProfTurGUID,
+          MateriaGUID: a.MateriaGUID,
+          MateriaNome: materia?.MateriaNome ?? '(matéria)',
+          TurmaGUID: t.TurmaGUID,
+          TurmaNome: `${turma.TurmaSerie ?? ''} ${turma.TurmaNome ?? ''}`.trim() || '(turma)',
+          ProfessorNome: professor?.UsuarioNome ?? '(professor)',
+        });
+      }
+    }
+    return resultado;
+  };
+
   /** Turmas onde o usuário é Representante/Vice-Representante ativo — usado pela sessão do chatbot. */
   listarTurmasOndeERepresentante = async (usuarioGUID: string): Promise<{ TurmaGUID: string; TurmaNome: string }[]> => {
     return this.#conversaGrupoDAO.findTurmasOndeERepresentante(usuarioGUID);
@@ -635,7 +674,8 @@ export function getRepresentanteLancamentoService(): RepresentanteLancamentoServ
       new ConteudoTurmaDAO(database),
       new TarefaAcademicaDAO(database),
       new TarefaAcademicaMatriculaDAO(database),
-      new MatriculaDAO(database)
+      new MatriculaDAO(database),
+      new MateriaDAO(database)
     );
   }
   return instanciaSingleton;

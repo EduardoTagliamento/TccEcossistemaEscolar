@@ -13,6 +13,7 @@ import { parseDataBrasil } from "../utils/timezone.util";
  * Representante" — ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md.
  *
  * Endpoints:
+ * - GET  /api/representante/escolas/:escolaGUID/minhas-alocacoes
  * - GET  /api/representante/turmas/:turmaGUID/permissao?MateriaGUID=...
  * - POST /api/representante/turmas/:turmaGUID/provas
  * - POST /api/representante/turmas/:turmaGUID/tarefas
@@ -42,6 +43,19 @@ export default class RepresentanteLancamentoControl {
     this.#escolaConfiguracaoDAO = escolaConfiguracaoDAO;
     this.#escolaxUsuarioxFuncaoDAO = escolaxUsuarioxFuncaoDAO;
   }
+
+  listarMinhasAlocacoes = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 RepresentanteLancamentoControl.listarMinhasAlocacoes()");
+    try {
+      const { escolaGUID } = request.params;
+      const usuarioGUID = request.user?.UsuarioGUID as string;
+
+      const alocacoes = await this.#service.listarAlocacoesOndeERepresentante(usuarioGUID, escolaGUID);
+      response.status(200).json({ success: true, data: { alocacoes } });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   verificarPermissao = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 RepresentanteLancamentoControl.verificarPermissao()");

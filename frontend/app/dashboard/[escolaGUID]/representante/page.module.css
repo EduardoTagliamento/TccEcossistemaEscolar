@@ -1,0 +1,153 @@
+.container {
+  --green-50: #E7F9F0;
+  --green-500: #17C077;
+  --green-600: #12A063;
+  --green-700: #0E7D4E;
+  --blue-500: #2F5BEA;
+  --blue-700: #1C3AA0;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --danger-600: #C22429;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --slate-400: #8A968E;
+  --line-200: #E2EAE5;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-pill: 9999px;
+
+  padding: 2rem;
+  max-width: 720px;
+  margin: 0 auto;
+  font-family: var(--font-body), 'Figtree', system-ui, sans-serif;
+  color: var(--slate-600);
+}
+
+.titulo {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin-bottom: 0.25rem;
+}
+
+.subtitulo {
+  color: var(--slate-500);
+  margin-bottom: 1.5rem;
+  font-size: 0.9375rem;
+}
+
+.aviso {
+  padding: 1rem 1.25rem;
+  background: var(--surface-50);
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  color: var(--slate-500);
+}
+
+.campoContainer {
+  margin-bottom: 1rem;
+}
+
+.label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--slate-600);
+  margin-bottom: 0.35rem;
+}
+
+.select,
+.input,
+.textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-200);
+  font-size: 0.9375rem;
+  color: var(--ink-900);
+  background: var(--white);
+  font-family: inherit;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--line-200);
+  margin-bottom: 1.25rem;
+}
+
+.tab {
+  padding: 0.6rem 1rem;
+  margin-bottom: -1px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--slate-500);
+  cursor: pointer;
+}
+
+.tabAtiva {
+  color: var(--green-700);
+  border-bottom-color: var(--green-500);
+}
+
+.botaoSalvar {
+  padding: 0.65rem 1.5rem;
+  background: var(--green-500);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.botaoSalvar:hover:not(:disabled) {
+  background: var(--green-600);
+}
+
+.botaoSalvar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.erro {
+  padding: 0.75rem 1rem;
+  background: var(--danger-50);
+  color: var(--danger-600);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.sucesso {
+  padding: 0.75rem 1rem;
+  background: var(--green-50);
+  color: var(--green-700);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--surface-50);
+  color: var(--slate-500);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.8125rem;
+  margin-bottom: 1.25rem;
+}

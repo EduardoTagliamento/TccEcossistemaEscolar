@@ -55,6 +55,17 @@ interface AlocacaoCache {
 }
 
 /**
+ * Igual AlocacaoCache, mas para o fluxo de Lançamento por Representante —
+ * carrega também o professor responsável (que o representante NUNCA
+ * escolhe: vem sempre da alocação real de matéria+turma), já que quem cria
+ * a entidade "em nome" dele é resolvido em código, nunca pelo modelo.
+ */
+interface AlocacaoRepresentanteCache extends AlocacaoCache {
+  ProfessorUsuarioGUID: string;
+  ProfessorNome: string;
+}
+
+/**
  * Estado de uma conversa do chatbot — mantido só em memória (v1: sem
  * persistência, cai num restart do processo; se precisar sobreviver a
  * deploy/reinício, migrar pra tabela própria depois, seguindo o padrão de
@@ -98,6 +109,10 @@ interface ChatbotSessao {
   representanteDeTurmas: { TurmaGUID: string }[];
   /** Whitelist de PropagacaoGUID do último consultar_propagacoes_pendentes — mesmo padrão de tarefasCache/conversasCache. */
   propagacoesPendentesCache: { PropagacaoGUID: string }[];
+  /** Whitelist de alocacaoId do último listar_minhas_turmas_representante — usado por criar_prova/tarefa/conteudo_representante. */
+  alocacoesRepresentanteCache: AlocacaoRepresentanteCache[];
+  /** Whitelist de AnotacaoGUID do último consultar_anotacoes — usado por marcar_anotacao_feita. */
+  anotacoesCache: { AnotacaoGUID: string; titulo: string }[];
 }
 
 export interface EnviarMensagemResultado {
@@ -390,6 +405,8 @@ export default class ChatbotService {
     anexoPendente: null,
     representanteDeTurmas: [],
     propagacoesPendentesCache: [],
+    alocacoesRepresentanteCache: [],
+    anotacoesCache: [],
   });
 
   /**
@@ -589,6 +606,7 @@ export default class ChatbotService {
         sessao.conteudosCache = [];
         sessao.representanteDeTurmas = [];
         sessao.propagacoesPendentesCache = [];
+        sessao.alocacoesRepresentanteCache = [];
 
         const resultado = await this.#identificarPorTelefone(sessao, sessao.telefoneCanal!);
         if (resultado.encontrado !== true || resultado.semVinculoAtivo === true) {
@@ -656,6 +674,263 @@ export default class ChatbotService {
           }
           sessao.propagacoesPendentesCache = sessao.propagacoesPendentesCache.filter((p) => p.PropagacaoGUID !== propagacaoGUID);
           return { ok: true };
+        };
+
+        // Lançamento ORIGINAL — o representante cria a prova/tarefa/conteúdo
+        // pela primeira vez, pra uma turma onde é Representante/Vice. O
+        // professor exibido em cada alocação é resolvido em código (nunca
+        // aceita um UsuarioGUID que o modelo tente informar) — quem cria de
+        // fato continua sendo o professor da alocação; só a autoria real é
+        // registrada à parte (CriadoPorRepresentanteUsuarioGUID).
+        handlers.listar_minhas_turmas_representante = async () => {
+          const turmas = await getRepresentanteLancamentoService().listarTurmasOndeERepresentante(usuarioGUID);
+          const enriquecidas: AlocacaoRepresentanteCache[] = [];
+
+          for (const t of turmas) {
+            const turma = await this.#turmaDAO.findById(t.TurmaGUID);
+            if (!turma || turma.EscolaGUID !== escolaGUID) continue;
+
+            const alocacoes = (await this.#alocacaoDAO.findByTurma(t.TurmaGUID)).filter(
+              (a) => a.AlocacaoStatus === "Ativa"
+            );
+            for (const a of alocacoes) {
+              const [materia, professor] = await Promise.all([
+                this.#materiaDAO.findById(a.MateriaGUID),
+                this.#usuarioDAO.findByGUID(a.UsuarioGUID),
+              ]);
+              enriquecidas.push({
+                MatProfTurGUID: a.MatProfTurGUID,
+                MateriaGUID: a.MateriaGUID,
+                TurmaGUID: t.TurmaGUID,
+                materia: materia?.MateriaNome ?? "(matéria)",
+                turma: `${turma.TurmaSerie ?? ""} ${turma.TurmaNome ?? ""}`.trim() || "(turma)",
+                ProfessorUsuarioGUID: a.UsuarioGUID,
+                ProfessorNome: professor?.UsuarioNome ?? "(professor)",
+              });
+            }
+          }
+
+          sessao.alocacoesRepresentanteCache = enriquecidas;
+          return {
+            alocacoes: enriquecidas.map((e) => ({
+              alocacaoId: e.MatProfTurGUID,
+              materia: e.materia,
+              turma: e.turma,
+              professor: e.ProfessorNome,
+            })),
+          };
+        };
+
+        // ESCRITA — representante cria prova em nome do professor da alocação.
+        handlers.criar_prova_representante = async (args) => {
+          const alocacaoId = String(args.alocacaoId ?? "");
+          const titulo = String(args.titulo ?? "").trim();
+          const descricao = args.descricao ? String(args.descricao).trim() : undefined;
+          const confirmado = args.confirmado === true;
+
+          const alvo = sessao.alocacoesRepresentanteCache.find((a) => a.MatProfTurGUID === alocacaoId);
+          if (!alvo) {
+            return { error: "alocacaoId não corresponde a nenhuma turma sua — chame listar_minhas_turmas_representante primeiro" };
+          }
+          if (!titulo) return { error: "título da prova vazio" };
+          const data = this.#parseDataHora(args.data);
+          if (!data) return { error: "data inválida — use o formato AAAA-MM-DDTHH:MM" };
+          if (data.getTime() <= Date.now()) return { error: "a data da prova precisa ser no futuro" };
+
+          const podeLancar = await getRepresentanteLancamentoService().podeLancarEmNomeDoProfessor(usuarioGUID, alvo.TurmaGUID);
+          if (!podeLancar) {
+            return { error: "você não tem mais permissão de lançar em nome do professor nesta turma — a escola pode ter desativado o recurso" };
+          }
+
+          if (!confirmado) {
+            return {
+              precisaConfirmacao: true,
+              acao:
+                `criar a prova "${titulo}" de ${alvo.materia} em ${alvo.turma}, em nome de ${alvo.ProfessorNome}, ` +
+                `na data ${data.toISOString().slice(0, 16).replace("T", " ")}`,
+            };
+          }
+
+          const prova = await getProvaAgendadaService().criarProva(
+            {
+              TurmasGUID: [alvo.TurmaGUID],
+              MateriaGUID: alvo.MateriaGUID,
+              ProvaTitulo: titulo,
+              ProvaData: data,
+              ProvaDescricao: descricao,
+              CriadoPorRepresentanteUsuarioGUID: usuarioGUID,
+            },
+            alvo.ProfessorUsuarioGUID
+          );
+          return { ok: true, ProvaAgendadaGUID: prova.ProvaAgendadaGUID, prova: titulo, turma: alvo.turma, professor: alvo.ProfessorNome };
+        };
+
+        // ESCRITA — representante cria tarefa em nome do professor da alocação.
+        handlers.criar_tarefa_representante = async (args) => {
+          const alocacaoId = String(args.alocacaoId ?? "");
+          const titulo = String(args.titulo ?? "").trim();
+          const descricao = args.descricao ? String(args.descricao).trim() : undefined;
+          const tipoEntradaBruto = String(args.tipoEntrega ?? "digital").toLowerCase();
+          const usarAnexo = args.usarAnexo === true;
+          const confirmado = args.confirmado === true;
+
+          const alvo = sessao.alocacoesRepresentanteCache.find((a) => a.MatProfTurGUID === alocacaoId);
+          if (!alvo) {
+            return { error: "alocacaoId não corresponde a nenhuma turma sua — chame listar_minhas_turmas_representante primeiro" };
+          }
+          if (!titulo) return { error: "título da tarefa vazio" };
+          if (tipoEntradaBruto !== "digital" && tipoEntradaBruto !== "fisica") {
+            return { error: 'tipoEntrega deve ser "digital" ou "fisica"' };
+          }
+          const prazo = this.#parseDataHora(args.prazo);
+          if (!prazo) return { error: "prazo inválido — use o formato AAAA-MM-DDTHH:MM" };
+          if (prazo.getTime() <= Date.now()) return { error: "o prazo precisa ser no futuro" };
+          if (usarAnexo && !sessao.anexoPendente) {
+            return { error: "nenhum arquivo recebido — peça pro representante enviar o documento (imagem ou PDF) pelo WhatsApp primeiro" };
+          }
+
+          const podeLancar = await getRepresentanteLancamentoService().podeLancarEmNomeDoProfessor(usuarioGUID, alvo.TurmaGUID);
+          if (!podeLancar) {
+            return { error: "você não tem mais permissão de lançar em nome do professor nesta turma — a escola pode ter desativado o recurso" };
+          }
+
+          const matriculas = (await this.#matriculaDAO.findByTurma(alvo.TurmaGUID)).filter(
+            (m) => m.MatriculaStatus === "Ativa"
+          );
+          if (matriculas.length === 0) {
+            return { error: `a turma ${alvo.turma} não tem alunos ativos` };
+          }
+
+          if (!confirmado) {
+            return {
+              precisaConfirmacao: true,
+              acao:
+                `criar a tarefa "${titulo}" de ${alvo.materia} em ${alvo.turma}, em nome de ${alvo.ProfessorNome}, ` +
+                `prazo ${prazo.toISOString().slice(0, 16).replace("T", " ")}, entrega ${tipoEntradaBruto}, ` +
+                `para ${matriculas.length} aluno(s)` +
+                (usarAnexo ? `, com o arquivo "${sessao.anexoPendente!.fileName}" anexado como material de apoio` : ""),
+            };
+          }
+
+          let anexosDescricao: string[] | undefined;
+          if (usarAnexo && sessao.anexoPendente) {
+            const arquivo = sessao.anexoPendente;
+            const pseudoFile = {
+              buffer: arquivo.buffer,
+              originalname: arquivo.fileName,
+              mimetype: arquivo.mimetype,
+              size: arquivo.buffer.length,
+            } as Express.Multer.File;
+            const anexo = await this.#anexoService.uploadAnexo(pseudoFile, escolaGUID, usuarioGUID);
+            anexosDescricao = [anexo.AnexoGUID];
+          }
+
+          await this.#tarefaService.criarTarefa(
+            {
+              MatriculasGUID: matriculas.map((m) => m.MatriculaGUID),
+              matXprofXturxescGUID: alocacaoId,
+              TarefaTitulo: titulo,
+              TarefaConteudo: descricao,
+              TarefaPrazoData: prazo,
+              TarefaTipoEntrega: tipoEntradaBruto as "digital" | "fisica",
+              anexosDescricao,
+              CriadoPorRepresentanteUsuarioGUID: usuarioGUID,
+            },
+            alvo.ProfessorUsuarioGUID
+          );
+          if (anexosDescricao) sessao.anexoPendente = null;
+          return {
+            ok: true,
+            tarefa: titulo,
+            turma: alvo.turma,
+            professor: alvo.ProfessorNome,
+            alunos: matriculas.length,
+            arquivoAnexado: !!anexosDescricao,
+          };
+        };
+
+        // ESCRITA — representante publica material de aula (texto ou arquivo) em nome do professor da alocação.
+        handlers.criar_conteudo_representante = async (args) => {
+          const alocacaoId = String(args.alocacaoId ?? "");
+          const titulo = String(args.titulo ?? "").trim();
+          const texto = String(args.texto ?? "").trim();
+          const descricao = args.descricao ? String(args.descricao).trim() : undefined;
+          const usarAnexo = args.usarAnexo === true;
+          const confirmado = args.confirmado === true;
+
+          const alvo = sessao.alocacoesRepresentanteCache.find((a) => a.MatProfTurGUID === alocacaoId);
+          if (!alvo) {
+            return { error: "alocacaoId não corresponde a nenhuma turma sua — chame listar_minhas_turmas_representante primeiro" };
+          }
+          if (!titulo) return { error: "título do material vazio" };
+          if (usarAnexo) {
+            if (!sessao.anexoPendente) {
+              return { error: "nenhum arquivo recebido — peça pro representante enviar o documento (imagem ou PDF) pelo WhatsApp primeiro" };
+            }
+          } else if (!texto) {
+            return { error: "texto do material vazio" };
+          }
+
+          const podeLancar = await getRepresentanteLancamentoService().podeLancarEmNomeDoProfessor(usuarioGUID, alvo.TurmaGUID);
+          if (!podeLancar) {
+            return { error: "você não tem mais permissão de lançar em nome do professor nesta turma — a escola pode ter desativado o recurso" };
+          }
+
+          if (!confirmado) {
+            return {
+              precisaConfirmacao: true,
+              acao: usarAnexo
+                ? `publicar o arquivo "${sessao.anexoPendente!.fileName}" como material "${titulo}" em ${alvo.turma} (${alvo.materia}), em nome de ${alvo.ProfessorNome}`
+                : `publicar o material "${titulo}" em ${alvo.turma} (${alvo.materia}), em nome de ${alvo.ProfessorNome}`,
+            };
+          }
+
+          if (usarAnexo && sessao.anexoPendente) {
+            const arquivo = sessao.anexoPendente;
+            const pseudoFile = {
+              buffer: arquivo.buffer,
+              originalname: arquivo.fileName,
+              mimetype: arquivo.mimetype,
+              size: arquivo.buffer.length,
+            } as Express.Multer.File;
+
+            await this.#conteudoService.criarConteudo(
+              {
+                MateriaGUID: alvo.MateriaGUID,
+                ConteudoTitulo: titulo,
+                ConteudoTipo: "paginado",
+                TurmasGUID: [alvo.TurmaGUID],
+                ConteudoDataPublicacao: new Date(),
+                ConteudoDescricao: descricao,
+                CriadoPorRepresentanteUsuarioGUID: usuarioGUID,
+              },
+              { arquivosPaginado: [pseudoFile] },
+              alvo.ProfessorUsuarioGUID
+            );
+            sessao.anexoPendente = null;
+            return { ok: true, material: titulo, turma: alvo.turma, professor: alvo.ProfessorNome, arquivoAnexado: true };
+          }
+
+          const html = texto
+            .split(/\n{2,}/)
+            .map((p) => `<p>${p.trim().replace(/\n/g, "<br>")}</p>`)
+            .join("");
+
+          await this.#conteudoService.criarConteudo(
+            {
+              MateriaGUID: alvo.MateriaGUID,
+              ConteudoTitulo: titulo,
+              ConteudoTipo: "texto",
+              TurmasGUID: [alvo.TurmaGUID],
+              ConteudoDataPublicacao: new Date(),
+              ConteudoDescricao: descricao,
+              ConteudoHtml: html,
+              CriadoPorRepresentanteUsuarioGUID: usuarioGUID,
+            },
+            {},
+            alvo.ProfessorUsuarioGUID
+          );
+          return { ok: true, material: titulo, turma: alvo.turma, professor: alvo.ProfessorNome };
         };
       }
 
@@ -834,14 +1109,64 @@ export default class ChatbotService {
 
       handlers.consultar_anotacoes = async () => {
         const lista = await this.#anotacaoService.listarAnotacoesUsuario(usuarioGUID, escolaGUID);
+        sessao.anotacoesCache = lista.map((a: any) => ({ AnotacaoGUID: a.AnotacaoGUID, titulo: a.AnotacaoTitulo }));
         return {
           anotacoes: lista.map((a: any) => ({
+            AnotacaoGUID: a.AnotacaoGUID,
             titulo: a.AnotacaoTitulo,
             texto: a.AnotacaoDescricao ?? undefined,
             data: a.AnotacaoData instanceof Date ? a.AnotacaoData.toISOString().slice(0, 10) : String(a.AnotacaoData).slice(0, 10),
             feito: a.AnotacaoIsFeito,
           })),
         };
+      };
+
+      // ESCRITA — cria uma anotação pessoal (lembrete) numa data específica.
+      // Diferente de tarefa/prova/aviso, é só do próprio usuário — nunca
+      // aparece pra mais ninguém, então não precisa de alocacaoId/turma.
+      handlers.criar_anotacao = async (args) => {
+        const titulo = String(args.titulo ?? "").trim();
+        const descricao = args.descricao ? String(args.descricao).trim() : undefined;
+        const confirmado = args.confirmado === true;
+
+        if (!titulo) return { error: "título da anotação vazio" };
+        const data = this.#parseDataHora(args.data);
+        if (!data) return { error: "data inválida — use o formato AAAA-MM-DD ou AAAA-MM-DDTHH:MM" };
+
+        if (!confirmado) {
+          return {
+            precisaConfirmacao: true,
+            acao: `criar a anotação "${titulo}" para o dia ${data.toISOString().slice(0, 10)}`,
+          };
+        }
+
+        const criada = await this.#anotacaoService.criarAnotacao({
+          UsuarioGUID: usuarioGUID,
+          EscolaGUID: escolaGUID,
+          AnotacaoData: data.toISOString(),
+          AnotacaoTitulo: titulo,
+          AnotacaoDescricao: descricao,
+        });
+        return { ok: true, AnotacaoGUID: criada.AnotacaoGUID, anotacao: titulo, data: data.toISOString().slice(0, 10) };
+      };
+
+      // ESCRITA — alterna feito/pendente de uma anotação (mesmo padrão de marcar_tarefa_feita).
+      handlers.marcar_anotacao_feita = async (args) => {
+        const anotacaoGUID = String(args.anotacaoGUID ?? "");
+        const confirmado = args.confirmado === true;
+
+        const alvo = sessao.anotacoesCache.find((a) => a.AnotacaoGUID === anotacaoGUID);
+        if (!alvo) {
+          return { error: "AnotacaoGUID não corresponde a nenhuma anotação listada — chame consultar_anotacoes primeiro" };
+        }
+
+        if (!confirmado) {
+          return { precisaConfirmacao: true, acao: `marcar a anotação "${alvo.titulo}" como feita` };
+        }
+
+        await this.#anotacaoService.marcarComoFeito(anotacaoGUID, usuarioGUID);
+        sessao.anotacoesCache = sessao.anotacoesCache.filter((a) => a.AnotacaoGUID !== anotacaoGUID);
+        return { ok: true, anotacao: alvo.titulo };
       };
 
       handlers.consultar_projetos = async () => {
