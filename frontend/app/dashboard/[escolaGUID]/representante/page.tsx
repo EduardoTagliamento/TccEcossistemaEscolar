@@ -7,6 +7,39 @@ import * as RepresentanteAPI from '@/lib/api/representantelancamento.api';
 import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
 import { DiaSemana, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
 
+const FMT_DIA_MES = (d: Date) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+/** Segunda-feira da semana que contém `data`. */
+function segundaDaSemana(data: Date): Date {
+  const d = new Date(data);
+  const diaSemanaJS = d.getDay();
+  const offset = diaSemanaJS === 0 ? -6 : 1 - diaSemanaJS;
+  d.setDate(d.getDate() + offset);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+interface OpcaoSemana {
+  value: string; // YYYY-MM-DD da segunda-feira — é o que vai como SemanaBase
+  label: string; // "28/09–03/10"
+}
+
+/** Semanas (segunda a sábado) a partir de hoje, pro seletor de "qual semana" — não precisa saber o dia exato, só a semana. */
+function gerarOpcoesSemana(qtd = 12): OpcaoSemana[] {
+  const primeiraSegunda = segundaDaSemana(new Date());
+  const opcoes: OpcaoSemana[] = [];
+  for (let i = 0; i < qtd; i++) {
+    const inicio = new Date(primeiraSegunda);
+    inicio.setDate(inicio.getDate() + i * 7);
+    const fim = new Date(inicio);
+    fim.setDate(fim.getDate() + 5); // segunda + 5 = sábado
+    opcoes.push({ value: inicio.toISOString().slice(0, 10), label: `${FMT_DIA_MES(inicio)}–${FMT_DIA_MES(fim)}` });
+  }
+  return opcoes;
+}
+
+const OPCOES_SEMANA = gerarOpcoesSemana();
+
 /**
  * Lançamento de Prova/Tarefa/Conteúdo por Representante (temporário) — ver
  * docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md.
@@ -36,7 +69,6 @@ export default function RepresentantePage() {
   const [modoData, setModoData] = useState<'especifico' | 'automatico'>('especifico');
   const [data, setData] = useState('');
   const [semanaBase, setSemanaBase] = useState('');
-  const [diaEscolhido, setDiaEscolhido] = useState<DiaSemana | ''>('');
   const [resultadoCalculo, setResultadoCalculo] = useState<GradeHorariaAPI.ResultadoCalculo | null>(null);
   const [calculando, setCalculando] = useState(false);
   const [erroCalculo, setErroCalculo] = useState('');
@@ -71,33 +103,31 @@ export default function RepresentantePage() {
     setTipoEntrega('digital');
     setModoData('especifico');
     setSemanaBase('');
-    setDiaEscolhido('');
     setResultadoCalculo(null);
     setErroCalculo('');
     setModoConteudo('agora');
   };
 
-  const calcularAutomatico = async (diaOverride?: DiaSemana) => {
-    if (!alvo || !semanaBase) return;
+  // Usuário escolhe a SEMANA (não o dia) — se a matéria só ocorre num dia
+  // nesta turma, já calcula direto; se ocorre em mais de um dia distinto,
+  // o backend devolve "escolherDia" e a UI mostra os dias reais pra clicar.
+  const calcularAutomatico = async (semanaAlvo: string, diaEscolhido?: DiaSemana) => {
+    if (!alvo || !semanaAlvo) return;
     setCalculando(true);
     setErroCalculo('');
     try {
       const [resultado] = await GradeHorariaAPI.calcularDatas(alvo.MateriaGUID, [
-        { TurmaGUID: alvo.TurmaGUID, SemanaBase: semanaBase, DiaSemana: diaOverride ?? (diaEscolhido || undefined) },
+        { TurmaGUID: alvo.TurmaGUID, SemanaBase: semanaAlvo, DiaSemana: diaEscolhido },
       ]);
       setResultadoCalculo(resultado);
-      if (resultado.status === 'erro') setErroCalculo(resultado.mensagem || 'Não foi possível calcular a data.');
-      if (resultado.status === 'semCronograma') setErroCalculo('Esta turma não tem cronograma cadastrado para esta matéria — use data específica.');
+      if (resultado.status === 'semCronograma') {
+        setErroCalculo('Esta turma não tem cronograma cadastrado para esta matéria.');
+      }
     } catch (err: any) {
       setErroCalculo(err.message || 'Erro ao calcular a data automaticamente');
     } finally {
       setCalculando(false);
     }
-  };
-
-  const handleEscolherDia = async (dia: DiaSemana) => {
-    setDiaEscolhido(dia);
-    await calcularAutomatico(dia);
   };
 
   const handleSalvar = async () => {
@@ -293,33 +323,45 @@ export default function RepresentantePage() {
             </div>
           ) : (
             <div className={styles.campoContainer}>
-              <label className={styles.label}>Qualquer dia dentro da semana desejada</label>
-              <input
-                type="date"
-                className={styles.input}
+              <label className={styles.label}>Semana</label>
+              <select
+                className={styles.select}
                 value={semanaBase}
                 onChange={(e) => {
-                  setSemanaBase(e.target.value);
+                  const novaSemana = e.target.value;
+                  setSemanaBase(novaSemana);
                   setResultadoCalculo(null);
-                  setDiaEscolhido('');
+                  setErroCalculo('');
+                  if (novaSemana) void calcularAutomatico(novaSemana);
                 }}
-                onBlur={() => semanaBase && calcularAutomatico()}
-              />
+              >
+                <option value="">Selecione a semana...</option>
+                {OPCOES_SEMANA.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    Semana {o.label}
+                  </option>
+                ))}
+              </select>
 
               {calculando && <p className={styles.textoSecundario}>Calculando...</p>}
               {erroCalculo && <div className={styles.erro}>{erroCalculo}</div>}
 
               {resultadoCalculo?.status === 'escolherDia' && resultadoCalculo.Ocorrencias && (
                 <div className={styles.campoContainer}>
-                  <label className={styles.label}>Esta matéria ocorre mais de uma vez por semana nesta turma — escolha o dia</label>
-                  <select className={styles.select} value={diaEscolhido} onChange={(e) => handleEscolherDia(e.target.value as DiaSemana)}>
-                    <option value="">Selecione...</option>
+                  <p className={styles.textoSecundario}>Esta matéria ocorre em mais de um dia nesta turma — escolha qual:</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                     {resultadoCalculo.Ocorrencias.map((o) => (
-                      <option key={o.DiaSemana} value={o.DiaSemana}>
+                      <button
+                        key={`${o.DiaSemana}-${o.HoraInicio}`}
+                        type="button"
+                        className={styles.segmentadoOpcao}
+                        style={{ borderRadius: 'var(--radius-pill)', border: '1px solid var(--line-200)' }}
+                        onClick={() => void calcularAutomatico(semanaBase, o.DiaSemana)}
+                      >
                         {DIA_SEMANA_LABEL[o.DiaSemana]} {o.HoraInicio}–{o.HoraFim}
-                      </option>
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
               )}
 

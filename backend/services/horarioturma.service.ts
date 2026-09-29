@@ -197,40 +197,44 @@ export default class HorarioTurmaService {
       }
 
       let ocorrenciaEscolhida = ocorrencias[0];
-      if (ocorrencias.length > 1) {
-        const diasDistintos = new Set(ocorrencias.map((o) => o.DiaSemana));
 
-        if (!escolha.DiaSemana) {
-          if (diasDistintos.size === 1) {
-            // Mesma matéria em mais de um horário no MESMO dia (aulas
-            // seguidas) — não há ambiguidade de dia pra perguntar, só de
-            // horário; escolhe sempre a primeira aula (menor HoraInicio).
-            ocorrenciaEscolhida = [...ocorrencias].sort(
-              (a, b) => horaParaMinutos(a.HoraInicio) - horaParaMinutos(b.HoraInicio)
-            )[0];
-          } else {
-            resultados.push({
-              TurmaGUID: escolha.TurmaGUID,
-              status: "escolherDia",
-              Ocorrencias: ocorrencias.map((o) => ({
-                DiaSemana: o.DiaSemana,
-                HoraInicio: o.HoraInicio,
-                HoraFim: o.HoraFim,
-              })),
-            });
-            continue;
-          }
+      if (escolha.DiaSemana) {
+        // Dia informado explicitamente (o front agora manda o DiaSemana
+        // calculado a partir da data exata escolhida, não mais "qualquer dia
+        // da semana") — precisa bater com uma ocorrência real desta matéria
+        // nesta turma; senão, erro com a lista de dias válidos pro front
+        // pedir uma data diferente (mesma lista de "escolherDia" abaixo).
+        const encontrada = ocorrencias.find((o) => o.DiaSemana === escolha.DiaSemana);
+        if (!encontrada) {
+          resultados.push({
+            TurmaGUID: escolha.TurmaGUID,
+            status: "erro",
+            mensagem: `O dia "${escolha.DiaSemana}" não corresponde a nenhuma ocorrência desta matéria nesta turma.`,
+            Ocorrencias: ocorrencias.map((o) => ({ DiaSemana: o.DiaSemana, HoraInicio: o.HoraInicio, HoraFim: o.HoraFim })),
+          });
+          continue;
+        }
+        ocorrenciaEscolhida = encontrada;
+      } else if (ocorrencias.length > 1) {
+        const diasDistintos = new Set(ocorrencias.map((o) => o.DiaSemana));
+        if (diasDistintos.size === 1) {
+          // Mesma matéria em mais de um horário no MESMO dia (aulas
+          // seguidas) — não há ambiguidade de dia pra perguntar, só de
+          // horário; escolhe sempre a primeira aula (menor HoraInicio).
+          ocorrenciaEscolhida = [...ocorrencias].sort(
+            (a, b) => horaParaMinutos(a.HoraInicio) - horaParaMinutos(b.HoraInicio)
+          )[0];
         } else {
-          const encontrada = ocorrencias.find((o) => o.DiaSemana === escolha.DiaSemana);
-          if (!encontrada) {
-            resultados.push({
-              TurmaGUID: escolha.TurmaGUID,
-              status: "erro",
-              mensagem: `O dia "${escolha.DiaSemana}" não corresponde a nenhuma ocorrência desta matéria nesta turma.`,
-            });
-            continue;
-          }
-          ocorrenciaEscolhida = encontrada;
+          resultados.push({
+            TurmaGUID: escolha.TurmaGUID,
+            status: "escolherDia",
+            Ocorrencias: ocorrencias.map((o) => ({
+              DiaSemana: o.DiaSemana,
+              HoraInicio: o.HoraInicio,
+              HoraFim: o.HoraFim,
+            })),
+          });
+          continue;
         }
       }
 
