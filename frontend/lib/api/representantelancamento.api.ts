@@ -2,6 +2,7 @@
  * API Client — Lançamento de Prova/Tarefa/Conteúdo por Representante
  * (temporário) — ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md.
  */
+import { DiaSemana } from './escolaconfiguracao.api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
@@ -44,6 +45,10 @@ export interface CriarProvaRepresentanteDTO {
   ProvaTitulo: string;
   ProvaData: string; // AAAA-MM-DDTHH:MM
   ProvaDescricao?: string;
+  /** Agendamento automático pelo cronograma (ver GradeHorariaAPI.calcularDatas) — ausente/false = data específica. */
+  ModoAutomatico?: boolean;
+  SemanaBase?: string;
+  DiaSemana?: DiaSemana;
 }
 
 export async function criarProvaRepresentante(turmaGUID: string, dados: CriarProvaRepresentanteDTO): Promise<void> {
@@ -64,6 +69,10 @@ export interface CriarTarefaRepresentanteDTO {
   TarefaConteudo?: string;
   TarefaPrazoData: string; // AAAA-MM-DDTHH:MM
   TarefaTipoEntrega: 'digital' | 'fisica' | 'lista';
+  /** Agendamento automático pelo cronograma (ver GradeHorariaAPI.calcularDatas) — ausente/false = dia definido. */
+  ModoAutomatico?: boolean;
+  SemanaBase?: string;
+  DiaSemana?: DiaSemana;
 }
 
 export async function criarTarefaRepresentante(turmaGUID: string, dados: CriarTarefaRepresentanteDTO): Promise<void> {

@@ -151,3 +151,35 @@
   font-size: 0.8125rem;
   margin-bottom: 1.25rem;
 }
+
+.segmentado {
+  display: inline-flex;
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.segmentadoOpcao {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.8125rem;
+  background: var(--white);
+  color: var(--slate-500);
+  border: none;
+  cursor: pointer;
+}
+
+.segmentadoOpcao + .segmentadoOpcao {
+  border-left: 1px solid var(--line-200);
+}
+
+.segmentadoAtivo {
+  background: var(--green-50);
+  color: var(--green-700);
+  font-weight: 600;
+}
+
+.textoSecundario {
+  color: var(--slate-400);
+  font-style: italic;
+  font-size: 0.875rem;
+}
