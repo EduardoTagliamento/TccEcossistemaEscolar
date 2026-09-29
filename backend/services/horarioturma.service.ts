@@ -8,7 +8,7 @@ import { MateriaDAO } from "../repositories/materia.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaConfiguracaoDAO } from "../repositories/escolaconfiguracao.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
-import { DiaSemana, calcularDataAulaNaSemana } from "../utils/gradeHoraria.util";
+import { DiaSemana, calcularDataAulaNaSemana, horaParaMinutos } from "../utils/gradeHoraria.util";
 import { getAuditoriaService } from "./auditoria.service";
 
 export interface HorarioTurmaDTO {
@@ -161,9 +161,12 @@ export default class HorarioTurmaService {
    * Por turma, três desfechos possíveis:
    * - "semCronograma": a matéria não está alocada no cronograma desta
    *   turma (turma sem grade, ou matéria não posicionada ainda).
-   * - "escolherDia": a matéria ocorre mais de uma vez por semana nesta
-   *   turma e nenhum DiaSemana foi informado — o chamador deve perguntar
-   *   ao usuário qual ocorrência usar como base.
+   * - "escolherDia": a matéria ocorre em mais de um DIA distinto na semana
+   *   nesta turma e nenhum DiaSemana foi informado — o chamador deve
+   *   perguntar ao usuário qual dia usar como base. Se as múltiplas
+   *   ocorrências forem todas no MESMO dia (aulas seguidas, ex.: 2 horários
+   *   de Matemática numa segunda-feira), não há ambiguidade de dia pra
+   *   perguntar — escolhe sozinho a primeira aula (menor HoraInicio).
    * - "ok": data calculada com sucesso.
    */
   calcularDatas = async (
@@ -195,29 +198,40 @@ export default class HorarioTurmaService {
 
       let ocorrenciaEscolhida = ocorrencias[0];
       if (ocorrencias.length > 1) {
-        if (!escolha.DiaSemana) {
-          resultados.push({
-            TurmaGUID: escolha.TurmaGUID,
-            status: "escolherDia",
-            Ocorrencias: ocorrencias.map((o) => ({
-              DiaSemana: o.DiaSemana,
-              HoraInicio: o.HoraInicio,
-              HoraFim: o.HoraFim,
-            })),
-          });
-          continue;
-        }
+        const diasDistintos = new Set(ocorrencias.map((o) => o.DiaSemana));
 
-        const encontrada = ocorrencias.find((o) => o.DiaSemana === escolha.DiaSemana);
-        if (!encontrada) {
-          resultados.push({
-            TurmaGUID: escolha.TurmaGUID,
-            status: "erro",
-            mensagem: `O dia "${escolha.DiaSemana}" não corresponde a nenhuma ocorrência desta matéria nesta turma.`,
-          });
-          continue;
+        if (!escolha.DiaSemana) {
+          if (diasDistintos.size === 1) {
+            // Mesma matéria em mais de um horário no MESMO dia (aulas
+            // seguidas) — não há ambiguidade de dia pra perguntar, só de
+            // horário; escolhe sempre a primeira aula (menor HoraInicio).
+            ocorrenciaEscolhida = [...ocorrencias].sort(
+              (a, b) => horaParaMinutos(a.HoraInicio) - horaParaMinutos(b.HoraInicio)
+            )[0];
+          } else {
+            resultados.push({
+              TurmaGUID: escolha.TurmaGUID,
+              status: "escolherDia",
+              Ocorrencias: ocorrencias.map((o) => ({
+                DiaSemana: o.DiaSemana,
+                HoraInicio: o.HoraInicio,
+                HoraFim: o.HoraFim,
+              })),
+            });
+            continue;
+          }
+        } else {
+          const encontrada = ocorrencias.find((o) => o.DiaSemana === escolha.DiaSemana);
+          if (!encontrada) {
+            resultados.push({
+              TurmaGUID: escolha.TurmaGUID,
+              status: "erro",
+              mensagem: `O dia "${escolha.DiaSemana}" não corresponde a nenhuma ocorrência desta matéria nesta turma.`,
+            });
+            continue;
+          }
+          ocorrenciaEscolhida = encontrada;
         }
-        ocorrenciaEscolhida = encontrada;
       }
 
       try {
