@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSocket } from '@/lib/socket/SocketContext';
 import * as NotificacaoAPI from '@/lib/api/notificacao.api';
+import * as RepresentanteAPI from '@/lib/api/representantelancamento.api';
 import type { Notificacao } from '@/lib/api/notificacao.api';
 import { useContadorPendencias } from '@/lib/pendencia/usePendenciaQueries';
 import { useConvitesPendentes } from '@/lib/convitegrupoprojeto/useConviteGrupoProjetoQueries';
@@ -257,6 +258,12 @@ export default function DashboardNavbar() {
 
   const [escola, setEscola] = useState<Escola | null>(null);
   const [funcoesEscola, setFuncoesEscola] = useState<number[]>([]);
+  // Lançamento por Representante (temporário) — ver
+  // docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md. Não é um
+  // FuncaoId (Representante é um papel por turma, não por escola), então é
+  // resolvido à parte: `true` só se a escola tiver a flag ligada E o usuário
+  // for Representante/Vice-Representante de pelo menos uma turma ativa.
+  const [isRepresentante, setIsRepresentante] = useState(false);
   const [userMenuAberto, setUserMenuAberto] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -318,6 +325,7 @@ export default function DashboardNavbar() {
     if (usuario && escolaGUID) {
       void buscarEscola();
       void buscarFuncoesDaEscola();
+      void verificarRepresentante();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario, escolaGUID]);
@@ -486,6 +494,17 @@ export default function DashboardNavbar() {
     }
   };
 
+  const verificarRepresentante = async () => {
+    if (!escolaGUID) return;
+    try {
+      const alocacoes = await RepresentanteAPI.listarMinhasAlocacoes(escolaGUID);
+      setIsRepresentante(alocacoes.length > 0);
+    } catch (error) {
+      console.error('Erro ao verificar lançamento por representante:', error);
+      setIsRepresentante(false);
+    }
+  };
+
   const abrirNotificacoes = async () => {
     const abrindo = !notifAberto;
     setNotifAberto(abrindo);
@@ -562,6 +581,9 @@ export default function DashboardNavbar() {
       : []),
     ...(isAluno
       ? [{ key: 'tarefas', href: `/dashboard/${escolaGUID}/tarefas`, label: 'Minhas Tarefas', icon: 'book-open' as IconName }]
+      : []),
+    ...(isRepresentante
+      ? [{ key: 'representante', href: `/dashboard/${escolaGUID}/representante`, label: 'Lançar p/ Professor', icon: 'edit' as IconName }]
       : []),
     ...(pendenciasPendentesCount > 0
       ? [{ key: 'pendencias', href: `/dashboard/${escolaGUID}/pendencias`, label: 'Minhas Pendências', icon: 'bell' as IconName }]
