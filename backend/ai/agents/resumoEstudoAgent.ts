@@ -1,4 +1,4 @@
-import { getGeminiProvider } from "../providers/geminiProvider";
+import { getGeminiProviderLeve } from "../providers/geminiProvider";
 
 export interface FonteTexto {
   /** Identificador da fonte (ex.: ConteudoGUID) — vira parte de FontesUsadas no cache. */
@@ -58,7 +58,7 @@ export class ResumoEstudoAgent {
     // MAX_CARACTERES_POR_FONTE * fontes.length caracteres de contexto —
     // 15s estourava em capítulos de livro reais (descoberto testando com
     // um capítulo de ~58 páginas).
-    const resumo = await getGeminiProvider().gerarTexto(prompt, "cheio", 60000);
+    const resumo = await getGeminiProviderLeve().gerarTexto(prompt, "cheio", 60000);
 
     if (resumo.trim() === "SEM_CONTEUDO_SUFICIENTE") {
       return null;

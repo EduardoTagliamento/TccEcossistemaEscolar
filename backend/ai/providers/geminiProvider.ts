@@ -16,24 +16,17 @@ export type GeminiTier = "leve" | "cheio";
  * fallback — se um dia quebrar de novo, dá pra corrigir só trocando a
  * variável de ambiente, sem precisar de outro deploy de código.
  *
- * ⚠️ SOLUÇÃO TEMPORÁRIA (registrada em 2026-08-04, ver
- * docs/PLANO_IMPLEMENTACAO_RECOMENDACAO_ESTUDOS_IA.md §9): o fallback do
- * tier "cheio" está apontando pro MESMO alias do "leve" (`gemini-flash-latest`)
- * em vez de `gemini-pro-latest`, porque a chave de produção testada nesta
- * data tem cota ZERO pra modelos Pro no tier gratuito do Gemini API
- * (confirmado via chamada real: 429 RESOURCE_EXHAUSTED, "limit: 0, model:
- * gemini-3.1-pro"). Isso reduz a fidelidade do resumo grounded e do
- * sumário de livro (item 19 do spec pedia "cheio" pra essas duas tarefas
- * exatamente por fidelidade) — é uma troca deliberada de qualidade por
- * "funcionar agora", não a decisão final.
- * REVERTER assim que houver billing habilitado no projeto Google Cloud da
- * chave: trocar o fallback abaixo de volta pra `gemini-pro-latest`, ou
- * (sem precisar mexer no código) só setar a env var `GEMINI_MODEL_CHEIO=gemini-pro-latest`
- * no Railway.
+ * ✅ RESOLVIDO (2026-09-29): billing habilitado no projeto Google Cloud da
+ * chave — confirmado via chamada real (`gemini-pro-latest` respondendo e
+ * sobrevivendo a uma rajada de 8 chamadas paralelas, sem 429). O fallback do
+ * tier "cheio" volta a apontar pro modelo Pro de verdade, restaurando a
+ * fidelidade do resumo grounded e do sumário de livro (item 19 do spec).
+ * Ver docs/PLANO_IMPLEMENTACAO_RECOMENDACAO_ESTUDOS_IA.md §9 pro histórico da
+ * solução temporária que isso substitui.
  */
 const MODELO_POR_TIER: Record<GeminiTier, string> = {
   leve: process.env.GEMINI_MODEL_LEVE || "gemini-flash-latest",
-  cheio: process.env.GEMINI_MODEL_CHEIO || "gemini-flash-latest",
+  cheio: process.env.GEMINI_MODEL_CHEIO || "gemini-pro-latest",
 };
 
 const TIMEOUT_PADRAO_MS = 15000;
@@ -89,13 +82,18 @@ async function comRetryTransiente<T>(fn: () => Promise<T>, origem: string): Prom
  */
 export class GeminiProvider {
   #client: GoogleGenAI | null = null;
+  #envVarChave: string;
+
+  constructor(envVarChave: string = "GOOGLE_API_KEY") {
+    this.#envVarChave = envVarChave;
+  }
 
   #getClient(): GoogleGenAI {
     if (this.#client) return this.#client;
 
-    const apiKey = process.env.GOOGLE_API_KEY;
+    const apiKey = process.env[this.#envVarChave];
     if (!apiKey) {
-      throw new IAIndisponivelError("Gemini", new Error("GOOGLE_API_KEY não configurada"));
+      throw new IAIndisponivelError("Gemini", new Error(`${this.#envVarChave} não configurada`));
     }
 
     this.#client = new GoogleGenAI({ apiKey });
@@ -152,6 +150,48 @@ export class GeminiProvider {
             "Gemini"
           ),
         "GeminiProvider.gerarTextoComImagem"
+      );
+
+      const texto = response.text;
+      if (!texto || !texto.trim()) {
+        throw new Error("resposta vazia");
+      }
+      return texto.trim();
+    } catch (error) {
+      if (error instanceof IAIndisponivelError) throw error;
+      throw new IAIndisponivelError("Gemini", error);
+    }
+  };
+
+  /**
+   * Gera texto a partir de um áudio (input multimodal) + instrução — usado
+   * pela transcrição de mensagens de voz do WhatsApp (chatbot). Mesma
+   * mecânica de `gerarTextoComImagem` (o Gemini aceita áudio como só mais um
+   * `Part` inline em base64); timeout maior porque um áudio de alguns
+   * segundos ainda leva mais tempo pra processar que uma imagem.
+   */
+  gerarTextoComAudio = async (
+    prompt: string,
+    audioBase64: string,
+    mimeType: string,
+    tier: GeminiTier,
+    timeoutMs = 30000
+  ): Promise<string> => {
+    console.log(`🤖 GeminiProvider.gerarTextoComAudio() tier=${tier}`);
+
+    try {
+      const client = this.#getClient();
+      const response = await comRetryTransiente(
+        () =>
+          comTimeout(
+            client.models.generateContent({
+              model: MODELO_POR_TIER[tier],
+              contents: createUserContent([prompt, createPartFromBase64(audioBase64, mimeType)]),
+            }),
+            timeoutMs,
+            "Gemini"
+          ),
+        "GeminiProvider.gerarTextoComAudio"
       );
 
       const texto = response.text;
@@ -263,4 +303,32 @@ export function getGeminiProvider(): GeminiProvider {
     instanciaSingleton = new GeminiProvider();
   }
   return instanciaSingleton;
+}
+
+let instanciaSingletonLeve: GeminiProvider | null = null;
+
+/**
+ * ⚠️ CONTORNO TEMPORÁRIO (2026-09-30): a chave paga (`GOOGLE_API_KEY`) está
+ * bloqueada em produção por um bug conhecido da Google — "Lightning dunning
+ * decision is deny" no projeto Google Cloud, que continua negando mesmo com o
+ * saldo devedor zerado (exige saldo > $0 pra reativar automaticamente, não só
+ * "sem dívida"). Enquanto isso não se resolve do lado da Google, os usos mais
+ * sensíveis a indisponibilidade (chatbot, resumo de estudo, recomendação de
+ * vídeo, transcrição de áudio — ver `assistenteAgent.ts`, `resumoEstudoAgent.ts`,
+ * `videoRecomendacaoAgent.ts`, `transcricaoAudioAgent.ts`) usam uma chave
+ * SEPARADA (`GOOGLE_API_KEY_LEVE`, projeto Google Cloud "baua-light", tier
+ * gratuito puro, sem o bug de billing). Classificação de assunto, sumário de
+ * livro e extração de página de material didático continuam na chave paga
+ * (`getGeminiProvider()`) — ficam indisponíveis enquanto a Google não destravar,
+ * decisão deliberada do Eduardo (são pipelines assíncronos/background, não
+ * user-facing em tempo real).
+ * REVERTER pra `getGeminiProvider()` nesses 4 pontos assim que a chave paga for
+ * reativada — a chave leve é tier gratuito e volta a bater cota se o volume
+ * de uso crescer.
+ */
+export function getGeminiProviderLeve(): GeminiProvider {
+  if (!instanciaSingletonLeve) {
+    instanciaSingletonLeve = new GeminiProvider("GOOGLE_API_KEY_LEVE");
+  }
+  return instanciaSingletonLeve;
 }

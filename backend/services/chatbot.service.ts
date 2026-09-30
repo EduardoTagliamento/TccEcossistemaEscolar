@@ -1,5 +1,6 @@
 import { Content } from "@google/genai";
 import { getAssistenteAgent, FerramentaHandler } from "../ai/agents/assistenteAgent";
+import { getTranscricaoAudioAgent } from "../ai/agents/transcricaoAudioAgent";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import TarefaAcademicaService from "./tarefaacademica.service";
 import MateriaService from "./materia.service";
@@ -130,6 +131,9 @@ export interface EnviarMensagemResultado {
 const MENSAGEM_IDENTIDADE_NAO_RESOLVIDA =
   "Não encontrei nenhuma conta ativa vinculada a este contato. Se você já tem cadastro no Bauá, peça pra " +
   "secretaria da sua escola conferir/vincular este telefone à sua conta — ou acesse normalmente pelo site, com seu login.";
+
+const MENSAGEM_AUDIO_NAO_TRANSCRITO =
+  "Não consegui entender esse áudio. Pode tentar gravar de novo ou escrever a mensagem?";
 
 export default class ChatbotService {
   #sessoes: Map<string, ChatbotSessao> = new Map();
@@ -303,6 +307,47 @@ export default class ChatbotService {
     const resposta = await getAssistenteAgent().responder(
       sessao.historico,
       texto,
+      () => this.#construirFerramentas(sessao)
+    );
+
+    return { sessionId, resposta };
+  };
+
+  /**
+   * Variante do canal WhatsApp pra quando a mensagem é um áudio (nota de voz
+   * ou arquivo de áudio encaminhado). Transcreve via `TranscricaoAudioAgent`
+   * e passa o texto reconhecido pro modelo como se o usuário tivesse
+   * digitado — mesmo pipeline de ferramentas/histórico de `enviarMensagemWhatsapp`,
+   * sem nenhum estado extra (diferente do anexo de imagem/PDF, que fica
+   * pendente pra uma ferramenta consumir; aqui o áudio em si não é anexado a
+   * nada, só vira a mensagem).
+   */
+  enviarMensagemWhatsappComAudio = async (
+    telefoneRemetente: string,
+    arquivo: { buffer: Buffer; mimetype: string; fileName: string }
+  ): Promise<EnviarMensagemResultado> => {
+    console.log("🟢 ChatbotService.enviarMensagemWhatsappComAudio()");
+
+    const { sessionId, sessao, identidadeResolvida } = await this.#prepararSessaoWhatsapp(telefoneRemetente);
+    if (!identidadeResolvida) {
+      return { sessionId, resposta: MENSAGEM_IDENTIDADE_NAO_RESOLVIDA };
+    }
+
+    let transcricao: string | null;
+    try {
+      transcricao = await getTranscricaoAudioAgent().transcrever(arquivo.buffer.toString("base64"), arquivo.mimetype);
+    } catch (erro) {
+      console.error("❌ ChatbotService.enviarMensagemWhatsappComAudio() falha ao transcrever:", erro);
+      return { sessionId, resposta: MENSAGEM_AUDIO_NAO_TRANSCRITO };
+    }
+
+    if (!transcricao || !transcricao.trim()) {
+      return { sessionId, resposta: MENSAGEM_AUDIO_NAO_TRANSCRITO };
+    }
+
+    const resposta = await getAssistenteAgent().responder(
+      sessao.historico,
+      transcricao.trim(),
       () => this.#construirFerramentas(sessao)
     );
 

@@ -20,6 +20,7 @@ import EvolutionApiService from "../external/EvolutionApiService";
 
 const MAX_IDS_PROCESSADOS = 500;
 const MIMES_ANEXO_ACEITOS = ["image/", "application/pdf"];
+const MIMES_AUDIO_ACEITOS = ["audio/"];
 const TAMANHO_MAX_ANEXO_BYTES = 16 * 1024 * 1024; // limite do próprio WhatsApp
 
 interface EventoWhatsapp {
@@ -28,6 +29,8 @@ interface EventoWhatsapp {
   id: string;
   /** Quando a mensagem traz imagem/PDF: o objeto `message` cru (a Evolution precisa dele inteiro pra baixar a mídia). */
   midiaMensagemCru?: unknown;
+  /** Quando a mensagem traz áudio (nota de voz ou arquivo encaminhado): o objeto `message` cru — vai pra transcrição, não pro fluxo de anexo. */
+  audioMensagemCru?: unknown;
 }
 
 export default class ChatbotWebhookController {
@@ -135,13 +138,27 @@ export default class ChatbotWebhookController {
       }
     }
 
-    if (!textoFinal && !midiaMensagemCru) return null;
+    // Áudio (nota de voz gravada ou arquivo de áudio encaminhado): vai pra
+    // transcrição, nunca pro fluxo de anexo pendente — não tem caption.
+    const audio = message?.audioMessage;
+    let audioMensagemCru: unknown;
+    if (audio && !midiaMensagemCru) {
+      const mimetype: string = audio?.mimetype ?? "";
+      const tamanho = this.#extrairTamanho(audio?.fileLength);
+      const aceito = MIMES_AUDIO_ACEITOS.some((m) => mimetype.startsWith(m));
+      if (aceito && (tamanho === 0 || tamanho <= TAMANHO_MAX_ANEXO_BYTES)) {
+        audioMensagemCru = data;
+      }
+    }
+
+    if (!textoFinal && !midiaMensagemCru && !audioMensagemCru) return null;
 
     return {
       numeroJid: jidNumero.split("@")[0],
       texto: textoFinal,
       id: key?.id ?? "",
       midiaMensagemCru,
+      audioMensagemCru,
     };
   };
 
@@ -170,7 +187,20 @@ export default class ChatbotWebhookController {
 
     let resposta: string;
 
-    if (evento.midiaMensagemCru) {
+    if (evento.audioMensagemCru) {
+      let arquivo: { buffer: Buffer; mimetype: string; fileName: string };
+      try {
+        arquivo = await EvolutionApiService.getInstance().baixarMidiaBase64(evento.audioMensagemCru);
+      } catch (erro) {
+        console.error("❌ [ChatbotWebhookController] Falha ao baixar áudio:", erro);
+        await EvolutionApiService.getInstance().sendTextRapido(
+          evento.numeroJid,
+          "Não consegui baixar esse áudio. Pode tentar enviar de novo ou escrever a mensagem?"
+        );
+        return;
+      }
+      ({ resposta } = await this.#chatbotService.enviarMensagemWhatsappComAudio(evento.numeroJid, arquivo));
+    } else if (evento.midiaMensagemCru) {
       let arquivo: { buffer: Buffer; mimetype: string; fileName: string };
       try {
         arquivo = await EvolutionApiService.getInstance().baixarMidiaBase64(evento.midiaMensagemCru);

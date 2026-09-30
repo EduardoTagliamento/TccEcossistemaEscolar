@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import styles from './page.module.css';
 import * as RepresentanteAPI from '@/lib/api/representantelancamento.api';
 import * as GradeHorariaAPI from '@/lib/api/gradehoraria.api';
+import * as MaterialDidaticoAPI from '@/lib/api/materialdidatico.api';
 import { DiaSemana, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
 
 const FMT_DIA_MES = (d: Date) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -76,6 +77,12 @@ export default function RepresentantePage() {
   // Conteúdo: agendar pra uma data OU publicar no exato momento.
   const [modoConteudo, setModoConteudo] = useState<'agora' | 'agendado'>('agora');
 
+  // Prova: livro/capítulo opcional — dá grounding real no resumo de estudos por IA.
+  const [livrosDisponiveis, setLivrosDisponiveis] = useState<MaterialDidaticoAPI.MaterialDidatico[]>([]);
+  const [livroEscolhidoGUID, setLivroEscolhidoGUID] = useState('');
+  const [capitulosDoLivro, setCapitulosDoLivro] = useState<MaterialDidaticoAPI.MaterialDidaticoCapitulo[]>([]);
+  const [capituloEscolhidoGUID, setCapituloEscolhidoGUID] = useState('');
+
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState('');
@@ -96,6 +103,28 @@ export default function RepresentantePage() {
   // dia definido e variável (data específica não faz sentido pra prova aqui).
   const modoDataEfetivo = aba === 'prova' ? 'automatico' : modoData;
 
+  // Livros disponíveis pra matéria da alocação escolhida — só relevante na aba Prova.
+  useEffect(() => {
+    if (aba !== 'prova' || !alvo) {
+      setLivrosDisponiveis([]);
+      return;
+    }
+    MaterialDidaticoAPI.listarLivrosPorMateria(alvo.MateriaGUID)
+      .then(setLivrosDisponiveis)
+      .catch(() => setLivrosDisponiveis([]));
+  }, [aba, alvo?.MateriaGUID]);
+
+  // Capítulos do livro escolhido, filtrados pela mesma matéria.
+  useEffect(() => {
+    if (!livroEscolhidoGUID || !alvo) {
+      setCapitulosDoLivro([]);
+      return;
+    }
+    MaterialDidaticoAPI.listarCapitulosPorMateria(livroEscolhidoGUID, alvo.MateriaGUID)
+      .then(setCapitulosDoLivro)
+      .catch(() => setCapitulosDoLivro([]));
+  }, [livroEscolhidoGUID, alvo?.MateriaGUID]);
+
   const resetarFormulario = () => {
     setTitulo('');
     setDescricao('');
@@ -106,6 +135,9 @@ export default function RepresentantePage() {
     setResultadoCalculo(null);
     setErroCalculo('');
     setModoConteudo('agora');
+    setLivroEscolhidoGUID('');
+    setCapitulosDoLivro([]);
+    setCapituloEscolhidoGUID('');
   };
 
   // Usuário escolhe a SEMANA (não o dia) — se a matéria só ocorre num dia
@@ -143,6 +175,7 @@ export default function RepresentantePage() {
           ProvaTitulo: titulo,
           ProvaData: modoDataEfetivo === 'automatico' ? resultadoCalculo!.DataCalculada! : data,
           ProvaDescricao: descricao || undefined,
+          MaterialDidaticoCapituloGUID: capituloEscolhidoGUID || undefined,
           ModoAutomatico: modoDataEfetivo === 'automatico',
           SemanaBase: modoDataEfetivo === 'automatico' ? semanaBase : undefined,
           DiaSemana: modoDataEfetivo === 'automatico' ? resultadoCalculo?.DiaSemana : undefined,
@@ -280,6 +313,46 @@ export default function RepresentantePage() {
         <label className={styles.label}>{aba === 'conteudo' ? 'Conteúdo' : 'Descrição'}</label>
         <textarea className={styles.textarea} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
       </div>
+
+      {aba === 'prova' && livrosDisponiveis.length > 0 && (
+        <div className={styles.campoContainer}>
+          <label className={styles.label}>Capítulo do livro (opcional)</label>
+          <p className={styles.textoSecundario}>
+            Vincular um capítulo deixa o resumo de estudos por IA citar página real do livro.
+          </p>
+          <select
+            className={styles.select}
+            value={livroEscolhidoGUID}
+            onChange={(e) => {
+              setLivroEscolhidoGUID(e.target.value);
+              setCapituloEscolhidoGUID('');
+            }}
+          >
+            <option value="">Nenhum livro selecionado</option>
+            {livrosDisponiveis.map((livro) => (
+              <option key={livro.MaterialDidaticoGUID} value={livro.MaterialDidaticoGUID}>
+                {livro.Titulo}
+              </option>
+            ))}
+          </select>
+
+          {livroEscolhidoGUID && (
+            <select
+              className={styles.select}
+              style={{ marginTop: 6 }}
+              value={capituloEscolhidoGUID}
+              onChange={(e) => setCapituloEscolhidoGUID(e.target.value)}
+            >
+              <option value="">Nenhum capítulo selecionado</option>
+              {capitulosDoLivro.map((capitulo) => (
+                <option key={capitulo.MaterialDidaticoCapituloGUID} value={capitulo.MaterialDidaticoCapituloGUID}>
+                  {capitulo.Titulo} (págs. {capitulo.PaginaInicio}-{capitulo.PaginaFim})
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       {aba === 'tarefa' && (
         <div className={styles.campoContainer}>

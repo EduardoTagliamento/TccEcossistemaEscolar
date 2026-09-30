@@ -102,6 +102,7 @@ export default class RepresentanteLancamentoControl {
           ProvaTitulo: body.ProvaTitulo,
           ProvaData: parseDataBrasil(body.ProvaData),
           ProvaDescricao: body.ProvaDescricao,
+          MaterialDidaticoCapituloGUID: body.MaterialDidaticoCapituloGUID,
           CriadoPorRepresentanteUsuarioGUID: usuarioGUID,
           ModoAutomatico: body.ModoAutomatico,
           SemanaBase: body.SemanaBase,

@@ -1,5 +1,5 @@
 import { Content, FunctionDeclaration, Tool, Type } from "@google/genai";
-import { getGeminiProvider } from "../providers/geminiProvider";
+import { getGeminiProviderLeve } from "../providers/geminiProvider";
 
 /**
  * Assistente conversacional (chatbot) com acesso à API real da escola via
@@ -93,6 +93,11 @@ const SYSTEM_INSTRUCTION = [
   "- PROFESSOR anexando o arquivo como material de apoio de uma tarefa NOVA, sendo criada agora →",
   "  criar_tarefa com usarAnexo=true (só vale na criação — anexar a uma tarefa antiga ainda não é suportado).",
   "- COORDENAÇÃO/DIREÇÃO/SECRETARIA anexando o arquivo a um comunicado → enviar_comunicado com usarAnexo=true.",
+  "",
+  "Você também RECEBE áudio (nota de voz) pelo WhatsApp — nunca diga que não escuta ou não entende áudio.",
+  "Ele é transcrito automaticamente ANTES de chegar até você: o que você vê já é o texto da fala, então",
+  "trate normalmente como qualquer mensagem digitada (não existe ferramenta nem 'usarAnexo' pra áudio — o",
+  "áudio em si não fica guardado pra anexar em nada, só a transcrição dele vira a conversa).",
   "Se não estiver claro pra qual dessas ações o arquivo é, pergunte — nunca invente um uso além desses, e",
   "nunca negue que recebe/envia arquivo.",
   "",
@@ -696,7 +701,7 @@ export class AssistenteAgent {
         { functionDeclarations: FERRAMENTAS.filter((f) => f.name && disponiveis.has(f.name)) },
       ];
 
-      const { content, functionCalls, texto } = await getGeminiProvider().conversarComFerramentas(
+      const { content, functionCalls, texto } = await getGeminiProviderLeve().conversarComFerramentas(
         historico,
         tools,
         SYSTEM_INSTRUCTION,

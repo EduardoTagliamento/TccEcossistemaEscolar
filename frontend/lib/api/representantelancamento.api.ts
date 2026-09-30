@@ -45,6 +45,8 @@ export interface CriarProvaRepresentanteDTO {
   ProvaTitulo: string;
   ProvaData: string; // AAAA-MM-DDTHH:MM
   ProvaDescricao?: string;
+  /** Capítulo do livro didático — usado pro resumo de estudos por IA citar página real (opcional). */
+  MaterialDidaticoCapituloGUID?: string;
   /** Agendamento automático pelo cronograma (ver GradeHorariaAPI.calcularDatas) — ausente/false = data específica. */
   ModoAutomatico?: boolean;
   SemanaBase?: string;

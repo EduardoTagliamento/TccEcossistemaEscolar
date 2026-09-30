@@ -1,5 +1,5 @@
 import { Schema, Type } from "@google/genai";
-import { getGeminiProvider } from "../providers/geminiProvider";
+import { getGeminiProviderLeve } from "../providers/geminiProvider";
 import { getYoutubeDataApiClient, VideoResultado } from "../../external/YoutubeDataApiClient";
 
 const QUERIES_SCHEMA: Schema = {
@@ -68,7 +68,7 @@ export class VideoRecomendacaoAgent {
     ].join("\n");
 
     try {
-      const resposta = await getGeminiProvider().gerarEstruturado<QueriesResposta>(
+      const resposta = await getGeminiProviderLeve().gerarEstruturado<QueriesResposta>(
         prompt,
         QUERIES_SCHEMA,
         "leve"
@@ -97,7 +97,7 @@ export class VideoRecomendacaoAgent {
     ].join("\n");
 
     try {
-      const resposta = await getGeminiProvider().gerarEstruturado<OrdemResposta>(
+      const resposta = await getGeminiProviderLeve().gerarEstruturado<OrdemResposta>(
         prompt,
         ORDEM_SCHEMA,
         "leve"
