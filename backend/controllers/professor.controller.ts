@@ -37,9 +37,16 @@ export default class ProfessorController {
   listarProfessores = async (req: Request, res: Response): Promise<void> => {
     try {
       const { EscolaGUID } = req.query;
+      const usuarioLogadoGUID = req.user?.UsuarioGUID;
+
+      if (!usuarioLogadoGUID) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
+      }
 
       const resultado = await this.#professorService.listarProfessores(
-        EscolaGUID as string
+        EscolaGUID as string,
+        usuarioLogadoGUID
       );
 
       res.status(200).json({

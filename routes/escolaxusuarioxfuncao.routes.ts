@@ -56,10 +56,11 @@ export default class EscolaxUsuarioxFuncaoRoteador {
       this.#controller.destroy
     );
 
-    this.#router.get("/", this.#controller.index);
+    this.#router.get("/", AuthMiddleware.authenticate, this.#controller.index);
 
     this.#router.get(
       "/:EscolaxUsuarioxFuncaoId",
+      AuthMiddleware.authenticate,
       this.#middleware.validateIdParam,
       this.#controller.show
     );

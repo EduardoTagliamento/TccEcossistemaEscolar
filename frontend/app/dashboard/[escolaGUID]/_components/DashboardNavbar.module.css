@@ -666,6 +666,50 @@
   .brandPowered {
     display: none;
   }
+
+  /* Menu de módulos vira barra fixa no rodapé (padrão de app mobile), em vez
+     de ficar espremido/rolável no topo ao lado da marca da escola. O
+     conteúdo das páginas reserva o espaço equivalente via
+     layout.module.css (.conteudo, padding-bottom). */
+  .moduleNavWrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    height: 60px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--white);
+    border-top: 1px solid var(--line-100);
+    box-shadow: 0 -4px 16px -8px rgba(15, 29, 23, 0.12);
+  }
+
+  .moduleNav {
+    justify-content: space-around;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .moduleNavComSetaEsquerda,
+  .moduleNavComSetaDireita {
+    justify-content: flex-start;
+  }
+
+  .moduleItem {
+    padding: 8px 10px;
+  }
+
+  .moduleNavSeta {
+    background: var(--white);
+  }
+
+  .moduleNavSetaEsquerda {
+    background: linear-gradient(to right, var(--white) 55%, transparent);
+  }
+
+  .moduleNavSetaDireita {
+    background: linear-gradient(to left, var(--white) 55%, transparent);
+  }
 }
 
 @media (max-width: 640px) {

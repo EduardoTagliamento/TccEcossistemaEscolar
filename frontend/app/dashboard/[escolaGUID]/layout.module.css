@@ -1,0 +1,9 @@
+/* No mobile, o menu de módulos da DashboardNavbar vira uma barra fixa no
+   rodapé (ver DashboardNavbar.module.css, @media max-width:900px) — esse
+   padding reserva o mesmo espaço no final do conteúdo das páginas, senão a
+   barra fixa ficaria sobrepondo (cobrindo) o final de qualquer página. */
+@media (max-width: 900px) {
+  .conteudo {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+}

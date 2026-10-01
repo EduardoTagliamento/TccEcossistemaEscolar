@@ -19,6 +19,7 @@ import bcrypt from "bcrypt";
 import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repository";
 import { EscolaDAO } from "../repositories/escola.repository";
 import { GrupoEletivoDAO } from "../repositories/grupoeletivo.repository";
+import { validarCoordenacaoOuDirecaoAtiva } from "../utils/validarPermissaoGestaoEscola";
 
 /**
  * DTOs para transferência de dados
@@ -348,10 +349,20 @@ export default class ProfessorService {
    * 
    * Busca usuários com FuncaoId=3 (Professor) e Status='Ativo'
    */
-  async listarProfessores(escolaGUID: string): Promise<{
+  async listarProfessores(escolaGUID: string, usuarioLogadoGUID: string): Promise<{
     professores: ProfessorDTO[];
     total: number;
   }> {
+    // Lista nome + CPF + email de todo mundo que leciona na escola — só
+    // Coordenação/Direção ativa pode ver isso (antes só exigia estar
+    // logado, então qualquer Aluno/Responsável também conseguia).
+    await validarCoordenacaoOuDirecaoAtiva(
+      this.#escolaxUsuarioxFuncaoDAO,
+      usuarioLogadoGUID,
+      escolaGUID,
+      'Você não tem permissão para ver a lista de professores desta escola. Apenas Coordenação e Direção podem.'
+    );
+
     const professores = await this.#alocacaoDAO.findProfessoresByEscola(escolaGUID);
 
     return {
@@ -1266,32 +1277,12 @@ export default class ProfessorService {
     usuarioGUID: string,
     escolaGUID: string
   ): Promise<void> {
-    // Validar Coordenação (FuncaoId = 1)
-    const coordenacao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
+    await validarCoordenacaoOuDirecaoAtiva(
+      this.#escolaxUsuarioxFuncaoDAO,
       usuarioGUID,
       escolaGUID,
-      1
+      'Você não tem permissão para realizar esta operação. Apenas Coordenação e Direção podem gerenciar alocações de professores.'
     );
-
-    if (coordenacao && coordenacao.Status === 'Ativo') {
-      return; // Tem permissão
-    }
-
-    // Validar Direção (FuncaoId = 6)
-    const direcao = await this.#escolaxUsuarioxFuncaoDAO.findByTripla(
-      usuarioGUID,
-      escolaGUID,
-      6
-    );
-
-    if (direcao && direcao.Status === 'Ativo') {
-      return; // Tem permissão
-    }
-
-    // Sem permissão
-    throw new ErrorResponse(403, 'Sem permissão', {
-      message: 'Você não tem permissão para realizar esta operação. Apenas Coordenação e Direção podem gerenciar alocações de professores.',
-    });
   }
 
   /**

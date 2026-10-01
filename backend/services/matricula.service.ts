@@ -525,10 +525,37 @@ export default class MatriculaService {
    * frontend precise de uma requisição por aluno (ver nota em
    * `MatriculaDAO.findAllComUsuario`).
    */
-  async listarAlunosComUsuario(filters?: MatriculaFilters): Promise<{
+  async listarAlunosComUsuario(
+    filters: MatriculaFilters | undefined,
+    usuarioLogadoGUID: string,
+    chamadaPorApiKey = false
+  ): Promise<{
     alunos: Array<{ matricula: MatriculaDTO; usuario: AlunoUsuarioDTO }>;
     total: number;
   }> {
+    // Lista nome + CPF + email de todo mundo matriculado — igual ao caso dos
+    // professores, isso só pode ir pra quem gerencia a escola (Coordenação,
+    // Secretaria ou Direção ativa), nunca pra qualquer usuário autenticado.
+    // Chave de API já é escopada+autenticada pelo próprio middleware
+    // (ApiKeyAuthMiddleware.exigirEscopo), então não precisa repetir aqui —
+    // mas sessão de usuário comum precisa, e precisa também de EscolaGUID
+    // obrigatório: sem isso o filtro ficava vazio e retornava TODOS os
+    // alunos da plataforma inteira, de qualquer escola.
+    if (!chamadaPorApiKey) {
+      if (!filters?.EscolaGUID) {
+        throw new ErrorResponse(400, "EscolaGUID é obrigatório.");
+      }
+      const podeVer = await this.#escolaxUsuarioxFuncaoDAO.isCoordSecretariaOuDirecaoEmEscola(
+        usuarioLogadoGUID,
+        filters.EscolaGUID
+      );
+      if (!podeVer) {
+        throw new ErrorResponse(403, "Sem permissão", {
+          message: "Você não tem permissão para ver a lista de alunos desta escola. Apenas Coordenação, Secretaria e Direção podem.",
+        });
+      }
+    }
+
     const linhas = await this.#matriculaDAO.findAllComUsuario(filters);
 
     return {

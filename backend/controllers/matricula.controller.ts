@@ -232,11 +232,22 @@ export default class MatriculaController {
       if (MatriculaStatus && typeof MatriculaStatus === "string") filters.MatriculaStatus = MatriculaStatus;
       if (EscolaGUID && typeof EscolaGUID === "string") filters.EscolaGUID = EscolaGUID;
 
-      if (req.apiKey) {
-        filters.EscolaGUID = req.apiKey.EscolaGUID;
+      const chamadaPorApiKey = !!req.apiKey;
+      if (chamadaPorApiKey) {
+        filters.EscolaGUID = req.apiKey!.EscolaGUID;
       }
 
-      const resultado = await this.#matriculaService.listarAlunosComUsuario(filters);
+      const usuarioLogadoGUID = req.user?.UsuarioGUID;
+      if (!chamadaPorApiKey && !usuarioLogadoGUID) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
+      }
+
+      const resultado = await this.#matriculaService.listarAlunosComUsuario(
+        filters,
+        usuarioLogadoGUID as string,
+        chamadaPorApiKey
+      );
 
       res.status(200).json({
         success: true,

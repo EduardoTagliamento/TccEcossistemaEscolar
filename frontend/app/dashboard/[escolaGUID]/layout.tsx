@@ -5,6 +5,7 @@ import DashboardNavbar from './_components/DashboardNavbar';
 import MinimizedChatBubble from './_components/MinimizedChatBubble';
 import NotificacaoToastListener from './_components/NotificacaoToastListener';
 import SugestaoFlutuante from './_components/SugestaoFlutuante';
+import styles from './layout.module.css';
 
 /**
  * Layout compartilhado por todas as rotas de `/dashboard/[escolaGUID]/**`.
@@ -37,7 +38,7 @@ export default function DashboardEscolaLayout({ children }: { children: React.Re
       <ChatUIProvider>
         <div className={`${poppins.variable} ${figtree.variable} ${baloo2.variable}`}>
           <DashboardNavbar />
-          {children}
+          <div className={styles.conteudo}>{children}</div>
           <MinimizedChatBubble />
           <NotificacaoToastListener />
           <SugestaoFlutuante />
