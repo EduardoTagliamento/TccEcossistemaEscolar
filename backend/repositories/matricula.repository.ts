@@ -228,6 +228,7 @@ export class MatriculaDAO {
         u.UsuarioUltimoAcesso, u.UsuarioCreatedAt, u.UsuarioUpdatedAt
       FROM matricula m
       JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
+      LEFT JOIN turma t ON t.TurmaGUID = m.TurmaGUID
       WHERE 1=1
     `;
     const params: any[] = [];
@@ -253,7 +254,13 @@ export class MatriculaDAO {
       params.push(filters.EscolaGUID);
     }
 
-    query += ` ORDER BY m.MatriculaDataEntrada DESC`;
+    // Ordena por turma (série + nome da turma) e, dentro da turma, por nome
+    // do aluno — pedido explícito pra facilitar achar alguém numa lista que
+    // passou de ~11 pra 1160+ linhas numa escola só (feira técnica).
+    // `t.TurmaSerie`/`t.TurmaNome` podem ser NULL (matrícula só de grupo
+    // eletivo, sem turma) — `IS NULL` primeiro no ORDER BY joga esses por
+    // último em vez de primeiro (comportamento padrão do MySQL pra NULL em ASC).
+    query += ` ORDER BY (t.TurmaGUID IS NULL), t.TurmaSerie, t.TurmaNome, u.UsuarioNome`;
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(query, params);
