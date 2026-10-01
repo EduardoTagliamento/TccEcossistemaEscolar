@@ -286,6 +286,28 @@
   background: linear-gradient(to left, var(--white) 55%, transparent);
 }
 
+/* Atalho de notificações da barra inferior — só existe visualmente no
+   mobile (ver @media max-width:900px). No desktop já tem o sino em
+   .navActions, duplicar ali ficaria redundante. */
+.moduleNavNotifBotao {
+  display: none;
+  position: relative;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 100%;
+  border: none;
+  border-left: 1px solid var(--line-100);
+  background: transparent;
+  color: var(--slate-500);
+  cursor: pointer;
+}
+
+.moduleNavNotifBotao:hover {
+  color: var(--color-primary, var(--green-600));
+}
+
 .moduleItem {
   display: inline-flex;
   flex-direction: column;
@@ -655,22 +677,23 @@
    RESPONSIVIDADE
    ============================================================ */
 @media (max-width: 900px) {
-  /* Só o rótulo de texto some no mobile (menu vira só-ícone) — tem que ser
-     .moduleLabel e não "span" puro, senão o seletor também pega o
-     .moduleIconWrap (que também é um <span>) e esconde o ícone junto,
-     deixando o item do menu completamente vazio e sem como clicar certo. */
-  .moduleItem .moduleLabel {
+  .brandPowered {
     display: none;
   }
 
-  .brandPowered {
+  /* "Documentação da API" é uma ferramenta de desenvolvedor — não cabe bem
+     no menu do perfil no mobile e não é algo que se usa pelo celular mesmo. */
+  .menuItemEsconderMobile {
     display: none;
   }
 
   /* Menu de módulos vira barra fixa no rodapé (padrão de app mobile), em vez
      de ficar espremido/rolável no topo ao lado da marca da escola. O
      conteúdo das páginas reserva o espaço equivalente via
-     layout.module.css (.conteudo, padding-bottom). */
+     layout.module.css (.conteudo, padding-bottom). Com a barra inteira da
+     tela disponível (em vez do espacinho ao lado do nome da escola), dá
+     pra manter o rótulo visível — só diminui a fonte e trunca com "..."
+     se o texto for mais largo que o item (ver .moduleLabel abaixo). */
   .moduleNavWrap {
     position: fixed;
     left: 0;
@@ -709,6 +732,10 @@
 
   .moduleNavSetaDireita {
     background: linear-gradient(to left, var(--white) 55%, transparent);
+  }
+
+  .moduleNavNotifBotao {
+    display: inline-flex;
   }
 }
 

@@ -430,11 +430,21 @@
   .materiasAtalhoGrid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  /* Espremido, mostra menos matérias (o resto já dá pra ver em "Ver
+     todas") em vez de empilhar as 6 inteiras. */
+  .materiasAtalhoGrid > :nth-child(n + 5) {
+    display: none;
+  }
 }
 
 @media (max-width: 560px) {
   .materiasAtalhoGrid {
     grid-template-columns: 1fr;
+  }
+
+  .materiasAtalhoGrid > :nth-child(n + 4) {
+    display: none;
   }
 }
 

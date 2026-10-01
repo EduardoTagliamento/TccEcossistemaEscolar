@@ -475,4 +475,18 @@
   .cardHeader {
     flex-wrap: wrap;
   }
+
+  /* .linhaAcao (prazo + botão Abrir) tinha flex-shrink:0 e não cabia junto
+     com o título + badges (Atrasada/Em grupo) espremidos na mesma linha —
+     o conteúdo furava a borda do card. Quebra pra linha de baixo, dando o
+     card inteiro de largura pro título/badges (que já tem flex-wrap: wrap
+     e só precisava do espaço). */
+  .linhaTarefa {
+    flex-wrap: wrap;
+  }
+
+  .linhaAcao {
+    width: 100%;
+    justify-content: space-between;
+  }
 }

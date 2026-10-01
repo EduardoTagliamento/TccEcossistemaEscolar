@@ -1198,8 +1198,19 @@
   }
 
   .calendarControls {
-    flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-2);
+    padding: 0;
+  }
+
+  /* Mantém "< Mês Anterior | Outubro de 2026 | Próximo Mês >" numa linha só
+     em vez de empilhar 3 linhas — esconde o texto do botão (fica só a
+     seta) pra sempre caber, não importa o tamanho do nome do mês. */
+  .navButton {
+    padding: 8px;
+  }
+
+  .navButtonLabel {
+    display: none;
   }
 
   .mesAno {

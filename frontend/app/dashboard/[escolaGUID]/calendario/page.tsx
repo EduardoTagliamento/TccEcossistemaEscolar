@@ -532,13 +532,13 @@ export default function CalendarioAlunoPage() {
       <section className={styles.calendarControls}>
         <button onClick={() => mudarMes(-1)} className={styles.navButton}>
           <Icon name="chevron-left" size={16} />
-          Mês Anterior
+          <span className={styles.navButtonLabel}>Mês Anterior</span>
         </button>
         <h2 className={styles.mesAno}>
           {dataAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())}
         </h2>
         <button onClick={() => mudarMes(1)} className={styles.navButton}>
-          Próximo Mês
+          <span className={styles.navButtonLabel}>Próximo Mês</span>
           <Icon name="chevron-right" size={16} />
         </button>
       </section>
