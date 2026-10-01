@@ -51,6 +51,7 @@ import { assuntoRouterFactory } from "../routes/assunto.routes";
 import { materialDidaticoRouterFactory } from "../routes/materialdidatico.routes";
 import { questaoBancoRouterFactory } from "../routes/questaobanco.routes";
 import { materiaGlobalRouterFactory } from "../routes/materiaglobal.routes";
+import { feiraUnivapRouterFactory } from "../routes/feiraunivap.routes";
 import { chatbotRoutes } from "../routes/chatbot.routes";
 import { CleanupScheduler } from "./services/cleanup.scheduler";
 import { NotificacaoScheduler } from "./services/notificacao.scheduler";
@@ -557,6 +558,12 @@ export default class Server {
     // matérias, calendário e conversas; + webhook de entrada do WhatsApp)
     this.#app.use("/api/chatbot", chatbotRoutes);
     console.log("✅ Rotas de Chatbot registradas em /api/chatbot");
+
+    // 🎪 Rotas públicas (sem auth) da feira técnica do Colégio Univap — ver
+    // docs/SPEC_FEIRA_TECNICA_UNIVAP_2026.md. Temporário.
+    const feiraUnivapRouter = feiraUnivapRouterFactory();
+    this.#app.use("/api/feira-univap", feiraUnivapRouter);
+    console.log("✅ Rotas da Feira Técnica Univap registradas em /api/feira-univap");
 
     // Fallback de frontend: qualquer rota não-API/health/uploads vai para o Next.js.
     this.#app.use((req: Request, res: Response, nextMiddleware: NextFunction) => {

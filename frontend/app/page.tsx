@@ -364,7 +364,7 @@ export default function HomePage() {
             </Link>
           </div>
           <div className={styles.navSpacer} />
-          <Link href="/cadastro" className={styles.btnPrimary}>
+          <Link href="/cadastro/escolha" className={styles.btnPrimary}>
             Assinar
           </Link>
         </nav>
@@ -390,10 +390,15 @@ export default function HomePage() {
                 Conecte sua escola, alunos, professores e responsáveis em uma plataforma única e
                 intuitiva. Gerencie tudo em um só lugar.
               </p>
-              <Link href="/saiba-mais" className={styles.btnPrimaryLg}>
-                Quero saber mais
-                <Icon name="arrow-right" size={20} />
-              </Link>
+              <div className={styles.heroCtas}>
+                <Link href="/saiba-mais" className={styles.btnPrimaryLg}>
+                  Quero saber mais
+                  <Icon name="arrow-right" size={20} />
+                </Link>
+                <Link href="/cadastro/univap" className={styles.btnSecondaryLg}>
+                  Sou aluno da Univap
+                </Link>
+              </div>
             </div>
             <div className={styles.heroImageCol}>
               <span className={styles.heroBird} role="img" aria-label="Bauá — gralha formanda" />
@@ -573,7 +578,7 @@ export default function HomePage() {
           <div className={styles.ctaInner}>
             <h2 className={styles.ctaTitle}>Pronto para transformar a educação?</h2>
             <p className={styles.ctaText}>Junte-se ao Bauá e faça parte da revolução educacional.</p>
-            <Link href="/cadastro" className={styles.ctaButton}>
+            <Link href="/cadastro/escolha" className={styles.ctaButton}>
               Comece Gratuitamente
               <Icon name="arrow-right" size={20} />
             </Link>

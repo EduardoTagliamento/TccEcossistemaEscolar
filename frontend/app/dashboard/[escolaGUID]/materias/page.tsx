@@ -172,7 +172,21 @@ export default function MateriasPage() {
         />
       </div>
 
-      {modo === 'aluno' && ehAluno && (
+      {modo === 'aluno' && ehAluno && materiasAluno.length === 0 && (
+        <div className={styles.avisoSemMaterias}>
+          <Icon name="alert-triangle" size={18} />
+          <p>
+            Sua turma ainda não tem matérias cadastradas. Peça pro representante da turma avisar o
+            Bauá:{' '}
+            <a href="https://wa.me/5512988493959" target="_blank" rel="noopener noreferrer">
+              12 988493959
+            </a>
+            .
+          </p>
+        </div>
+      )}
+
+      {modo === 'aluno' && ehAluno && materiasAluno.length > 0 && (
         <div className={styles.grid}>
           {materiasAlunoFiltradas.map((materia, indice) => (
             <MateriaTurmaCard

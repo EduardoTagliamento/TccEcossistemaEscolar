@@ -8,9 +8,20 @@ import * as MateriaGlobalAPI from '@/lib/api/materiaglobal.api';
 import * as QuestaoBancoAPI from '@/lib/api/questaobanco.api';
 import * as SugestaoAPI from '@/lib/api/sugestao.api';
 import * as AnexoAPI from '@/lib/api/anexo.api';
+import * as TurmaAPI from '@/lib/api/turma.api';
+import * as AlunoAPI from '@/lib/api/aluno.api';
 import styles from './page.module.css';
 
 const DIFICULDADES: QuestaoBancoAPI.QuestaoBancoDificuldade[] = ['Facil', 'Media', 'Dificil'];
+
+// Fluxo temporário da feira técnica (ver docs/SPEC_FEIRA_TECNICA_UNIVAP_2026.md) —
+// escola fixa de propósito, é a única "Univap" real das 8 que existem no banco.
+const ESCOLA_GUID_UNIVAP = 'b67a6634-9afd-4fb3-8227-d2569a3db98c';
+const ESCOLA_NOME_UNIVAP = 'Colégios UNIVAP - Centro';
+
+function formularioAlunoUnivapVazio() {
+  return { UsuarioNome: '', UsuarioEmail: '', UsuarioTelefone: '', TurmaGUID: '' };
+}
 
 function formularioVazio() {
   return {
@@ -132,11 +143,61 @@ export default function AdminPlataformaPage() {
     }
   };
 
+  // ---- Registrar aluno — Colégio Univap (feira técnica, temporário) ----
+  const [turmasUnivap, setTurmasUnivap] = useState<TurmaAPI.Turma[]>([]);
+  const [carregandoTurmasUnivap, setCarregandoTurmasUnivap] = useState(true);
+  const [formAlunoUnivap, setFormAlunoUnivap] = useState(formularioAlunoUnivapVazio());
+  const [salvandoAlunoUnivap, setSalvandoAlunoUnivap] = useState(false);
+  const [mensagemAlunoUnivap, setMensagemAlunoUnivap] = useState('');
+
+  const carregarTurmasUnivap = async () => {
+    try {
+      setCarregandoTurmasUnivap(true);
+      const resultado = await TurmaAPI.listarTurmas({ EscolaGUID: ESCOLA_GUID_UNIVAP });
+      setTurmasUnivap(
+        [...resultado.turmas].sort((a, b) => a.TurmaSerie.localeCompare(b.TurmaSerie) || a.TurmaNome.localeCompare(b.TurmaNome))
+      );
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao carregar turmas da Univap');
+    } finally {
+      setCarregandoTurmasUnivap(false);
+    }
+  };
+
+  const handleSalvarAlunoUnivap = async () => {
+    if (!formAlunoUnivap.UsuarioNome.trim() || !formAlunoUnivap.TurmaGUID) {
+      alert('Preencha nome e turma.');
+      return;
+    }
+    setSalvandoAlunoUnivap(true);
+    setMensagemAlunoUnivap('');
+    try {
+      await AlunoAPI.criarAluno(
+        {
+          UsuarioNome: formAlunoUnivap.UsuarioNome.trim(),
+          UsuarioEmail: formAlunoUnivap.UsuarioEmail.trim() || undefined,
+          UsuarioTelefone: formAlunoUnivap.UsuarioTelefone.trim() || undefined,
+          TurmaGUID: formAlunoUnivap.TurmaGUID,
+        },
+        ESCOLA_GUID_UNIVAP,
+        undefined,
+        ESCOLA_NOME_UNIVAP
+      );
+      setMensagemAlunoUnivap(`"${formAlunoUnivap.UsuarioNome.trim()}" registrado com sucesso.`);
+      setFormAlunoUnivap(formularioAlunoUnivapVazio());
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao registrar aluno');
+    } finally {
+      setSalvandoAlunoUnivap(false);
+    }
+  };
+
   useEffect(() => {
     if (!ehAdmin) return;
     void carregarSugestoes();
     void carregarFila();
     void carregarBanco();
+    void carregarTurmasUnivap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ehAdmin]);
 
@@ -451,6 +512,53 @@ export default function AdminPlataformaPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className={styles.secao}>
+        <h2 className={styles.secaoTitulo}>
+          <Icon name="users" size={18} /> Registrar aluno — Colégio Univap
+        </h2>
+        <p className={styles.hint}>
+          Módulo temporário pra feira técnica — pra quem não apareceu na busca por nome do fluxo
+          público (<code>/cadastro/univap</code>). Cria a conta direto nessa escola.
+        </p>
+        <div className={styles.formQuestao}>
+          <div className={styles.linhaForm}>
+            <input
+              placeholder="Nome completo"
+              value={formAlunoUnivap.UsuarioNome}
+              onChange={(e) => setFormAlunoUnivap((p) => ({ ...p, UsuarioNome: e.target.value }))}
+            />
+            <select
+              value={formAlunoUnivap.TurmaGUID}
+              onChange={(e) => setFormAlunoUnivap((p) => ({ ...p, TurmaGUID: e.target.value }))}
+              disabled={carregandoTurmasUnivap}
+            >
+              <option value="">{carregandoTurmasUnivap ? 'Carregando turmas...' : 'Turma...'}</option>
+              {turmasUnivap.map((t) => (
+                <option key={t.TurmaGUID} value={t.TurmaGUID}>
+                  {t.TurmaSerie}º ano {t.TurmaNome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.linhaForm}>
+            <input
+              placeholder="Telefone (opcional)"
+              value={formAlunoUnivap.UsuarioTelefone}
+              onChange={(e) => setFormAlunoUnivap((p) => ({ ...p, UsuarioTelefone: e.target.value }))}
+            />
+            <input
+              placeholder="Email (opcional)"
+              value={formAlunoUnivap.UsuarioEmail}
+              onChange={(e) => setFormAlunoUnivap((p) => ({ ...p, UsuarioEmail: e.target.value }))}
+            />
+          </div>
+          {mensagemAlunoUnivap && <p className={styles.hint}>{mensagemAlunoUnivap}</p>}
+          <button type="button" className={styles.botaoSalvar} onClick={handleSalvarAlunoUnivap} disabled={salvandoAlunoUnivap}>
+            {salvandoAlunoUnivap ? 'Registrando...' : 'Registrar aluno'}
+          </button>
+        </div>
       </section>
     </div>
   );
