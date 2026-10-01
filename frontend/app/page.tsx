@@ -21,7 +21,9 @@ type IconName =
   | 'lock'
   | 'mail'
   | 'edit'
-  | 'shield';
+  | 'shield'
+  | 'menu'
+  | 'x';
 
 // Glifos Feather-style extraídos literalmente de components/core/Icon.jsx
 // (Bauá Design System) — mesmo conjunto de ícones usado em "Landing Page.dc.html".
@@ -130,6 +132,21 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
       return (
         <svg {...common} aria-hidden="true">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
+    case 'menu':
+      return (
+        <svg {...common} aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      );
+    case 'x':
+      return (
+        <svg {...common} aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       );
     default:
@@ -306,6 +323,7 @@ const FAQ_ITENS = [
 export default function HomePage() {
   const { token, isLoading } = useAuth();
   const [faqAbertaIndex, setFaqAbertaIndex] = useState<number | null>(null);
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
 
   useEffect(() => {
     // Redireciona automaticamente se já estiver autenticado.
@@ -375,7 +393,38 @@ export default function HomePage() {
           <Link href="/cadastro/escolha" className={styles.btnPrimary}>
             Assinar
           </Link>
+
+          <button
+            type="button"
+            className={styles.navMenuBotao}
+            onClick={() => setMenuMobileAberto((aberto) => !aberto)}
+            aria-label={menuMobileAberto ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={menuMobileAberto}
+          >
+            <Icon name={menuMobileAberto ? 'x' : 'menu'} size={24} />
+          </button>
         </nav>
+
+        {menuMobileAberto && (
+          <div className={styles.navMobilePainel}>
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className={styles.navMobileLink}
+                onClick={() => setMenuMobileAberto(false)}
+              >
+                {link.label}
+              </a>
+            ))}
+            <Link href="/login" className={styles.navMobileLink} onClick={() => setMenuMobileAberto(false)}>
+              Já sou Aluno
+            </Link>
+            <Link href="/cadastro/escolha" className={styles.btnPrimary} onClick={() => setMenuMobileAberto(false)}>
+              Assinar
+            </Link>
+          </div>
+        )}
       </header>
 
       <main>

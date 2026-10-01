@@ -655,7 +655,11 @@
    RESPONSIVIDADE
    ============================================================ */
 @media (max-width: 900px) {
-  .moduleItem span {
+  /* Só o rótulo de texto some no mobile (menu vira só-ícone) — tem que ser
+     .moduleLabel e não "span" puro, senão o seletor também pega o
+     .moduleIconWrap (que também é um <span>) e esconde o ícone junto,
+     deixando o item do menu completamente vazio e sem como clicar certo. */
+  .moduleItem .moduleLabel {
     display: none;
   }
 
@@ -670,9 +674,18 @@
     gap: 0.75rem;
   }
 
+  /* position: fixed (não mais absolute) — os dois dropdowns ficavam
+     ancorados em `right:-8px` relativo ao próprio wrapper do botão (sino ou
+     avatar), não à borda da tela. Como o sino não é o último elemento da
+     linha (o avatar vem depois dele), isso jogava o dropdown pra bem fora
+     da viewport à esquerda em telas estreitas, cortando o início de cada
+     linha de texto. Fixed ancora direto na viewport, sem depender de qual
+     botão disparou. */
   .notifDropdown,
   .userDropdown {
+    position: fixed;
     width: calc(100vw - 32px);
-    right: -8px;
+    top: 76px;
+    right: 16px;
   }
 }

@@ -198,3 +198,15 @@
   padding: 10px 0;
   margin: 0;
 }
+
+/* Some no mobile: é um módulo de teste temporário (ver comentário no .tsx),
+   e fixo no canto acaba sempre sobrepondo alguma linha de conteúdo — numa
+   tela larga de desktop isso quase não acontece, mas numa tela estreita o
+   conteúdo das páginas (cards, tabelas) ocupa quase toda a largura, então
+   o botão passa por cima de texto de verdade com frequência. */
+@media (max-width: 600px) {
+  .botao,
+  .painel {
+    display: none;
+  }
+}

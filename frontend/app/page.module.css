@@ -216,6 +216,63 @@
   min-width: 8px;
 }
 
+/* Abaixo de 720px, os links somem e viram um menu hambúrguer (ver
+   .navMenuBotao/.navMobilePainel) — sem isso, os links só quebravam linha
+   via flex-wrap, numa bagunça de 2 linhas com o botão "Assinar" flutuando
+   sozinho. Em 720px+ some o hambúrguer e volta ao layout normal inline. */
+.navLinks,
+.navSpacerLeft,
+.navSpacer {
+  display: none;
+}
+
+.nav > .btnPrimary {
+  display: none;
+}
+
+.navMenuBotao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--ink-900);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.navMenuBotao:hover {
+  background: var(--surface-muted, #f1f5f3);
+}
+
+.navMobilePainel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 24px 20px;
+  border-top: 1px solid var(--line-200, #e2eae5);
+}
+
+.navMobileLink {
+  padding: 10px 4px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--slate-600);
+}
+
+.navMobileLink:hover {
+  color: var(--green-600);
+}
+
+.navMobilePainel .btnPrimary {
+  margin-top: 8px;
+  align-self: flex-start;
+}
+
 .btnPrimary {
   display: inline-flex;
   align-items: center;
@@ -1120,6 +1177,21 @@
 @media (min-width: 720px) {
   .nav {
     padding: 22px 40px;
+  }
+
+  .navLinks,
+  .navSpacerLeft,
+  .navSpacer {
+    display: flex;
+  }
+
+  .nav > .btnPrimary {
+    display: inline-flex;
+  }
+
+  .navMenuBotao,
+  .navMobilePainel {
+    display: none;
   }
 
   .heroInner {

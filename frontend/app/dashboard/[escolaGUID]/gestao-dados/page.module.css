@@ -351,6 +351,30 @@
   background: var(--blue-700);
 }
 
+/* Sem isso, os botões de ação (Exportar/Importar Planilha, Alocação em
+   massa, Novo Professor/Aluno) ficavam numa fileira só sem quebrar linha —
+   numa tela estreita, o(s) último(s) botão(ões) simplesmente saíam da
+   viewport, sem como ver nem clicar. */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .acoes {
+    flex-wrap: wrap;
+  }
+
+  .botaoNovo,
+  .botaoUpload {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0.65rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
 /* Botões de ação da tabela (usados em alunos/page.tsx e
    professores/page.tsx) — mesmo padrão de
    gestao-dados/coordenacao/page.module.css e

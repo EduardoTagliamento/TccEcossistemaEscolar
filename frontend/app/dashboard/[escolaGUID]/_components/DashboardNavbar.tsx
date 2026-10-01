@@ -672,7 +672,7 @@ export default function DashboardNavbar() {
                       <span className={`${styles.moduleItemDot} ${styles.moduleItemDotPrimary}`} />
                     )}
                   </span>
-                  <span>{modulo.label}</span>
+                  <span className={styles.moduleLabel}>{modulo.label}</span>
                 </Link>
               );
             })}
