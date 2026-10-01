@@ -50,7 +50,12 @@ export default function TarefasPage() {
       return { ...tarefa, TarefaCompartilhada: Boolean(tarefa.TarefaCompartilhada), Status: status };
     });
 
-    comStatus.sort((a, b) => new Date(a.TarefaPrazoData).getTime() - new Date(b.TarefaPrazoData).getTime());
+    // Pendente (ainda dá tempo) primeiro, Atrasada depois — e dentro de cada
+    // grupo por ordem alfabética do título em vez de por data.
+    comStatus.sort((a, b) => {
+      if (a.Status !== b.Status) return a.Status === 'Pendente' ? -1 : 1;
+      return a.TarefaTitulo.localeCompare(b.TarefaTitulo, 'pt-BR');
+    });
     return comStatus;
   }, [tarefasBrutas]);
 

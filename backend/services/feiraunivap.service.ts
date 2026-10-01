@@ -8,6 +8,8 @@ import { normalizarTelefone } from "../utils/helpers/telefone.helper";
 import { WhatsappCredenciaisService } from "./whatsapp-credenciais.service";
 import { EmailAlunoService } from "./email-aluno.service";
 import ErrorResponse from "../utils/ErrorResponse";
+import ConversaGrupoService from "./conversa-grupo.service";
+import TurmaGrupoWhatsappService from "./turmagrupowhatsapp.service";
 
 /**
  * Fluxo público e temporário de ativação de conta pra feira técnica do
@@ -53,13 +55,24 @@ export default class FeiraUnivapService {
   #cursoDAO: CursoDAO;
   #matriculaDAO: MatriculaDAO;
   #usuarioDAO: UsuarioDAO;
+  #conversaGrupoService: ConversaGrupoService;
+  #turmaGrupoWhatsappService: TurmaGrupoWhatsappService;
 
-  constructor(turmaDAO: TurmaDAO, cursoDAO: CursoDAO, matriculaDAO: MatriculaDAO, usuarioDAO: UsuarioDAO) {
+  constructor(
+    turmaDAO: TurmaDAO,
+    cursoDAO: CursoDAO,
+    matriculaDAO: MatriculaDAO,
+    usuarioDAO: UsuarioDAO,
+    conversaGrupoService: ConversaGrupoService,
+    turmaGrupoWhatsappService: TurmaGrupoWhatsappService
+  ) {
     console.log("⬆️  FeiraUnivapService.constructor()");
     this.#turmaDAO = turmaDAO;
     this.#cursoDAO = cursoDAO;
     this.#matriculaDAO = matriculaDAO;
     this.#usuarioDAO = usuarioDAO;
+    this.#conversaGrupoService = conversaGrupoService;
+    this.#turmaGrupoWhatsappService = turmaGrupoWhatsappService;
   }
 
   listarTurmasPorAno = async (ano: string): Promise<TurmaFeiraDTO[]> => {
@@ -161,6 +174,14 @@ export default class FeiraUnivapService {
     if (dados.matricula && dados.matricula.trim()) {
       await this.#matriculaDAO.updateIdentificador(matriculaAtivaNaEscola.MatriculaGUID, dados.matricula.trim());
     }
+
+    // A matrícula em si já existe desde o seed da feira — o que faltava era
+    // o aluno entrar no grupo de chat da turma (não dependia de telefone) e
+    // no grupo de WhatsApp vinculado, se houver (dependia, e até agora não
+    // tinha telefone). Os dois métodos já são no-op seguro se não houver
+    // grupo pra entrar.
+    await this.#conversaGrupoService.adicionarMembroTurma(matriculaAtivaNaEscola.TurmaGUID!, usuario.UsuarioGUID);
+    await this.#turmaGrupoWhatsappService.sincronizarMembroPorTelefonePreenchido(usuario.UsuarioGUID);
 
     const linkLogin = process.env.FRONTEND_URL ? `${process.env.FRONTEND_URL}/login` : "http://localhost:3000/login";
 

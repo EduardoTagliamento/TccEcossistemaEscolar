@@ -23,9 +23,86 @@ import {
   useInativarProfessor,
   useReativarProfessor,
   useCriarAlocacao,
+  useCriarAlocacoesEmMassa,
   useAtualizarAlocacao,
   useExcluirAlocacao,
 } from '@/lib/professor/useProfessorMutations';
+
+interface LinhaProps {
+  professorGUID: string;
+  materiaGUID: string;
+  professores: ProfessorAPI.Professor[];
+  materias: ProfessorAPI.Materia[];
+  escolaGUID: string;
+  podeRemover: boolean;
+  onChangeProfessor: (guid: string) => void;
+  onChangeMateria: (guid: string) => void;
+  onRemover: () => void;
+}
+
+/**
+ * Uma linha do modal "Alocação em massa" (vários professores -> 1 turma).
+ * Componente próprio só pra poder chamar useMateriasQualificadas com o
+ * UsuarioGUID desta linha especificamente — hooks não podem rodar dentro de
+ * um .map() no componente pai.
+ */
+function LinhaAlocacaoEmMassa({
+  professorGUID, materiaGUID, professores, materias, escolaGUID, podeRemover,
+  onChangeProfessor, onChangeMateria, onRemover,
+}: LinhaProps) {
+  const materiasQualificadasQuery = useMateriasQualificadas(professorGUID || undefined, escolaGUID, !!professorGUID);
+  const materiasQualificadas = materiasQualificadasQuery.data ?? [];
+  const materiasQualificadasGUIDs = new Set(materiasQualificadas.map((m) => m.MateriaGUID));
+
+  // Professor só pode lecionar 1 matéria -> já deixa ela selecionada.
+  useEffect(() => {
+    if (materiasQualificadas.length === 1 && !materiaGUID) {
+      onChangeMateria(materiasQualificadas[0].MateriaGUID);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [materiasQualificadas]);
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1.3fr auto', gap: 8, alignItems: 'start', marginBottom: 8 }}>
+      <select
+        value={professorGUID}
+        onChange={(e) => { onChangeProfessor(e.target.value); onChangeMateria(''); }}
+        className={styles.selectCompacto}
+      >
+        <option value="">Selecione o professor...</option>
+        {professores.map((p) => (
+          <option key={p.UsuarioGUID} value={p.UsuarioGUID}>{p.UsuarioNome}</option>
+        ))}
+      </select>
+      <select
+        value={materiaGUID}
+        onChange={(e) => onChangeMateria(e.target.value)}
+        className={styles.selectCompacto}
+        disabled={!professorGUID}
+      >
+        <option value="">{professorGUID ? 'Selecione a matéria...' : 'Selecione o professor primeiro'}</option>
+        {materias
+          .filter((m) => materiasQualificadasGUIDs.has(m.MateriaGUID))
+          .map((m) => (
+            <option key={m.MateriaGUID} value={m.MateriaGUID}>{m.MateriaNome}</option>
+          ))}
+        {professorGUID && materiasQualificadasGUIDs.size === 0 && (
+          <option value="" disabled>Esse professor não tem matérias qualificadas</option>
+        )}
+      </select>
+      <button
+        type="button"
+        onClick={onRemover}
+        disabled={!podeRemover}
+        title="Remover linha"
+        className={styles.botaoRemoverLinha}
+        style={{ opacity: podeRemover ? 1 : 0.3 }}
+      >
+        <Icon name="x" size={14} />
+      </button>
+    </div>
+  );
+}
 
 export default function ProfessoresPage() {
   const params = useParams();
@@ -47,11 +124,26 @@ export default function ProfessoresPage() {
   const [abaEdicao, setAbaEdicao] = useState<'dados' | 'materias' | 'alocacoes'>('dados');
   const [modoAlocacao, setModoAlocacao] = useState<'turma' | 'grupo'>('turma');
   const [novaAlocacaoTurma, setNovaAlocacaoTurma] = useState('');
+  // Várias turmas pro mesmo professor+matéria de uma vez (só modo 'turma' —
+  // grupo eletivo continua single, não foi pedido suporte a várias ali).
+  const [novaAlocacaoTurmasMassa, setNovaAlocacaoTurmasMassa] = useState<Set<string>>(new Set());
   const [novaAlocacaoGrupoEletivo, setNovaAlocacaoGrupoEletivo] = useState('');
   const [novaAlocacaoMateria, setNovaAlocacaoMateria] = useState('');
   const [novaAlocacaoAulasPorSemana, setNovaAlocacaoAulasPorSemana] = useState('');
   const [salvandoAlocacao, setSalvandoAlocacao] = useState(false);
   const [erroAlocacao, setErroAlocacao] = useState('');
+  const [resultadoAlocacaoMassa, setResultadoAlocacaoMassa] = useState<ProfessorAPI.BatchCreateResponse | null>(null);
+
+  // ---- Alocação em massa: vários professores numa mesma turma ----
+  const [modalAlocacaoTurmaAberto, setModalAlocacaoTurmaAberto] = useState(false);
+  const [alocacaoTurmaAlvo, setAlocacaoTurmaAlvo] = useState('');
+  interface LinhaAlocacaoMassa { id: string; professorGUID: string; materiaGUID: string; }
+  const [linhasAlocacaoTurma, setLinhasAlocacaoTurma] = useState<LinhaAlocacaoMassa[]>([
+    { id: crypto.randomUUID(), professorGUID: '', materiaGUID: '' },
+  ]);
+  const [salvandoAlocacaoTurma, setSalvandoAlocacaoTurma] = useState(false);
+  const [erroAlocacaoTurma, setErroAlocacaoTurma] = useState('');
+  const [resultadoAlocacaoTurma, setResultadoAlocacaoTurma] = useState<ProfessorAPI.BatchCreateResponse | null>(null);
   const [editandoAulasPorSemana, setEditandoAulasPorSemana] = useState<string | null>(null);
   const [valorAulasPorSemanaEditando, setValorAulasPorSemanaEditando] = useState('');
   const [avisoConflito, setAvisoConflito] = useState<{
@@ -113,6 +205,15 @@ export default function ProfessoresPage() {
   const materiasQualificadasQuery = useMateriasQualificadas(professorEditando?.UsuarioGUID ?? undefined, escolaGUID, !!professorEditando);
   const materiasQualificadas = materiasQualificadasQuery.data ?? [];
   const materiasQualificadasGUIDs = new Set(materiasQualificadas.map((m) => m.MateriaGUID));
+
+  // Professor só pode lecionar 1 matéria -> já deixa ela selecionada, sem
+  // precisar escolher à toa numa caixa com uma opção só.
+  useEffect(() => {
+    if (materiasQualificadas.length === 1 && !novaAlocacaoMateria) {
+      setNovaAlocacaoMateria(materiasQualificadas[0].MateriaGUID);
+    }
+  }, [materiasQualificadas]);
+
   const [editandoMateriasQualificadas, setEditandoMateriasQualificadas] = useState(false);
   const [selecaoMateriasQualificadas, setSelecaoMateriasQualificadas] = useState<Set<string>>(new Set());
   const [salvandoMateriasQualificadas, setSalvandoMateriasQualificadas] = useState(false);
@@ -145,6 +246,7 @@ export default function ProfessoresPage() {
   const inativarProfessorMutation = useInativarProfessor();
   const reativarProfessorMutation = useReativarProfessor();
   const criarAlocacaoMutation = useCriarAlocacao();
+  const criarAlocacoesEmMassaMutation = useCriarAlocacoesEmMassa();
   const atualizarAlocacaoMutation = useAtualizarAlocacao();
   const excluirAlocacaoMutation = useExcluirAlocacao();
 
@@ -439,6 +541,7 @@ export default function ProfessoresPage() {
       });
       await alocacoesQuery.refetch();
       setNovaAlocacaoTurma('');
+      setNovaAlocacaoTurmasMassa(new Set());
       setNovaAlocacaoGrupoEletivo('');
       setNovaAlocacaoMateria('');
       setNovaAlocacaoAulasPorSemana('');
@@ -446,6 +549,78 @@ export default function ProfessoresPage() {
       setErroAlocacao(erro.message || 'Erro ao associar');
     } finally {
       setSalvandoAlocacao(false);
+    }
+  };
+
+  // Mesmo professor+matéria em várias turmas de uma vez — usa o endpoint em
+  // massa em vez de criarAlocacaoMutation (que é só 1 por vez).
+  const executarCriacaoAlocacaoEmMassa = async () => {
+    try {
+      setSalvandoAlocacao(true);
+      setErroAlocacao('');
+      const alocacoes: ProfessorAPI.AlocacaoCreateDTO[] = [...novaAlocacaoTurmasMassa].map((turmaGUID) => ({
+        UsuarioGUID: professorEditando!.UsuarioGUID,
+        MateriaGUID: novaAlocacaoMateria,
+        TurmaGUID: turmaGUID,
+        AlocacaoStatus: 'Ativa',
+        AulasPorSemana: novaAlocacaoAulasPorSemana ? parseInt(novaAlocacaoAulasPorSemana, 10) : null,
+      }));
+      const resultado = await criarAlocacoesEmMassaMutation.mutateAsync({ alocacoes, escolaGUID });
+      setResultadoAlocacaoMassa(resultado);
+      await alocacoesQuery.refetch();
+      setNovaAlocacaoTurma('');
+      setNovaAlocacaoTurmasMassa(new Set());
+      setNovaAlocacaoGrupoEletivo('');
+      setNovaAlocacaoMateria('');
+      setNovaAlocacaoAulasPorSemana('');
+    } catch (erro: any) {
+      setErroAlocacao(erro.message || 'Erro ao associar em massa');
+    } finally {
+      setSalvandoAlocacao(false);
+    }
+  };
+
+  // ---- Alocação em massa: vários professores numa mesma turma ----
+  const adicionarLinhaAlocacaoTurma = () => {
+    setLinhasAlocacaoTurma((prev) => [...prev, { id: crypto.randomUUID(), professorGUID: '', materiaGUID: '' }]);
+  };
+
+  const removerLinhaAlocacaoTurma = (id: string) => {
+    setLinhasAlocacaoTurma((prev) => prev.filter((l) => l.id !== id));
+  };
+
+  const atualizarLinhaAlocacaoTurma = (id: string, patch: Partial<LinhaAlocacaoMassa>) => {
+    setLinhasAlocacaoTurma((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  };
+
+  const handleSalvarAlocacaoTurma = async () => {
+    const linhasValidas = linhasAlocacaoTurma.filter((l) => l.professorGUID && l.materiaGUID);
+
+    if (!alocacaoTurmaAlvo) {
+      setErroAlocacaoTurma('Selecione uma turma.');
+      return;
+    }
+    if (linhasValidas.length === 0) {
+      setErroAlocacaoTurma('Adicione ao menos um professor com matéria selecionada.');
+      return;
+    }
+
+    setErroAlocacaoTurma('');
+    setSalvandoAlocacaoTurma(true);
+    try {
+      const alocacoes: ProfessorAPI.AlocacaoCreateDTO[] = linhasValidas.map((l) => ({
+        UsuarioGUID: l.professorGUID,
+        MateriaGUID: l.materiaGUID,
+        TurmaGUID: alocacaoTurmaAlvo,
+        AlocacaoStatus: 'Ativa',
+      }));
+      const resultado = await criarAlocacoesEmMassaMutation.mutateAsync({ alocacoes, escolaGUID });
+      setResultadoAlocacaoTurma(resultado);
+      setLinhasAlocacaoTurma([{ id: crypto.randomUUID(), professorGUID: '', materiaGUID: '' }]);
+    } catch (erro: any) {
+      setErroAlocacaoTurma(erro.message || 'Erro ao associar em massa');
+    } finally {
+      setSalvandoAlocacaoTurma(false);
     }
   };
 
@@ -468,12 +643,22 @@ export default function ProfessoresPage() {
         setErroAlocacao('Selecione um grupo eletivo e uma matéria.');
         return;
       }
-    } else if (!novaAlocacaoTurma || !novaAlocacaoMateria) {
-      setErroAlocacao('Selecione uma turma e uma matéria.');
+    } else if (novaAlocacaoTurmasMassa.size === 0 || !novaAlocacaoMateria) {
+      setErroAlocacao('Selecione ao menos uma turma e uma matéria.');
       return;
     }
     setErroAlocacao('');
     setAvisoConflito(null);
+    setResultadoAlocacaoMassa(null);
+
+    // Várias turmas selecionadas: pula o dialog de conflito de 1-item (não
+    // escala bem pra N turmas) e deixa o próprio endpoint em massa resolver
+    // duplicata/reativação — o resultado (criados/existentes/erros) aparece
+    // depois do envio.
+    if (modoAlocacao === 'turma' && novaAlocacaoTurmasMassa.size > 1) {
+      await executarCriacaoAlocacaoEmMassa();
+      return;
+    }
 
     try {
       setSalvandoAlocacao(true);
@@ -605,6 +790,18 @@ export default function ProfessoresPage() {
             className={styles.botaoUpload}
           >
 <Icon name="upload" size={16} /> Importar Planilha
+          </button>
+          <button
+            onClick={() => {
+              setAlocacaoTurmaAlvo('');
+              setLinhasAlocacaoTurma([{ id: crypto.randomUUID(), professorGUID: '', materiaGUID: '' }]);
+              setErroAlocacaoTurma('');
+              setResultadoAlocacaoTurma(null);
+              setModalAlocacaoTurmaAberto(true);
+            }}
+            className={styles.botaoUpload}
+          >
+            <Icon name="users" size={16} /> Alocação em massa
           </button>
           <button
             onClick={() => {
@@ -780,10 +977,12 @@ export default function ProfessoresPage() {
                   setModalAberto(false);
                   setProfessorEditando(null);
                   setNovaAlocacaoTurma('');
+                  setNovaAlocacaoTurmasMassa(new Set());
                   setNovaAlocacaoGrupoEletivo('');
                   setNovaAlocacaoMateria('');
                   setErroAlocacao('');
                   setAvisoConflito(null);
+                  setResultadoAlocacaoMassa(null);
                   resetarFormulario();
                 }}
                 loading={salvandoFormulario}
@@ -981,14 +1180,21 @@ export default function ProfessoresPage() {
                           <button
                             type="button"
                             className={`${styles.segmentadoOpcao} ${modoAlocacao === 'turma' ? styles.segmentadoAtivo : ''}`}
-                            onClick={() => { setModoAlocacao('turma'); setErroAlocacao(''); setAvisoConflito(null); }}
+                            onClick={() => { setModoAlocacao('turma'); setErroAlocacao(''); setAvisoConflito(null); setResultadoAlocacaoMassa(null); }}
                           >
                             Turma
                           </button>
                           <button
                             type="button"
                             className={`${styles.segmentadoOpcao} ${modoAlocacao === 'grupo' ? styles.segmentadoAtivo : ''}`}
-                            onClick={() => { setModoAlocacao('grupo'); setErroAlocacao(''); setAvisoConflito(null); }}
+                            onClick={() => {
+                              setModoAlocacao('grupo');
+                              setNovaAlocacaoTurma('');
+                              setNovaAlocacaoTurmasMassa(new Set());
+                              setErroAlocacao('');
+                              setAvisoConflito(null);
+                              setResultadoAlocacaoMassa(null);
+                            }}
                           >
                             <Icon name="repeat" size={12} /> Grupo Eletivo
                           </button>
@@ -997,18 +1203,45 @@ export default function ProfessoresPage() {
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 0.8fr', gap: 10 }}>
                         <div>
-                          <label className={styles.campoLabel}>{modoAlocacao === 'turma' ? 'Turma' : 'Grupo eletivo'}</label>
+                          <label className={styles.campoLabel}>
+                            {modoAlocacao === 'turma' ? 'Turma(s)' : 'Grupo eletivo'}
+                          </label>
                           {modoAlocacao === 'turma' ? (
-                            <select
-                              value={novaAlocacaoTurma}
-                              onChange={e => { setNovaAlocacaoTurma(e.target.value); setErroAlocacao(''); setAvisoConflito(null); }}
-                              className={styles.selectCompacto}
+                            <div
+                              style={{
+                                maxHeight: 110, overflowY: 'auto', border: '1px solid var(--line-200)',
+                                borderRadius: 'var(--radius-sm)', padding: '4px 8px',
+                              }}
                             >
-                              <option value="">Selecione...</option>
-                              {turmas.map(t => (
-                                <option key={t.TurmaGUID} value={t.TurmaGUID}>{t.TurmaSerie} {t.TurmaNome}</option>
-                              ))}
-                            </select>
+                              {turmas.map(t => {
+                                const marcada = novaAlocacaoTurmasMassa.has(t.TurmaGUID);
+                                return (
+                                  <label
+                                    key={t.TurmaGUID}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '2px 0', cursor: 'pointer' }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={marcada}
+                                      onChange={e => {
+                                        const novo = new Set(novaAlocacaoTurmasMassa);
+                                        if (e.target.checked) novo.add(t.TurmaGUID);
+                                        else novo.delete(t.TurmaGUID);
+                                        setNovaAlocacaoTurmasMassa(novo);
+                                        // Mantém novaAlocacaoTurma sincronizado só quando dá pra
+                                        // resolver pra 1 turma só — é o que o fluxo de conflito de
+                                        // item único (abaixo) e executarCriacaoAlocacao usam.
+                                        setNovaAlocacaoTurma(novo.size === 1 ? [...novo][0] : '');
+                                        setErroAlocacao('');
+                                        setAvisoConflito(null);
+                                        setResultadoAlocacaoMassa(null);
+                                      }}
+                                    />
+                                    {t.TurmaSerie} {t.TurmaNome}
+                                  </label>
+                                );
+                              })}
+                            </div>
                           ) : (
                             <select
                               value={novaAlocacaoGrupoEletivo}
@@ -1076,6 +1309,12 @@ export default function ProfessoresPage() {
                         ) : null;
                       })()}
                       {erroAlocacao && <p style={{ color: 'var(--danger-600)', fontSize: 12, marginTop: 8 }}>{erroAlocacao}</p>}
+                      {resultadoAlocacaoMassa && (
+                        <p style={{ fontSize: 12, color: 'var(--green-700)', marginTop: 8 }}>
+                          <Icon name="check-circle" size={14} /> {resultadoAlocacaoMassa.criados} criada(s), {resultadoAlocacaoMassa.existentes} já existia(m)
+                          {resultadoAlocacaoMassa.erros > 0 ? `, ${resultadoAlocacaoMassa.erros} erro(s)` : ''}.
+                        </p>
+                      )}
                       {avisoConflito && (
                         <div style={{ marginTop: 10, padding: 10, background: 'var(--warning-50)', border: '1px solid var(--warning-500)', borderRadius: 'var(--radius-sm)' }}>
                           <p style={{ fontSize: 12, marginBottom: 8, color: 'var(--warning-700)' }}>
@@ -1100,14 +1339,18 @@ export default function ProfessoresPage() {
 
                       <button
                         onClick={handleAssociarMateria}
-                        disabled={salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : !novaAlocacaoTurma)}
+                        disabled={salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : novaAlocacaoTurmasMassa.size === 0)}
                         className={styles.botaoNovo}
                         style={{
                           marginTop: 12, padding: '0.5rem 1.2rem', fontSize: 13, width: 'auto',
-                          opacity: (salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : !novaAlocacaoTurma)) ? 0.5 : 1,
+                          opacity: (salvandoAlocacao || !novaAlocacaoMateria || (modoAlocacao === 'grupo' ? !novaAlocacaoGrupoEletivo : novaAlocacaoTurmasMassa.size === 0)) ? 0.5 : 1,
                         }}
                       >
-                        {salvandoAlocacao ? 'Associando...' : 'Associar'}
+                        {salvandoAlocacao
+                          ? 'Associando...'
+                          : novaAlocacaoTurmasMassa.size > 1
+                            ? `Associar a ${novaAlocacaoTurmasMassa.size} turmas`
+                            : 'Associar'}
                       </button>
                     </div>
                   </>
@@ -1259,6 +1502,86 @@ export default function ProfessoresPage() {
               >
                 Cancelar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Alocação em massa — vários professores numa mesma turma */}
+      {modalAlocacaoTurmaAberto && (
+        <div className={styles.overlay} onClick={() => setModalAlocacaoTurmaAberto(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '1.25rem' }}>
+              <h2 className={styles.modalTitulo}><Icon name="users" size={20} /> Alocação em massa</h2>
+              <p className={styles.textoSecundario} style={{ marginBottom: 14 }}>
+                Associe vários professores (cada um com sua matéria) a uma mesma turma de uma vez.
+              </p>
+
+              <label className={styles.campoLabel}>Turma</label>
+              <select
+                value={alocacaoTurmaAlvo}
+                onChange={(e) => { setAlocacaoTurmaAlvo(e.target.value); setErroAlocacaoTurma(''); setResultadoAlocacaoTurma(null); }}
+                className={styles.selectCompacto}
+                style={{ width: '100%', marginBottom: 14 }}
+              >
+                <option value="">Selecione...</option>
+                {turmas.map((t) => (
+                  <option key={t.TurmaGUID} value={t.TurmaGUID}>{t.TurmaSerie} {t.TurmaNome}</option>
+                ))}
+              </select>
+
+              <label className={styles.campoLabel}>Professores</label>
+              <div style={{ marginTop: 6 }}>
+                {linhasAlocacaoTurma.map((linha) => (
+                  <LinhaAlocacaoEmMassa
+                    key={linha.id}
+                    professorGUID={linha.professorGUID}
+                    materiaGUID={linha.materiaGUID}
+                    professores={professores}
+                    materias={materias}
+                    escolaGUID={escolaGUID}
+                    podeRemover={linhasAlocacaoTurma.length > 1}
+                    onChangeProfessor={(guid) => atualizarLinhaAlocacaoTurma(linha.id, { professorGUID: guid })}
+                    onChangeMateria={(guid) => atualizarLinhaAlocacaoTurma(linha.id, { materiaGUID: guid })}
+                    onRemover={() => removerLinhaAlocacaoTurma(linha.id)}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={adicionarLinhaAlocacaoTurma}
+                className={styles.botaoEditar}
+                style={{ width: 'auto', height: 'auto', padding: '0.4rem 0.9rem', fontSize: 13, gap: 6, marginTop: 4 }}
+              >
+                <Icon name="plus-circle" size={14} /> Adicionar professor
+              </button>
+
+              {erroAlocacaoTurma && <p style={{ color: 'var(--danger-600)', fontSize: 12, marginTop: 10 }}>{erroAlocacaoTurma}</p>}
+              {resultadoAlocacaoTurma && (
+                <p style={{ fontSize: 12, color: 'var(--green-700)', marginTop: 10 }}>
+                  <Icon name="check-circle" size={14} /> {resultadoAlocacaoTurma.criados} criada(s), {resultadoAlocacaoTurma.existentes} já existia(m)
+                  {resultadoAlocacaoTurma.erros > 0 ? `, ${resultadoAlocacaoTurma.erros} erro(s)` : ''}.
+                </p>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                <button
+                  onClick={handleSalvarAlocacaoTurma}
+                  disabled={salvandoAlocacaoTurma}
+                  className={styles.botaoNovo}
+                  style={{ padding: '0.5rem 1.2rem', fontSize: 13, opacity: salvandoAlocacaoTurma ? 0.6 : 1 }}
+                >
+                  {salvandoAlocacaoTurma ? 'Associando...' : 'Associar todos'}
+                </button>
+                <button
+                  onClick={() => setModalAlocacaoTurmaAberto(false)}
+                  className={styles.botaoCancelar}
+                  style={{ width: 'auto', marginTop: 0, padding: '0.5rem 1.2rem', fontSize: 13 }}
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
           </div>
         </div>

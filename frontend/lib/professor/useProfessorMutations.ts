@@ -8,6 +8,7 @@ import {
   inativarProfessor,
   reativarProfessor,
   criarAlocacao,
+  criarAlocacoesEmMassa,
   atualizarAlocacao,
   excluirAlocacao,
   ProfessorCreateDTO,
@@ -81,6 +82,17 @@ export function useCriarAlocacao() {
   return useMutation({
     mutationFn: ({ alocacao, escolaGUID }: { alocacao: AlocacaoCreateDTO; escolaGUID: string }) =>
       criarAlocacao(alocacao, escolaGUID),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: professorKeys.all });
+    },
+  });
+}
+
+export function useCriarAlocacoesEmMassa() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ alocacoes, escolaGUID }: { alocacoes: AlocacaoCreateDTO[]; escolaGUID: string }) =>
+      criarAlocacoesEmMassa(alocacoes, escolaGUID),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: professorKeys.all });
     },

@@ -6,6 +6,12 @@ import { TurmaDAO } from "../backend/repositories/turma.repository";
 import { CursoDAO } from "../backend/repositories/curso.repository";
 import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
+import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { ConversaDAO } from "../backend/repositories/conversa.repository";
+import { ConversaGrupoDAO } from "../backend/repositories/conversa-grupo.repository";
+import { TurmaGrupoWhatsappDAO } from "../backend/repositories/turmagrupowhatsapp.repository";
+import ConversaGrupoService from "../backend/services/conversa-grupo.service";
+import TurmaGrupoWhatsappService from "../backend/services/turmagrupowhatsapp.service";
 
 /**
  * Rotas públicas (sem AuthMiddleware) do fluxo de ativação da feira técnica
@@ -44,8 +50,31 @@ export const feiraUnivapRouterFactory = () => {
   const cursoDAO = new CursoDAO(database);
   const matriculaDAO = new MatriculaDAO(database);
   const usuarioDAO = new UsuarioDAO(database);
+  const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
 
-  const service = new FeiraUnivapService(turmaDAO, cursoDAO, matriculaDAO, usuarioDAO);
+  const conversaGrupoService = new ConversaGrupoService(
+    new ConversaDAO(database),
+    new ConversaGrupoDAO(database),
+    matriculaDAO,
+    usuarioDAO
+  );
+  const turmaGrupoWhatsappService = new TurmaGrupoWhatsappService(
+    new TurmaGrupoWhatsappDAO(database),
+    turmaDAO,
+    usuarioDAO,
+    escolaxUsuarioxFuncaoDAO,
+    database,
+    conversaGrupoService
+  );
+
+  const service = new FeiraUnivapService(
+    turmaDAO,
+    cursoDAO,
+    matriculaDAO,
+    usuarioDAO,
+    conversaGrupoService,
+    turmaGrupoWhatsappService
+  );
   const controller = new FeiraUnivapController(service);
   const roteador = new FeiraUnivapRoteador(controller);
 
