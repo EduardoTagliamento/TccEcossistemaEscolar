@@ -450,13 +450,18 @@ export default function AlunosPage() {
         carregando={carregando}
         filtrarPor={(aluno, termo) => {
           const termoLimpo = termo.replace(/\D/g, '');
+          const termoSemEspacos = termo.replace(/\s/g, '');
+          const turma = turmas.find(t => t.TurmaGUID === aluno.matricula.TurmaGUID);
+          // Sem espaço nos dois lados pra "3h" bater com o label "3 H".
+          const turmaLabelSemEspacos = turma ? `${turma.TurmaSerie}${turma.TurmaNome}`.toLowerCase() : '';
           return (
             aluno.usuario.UsuarioNome.toLowerCase().includes(termo) ||
             (termoLimpo.length > 0 && !!aluno.usuario.UsuarioCPF && aluno.usuario.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
-            (aluno.usuario.UsuarioId?.toLowerCase().includes(termo) ?? false)
+            (aluno.usuario.UsuarioId?.toLowerCase().includes(termo) ?? false) ||
+            (termoSemEspacos.length > 0 && turmaLabelSemEspacos.includes(termoSemEspacos))
           );
         }}
-        buscaPlaceholder="Buscar por nome, CPF ou ID..."
+        buscaPlaceholder="Buscar por nome, CPF, ID ou turma..."
         acoes={(aluno, index) => (
           <>
             <button
