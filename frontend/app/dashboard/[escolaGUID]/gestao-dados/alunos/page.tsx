@@ -449,14 +449,19 @@ export default function AlunosPage() {
         dados={alunos}
         carregando={carregando}
         filtrarPor={(aluno, termo) => {
-          const termoLimpo = termo.replace(/\D/g, '');
+          // Só trata como tentativa de busca por CPF quando o termo é só
+          // dígitos (com ou sem pontuação) — "3j" vira "3" se só olhar
+          // dígitos, e "3" sozinho bate em quase qualquer CPF da base (11
+          // dígitos), trazendo gente aleatória pra busca de turma "3J".
+          const pareceCPF = /^[\d.\-]+$/.test(termo);
+          const termoLimpo = pareceCPF ? termo.replace(/\D/g, '') : '';
           const termoSemEspacos = termo.replace(/\s/g, '');
           const turma = turmas.find(t => t.TurmaGUID === aluno.matricula.TurmaGUID);
           // Sem espaço nos dois lados pra "3h" bater com o label "3 H".
           const turmaLabelSemEspacos = turma ? `${turma.TurmaSerie}${turma.TurmaNome}`.toLowerCase() : '';
           return (
             aluno.usuario.UsuarioNome.toLowerCase().includes(termo) ||
-            (termoLimpo.length > 0 && !!aluno.usuario.UsuarioCPF && aluno.usuario.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
+            (termoLimpo.length >= 3 && !!aluno.usuario.UsuarioCPF && aluno.usuario.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
             (aluno.usuario.UsuarioId?.toLowerCase().includes(termo) ?? false) ||
             (termoSemEspacos.length > 0 && turmaLabelSemEspacos.includes(termoSemEspacos))
           );

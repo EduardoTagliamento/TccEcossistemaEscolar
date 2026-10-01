@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { poppins, figtree, baloo2 } from '@/lib/fonts';
 import * as FeiraUnivapAPI from '@/lib/api/feiraunivap.api';
+import { validarTelefone, formatarTelefone } from '@/lib/validators/telefone';
+import { validarEmail } from '@/lib/validators/email';
 import styles from './page.module.css';
 
 const TELEFONE_BAUA = '12 988493959';
@@ -61,12 +63,27 @@ export default function CadastroUnivapPage() {
 
   const pessoaSelecionada = pessoas.find((p) => p.UsuarioGUID === usuarioGUID) || null;
 
+  const handleTelefoneChange = (value: string) => {
+    setTelefone(formatarTelefone(value));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usuarioGUID || !telefone.trim()) return;
 
-    setEnviando(true);
     setErro('');
+
+    if (!validarTelefone(telefone)) {
+      setErro('Telefone inválido. Confira o DDD e o número.');
+      return;
+    }
+
+    if (email.trim() && !validarEmail(email.trim())) {
+      setErro('Email inválido.');
+      return;
+    }
+
+    setEnviando(true);
     try {
       const resultado = await FeiraUnivapAPI.ativar({
         UsuarioGUID: usuarioGUID,
@@ -168,9 +185,10 @@ export default function CadastroUnivapPage() {
                 <input
                   className={styles.input}
                   type="tel"
-                  placeholder="(12) 98849-3959"
+                  placeholder="(99) 99999-9999"
                   value={telefone}
-                  onChange={(e) => setTelefone(e.target.value)}
+                  onChange={(e) => handleTelefoneChange(e.target.value)}
+                  maxLength={15}
                   required
                 />
               </label>

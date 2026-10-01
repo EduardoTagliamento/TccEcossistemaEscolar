@@ -822,10 +822,14 @@ export default function ProfessoresPage() {
         dados={professores}
         carregando={carregando}
         filtrarPor={(professor, termo) => {
-          const termoLimpo = termo.replace(/\D/g, '');
+          // Mesmo cuidado do filtro de alunos: só trata como CPF quando o
+          // termo é só dígitos — senão "3j" vira "3" e bate em quase
+          // qualquer CPF (tem 11 dígitos).
+          const pareceCPF = /^[\d.\-]+$/.test(termo);
+          const termoLimpo = pareceCPF ? termo.replace(/\D/g, '') : '';
           return (
             professor.UsuarioNome.toLowerCase().includes(termo) ||
-            (termoLimpo.length > 0 && !!professor.UsuarioCPF && professor.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
+            (termoLimpo.length >= 3 && !!professor.UsuarioCPF && professor.UsuarioCPF.replace(/\D/g, '').includes(termoLimpo)) ||
             (professor.UsuarioId?.toLowerCase().includes(termo) ?? false)
           );
         }}

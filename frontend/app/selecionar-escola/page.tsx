@@ -182,13 +182,9 @@ export default function SelecionarEscolaPage() {
             );
           })}
 
-          {usuario?.UsuarioIsPlataformaAdmin ? (
+          {usuario?.UsuarioIsPlataformaAdmin && (
             <Link href="/admin-plataforma" className={styles.createCard}>
               <AuthIcon name="shield" size={20} /> Ir para Administração
-            </Link>
-          ) : (
-            <Link href="/criar-escola" className={styles.createCard}>
-              <AuthIcon name="plus" size={20} /> Criar nova escola
             </Link>
           )}
         </div>
