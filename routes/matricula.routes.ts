@@ -108,6 +108,19 @@ export function matriculaRouterFactory(): Router {
   );
 
   /**
+   * GET /api/matricula/alunos
+   * Igual GET /api/matricula, mas com o usuário de cada matrícula já
+   * embutido (JOIN único) — ver MatriculaController.indexAlunos. DEVE VIR
+   * ANTES de /:guid genérico, senão "alunos" seria lido como um GUID.
+   */
+  router.get(
+    "/alunos",
+    AuthMiddleware.authenticate,
+    ApiKeyAuthMiddleware.exigirEscopo("matricula:leitura"),
+    matriculaController.indexAlunos
+  );
+
+  /**
    * GET /api/matricula/:guid
    * Buscar matrícula por GUID (RA customizado ou UUID)
    */

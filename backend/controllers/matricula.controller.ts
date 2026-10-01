@@ -214,6 +214,53 @@ export default class MatriculaController {
   };
 
   /**
+   * GET /api/matricula/alunos
+   * Igual `index`, mas já traz o usuário de cada matrícula embutido num
+   * único JOIN — evita que o frontend precise de uma requisição por aluno
+   * pra montar a tela de Gestão de Dados > Alunos (ver nota em
+   * MatriculaService.listarAlunosComUsuario). Mesmos filtros de `index`.
+   */
+  indexAlunos = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { UsuarioGUID, TurmaGUID, GrupoEletivoGUID, MatriculaStatus, EscolaGUID } = req.query;
+
+      const filters: any = {};
+
+      if (UsuarioGUID && typeof UsuarioGUID === "string") filters.UsuarioGUID = UsuarioGUID;
+      if (TurmaGUID && typeof TurmaGUID === "string") filters.TurmaGUID = TurmaGUID;
+      if (GrupoEletivoGUID && typeof GrupoEletivoGUID === "string") filters.GrupoEletivoGUID = GrupoEletivoGUID;
+      if (MatriculaStatus && typeof MatriculaStatus === "string") filters.MatriculaStatus = MatriculaStatus;
+      if (EscolaGUID && typeof EscolaGUID === "string") filters.EscolaGUID = EscolaGUID;
+
+      if (req.apiKey) {
+        filters.EscolaGUID = req.apiKey.EscolaGUID;
+      }
+
+      const resultado = await this.#matriculaService.listarAlunosComUsuario(filters);
+
+      res.status(200).json({
+        success: true,
+        data: resultado.alunos,
+        total: resultado.total,
+      });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error("Erro ao listar alunos:", error);
+        res.status(500).json({
+          success: false,
+          message: "Erro interno ao listar alunos",
+        });
+      }
+    }
+  };
+
+  /**
    * GET /api/matricula/:guid
    * Buscar matrícula por GUID (RA customizado ou UUID)
    */

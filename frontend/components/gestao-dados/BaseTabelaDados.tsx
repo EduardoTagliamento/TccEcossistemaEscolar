@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './BaseTabelaDados.module.css';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
@@ -41,11 +41,31 @@ export default function BaseTabelaDados<T = any>({
   buscaPlaceholder = 'Buscar...'
 }: BaseTabelaDadosProps<T>) {
   const [termoBusca, setTermoBusca] = useState('');
+  // Paginação só no RENDER (a busca/filtro continua rodando sobre a lista
+  // inteira) — listas que cresceram muito (ex.: pré-cadastro em massa pra
+  // feira técnica, 1000+ alunos numa escola só) deixavam a tabela inteira
+  // travada, porque o React montava uma <tr> por registro de uma vez.
+  const ITENS_POR_PAGINA = 50;
+  const [paginaAtual, setPaginaAtual] = useState(1);
 
   const termoBuscaNormalizado = termoBusca.trim().toLowerCase();
   const dadosFiltrados = filtrarPor && termoBuscaNormalizado
     ? dados.filter((item) => filtrarPor(item, termoBuscaNormalizado))
     : dados;
+
+  const totalPaginas = Math.max(1, Math.ceil(dadosFiltrados.length / ITENS_POR_PAGINA));
+  const paginaValida = Math.min(paginaAtual, totalPaginas);
+
+  // Volta pra página 1 sempre que o termo de busca muda (senão dá pra ficar
+  // numa página que não existe mais depois de filtrar).
+  useEffect(() => {
+    setPaginaAtual(1);
+  }, [termoBuscaNormalizado]);
+
+  const dadosPagina = dadosFiltrados.slice(
+    (paginaValida - 1) * ITENS_POR_PAGINA,
+    paginaValida * ITENS_POR_PAGINA
+  );
 
   if (carregando) {
     return (
@@ -98,6 +118,7 @@ export default function BaseTabelaDados<T = any>({
           </p>
         </div>
       ) : (
+        <>
         <div className={styles.tabelaContainer}>
           <table className={styles.tabela}>
             <thead>
@@ -116,11 +137,13 @@ export default function BaseTabelaDados<T = any>({
               </tr>
             </thead>
             <tbody>
-              {dadosFiltrados.map((linha, index) => (
+              {dadosPagina.map((linha, indexPagina) => {
+                const index = (paginaValida - 1) * ITENS_POR_PAGINA + indexPagina;
+                return (
                 <tr key={index}>
                   {colunas.map((coluna) => (
                     <td key={String(coluna.id)}>
-                      {coluna.render 
+                      {coluna.render
                         ? coluna.render((linha as any)[coluna.id], linha)
                         : String((linha as any)[coluna.id] || '-')
                       }
@@ -157,10 +180,36 @@ export default function BaseTabelaDados<T = any>({
                     </td>
                   )}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
+
+        {totalPaginas > 1 && (
+          <div className={styles.paginacao}>
+            <button
+              type="button"
+              className={styles.botaoPagina}
+              onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+              disabled={paginaValida === 1}
+            >
+              ← Anterior
+            </button>
+            <span className={styles.paginaInfo}>
+              Página {paginaValida} de {totalPaginas}
+            </span>
+            <button
+              type="button"
+              className={styles.botaoPagina}
+              onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
+              disabled={paginaValida === totalPaginas}
+            >
+              Próxima →
+            </button>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

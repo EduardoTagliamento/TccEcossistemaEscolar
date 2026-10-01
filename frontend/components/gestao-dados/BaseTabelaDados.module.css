@@ -249,3 +249,40 @@
 .botaoReativar:hover {
   filter: brightness(1.2);
 }
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding-top: 1.25rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--line-200);
+}
+
+.paginaInfo {
+  font-size: 0.875rem;
+  color: var(--slate-500);
+}
+
+.botaoPagina {
+  padding: 0.5rem 1rem;
+  background: var(--white);
+  color: var(--ink-900);
+  border: 1px solid var(--line-200);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.botaoPagina:hover:not(:disabled) {
+  background: var(--surface-50);
+  border-color: var(--green-500);
+}
+
+.botaoPagina:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

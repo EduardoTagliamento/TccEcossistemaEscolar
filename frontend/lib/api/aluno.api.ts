@@ -286,50 +286,32 @@ export async function listarAlunos(filtros: {
   MatriculaStatus?: string;
 }): Promise<{ alunos: Aluno[]; total: number }> {
   try {
-    // Buscar matrículas
+    // GET /api/matricula/alunos já traz usuário + matrícula num único JOIN
+    // (ver MatriculaController.indexAlunos) — antes isso era uma busca de
+    // matrículas seguida de UMA REQUISIÇÃO POR ALUNO (`/usuario/:guid` via
+    // Promise.all), o que virou ~1160 requisições simultâneas depois do
+    // pré-cadastro da feira técnica e deixava a tela travando.
     const queryParams = new URLSearchParams();
     if (filtros.EscolaGUID) queryParams.append('EscolaGUID', filtros.EscolaGUID);
     if (filtros.TurmaGUID) queryParams.append('TurmaGUID', filtros.TurmaGUID);
     if (filtros.MatriculaStatus) queryParams.append('MatriculaStatus', filtros.MatriculaStatus);
 
-    const response = await fetch(`${API_URL}/matricula?${queryParams}`, {
+    const response = await fetch(`${API_URL}/matricula/alunos?${queryParams}`, {
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`
       }
     });
 
     if (!response.ok) {
-      throw new Error('Erro ao buscar matrículas');
+      throw new Error('Erro ao buscar alunos');
     }
 
     const data = await response.json();
-    const matriculas: Matricula[] = data.data;
-
-    // Buscar dados de usuários para cada matrícula
-    const alunosPromises = matriculas.map(async (matricula) => {
-      const responseUsuario = await fetch(`${API_URL}/usuario/${matricula.UsuarioGUID}`, {
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
-      });
-
-      if (!responseUsuario.ok) {
-        console.error(`Erro ao buscar usuário ${matricula.UsuarioGUID}`);
-        return null;
-      }
-
-      const dataUsuario = await responseUsuario.json();
-      return {
-        usuario: dataUsuario.data.usuario,
-        matricula
-      };
-    });
-
-    const alunos = (await Promise.all(alunosPromises)).filter(Boolean) as Aluno[];
+    const alunos: Aluno[] = data.data;
 
     return {
       alunos,
-      total: alunos.length
+      total: data.total ?? alunos.length
     };
   } catch (erro: any) {
     console.error('Erro ao listar alunos:', erro);

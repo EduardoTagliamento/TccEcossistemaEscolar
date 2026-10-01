@@ -13,6 +13,22 @@ export interface MatriculaFilters {
   EscolaGUID?: string;
 }
 
+/** Shape plano de `Usuario`, só os campos que `findAllComUsuario` traz do JOIN — ver uso em aluno.api.ts. */
+export interface AlunoUsuarioRow {
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
+  UsuarioEmail: string | null;
+  UsuarioId: string | null;
+  UsuarioTelefone: string | null;
+  UsuarioNome: string;
+  UsuarioEmailVerificado: boolean;
+  UsuarioDataNascimento: Date | null;
+  UsuarioStatus: 'Ativo' | 'Inativo' | 'Bloqueado';
+  UsuarioUltimoAcesso: Date | null;
+  UsuarioCreatedAt: Date;
+  UsuarioUpdatedAt: Date;
+}
+
 /**
  * Interface de mapeamento para rows do MySQL
  */
@@ -190,6 +206,88 @@ export class MatriculaDAO {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(query, params);
     return this.mapRows(rows as MatriculaRow[]);
+  }
+
+  /**
+   * Igual `findAll`, mas já traz o `Usuario` de cada matrícula num único JOIN
+   * — existe especificamente pra alimentar listas tipo "Gestão de Dados >
+   * Alunos" sem que o caller precise fazer um `fetch` por matrícula (N+1):
+   * com a escola da feira técnica passando de ~11 pra 1160+ matrículas de
+   * uma hora pra outra, o padrão antigo (`aluno.api.ts` buscando
+   * `/usuario/:guid` um por um via `Promise.all`) virou ~1160 requisições
+   * HTTP simultâneas — é isso que deixava a tela travando, não só o
+   * tamanho da tabela renderizada.
+   */
+  async findAllComUsuario(filters?: MatriculaFilters): Promise<Array<{ matricula: Matricula; usuario: AlunoUsuarioRow }>> {
+    let query = `
+      SELECT
+        m.MatriculaGUID, m.MatriculaIdentificador, m.UsuarioGUID, m.TurmaGUID, m.GrupoEletivoGUID,
+        m.MatriculaDataEntrada, m.MatriculaDataSaida, m.MatriculaStatus, m.MatriculaCreatedAt, m.MatriculaUpdatedAt,
+        u.UsuarioCPF, u.UsuarioEmail, u.UsuarioId, u.UsuarioTelefone, u.UsuarioNome,
+        u.UsuarioEmailVerificado, u.UsuarioDataNascimento, u.UsuarioStatus,
+        u.UsuarioUltimoAcesso, u.UsuarioCreatedAt, u.UsuarioUpdatedAt
+      FROM matricula m
+      JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (filters?.UsuarioGUID) {
+      query += ` AND m.UsuarioGUID = ?`;
+      params.push(filters.UsuarioGUID);
+    }
+    if (filters?.TurmaGUID) {
+      query += ` AND m.TurmaGUID = ?`;
+      params.push(filters.TurmaGUID);
+    }
+    if (filters?.GrupoEletivoGUID) {
+      query += ` AND m.GrupoEletivoGUID = ?`;
+      params.push(filters.GrupoEletivoGUID);
+    }
+    if (filters?.MatriculaStatus) {
+      query += ` AND m.MatriculaStatus = ?`;
+      params.push(filters.MatriculaStatus);
+    }
+    if (filters?.EscolaGUID) {
+      query += ` AND m.TurmaGUID IN (SELECT TurmaGUID FROM turma WHERE EscolaGUID = ?)`;
+      params.push(filters.EscolaGUID);
+    }
+
+    query += ` ORDER BY m.MatriculaDataEntrada DESC`;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(query, params);
+
+    return (rows as Array<MatriculaRow & AlunoUsuarioRow>).map((row) => {
+      const matricula = new Matricula();
+      matricula.MatriculaGUID = row.MatriculaGUID;
+      matricula.MatriculaIdentificador = row.MatriculaIdentificador;
+      matricula.UsuarioGUID = row.UsuarioGUID;
+      matricula.TurmaGUID = row.TurmaGUID;
+      matricula.GrupoEletivoGUID = row.GrupoEletivoGUID;
+      matricula.MatriculaDataEntrada = row.MatriculaDataEntrada;
+      matricula.MatriculaDataSaida = row.MatriculaDataSaida;
+      matricula.MatriculaStatus = row.MatriculaStatus;
+      matricula.MatriculaCreatedAt = row.MatriculaCreatedAt;
+      matricula.MatriculaUpdatedAt = row.MatriculaUpdatedAt;
+
+      const usuario: AlunoUsuarioRow = {
+        UsuarioGUID: row.UsuarioGUID,
+        UsuarioCPF: row.UsuarioCPF,
+        UsuarioEmail: row.UsuarioEmail,
+        UsuarioId: row.UsuarioId,
+        UsuarioTelefone: row.UsuarioTelefone,
+        UsuarioNome: row.UsuarioNome,
+        UsuarioEmailVerificado: row.UsuarioEmailVerificado,
+        UsuarioDataNascimento: row.UsuarioDataNascimento,
+        UsuarioStatus: row.UsuarioStatus,
+        UsuarioUltimoAcesso: row.UsuarioUltimoAcesso,
+        UsuarioCreatedAt: row.UsuarioCreatedAt,
+        UsuarioUpdatedAt: row.UsuarioUpdatedAt,
+      };
+
+      return { matricula, usuario };
+    });
   }
 
   /**

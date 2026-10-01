@@ -1,5 +1,5 @@
 import Matricula from "../entities/matricula.model";
-import { MatriculaDAO, MatriculaFilters } from "../repositories/matricula.repository";
+import { MatriculaDAO, MatriculaFilters, AlunoUsuarioRow } from "../repositories/matricula.repository";
 import { TurmaDAO } from "../repositories/turma.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
@@ -31,6 +31,22 @@ export interface MatriculaDTO {
   MatriculaStatus: 'Ativa' | 'Transferida' | 'Concluida' | 'Cancelada';
   MatriculaCreatedAt: Date;
   MatriculaUpdatedAt: Date;
+}
+
+/** DTO leve de usuário embutido em `listarAlunosComUsuario` — mesmos campos de `UsuarioDTO` (usuario.service.ts), sem repetir o import. */
+export interface AlunoUsuarioDTO {
+  UsuarioGUID: string;
+  UsuarioCPF: string | null;
+  UsuarioEmail: string | null;
+  UsuarioId: string | null;
+  UsuarioTelefone: string | null;
+  UsuarioNome: string;
+  UsuarioEmailVerificado: boolean;
+  UsuarioDataNascimento: string | null;
+  UsuarioStatus: 'Ativo' | 'Inativo' | 'Bloqueado';
+  UsuarioUltimoAcesso: string | null;
+  UsuarioCreatedAt: string | null;
+  UsuarioUpdatedAt: string | null;
 }
 
 export interface MatriculaCreateDTO {
@@ -496,10 +512,48 @@ export default class MatriculaService {
     total: number;
   }> {
     const matriculas = await this.#matriculaDAO.findAll(filters);
-    
+
     return {
       matriculas: matriculas.map((matricula) => this.toDTO(matricula)),
       total: matriculas.length,
+    };
+  }
+
+  /**
+   * Igual `listarMatriculas`, mas já traz o usuário de cada matrícula num
+   * único JOIN — alimenta telas tipo "Gestão de Dados > Alunos" sem que o
+   * frontend precise de uma requisição por aluno (ver nota em
+   * `MatriculaDAO.findAllComUsuario`).
+   */
+  async listarAlunosComUsuario(filters?: MatriculaFilters): Promise<{
+    alunos: Array<{ matricula: MatriculaDTO; usuario: AlunoUsuarioDTO }>;
+    total: number;
+  }> {
+    const linhas = await this.#matriculaDAO.findAllComUsuario(filters);
+
+    return {
+      alunos: linhas.map(({ matricula, usuario }) => ({
+        matricula: this.toDTO(matricula),
+        usuario: this.toUsuarioDTO(usuario),
+      })),
+      total: linhas.length,
+    };
+  }
+
+  private toUsuarioDTO(usuario: AlunoUsuarioRow): AlunoUsuarioDTO {
+    return {
+      UsuarioGUID: usuario.UsuarioGUID,
+      UsuarioCPF: usuario.UsuarioCPF,
+      UsuarioEmail: usuario.UsuarioEmail,
+      UsuarioId: usuario.UsuarioId,
+      UsuarioTelefone: usuario.UsuarioTelefone,
+      UsuarioNome: usuario.UsuarioNome,
+      UsuarioEmailVerificado: usuario.UsuarioEmailVerificado,
+      UsuarioDataNascimento: usuario.UsuarioDataNascimento ? usuario.UsuarioDataNascimento.toISOString().split("T")[0] : null,
+      UsuarioStatus: usuario.UsuarioStatus,
+      UsuarioUltimoAcesso: usuario.UsuarioUltimoAcesso ? usuario.UsuarioUltimoAcesso.toISOString() : null,
+      UsuarioCreatedAt: usuario.UsuarioCreatedAt ? usuario.UsuarioCreatedAt.toISOString() : null,
+      UsuarioUpdatedAt: usuario.UsuarioUpdatedAt ? usuario.UsuarioUpdatedAt.toISOString() : null,
     };
   }
 
