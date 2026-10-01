@@ -287,6 +287,7 @@ export default class ProfessorService {
 
     const materias = await this.buscarMateriasProfessor(usuarioGUID, escolaGUID);
     const materiasUnicas = Array.from(new Map(materias.map((m) => [m.MateriaGUID, m])).values());
+    materiasUnicas.sort((a, b) => a.MateriaNome.localeCompare(b.MateriaNome, "pt-BR"));
     const escola = await this.#escolaDAO.findById(escolaGUID);
     const corPadrao = escola?.EscolaCorPriEs ? `#${escola.EscolaCorPriEs.replace(/^#/, "")}` : "#17C077";
 

@@ -148,6 +148,7 @@ export default class MateriaService {
       });
     }
 
+    resultado.sort((a, b) => a.MateriaNome.localeCompare(b.MateriaNome, "pt-BR"));
     return resultado;
   };
 
