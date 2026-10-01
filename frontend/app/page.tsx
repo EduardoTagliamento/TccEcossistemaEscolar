@@ -263,6 +263,14 @@ const DIFERENCIAIS = [
   },
 ];
 
+// Print do sistema exibido ao lado dos diferenciais — aguardando a captura de
+// tela real e a legenda definitiva. `imagemUrl`/`legenda` null renderizam um
+// placeholder; basta preencher os dois pra ativar a versão final.
+const PRINT_SISTEMA: { imagemUrl: string | null; legenda: string | null } = {
+  imagemUrl: null,
+  legenda: null,
+};
+
 const FAQ_ITENS = [
   {
     pergunta: 'O Bauá substitui o Google Classroom?',
@@ -511,19 +519,39 @@ export default function HomePage() {
             <p className={styles.diferenciaisSubtitle}>
               Feito para resolver problemas reais do dia a dia escolar — não só mais um sistema de cadastro.
             </p>
-            <div className={styles.diferenciaisList}>
-              {DIFERENCIAIS.map((item) => (
-                <div key={item.problema} className={`${styles.diferencialRow} ${styles.reveal}`}>
-                  <div className={styles.diferencialProblema}>
-                    <span className={`${styles.diferencialBadge} ${styles.diferencialBadgeProblema}`}>✕</span>
-                    <p>{item.problema}</p>
+            <div className={styles.diferenciaisGrid}>
+              <div className={styles.diferenciaisList}>
+                {DIFERENCIAIS.map((item) => (
+                  <div key={item.problema} className={`${styles.diferencialRow} ${styles.reveal}`}>
+                    <div className={styles.diferencialProblema}>
+                      <span className={`${styles.diferencialBadge} ${styles.diferencialBadgeProblema}`}>✕</span>
+                      <p>{item.problema}</p>
+                    </div>
+                    <div className={styles.diferencialSolucao}>
+                      <span className={`${styles.diferencialBadge} ${styles.diferencialBadgeSolucao}`}>✓</span>
+                      <p>{item.solucao}</p>
+                    </div>
                   </div>
-                  <div className={styles.diferencialSolucao}>
-                    <span className={`${styles.diferencialBadge} ${styles.diferencialBadgeSolucao}`}>✓</span>
-                    <p>{item.solucao}</p>
+                ))}
+              </div>
+
+              <div className={`${styles.diferenciaisPrint} ${styles.reveal}`}>
+                <div className={styles.deviceFrame}>
+                  <div className={styles.deviceScreen}>
+                    {PRINT_SISTEMA.imagemUrl ? (
+                      <img src={PRINT_SISTEMA.imagemUrl} alt={PRINT_SISTEMA.legenda || ''} className={styles.deviceScreenImg} />
+                    ) : (
+                      <div className={styles.deviceScreenPlaceholder}>
+                        <Icon name="bar-chart" size={28} />
+                        <span>Print do sistema em breve</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+                <p className={styles.printLegenda}>
+                  {PRINT_SISTEMA.legenda || 'Legenda do print (em breve)'}
+                </p>
+              </div>
             </div>
           </div>
         </section>
