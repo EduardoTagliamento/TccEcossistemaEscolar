@@ -408,7 +408,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {isAluno && (
+            {isAluno && (carregandoTarefas || !!erroTarefas || tarefas.length > 0) && (
               <div className={styles.widgetCard}>
                 <div className={styles.widgetHeader}>
                   <h3>Tarefas a se esgotar</h3>
@@ -420,8 +420,6 @@ export default function DashboardPage() {
                   <p className={styles.widgetEstado}>Carregando...</p>
                 ) : erroTarefas ? (
                   <p className={styles.widgetErro}>{erroTarefas}</p>
-                ) : tarefas.length === 0 ? (
-                  <p className={styles.widgetEstado}>Nenhuma tarefa pendente.</p>
                 ) : (
                   <ul className={styles.widgetLista}>
                     {tarefas.map((tarefa) => (
@@ -476,30 +474,30 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <div className={styles.widgetCard}>
-              <div className={styles.widgetHeader}>
-                <h3>Avisos gerais</h3>
-                <Link href={`/dashboard/${escolaGUID}/notificacoes`} className={styles.widgetVerTodas}>
-                  Ver todas →
-                </Link>
+            {(carregandoAvisos || !!erroAvisos || avisos.length > 0) && (
+              <div className={styles.widgetCard}>
+                <div className={styles.widgetHeader}>
+                  <h3>Avisos gerais</h3>
+                  <Link href={`/dashboard/${escolaGUID}/notificacoes`} className={styles.widgetVerTodas}>
+                    Ver todas →
+                  </Link>
+                </div>
+                {carregandoAvisos ? (
+                  <p className={styles.widgetEstado}>Carregando...</p>
+                ) : erroAvisos ? (
+                  <p className={styles.widgetErro}>{erroAvisos}</p>
+                ) : (
+                  <ul className={styles.widgetLista}>
+                    {avisos.map((aviso) => (
+                      <li key={aviso.NotificacaoGUID} className={styles.widgetItem}>
+                        <span className={styles.widgetItemTitulo}>{aviso.NotificacaoTitulo}</span>
+                        <span className={styles.widgetItemData}>{formatarData(aviso.NotificacaoCreatedAt)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              {carregandoAvisos ? (
-                <p className={styles.widgetEstado}>Carregando...</p>
-              ) : erroAvisos ? (
-                <p className={styles.widgetErro}>{erroAvisos}</p>
-              ) : avisos.length === 0 ? (
-                <p className={styles.widgetEstado}>Nenhum aviso por aqui.</p>
-              ) : (
-                <ul className={styles.widgetLista}>
-                  {avisos.map((aviso) => (
-                    <li key={aviso.NotificacaoGUID} className={styles.widgetItem}>
-                      <span className={styles.widgetItemTitulo}>{aviso.NotificacaoTitulo}</span>
-                      <span className={styles.widgetItemData}>{formatarData(aviso.NotificacaoCreatedAt)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            )}
           </section>
         </div>
       </main>

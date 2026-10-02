@@ -20,8 +20,23 @@ export function useCoresEscola(): string[] {
   const [paleta, setPaleta] = useState<string[]>(PALETA_PADRAO);
 
   useEffect(() => {
-    const estilo = getComputedStyle(document.documentElement);
-    setPaleta(VARIAVEIS.map((variavel, i) => estilo.getPropertyValue(variavel).trim() || PALETA_PADRAO[i]));
+    const ler = () => {
+      const estilo = getComputedStyle(document.documentElement);
+      setPaleta(VARIAVEIS.map((variavel, i) => estilo.getPropertyValue(variavel).trim() || PALETA_PADRAO[i]));
+    };
+
+    ler(); // tenta na hora — já cobre o caso de a navbar ter escrito primeiro
+
+    // A DashboardNavbar só escreve essas variáveis depois de um fetch
+    // assíncrono da escola — na maioria das vezes esse componente monta e lê
+    // ANTES disso acontecer, pegando a paleta padrão do Bauá e nunca mais
+    // relendo. Um MutationObserver no atributo style do <html> resolve
+    // porque reage sempre que a navbar realmente escrever, não importa a
+    // ordem/tempo entre os dois.
+    const observer = new MutationObserver(ler);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+
+    return () => observer.disconnect();
   }, []);
 
   return paleta;
