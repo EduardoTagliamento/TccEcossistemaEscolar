@@ -533,12 +533,16 @@ export default function HomePage() {
                 intuitiva. Gerencie tudo em um só lugar.
               </p>
               <div className={styles.heroCtas}>
+                {/* Temporariamente oculto — para voltar, descomente e devolva
+                    btnSecondaryLg (sem o ícone) ao botão da Univap.
                 <Link href="/saiba-mais" className={styles.btnPrimaryLg}>
                   Quero saber mais
                   <Icon name="arrow-right" size={20} />
                 </Link>
-                <Link href="/cadastro/univap" className={styles.btnSecondaryLg}>
+                */}
+                <Link href="/cadastro/univap" className={styles.btnPrimaryLg}>
                   Sou aluno da Univap
+                  <Icon name="arrow-right" size={20} />
                 </Link>
               </div>
             </div>
