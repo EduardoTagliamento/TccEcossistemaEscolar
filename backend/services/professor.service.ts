@@ -279,19 +279,18 @@ export default class ProfessorService {
     MateriaGUID: string;
     MateriaNome: string;
     ImagemUrl: string | null;
-    CorFundo: string;
+    /** null = sem customização própria — frontend alterna pela paleta da escola. */
+    CorFundo: string | null;
   }>> {
     console.log("🟣 ProfessorService.buscarMateriasComCapaProfessor()");
 
-    if (!this.#customizacaoDAO || !this.#escolaDAO) {
+    if (!this.#customizacaoDAO) {
       throw new ErrorResponse(500, "Serviço mal configurado");
     }
 
     const materias = await this.buscarMateriasProfessor(usuarioGUID, escolaGUID);
     const materiasUnicas = Array.from(new Map(materias.map((m) => [m.MateriaGUID, m])).values());
     materiasUnicas.sort((a, b) => a.MateriaNome.localeCompare(b.MateriaNome, "pt-BR"));
-    const escola = await this.#escolaDAO.findById(escolaGUID);
-    const corPadrao = escola?.EscolaCorPriEs ? `#${escola.EscolaCorPriEs.replace(/^#/, "")}` : "#17C077";
 
     return Promise.all(
       materiasUnicas.map(async (materia) => {
@@ -301,7 +300,7 @@ export default class ProfessorService {
           MateriaGUID: materia.MateriaGUID,
           MateriaNome: materia.MateriaNome,
           ImagemUrl: customizacao?.ImagemUrl ?? null,
-          CorFundo: customizacao?.CorFundo || corPadrao,
+          CorFundo: customizacao?.CorFundo || null,
         };
       })
     );

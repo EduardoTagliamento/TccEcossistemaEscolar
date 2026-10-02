@@ -541,16 +541,28 @@ a.widgetItem:hover {
    RESPONSIVIDADE
    ============================================================ */
 @media (max-width: 640px) {
+  /* Tenta caber o dashboard inteiro numa tela só no celular — reduz padding
+     e espaçamento entre seções, não só o tamanho dos cards de matéria. */
   .mainContent {
     padding: var(--space-4);
   }
 
+  .contentStack {
+    gap: 0.875rem;
+  }
+
   .greetingBanner {
-    padding: 20px;
+    padding: 16px 18px;
   }
 
   .bannerTitle {
-    font-size: 22px;
+    font-size: 20px;
+    margin-top: 4px !important;
+  }
+
+  .bannerSubtitle {
+    margin-top: 2px;
+    font-size: 13px;
   }
 
   .avisoDestaque {
@@ -561,5 +573,30 @@ a.widgetItem:hover {
 
   .avisoDestaqueTexto p {
     white-space: normal;
+  }
+
+  .materiasAtalhoSection {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .materiasAtalhoHeader {
+    margin-bottom: 10px;
+  }
+
+  .materiasAtalhoTitulo {
+    font-size: 16px;
+  }
+
+  .materiasAtalhoGrid {
+    gap: 10px;
+  }
+
+  .widgetsGrid {
+    gap: 0.875rem;
+  }
+
+  .widgetCard {
+    padding: 14px;
   }
 }

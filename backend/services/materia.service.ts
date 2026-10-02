@@ -71,7 +71,8 @@ export interface MateriaDoAlunoDTO {
   ProfessorNome: string;
   ProfessorFotoUrl: string | null;
   ImagemUrl: string | null;
-  CorFundo: string;
+  /** null = sem customização própria — frontend alterna pela paleta da escola. */
+  CorFundo: string | null;
   MensagemBoasVindas: string | null;
 }
 
@@ -132,7 +133,6 @@ export default class MateriaService {
 
       const professor = await this.#usuarioDAO.findByGUID(alocacao.UsuarioGUID);
       const customizacao = await this.#customizacaoDAO.findByMateriaEProfessor(alocacao.MateriaGUID, alocacao.UsuarioGUID);
-      const escola = customizacao?.CorFundo ? null : await this.#escolaDAO.findById(escolaGUID);
 
       resultado.push({
         MateriaGUID: materia.MateriaGUID,
@@ -143,7 +143,11 @@ export default class MateriaService {
         ProfessorNome: professor?.UsuarioNome ?? "Professor",
         ProfessorFotoUrl: professor?.UsuarioFotoUrl ?? null,
         ImagemUrl: customizacao?.ImagemUrl ?? null,
-        CorFundo: customizacao?.CorFundo || (escola?.EscolaCorPriEs ? `#${escola.EscolaCorPriEs.replace(/^#/, "")}` : "#17C077"),
+        // null (não um fallback único pra escola inteira) de propósito — o
+        // frontend já alterna entre as 4 cores da escola por índice do card
+        // quando não tem customização própria (ver useCoresEscola), senão a
+        // grade inteira ficava monocromática na mesma cor primária.
+        CorFundo: customizacao?.CorFundo || null,
         MensagemBoasVindas: customizacao?.MensagemBoasVindas ?? null,
       });
     }

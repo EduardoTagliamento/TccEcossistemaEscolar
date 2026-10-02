@@ -167,7 +167,7 @@ export class ConversaGrupoDAO {
        FROM conversa_grupo_membro cgm
        INNER JOIN usuario u ON u.UsuarioGUID = cgm.MembroUsuarioGUID
        WHERE cgm.ConversaGUID = ? AND cgm.MembroStatus = 'Ativo'
-       ORDER BY cgm.MembroEntradaAt ASC`,
+       ORDER BY u.UsuarioNome ASC`,
       [conversaGUID]
     );
     return (rows as any[]).map((row) => ({

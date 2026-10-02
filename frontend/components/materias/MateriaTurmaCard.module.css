@@ -80,3 +80,36 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Card mais compacto no mobile — o dashboard precisa caber numa tela só,
+   e esse card (repetido 3x na seção "Minhas Matérias") era o maior gasto
+   de altura vertical da página. */
+@media (max-width: 560px) {
+  .capa {
+    min-height: 52px;
+    padding: 10px 12px;
+  }
+
+  .capaTitulo {
+    font-size: 0.875rem;
+  }
+
+  .rodape {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .avatar,
+  .avatarFoto {
+    width: 22px;
+    height: 22px;
+  }
+
+  .avatar {
+    font-size: 0.625rem;
+  }
+
+  .subtitulo {
+    font-size: 0.75rem;
+  }
+}
