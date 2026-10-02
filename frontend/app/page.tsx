@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { poppins, figtree, baloo2 } from '@/lib/fonts';
 import { useAuth } from '@/lib/auth/AuthContext';
 import styles from './page.module.css';
@@ -375,12 +375,29 @@ export default function HomePage() {
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
   const [printAtivo, setPrintAtivo] = useState(0);
   const [lightboxAberto, setLightboxAberto] = useState(false);
+  const arrastoInicioX = useRef<number | null>(null);
+
+  const printAnterior = () => setPrintAtivo((i) => (i - 1 + PRINTS_SISTEMA.length) % PRINTS_SISTEMA.length);
+  const proximoPrint = () => setPrintAtivo((i) => (i + 1) % PRINTS_SISTEMA.length);
+
+  const handleArrastoInicio = (x: number) => {
+    arrastoInicioX.current = x;
+  };
+
+  const handleArrastoFim = (x: number) => {
+    if (arrastoInicioX.current === null) return;
+    const delta = x - arrastoInicioX.current;
+    arrastoInicioX.current = null;
+    const LIMIAR = 50; // px mínimos pra contar como swipe, não só um clique tremido
+    if (delta > LIMIAR) printAnterior();
+    else if (delta < -LIMIAR) proximoPrint();
+  };
 
   useEffect(() => {
     if (lightboxAberto) return; // pausa a troca automática com o print maximizado
     const intervalo = setInterval(() => {
       setPrintAtivo((indice) => (indice + 1) % PRINTS_SISTEMA.length);
-    }, 4000);
+    }, 7000);
     return () => clearInterval(intervalo);
   }, [lightboxAberto]);
 
@@ -702,7 +719,7 @@ export default function HomePage() {
                   className={`${styles.lightboxSeta} ${styles.lightboxSetaEsquerda}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setPrintAtivo((i) => (i - 1 + PRINTS_SISTEMA.length) % PRINTS_SISTEMA.length);
+                    printAnterior();
                   }}
                   aria-label="Print anterior"
                 >
@@ -714,6 +731,11 @@ export default function HomePage() {
                   alt={PRINTS_SISTEMA[printAtivo].legenda}
                   className={styles.lightboxImagem}
                   onClick={(e) => e.stopPropagation()}
+                  draggable={false}
+                  onMouseDown={(e) => handleArrastoInicio(e.clientX)}
+                  onMouseUp={(e) => handleArrastoFim(e.clientX)}
+                  onTouchStart={(e) => handleArrastoInicio(e.touches[0].clientX)}
+                  onTouchEnd={(e) => handleArrastoFim(e.changedTouches[0].clientX)}
                 />
 
                 <button
@@ -721,7 +743,7 @@ export default function HomePage() {
                   className={`${styles.lightboxSeta} ${styles.lightboxSetaDireita}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setPrintAtivo((i) => (i + 1) % PRINTS_SISTEMA.length);
+                    proximoPrint();
                   }}
                   aria-label="Próximo print"
                 >

@@ -836,7 +836,13 @@
   max-height: 75vh;
   border-radius: 10px;
   box-shadow: var(--shadow-lg);
-  cursor: default;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.lightboxImagem:active {
+  cursor: grabbing;
 }
 
 .lightboxLegenda {
