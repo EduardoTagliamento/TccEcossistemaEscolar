@@ -235,6 +235,10 @@ export default function CadastroUnivapPage() {
             {TELEFONE_BAUA}
           </a>
         </p>
+
+        <Link href="/" className={styles.rodapeLink} style={{ marginTop: 10, display: 'inline-block' }}>
+          ← Conhecer o Bauá
+        </Link>
       </div>
     </div>
   );
