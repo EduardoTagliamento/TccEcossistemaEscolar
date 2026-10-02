@@ -756,11 +756,20 @@
 }
 
 .deviceFrame {
+  display: block;
   width: 100%;
   background: var(--ink-900);
+  border: none;
   border-radius: 22px;
   padding: 14px;
   box-shadow: var(--shadow-lg);
+  cursor: zoom-in;
+  font: inherit;
+  transition: transform 0.2s ease;
+}
+
+.deviceFrame:hover {
+  transform: translateY(-2px);
 }
 
 .deviceScreen {
@@ -786,6 +795,118 @@
 
 .deviceScreenImgAtivo {
   opacity: 1;
+}
+
+.deviceScreenZoomDica {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(15, 29, 23, 0.72);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.deviceFrame:hover .deviceScreenZoomDica {
+  opacity: 1;
+}
+
+.lightboxOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 60px 20px;
+  background: rgba(10, 18, 14, 0.92);
+  cursor: zoom-out;
+}
+
+.lightboxImagem {
+  max-width: min(1100px, 92vw);
+  max-height: 75vh;
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  cursor: default;
+}
+
+.lightboxLegenda {
+  max-width: 640px;
+  margin: 0;
+  text-align: center;
+  color: var(--white, #fff);
+  font-size: 0.9375rem;
+  cursor: default;
+}
+
+.lightboxFechar {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.lightboxFechar:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.lightboxSeta {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.lightboxSeta:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.lightboxSetaEsquerda {
+  transform: rotate(180deg);
+}
+
+@media (min-width: 720px) {
+  .lightboxOverlay {
+    flex-direction: row;
+  }
+
+  .lightboxSeta {
+    display: inline-flex;
+  }
+
+  .lightboxLegenda {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
 
 .deviceScreenPlaceholder {

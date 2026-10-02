@@ -374,13 +374,24 @@ export default function HomePage() {
   const [faqAbertaIndex, setFaqAbertaIndex] = useState<number | null>(null);
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
   const [printAtivo, setPrintAtivo] = useState(0);
+  const [lightboxAberto, setLightboxAberto] = useState(false);
 
   useEffect(() => {
+    if (lightboxAberto) return; // pausa a troca automática com o print maximizado
     const intervalo = setInterval(() => {
       setPrintAtivo((indice) => (indice + 1) % PRINTS_SISTEMA.length);
     }, 4000);
     return () => clearInterval(intervalo);
-  }, []);
+  }, [lightboxAberto]);
+
+  useEffect(() => {
+    if (!lightboxAberto) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxAberto(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [lightboxAberto]);
 
   useEffect(() => {
     // Redireciona automaticamente se já estiver autenticado.
@@ -642,7 +653,12 @@ export default function HomePage() {
               </div>
 
               <div className={`${styles.diferenciaisPrint} ${styles.reveal}`}>
-                <div className={styles.deviceFrame}>
+                <button
+                  type="button"
+                  className={styles.deviceFrame}
+                  onClick={() => setLightboxAberto(true)}
+                  aria-label="Ver print em tamanho maior"
+                >
                   <div className={styles.deviceScreen}>
                     {PRINTS_SISTEMA.map((print, indice) => (
                       <img
@@ -652,8 +668,9 @@ export default function HomePage() {
                         className={`${styles.deviceScreenImg} ${indice === printAtivo ? styles.deviceScreenImgAtivo : ''}`}
                       />
                     ))}
+                    <span className={styles.deviceScreenZoomDica}>🔍 Clique pra ampliar</span>
                   </div>
-                </div>
+                </button>
                 <p className={styles.printLegenda}>{PRINTS_SISTEMA[printAtivo].legenda}</p>
                 <div className={styles.printDots}>
                   {PRINTS_SISTEMA.map((print, indice) => (
@@ -668,6 +685,54 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+
+            {lightboxAberto && (
+              <div className={styles.lightboxOverlay} onClick={() => setLightboxAberto(false)}>
+                <button
+                  type="button"
+                  className={styles.lightboxFechar}
+                  onClick={() => setLightboxAberto(false)}
+                  aria-label="Fechar"
+                >
+                  <Icon name="x" size={22} />
+                </button>
+
+                <button
+                  type="button"
+                  className={`${styles.lightboxSeta} ${styles.lightboxSetaEsquerda}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPrintAtivo((i) => (i - 1 + PRINTS_SISTEMA.length) % PRINTS_SISTEMA.length);
+                  }}
+                  aria-label="Print anterior"
+                >
+                  <Icon name="arrow-right" size={22} />
+                </button>
+
+                <img
+                  src={PRINTS_SISTEMA[printAtivo].imagemUrl}
+                  alt={PRINTS_SISTEMA[printAtivo].legenda}
+                  className={styles.lightboxImagem}
+                  onClick={(e) => e.stopPropagation()}
+                />
+
+                <button
+                  type="button"
+                  className={`${styles.lightboxSeta} ${styles.lightboxSetaDireita}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPrintAtivo((i) => (i + 1) % PRINTS_SISTEMA.length);
+                  }}
+                  aria-label="Próximo print"
+                >
+                  <Icon name="arrow-right" size={22} />
+                </button>
+
+                <p className={styles.lightboxLegenda} onClick={(e) => e.stopPropagation()}>
+                  {PRINTS_SISTEMA[printAtivo].legenda}
+                </p>
+              </div>
+            )}
           </div>
         </section>
 
