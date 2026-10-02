@@ -280,13 +280,62 @@ const DIFERENCIAIS = [
   },
 ];
 
-// Print do sistema exibido ao lado dos diferenciais — aguardando a captura de
-// tela real e a legenda definitiva. `imagemUrl`/`legenda` null renderizam um
-// placeholder; basta preencher os dois pra ativar a versão final.
-const PRINT_SISTEMA: { imagemUrl: string | null; legenda: string | null } = {
-  imagemUrl: null,
-  legenda: null,
-};
+// Prints reais do sistema, em rotação ao lado dos diferenciais — capturas de
+// F:\Area de Trabalho\EcossistemaEscolar\docs\prints.
+const PRINTS_SISTEMA: Array<{ imagemUrl: string; legenda: string }> = [
+  {
+    imagemUrl: '/assets/print-login-marca.png',
+    legenda: 'Cada escola entra com a própria marca — cores, logo e nome, na tela de login.',
+  },
+  {
+    imagemUrl: '/assets/print-dashboard.png',
+    legenda: 'Matérias, tarefas e avisos — tudo num painel só, assim que a pessoa entra.',
+  },
+  {
+    imagemUrl: '/assets/print-materias.png',
+    legenda: 'Todas as matérias da turma, organizadas e com o professor de cada uma.',
+  },
+  {
+    imagemUrl: '/assets/print-turma-conteudos.png',
+    legenda: 'Conteúdo de cada matéria dividido por bimestre, com progresso de conclusão.',
+  },
+  {
+    imagemUrl: '/assets/print-ia-resumo.png',
+    legenda: 'IA gera resumo e indica vídeos pra cada conteúdo postado pelo professor.',
+  },
+  {
+    imagemUrl: '/assets/print-calendario.png',
+    legenda: 'Calendário com provas, tarefas e eventos da turma, tudo num lugar só.',
+  },
+  {
+    imagemUrl: '/assets/print-chatbot-whatsapp.png',
+    legenda: 'Aluno tira dúvida direto no WhatsApp — o chatbot responde com base na matéria.',
+  },
+  {
+    imagemUrl: '/assets/print-whatsapp-notificacoes.png',
+    legenda: 'Tarefa nova, matrícula confirmada — os avisos chegam no WhatsApp, com link direto pro sistema.',
+  },
+  {
+    imagemUrl: '/assets/print-login.png',
+    legenda: 'Acesso simples por CPF, e-mail ou telefone — sem app pra baixar.',
+  },
+  {
+    imagemUrl: '/assets/print-cadastro-professor.png',
+    legenda: 'Professor cria prova ou tarefa e já marca o assunto — a IA usa isso pra gerar a recomendação de estudo.',
+  },
+  {
+    imagemUrl: '/assets/print-gestao-dados.png',
+    legenda: 'Diretor cadastra e importa turmas, professores e alunos em massa, por planilha.',
+  },
+  {
+    imagemUrl: '/assets/print-gestao-turmas.png',
+    legenda: 'Todas as turmas da escola numa lista só, com curso, status e ações rápidas.',
+  },
+  {
+    imagemUrl: '/assets/print-auditoria.png',
+    legenda: 'Toda ação importante fica registrada — quem fez, quando e o quê, pra auditoria.',
+  },
+];
 
 const FAQ_ITENS = [
   {
@@ -324,6 +373,14 @@ export default function HomePage() {
   const { token, isLoading } = useAuth();
   const [faqAbertaIndex, setFaqAbertaIndex] = useState<number | null>(null);
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+  const [printAtivo, setPrintAtivo] = useState(0);
+
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      setPrintAtivo((indice) => (indice + 1) % PRINTS_SISTEMA.length);
+    }, 4000);
+    return () => clearInterval(intervalo);
+  }, []);
 
   useEffect(() => {
     // Redireciona automaticamente se já estiver autenticado.
@@ -587,19 +644,28 @@ export default function HomePage() {
               <div className={`${styles.diferenciaisPrint} ${styles.reveal}`}>
                 <div className={styles.deviceFrame}>
                   <div className={styles.deviceScreen}>
-                    {PRINT_SISTEMA.imagemUrl ? (
-                      <img src={PRINT_SISTEMA.imagemUrl} alt={PRINT_SISTEMA.legenda || ''} className={styles.deviceScreenImg} />
-                    ) : (
-                      <div className={styles.deviceScreenPlaceholder}>
-                        <Icon name="bar-chart" size={28} />
-                        <span>Print do sistema em breve</span>
-                      </div>
-                    )}
+                    {PRINTS_SISTEMA.map((print, indice) => (
+                      <img
+                        key={print.imagemUrl}
+                        src={print.imagemUrl}
+                        alt={print.legenda}
+                        className={`${styles.deviceScreenImg} ${indice === printAtivo ? styles.deviceScreenImgAtivo : ''}`}
+                      />
+                    ))}
                   </div>
                 </div>
-                <p className={styles.printLegenda}>
-                  {PRINT_SISTEMA.legenda || 'Legenda do print (em breve)'}
-                </p>
+                <p className={styles.printLegenda}>{PRINTS_SISTEMA[printAtivo].legenda}</p>
+                <div className={styles.printDots}>
+                  {PRINTS_SISTEMA.map((print, indice) => (
+                    <button
+                      key={print.imagemUrl}
+                      type="button"
+                      className={`${styles.printDot} ${indice === printAtivo ? styles.printDotAtivo : ''}`}
+                      onClick={() => setPrintAtivo(indice)}
+                      aria-label={`Ver print ${indice + 1}`}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
