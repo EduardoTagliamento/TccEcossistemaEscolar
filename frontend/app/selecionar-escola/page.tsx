@@ -74,7 +74,18 @@ export default function SelecionarEscolaPage() {
         throw new Error(data.message || 'Erro ao buscar escolas');
       }
 
-      setEscolas(data.data.escolas || []);
+      const lista: EscolaComFuncoes[] = data.data.escolas || [];
+
+      // Só 1 escola vinculada -> pula direto pro dashboard dela, sem
+      // obrigar a pessoa a clicar numa lista de 1 item só. `replace` (não
+      // `push`) pra não deixar essa tela no histórico do botão "voltar".
+      if (lista.length === 1) {
+        localStorage.setItem('@baua:escolaSelecionada', lista[0].escola.EscolaGUID);
+        router.replace(`/dashboard/${lista[0].escola.EscolaGUID}`);
+        return;
+      }
+
+      setEscolas(lista);
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar suas escolas');
     } finally {

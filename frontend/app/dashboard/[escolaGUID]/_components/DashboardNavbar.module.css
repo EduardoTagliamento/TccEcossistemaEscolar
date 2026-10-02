@@ -655,10 +655,6 @@
    RESPONSIVIDADE
    ============================================================ */
 @media (max-width: 900px) {
-  .brandPowered {
-    display: none;
-  }
-
   /* .moduleNavWrap virou position:fixed (barra do rodapé) e saiu do fluxo
      do flex — sem ele como flex:1 no meio, .navActions (sino + avatar)
      colava direto do lado do nome da escola em vez de ir pra ponta direita
