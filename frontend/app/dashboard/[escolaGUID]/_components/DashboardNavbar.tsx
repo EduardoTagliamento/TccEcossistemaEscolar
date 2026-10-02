@@ -273,11 +273,6 @@ export default function DashboardNavbar() {
   const [carregandoNotif, setCarregandoNotif] = useState(false);
   const [naoLidas, setNaoLidas] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
-  // Botão de notificações duplicado na barra inferior (mobile) — ver abaixo,
-  // perto de .moduleNavWrap. Precisa do próprio ref pro "fechar ao clicar
-  // fora" não tratar um clique nele como clique de fora (fecharia e abriria
-  // de novo no mesmo clique, por causa da ordem mousedown -> click).
-  const notifBottomBtnRef = useRef<HTMLButtonElement>(null);
 
   const pendenciasPendentesCount = useContadorPendencias(escolaGUID, !!usuario).data ?? 0;
   const convitesProjetoPendentesCount = (useConvitesPendentes(escolaGUID, !!usuario).data ?? []).length;
@@ -426,10 +421,7 @@ export default function DashboardNavbar() {
       if (userMenuRef.current && !userMenuRef.current.contains(evento.target as Node)) {
         setUserMenuAberto(false);
       }
-      const dentroDoNotif =
-        (notifRef.current && notifRef.current.contains(evento.target as Node)) ||
-        (notifBottomBtnRef.current && notifBottomBtnRef.current.contains(evento.target as Node));
-      if (!dentroDoNotif) {
+      if (notifRef.current && !notifRef.current.contains(evento.target as Node)) {
         setNotifAberto(false);
       }
     };
@@ -697,25 +689,6 @@ export default function DashboardNavbar() {
               <Icon name="chevron-right" size={18} />
             </button>
           )}
-
-          {/* Atalho de notificações na barra inferior (mobile) — fora da
-              área rolável, sempre fixo à direita. Reaproveita o mesmo
-              estado/dropdown do sino lá de cima (ver notifAberto); o
-              dropdown em si já é position:fixed no mobile (ver
-              .notifDropdown), então aparece certo não importa qual dos
-              dois botões abriu. */}
-          <button
-            ref={notifBottomBtnRef}
-            type="button"
-            className={styles.moduleNavNotifBotao}
-            onClick={() => void abrirNotificacoes()}
-            aria-label="Avisos"
-            aria-haspopup="true"
-            aria-expanded={notifAberto}
-          >
-            <Icon name="bell" size={20} />
-            {naoLidas > 0 && <span className={styles.moduleItemDot} />}
-          </button>
         </div>
 
         <div className={styles.navActions}>

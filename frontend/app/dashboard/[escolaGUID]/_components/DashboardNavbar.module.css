@@ -286,28 +286,6 @@
   background: linear-gradient(to left, var(--white) 55%, transparent);
 }
 
-/* Atalho de notificações da barra inferior — só existe visualmente no
-   mobile (ver @media max-width:900px). No desktop já tem o sino em
-   .navActions, duplicar ali ficaria redundante. */
-.moduleNavNotifBotao {
-  display: none;
-  position: relative;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 100%;
-  border: none;
-  border-left: 1px solid var(--line-100);
-  background: transparent;
-  color: var(--slate-500);
-  cursor: pointer;
-}
-
-.moduleNavNotifBotao:hover {
-  color: var(--color-primary, var(--green-600));
-}
-
 .moduleItem {
   display: inline-flex;
   flex-direction: column;
@@ -681,6 +659,14 @@
     display: none;
   }
 
+  /* .moduleNavWrap virou position:fixed (barra do rodapé) e saiu do fluxo
+     do flex — sem ele como flex:1 no meio, .navActions (sino + avatar)
+     colava direto do lado do nome da escola em vez de ir pra ponta direita
+     da tela. */
+  .navbarInner {
+    justify-content: space-between;
+  }
+
   /* "Documentação da API" é uma ferramenta de desenvolvedor — não cabe bem
      no menu do perfil no mobile e não é algo que se usa pelo celular mesmo. */
   .menuItemEsconderMobile {
@@ -732,10 +718,6 @@
 
   .moduleNavSetaDireita {
     background: linear-gradient(to left, var(--white) 55%, transparent);
-  }
-
-  .moduleNavNotifBotao {
-    display: inline-flex;
   }
 }
 
