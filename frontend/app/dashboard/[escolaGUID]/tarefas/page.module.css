@@ -468,6 +468,12 @@
     gap: var(--space-4);
   }
 
+  /* 4 colunas fixas não cabiam — o card "Atrasada" furava a borda da tela
+     em vez de encolher (conteúdo interno tem padding/ícone/texto fixos). */
+  .statsRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .tarefasGrid {
     grid-template-columns: 1fr;
   }
@@ -488,5 +494,13 @@
   .linhaAcao {
     width: 100%;
     justify-content: space-between;
+  }
+
+  /* .linhaPrazo era alinhado à direita (flex-end) pensando no layout de
+     desktop, onde ele fica colado no botão Abrir. Quebrada pra própria
+     linha, isso deixava "PRAZO"/a data flutuando longe da borda esquerda
+     em vez de alinhados nela. */
+  .linhaPrazo {
+    align-items: flex-start;
   }
 }
