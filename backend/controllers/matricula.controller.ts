@@ -379,6 +379,48 @@ export default class MatriculaController {
    *
    * Body: { MatriculaIdentificador: string }
    */
+  /**
+   * POST /api/matricula/alunos/:usuarioGUID/escolas/:escolaGUID/redefinir-senha
+   * Coordenação/Direção redefine a senha do aluno — a senha gerada nunca
+   * volta na resposta, só se deu pra avisar por WhatsApp/email.
+   * Body: { EscolaNome }
+   */
+  redefinirSenhaAluno = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { usuarioGUID, escolaGUID } = req.params;
+      const { EscolaNome } = req.body;
+      const usuarioLogadoGUID = req.user?.UsuarioGUID;
+
+      if (!usuarioLogadoGUID) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
+      }
+
+      const resultado = await this.#matriculaService.redefinirSenhaAluno(
+        usuarioGUID,
+        escolaGUID,
+        EscolaNome || "",
+        usuarioLogadoGUID
+      );
+
+      res.status(200).json({ success: true, data: resultado });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error("Erro ao redefinir senha do aluno:", error);
+        res.status(500).json({
+          success: false,
+          message: "Erro interno ao redefinir senha",
+        });
+      }
+    }
+  };
+
   atualizarIdentificador = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guid } = req.params;

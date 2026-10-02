@@ -1,7 +1,10 @@
 /**
  * Helper para geração de senhas temporárias
- * Padrão: PrimeiroNome + 2 dígitos aleatórios
- * Exemplo: "João Silva" → "Joao42"
+ * Padrão: PrimeiroNome + 2 dígitos aleatórios, com no mínimo 6 caracteres no
+ * total — nomes curtos (ex.: "Ana") ganham dígitos extras pra não cair
+ * abaixo do mínimo exigido (sem isso, "Ana" + 2 dígitos vira "Ana26", só 5
+ * caracteres, e falha a validação de senha em qualquer lugar que a exija).
+ * Exemplo: "João Silva" → "Joao42" | "Ana Costa" → "Ana265"
  */
 
 /**
@@ -33,8 +36,12 @@ export function gerarSenhaTemporaria(nomeCompleto: string): string {
   // Capitalizar primeira letra
   const nomeCapitalizado = nomeLimpo.charAt(0).toUpperCase() + nomeLimpo.slice(1).toLowerCase();
 
-  // Gerar 2 dígitos aleatórios (10-99)
-  const digitosAleatorios = Math.floor(Math.random() * 90) + 10;
+  // Pelo menos 2 dígitos, mais se precisar pra fechar os 6 caracteres mínimos.
+  const MINIMO_CARACTERES = 6;
+  const quantidadeDigitos = Math.max(2, MINIMO_CARACTERES - nomeCapitalizado.length);
+  const limiteSuperior = Math.pow(10, quantidadeDigitos);
+  const limiteInferior = Math.pow(10, quantidadeDigitos - 1);
+  const digitosAleatorios = Math.floor(Math.random() * (limiteSuperior - limiteInferior)) + limiteInferior;
 
   return `${nomeCapitalizado}${digitosAleatorios}`;
 }

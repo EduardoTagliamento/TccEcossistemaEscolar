@@ -22,6 +22,7 @@ import {
   useCriarProfessoresEmMassa,
   useInativarProfessor,
   useReativarProfessor,
+  useRedefinirSenhaProfessor,
   useCriarAlocacao,
   useCriarAlocacoesEmMassa,
   useAtualizarAlocacao,
@@ -245,6 +246,7 @@ export default function ProfessoresPage() {
   const criarProfessoresEmMassaMutation = useCriarProfessoresEmMassa();
   const inativarProfessorMutation = useInativarProfessor();
   const reativarProfessorMutation = useReativarProfessor();
+  const redefinirSenhaProfessorMutation = useRedefinirSenhaProfessor();
   const criarAlocacaoMutation = useCriarAlocacao();
   const criarAlocacoesEmMassaMutation = useCriarAlocacoesEmMassa();
   const atualizarAlocacaoMutation = useAtualizarAlocacao();
@@ -724,6 +726,31 @@ export default function ProfessoresPage() {
     }
   };
 
+  const handleRedefinirSenha = async (professor: ProfessorAPI.Professor) => {
+    if (!confirm(`Redefinir a senha de "${professor.UsuarioNome}"? Uma nova senha temporária será gerada e enviada por WhatsApp/email — você não vai ver a senha.`)) {
+      return;
+    }
+
+    try {
+      const resultado = await redefinirSenhaProfessorMutation.mutateAsync({
+        usuarioGUID: professor.UsuarioGUID,
+        escolaGUID,
+        escolaNome: escola?.EscolaNome || 'Escola',
+      });
+      const canais = [
+        resultado.enviadoPorWhatsapp && 'WhatsApp',
+        resultado.enviadoPorEmail && 'email',
+      ].filter(Boolean);
+      alert(
+        canais.length > 0
+          ? `Senha redefinida e enviada por ${canais.join(' e ')}.`
+          : 'Senha redefinida, mas não foi possível confirmar o envio por WhatsApp nem email — confira os dados de contato dessa pessoa.'
+      );
+    } catch (erro: any) {
+      alert('Erro ao redefinir senha: ' + erro.message);
+    }
+  };
+
   const handleDadosCarregados = (dados: DadosPlanilha<any>) => {
     console.log('Dados carregados:', dados);
     setDadosImportados(dados);
@@ -842,6 +869,13 @@ export default function ProfessoresPage() {
               title="Editar"
             >
               <Icon name="edit" size={16} />
+            </button>
+            <button
+              onClick={() => handleRedefinirSenha(professor)}
+              className={styles.botaoEditar}
+              title="Redefinir senha"
+            >
+              <Icon name="lock" size={16} />
             </button>
             {professor.UsuarioStatus === 'Ativo' ? (
               <button

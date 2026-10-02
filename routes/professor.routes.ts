@@ -98,6 +98,16 @@ export function professorRouterFactory(): Router {
   );
 
   /**
+   * POST /api/professor/:usuarioGUID/escolas/:escolaGUID/redefinir-senha
+   * Coordenação/Direção redefine a senha do professor (manda por WhatsApp/email)
+   */
+  router.post(
+    "/:usuarioGUID/escolas/:escolaGUID/redefinir-senha",
+    AuthMiddleware.authenticate,
+    professorController.redefinirSenha
+  );
+
+  /**
    * POST /api/professor/alocacao
    * Criar alocação (vincular professor a matéria+turma)
    */

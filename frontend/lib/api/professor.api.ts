@@ -304,9 +304,38 @@ export async function criarAlocacoesEmMassa(
   return resultado.data;
 }
 
+export interface ResultadoRedefinicaoSenha {
+  enviadoPorWhatsapp: boolean;
+  enviadoPorEmail: boolean;
+}
+
+/**
+ * Redefinir a senha de um professor (Coordenação/Direção) — a senha gerada
+ * nunca volta na resposta, só se deu pra avisar por WhatsApp e/ou email.
+ */
+export async function redefinirSenhaProfessor(
+  usuarioGUID: string,
+  escolaGUID: string,
+  escolaNome: string
+): Promise<ResultadoRedefinicaoSenha> {
+  const response = await fetch(`${API_URL}/professor/${usuarioGUID}/escolas/${escolaGUID}/redefinir-senha`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ EscolaNome: escolaNome }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Erro ao redefinir senha');
+  }
+
+  const resultado = await response.json();
+  return resultado.data;
+}
+
 /**
  * Listar professores de uma escola
- * 
+ *
  * @param filters Filtros opcionais
  */
 export async function listarProfessores(filters: {

@@ -20,6 +20,7 @@ import { MateriaCustomizacaoDAO } from "../repositories/materiacustomizacao.repo
 import { EscolaDAO } from "../repositories/escola.repository";
 import { GrupoEletivoDAO } from "../repositories/grupoeletivo.repository";
 import { validarCoordenacaoOuDirecaoAtiva } from "../utils/validarPermissaoGestaoEscola";
+import { redefinirSenhaEEnviar, ResultadoRedefinicaoSenha } from "../utils/redefinirSenhaUsuario";
 
 /**
  * DTOs para transferência de dados
@@ -1267,6 +1268,27 @@ export default class ProfessorService {
       erros,
       resultados
     };
+  }
+
+  /**
+   * "Redefinir senha" da Gestão de Professores — Coordenação/Direção gera
+   * uma senha nova pro professor e ela é mandada por WhatsApp/email; quem
+   * disparou a ação NUNCA vê a senha gerada (ver redefinirSenhaUsuario.ts).
+   */
+  async redefinirSenha(
+    usuarioGUID: string,
+    escolaGUID: string,
+    nomeEscola: string,
+    usuarioLogadoGUID: string
+  ): Promise<ResultadoRedefinicaoSenha> {
+    await this.validarPermissaoEscrita(usuarioLogadoGUID, escolaGUID);
+
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario) {
+      throw new ErrorResponse(404, "Professor não encontrado");
+    }
+
+    return redefinirSenhaEEnviar(this.#usuarioDAO, usuario, nomeEscola);
   }
 
   /**

@@ -159,9 +159,51 @@ export default class ProfessorController {
   };
 
   /**
+   * POST /api/professor/:usuarioGUID/escolas/:escolaGUID/redefinir-senha
+   * Coordenação/Direção redefine a senha do professor — a senha gerada
+   * nunca volta na resposta, só se deu pra avisar por WhatsApp/email.
+   * Body: { EscolaNome }
+   */
+  redefinirSenha = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { usuarioGUID, escolaGUID } = req.params;
+      const { EscolaNome } = req.body;
+      const usuarioLogadoGUID = req.user?.UsuarioGUID;
+
+      if (!usuarioLogadoGUID) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
+      }
+
+      const resultado = await this.#professorService.redefinirSenha(
+        usuarioGUID,
+        escolaGUID,
+        EscolaNome || "",
+        usuarioLogadoGUID
+      );
+
+      res.status(200).json({ success: true, data: resultado });
+    } catch (error) {
+      if (error instanceof ErrorResponse) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error("Erro ao redefinir senha do professor:", error);
+        res.status(500).json({
+          success: false,
+          message: "Erro interno ao redefinir senha",
+        });
+      }
+    }
+  };
+
+  /**
    * POST /api/professor/alocacao
    * Criar alocação (vincular professor a matéria+turma) - individual ou em massa
-   * 
+   *
    * Body (Individual): { alocacao: { MateriaGUID, TurmaGUID, UsuarioGUID, AlocacaoStatus? } }
    * Body (Massa): { alocacoes: [...], EscolaGUID }
    */

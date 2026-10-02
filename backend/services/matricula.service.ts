@@ -14,6 +14,7 @@ import { TarefaAcademicaDAO } from "../repositories/tarefaacademica.repository";
 import { TarefaAcademicaMatriculaDAO } from "../repositories/tarefaacademica-matricula.repository";
 import TarefaAcademicaMatricula from "../entities/tarefaacademica-matricula.model";
 import TurmaGrupoWhatsappService from "./turmagrupowhatsapp.service";
+import { redefinirSenhaEEnviar, ResultadoRedefinicaoSenha } from "../utils/redefinirSenhaUsuario";
 
 /**
  * DTOs para transferência de dados
@@ -871,6 +872,27 @@ export default class MatriculaService {
       existente.DataFim = null;
       await this.#escolaxUsuarioxFuncaoDAO.update(existente);
     }
+  }
+
+  /**
+   * "Redefinir senha" da Gestão de Alunos — Coordenação/Direção gera uma
+   * senha nova pro aluno e ela é mandada por WhatsApp/email; quem disparou
+   * a ação NUNCA vê a senha gerada (ver redefinirSenhaUsuario.ts).
+   */
+  async redefinirSenhaAluno(
+    usuarioGUID: string,
+    escolaGUID: string,
+    nomeEscola: string,
+    usuarioLogadoGUID: string
+  ): Promise<ResultadoRedefinicaoSenha> {
+    await this.validarPermissaoEscrita(usuarioLogadoGUID, escolaGUID);
+
+    const usuario = await this.#usuarioDAO.findByGUID(usuarioGUID);
+    if (!usuario) {
+      throw new ErrorResponse(404, "Aluno não encontrado");
+    }
+
+    return redefinirSenhaEEnviar(this.#usuarioDAO, usuario, nomeEscola);
   }
 
   /**

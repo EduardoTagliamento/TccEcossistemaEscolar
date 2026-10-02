@@ -121,6 +121,16 @@ export function matriculaRouterFactory(): Router {
   );
 
   /**
+   * POST /api/matricula/alunos/:usuarioGUID/escolas/:escolaGUID/redefinir-senha
+   * Coordenação/Direção redefine a senha do aluno (manda por WhatsApp/email)
+   */
+  router.post(
+    "/alunos/:usuarioGUID/escolas/:escolaGUID/redefinir-senha",
+    AuthMiddleware.authenticate,
+    matriculaController.redefinirSenhaAluno
+  );
+
+  /**
    * GET /api/matricula/:guid
    * Buscar matrícula por GUID (RA customizado ou UUID)
    */

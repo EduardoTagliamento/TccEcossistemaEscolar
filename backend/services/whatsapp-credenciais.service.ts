@@ -32,6 +32,19 @@ function montarTextoNovoUsuario(dados: DadosWhatsappNovoUsuario): string {
   ].join("\n");
 }
 
+function montarTextoSenhaRedefinida(dados: DadosWhatsappNovoUsuario): string {
+  return [
+    `*Ecossistema Escolar — senha redefinida*`,
+    ``,
+    `Olá, ${dados.nomeUsuario}! A Coordenação/Direção de ${dados.nomeEscola} redefiniu sua senha de acesso.`,
+    ``,
+    `*Nova senha temporária:* ${dados.senhaTemporaria}`,
+    `Por segurança, altere essa senha assim que entrar (menu "Meu Perfil").`,
+    ``,
+    `Acessar: ${dados.linkLogin}`,
+  ].join("\n");
+}
+
 export class WhatsappCredenciaisService {
   static async enviarCredenciaisNovoUsuario(dados: DadosWhatsappNovoUsuario): Promise<void> {
     try {
@@ -59,6 +72,40 @@ export class WhatsappCredenciaisService {
         await getWhatsappFilaReenvioService().enfileirar(numero, montarTextoNovoUsuario(dados), "credenciais_novo_usuario", erro?.message ?? String(erro));
       } catch (erroFila: any) {
         console.error(`❌ [WhatsappCredenciaisService] Falha ao enfileirar credenciais de ${dados.nomeUsuario}:`, erroFila?.message ?? erroFila);
+      }
+    }
+  }
+
+  /**
+   * Mesmo mecanismo de `enviarCredenciaisNovoUsuario` (texto e tentativa de
+   * confirmação de entrega + fila de reenvio), mas pra quando a Coordenação/
+   * Direção redefine a senha de alguém que já tinha conta — copy diferente
+   * (não é "bem-vindo", é "sua senha foi trocada").
+   */
+  static async enviarSenhaRedefinida(dados: DadosWhatsappNovoUsuario): Promise<void> {
+    try {
+      const numeroTeste = process.env.TEST_WHATSAPP_TO;
+      const numero = numeroTeste ? paraFormatoEvolutionApi(numeroTeste) : paraFormatoEvolutionApi(dados.para);
+      const texto = montarTextoSenhaRedefinida(dados);
+
+      const resultado = await EvolutionApiService.getInstance().sendText(numero, texto);
+      if (resultado.entregue === false) {
+        console.error(
+          `⚠️ [WhatsappCredenciaisService] Senha redefinida NÃO confirmada como entregue para ${dados.nomeUsuario} ` +
+            `(id ${resultado.id}) mesmo após reenvio automático — enfileirando pra nova tentativa.`
+        );
+        await getWhatsappFilaReenvioService().enfileirar(numero, texto, "senha_redefinida", "Não confirmada como entregue após retry");
+      } else {
+        console.log(`✅ [WhatsappCredenciaisService] Senha redefinida enviada por WhatsApp para ${dados.nomeUsuario}`);
+      }
+    } catch (erro: any) {
+      console.error(`❌ [WhatsappCredenciaisService] Erro ao enviar senha redefinida para ${dados.nomeUsuario}:`, erro?.message ?? erro);
+      try {
+        const numeroTeste = process.env.TEST_WHATSAPP_TO;
+        const numero = numeroTeste ? paraFormatoEvolutionApi(numeroTeste) : paraFormatoEvolutionApi(dados.para);
+        await getWhatsappFilaReenvioService().enfileirar(numero, montarTextoSenhaRedefinida(dados), "senha_redefinida", erro?.message ?? String(erro));
+      } catch (erroFila: any) {
+        console.error(`❌ [WhatsappCredenciaisService] Falha ao enfileirar senha redefinida de ${dados.nomeUsuario}:`, erroFila?.message ?? erroFila);
       }
     }
   }

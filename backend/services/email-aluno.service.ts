@@ -101,6 +101,81 @@ export class EmailAlunoService {
   }
 
   /**
+   * Enviar email quando a Coordenação/Direção redefine a senha de alguém —
+   * mesmo template visual do "novo usuário", copy adaptada pra não parecer
+   * um cadastro novo.
+   */
+  static async enviarEmailSenhaRedefinida(dados: DadosEmailNovoAluno): Promise<void> {
+    try {
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .header { background-color: #4CAF50; color: white; padding: 30px 20px; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; }
+    .content { padding: 30px 20px; line-height: 1.6; color: #333; }
+    .credentials { background-color: #f9f9f9; border-left: 4px solid #4CAF50; padding: 20px; margin: 20px 0; border-radius: 4px; }
+    .credentials h3 { margin-top: 0; color: #4CAF50; }
+    .credentials p { margin: 10px 0; font-size: 16px; }
+    .credentials strong { color: #333; }
+    .button { display: inline-block; padding: 14px 28px; background-color: #4CAF50; color: white !important; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
+    .button:hover { background-color: #45a049; }
+    .warning { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px; }
+    .warning p { margin: 0; color: #856404; }
+    .footer { background-color: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔑 Sua senha foi redefinida</h1>
+    </div>
+    <div class="content">
+      <h2>Olá, ${dados.nomeAluno}!</h2>
+
+      <p>A Coordenação/Direção de <strong>${dados.nomeEscola}</strong> redefiniu sua senha de acesso.</p>
+
+      <div class="credentials">
+        <h3>📋 Sua nova senha temporária:</h3>
+        <p><strong>${dados.senhaTemporaria}</strong></p>
+      </div>
+
+      <div class="warning">
+        <p>⚠️ <strong>Importante:</strong> Por segurança, altere essa senha assim que entrar, pelo menu "Meu Perfil".</p>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${dados.linkLogin}" class="button">Fazer Login Agora</a>
+      </div>
+
+      <p style="margin-top: 30px;">Se você não esperava essa mudança, entre em contato com a secretaria da escola.</p>
+    </div>
+    <div class="footer">
+      <p>Este é um email automático, por favor não responda.</p>
+      <p>© ${new Date().getFullYear()} Ecossistema Escolar - Todos os direitos reservados</p>
+    </div>
+  </div>
+</body>
+</html>
+      `;
+
+      await resend.emails.send({
+        from: `Ecossistema Escolar <${process.env.EMAIL_FROM || 'noreply@baua.com.br'}>`,
+        to: dados.para,
+        subject: 'Sua senha foi redefinida - Ecossistema Escolar',
+        html
+      });
+
+      console.log(`✅ Email de senha redefinida enviado para ${dados.para}`);
+    } catch (erro: any) {
+      console.error(`❌ Erro ao enviar email de senha redefinida para ${dados.para}:`, erro.message);
+    }
+  }
+
+  /**
    * Enviar email para aluno já existente (nova matrícula)
    */
   static async enviarEmailAlunoExistente(dados: DadosEmailAlunoExistente): Promise<void> {

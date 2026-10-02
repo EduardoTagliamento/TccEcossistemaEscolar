@@ -394,6 +394,27 @@ export default function AlunosPage() {
       alert('Erro ao reativar matrícula: ' + erro.message);
     }
   };
+
+  const handleRedefinirSenha = async (aluno: AlunoAPI.Aluno) => {
+    if (!confirm(`Redefinir a senha de "${aluno.usuario.UsuarioNome}"? Uma nova senha temporária será gerada e enviada por WhatsApp/email — você não vai ver a senha.`)) {
+      return;
+    }
+
+    try {
+      const resultado = await AlunoAPI.redefinirSenhaAluno(aluno.usuario.UsuarioGUID, escolaGUID, escola?.EscolaNome || 'Escola');
+      const canais = [
+        resultado.enviadoPorWhatsapp && 'WhatsApp',
+        resultado.enviadoPorEmail && 'email',
+      ].filter(Boolean);
+      alert(
+        canais.length > 0
+          ? `Senha redefinida e enviada por ${canais.join(' e ')}.`
+          : 'Senha redefinida, mas não foi possível confirmar o envio por WhatsApp nem email — confira os dados de contato dessa pessoa.'
+      );
+    } catch (erro: any) {
+      alert('Erro ao redefinir senha: ' + erro.message);
+    }
+  };
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -475,6 +496,13 @@ export default function AlunosPage() {
               title="Editar"
             >
               <Icon name="edit" size={16} />
+            </button>
+            <button
+              onClick={() => handleRedefinirSenha(aluno)}
+              className={styles.botaoEditar}
+              title="Redefinir senha"
+            >
+              <Icon name="lock" size={16} />
             </button>
             {aluno.matricula.MatriculaStatus === 'Ativa' ? (
               <button

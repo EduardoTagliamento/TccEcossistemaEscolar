@@ -11,6 +11,7 @@ import {
   criarAlocacoesEmMassa,
   atualizarAlocacao,
   excluirAlocacao,
+  redefinirSenhaProfessor,
   ProfessorCreateDTO,
   AlocacaoCreateDTO,
   AlocacaoUpdateDTO,
@@ -96,6 +97,13 @@ export function useCriarAlocacoesEmMassa() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: professorKeys.all });
     },
+  });
+}
+
+export function useRedefinirSenhaProfessor() {
+  return useMutation({
+    mutationFn: ({ usuarioGUID, escolaGUID, escolaNome }: { usuarioGUID: string; escolaGUID: string; escolaNome: string }) =>
+      redefinirSenhaProfessor(usuarioGUID, escolaGUID, escolaNome),
   });
 }
 

@@ -464,3 +464,34 @@ export async function atualizarIdentificadorMatricula(
 
   return data.data;
 }
+
+export interface ResultadoRedefinicaoSenha {
+  enviadoPorWhatsapp: boolean;
+  enviadoPorEmail: boolean;
+}
+
+/**
+ * Redefinir a senha de um aluno (Coordenação/Direção) — a senha gerada
+ * nunca volta na resposta, só se deu pra avisar por WhatsApp e/ou email.
+ */
+export async function redefinirSenhaAluno(
+  usuarioGUID: string,
+  escolaGUID: string,
+  escolaNome: string
+): Promise<ResultadoRedefinicaoSenha> {
+  const response = await fetch(`${API_URL}/matricula/alunos/${usuarioGUID}/escolas/${escolaGUID}/redefinir-senha`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getAuthToken()}`
+    },
+    body: JSON.stringify({ EscolaNome: escolaNome })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || 'Erro ao redefinir senha');
+  }
+
+  return data.data;
+}
