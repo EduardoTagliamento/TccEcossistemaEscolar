@@ -43,4 +43,14 @@ export default class SubMateriaGlobal {
     }
     this.#Nome = value.trim();
   }
+
+  // Sem isso, res.json() serializa a instância como {} (private fields não
+  // são own-enumerable pro JSON.stringify padrão).
+  toJSON() {
+    return {
+      SubMateriaGlobalGUID: this.SubMateriaGlobalGUID,
+      MateriaGlobalGUID: this.MateriaGlobalGUID,
+      Nome: this.Nome,
+    };
+  }
 }

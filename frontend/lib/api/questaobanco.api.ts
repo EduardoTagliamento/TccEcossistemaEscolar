@@ -16,11 +16,18 @@ function getHeaders(): HeadersInit {
 
 export type QuestaoBancoDificuldade = 'Facil' | 'Media' | 'Dificil';
 
+export interface AnexoQuestaoBanco {
+  AnexoGUID: string;
+  AnexoCaminho: string;
+  AnexoNomeOriginal: string | null;
+}
+
 export interface AlternativaQuestaoBanco {
   AlternativaGUID: string;
   AlternativaTexto: string;
   AlternativaCorreta: boolean;
   AlternativaOrdem: number;
+  Anexos: AnexoQuestaoBanco[];
 }
 
 export interface QuestaoBanco {
@@ -32,6 +39,7 @@ export interface QuestaoBanco {
   Enunciado: string;
   VideoResolucaoUrl: string | null;
   Alternativas: AlternativaQuestaoBanco[];
+  Anexos: AnexoQuestaoBanco[];
   CreatedAt: string | null;
 }
 

@@ -1,6 +1,9 @@
 /**
- * API Client de administração da taxonomia global (spec item 17) — todas
- * as rotas atrás de `plataformaAdminGuard` no backend.
+ * API Client da taxonomia global (spec item 17). Leitura (listar
+ * matéria/submatéria confirmadas) é aberta a qualquer usuário autenticado —
+ * usada tanto pela tela de admin quanto pelo Banco de Questões do aluno.
+ * Escrita (resolver pendência, criar submatéria) continua só admin de
+ * plataforma, igual antes.
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';

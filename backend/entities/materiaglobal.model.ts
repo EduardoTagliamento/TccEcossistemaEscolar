@@ -57,4 +57,15 @@ export default class MateriaGlobal {
   set CreatedAt(value: Date | null) {
     this.#CreatedAt = value ?? null;
   }
+
+  // Sem isso, res.json() serializa a instância como {} — os campos são
+  // private fields (#x), não ficam own-enumerable pro JSON.stringify padrão.
+  toJSON() {
+    return {
+      MateriaGlobalGUID: this.MateriaGlobalGUID,
+      Nome: this.Nome,
+      Status: this.Status,
+      CreatedAt: this.CreatedAt,
+    };
+  }
 }

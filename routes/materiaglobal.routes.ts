@@ -9,12 +9,25 @@ const controller = new MateriaGlobalController();
 export const materiaGlobalRouterFactory = () => {
   const router = Router();
 
-  router.use(AuthMiddleware.authenticate, plataformaAdminGuard);
+  router.use(AuthMiddleware.authenticate);
 
-  router.get("/", controller.index);
-  router.post("/:guid/resolver-pendente", escritaSensivelRateLimitMiddleware, controller.resolverPendente);
+  // Leitura (listar matéria/submatéria confirmadas) — qualquer usuário
+  // autenticado pode ver, não só admin de plataforma. É a taxonomia que
+  // alimenta os dropdowns do Banco de Questões do aluno (matéria ->
+  // submatéria). O filtro ?Status=Pendente (fila de curadoria do admin)
+  // continua restrito abaixo.
+  router.get("/", (req, res, next) => {
+    if (req.query.Status === "Pendente") {
+      plataformaAdminGuard(req, res, next);
+      return;
+    }
+    next();
+  }, controller.index);
   router.get("/:guid/submateria", controller.listarSubMaterias);
-  router.post("/:guid/submateria", escritaSensivelRateLimitMiddleware, controller.criarSubMateria);
+
+  // Escrita (resolver pendência, criar submatéria) — continua só admin.
+  router.post("/:guid/resolver-pendente", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, controller.resolverPendente);
+  router.post("/:guid/submateria", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, controller.criarSubMateria);
 
   return router;
 };

@@ -148,4 +148,20 @@ export default class Anexo {
 
     this.#CreatedAt = value;
   }
+
+  // Sem isso, res.json() serializa a instância como {} (private fields não
+  // são own-enumerable pro JSON.stringify padrão) — qualquer endpoint que
+  // devolva um Anexo "cru" (não remapeado manualmente pro service, como
+  // alguns já fazem) ficava quebrado silenciosamente.
+  toJSON() {
+    return {
+      AnexoGUID: this.AnexoGUID,
+      UsuarioGUID: this.UsuarioGUID,
+      EscolaGUID: this.EscolaGUID,
+      AnexoCaminho: this.AnexoCaminho,
+      AnexoNomeOriginal: this.AnexoNomeOriginal,
+      AnexoTamanho: this.AnexoTamanho,
+      CreatedAt: this.CreatedAt,
+    };
+  }
 }
