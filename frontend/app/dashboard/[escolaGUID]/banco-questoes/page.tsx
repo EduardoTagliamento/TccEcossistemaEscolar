@@ -16,6 +16,22 @@ function embaralhar<T>(lista: T[]): T[] {
   return copia;
 }
 
+/**
+ * Parser mínimo pro Enunciado: `\n\n` separa parágrafos, `**texto**` vira
+ * negrito. Suficiente pro caso real (referência bibliográfica em negrito
+ * numa linha própria) sem puxar uma lib de markdown inteira.
+ */
+function renderEnunciado(texto: string) {
+  return texto.split(/\n\n+/).map((paragrafo, i) => {
+    const partes = paragrafo.split(/\*\*(.+?)\*\*/g);
+    return (
+      <p key={i} className={styles.enunciadoParagrafo}>
+        {partes.map((parte, j) => (j % 2 === 1 ? <strong key={j}>{parte}</strong> : parte))}
+      </p>
+    );
+  });
+}
+
 type Etapa = 'selecao' | 'praticando' | 'resumo';
 
 export default function BancoQuestoesPage() {
@@ -176,7 +192,7 @@ export default function BancoQuestoesPage() {
             <span className={styles.badgeDificuldade}>{questaoAtual.Dificuldade}</span>
           </div>
 
-          <p className={styles.enunciado}>{questaoAtual.Enunciado}</p>
+          <div className={styles.enunciado}>{renderEnunciado(questaoAtual.Enunciado)}</div>
 
           {questaoAtual.Anexos.length > 0 && (
             <div className={styles.anexos}>

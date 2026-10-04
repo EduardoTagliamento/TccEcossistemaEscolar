@@ -78,7 +78,8 @@ type IconName =
   | 'user'
   | 'shield'
   | 'clock'
-  | 'code';
+  | 'code'
+  | 'award';
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const common: React.SVGProps<SVGSVGElement> = {
@@ -221,6 +222,13 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
         <svg {...common} aria-hidden="true">
           <polyline points="16 18 22 12 16 6" />
           <polyline points="8 6 2 12 8 18" />
+        </svg>
+      );
+    case 'award':
+      return (
+        <svg {...common} aria-hidden="true">
+          <circle cx="12" cy="8" r="7" />
+          <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
         </svg>
       );
     default:
