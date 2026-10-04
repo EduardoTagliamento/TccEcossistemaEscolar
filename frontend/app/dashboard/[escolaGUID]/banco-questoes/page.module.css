@@ -179,6 +179,15 @@
   margin-bottom: 0;
 }
 
+/* Hoje só marca referência bibliográfica (ex.: "BLUM, C. T. ...") — estilo
+   discreto em vez de negrito de verdade, pra não chamar mais atenção que o
+   próprio enunciado. */
+.enunciadoParagrafo strong {
+  font-weight: 400;
+  font-size: 0.9em;
+  color: var(--slate-500);
+}
+
 .anexos {
   width: 100%;
   display: flex;
