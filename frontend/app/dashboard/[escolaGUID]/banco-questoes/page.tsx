@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
 import * as MateriaGlobalAPI from '@/lib/api/materiaglobal.api';
@@ -16,20 +16,45 @@ function embaralhar<T>(lista: T[]): T[] {
   return copia;
 }
 
+const TOKEN_REGEX = /\*\*(.+?)\*\*|!\[([^\]]*)\]\(([^)]+)\)/g;
+
+/** `**texto**` -> negrito; `![alt](url)` -> imagem inline (fórmula recortada
+ * que o extrator de PDF não reconstrói como texto — ver coordenação com a
+ * sessão de extração). Tamanho controlado via CSS (.enunciadoImagemInline),
+ * não por hint na URL/alt — mantém o parser genérico pra qualquer imagem. */
+function renderInlineTokens(texto: string, keyPrefix: string): ReactNode[] {
+  const partes: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let idx = 0;
+  while ((match = TOKEN_REGEX.exec(texto)) !== null) {
+    if (match.index > lastIndex) partes.push(texto.slice(lastIndex, match.index));
+    if (match[1] !== undefined) {
+      partes.push(<strong key={`${keyPrefix}-${idx++}`}>{match[1]}</strong>);
+    } else {
+      partes.push(
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={`${keyPrefix}-${idx++}`} src={match[3]} alt={match[2]} className={styles.enunciadoImagemInline} />
+      );
+    }
+    lastIndex = TOKEN_REGEX.lastIndex;
+  }
+  if (lastIndex < texto.length) partes.push(texto.slice(lastIndex));
+  return partes;
+}
+
 /**
  * Parser mínimo pro Enunciado: `\n\n` separa parágrafos, `**texto**` vira
- * negrito. Suficiente pro caso real (referência bibliográfica em negrito
- * numa linha própria) sem puxar uma lib de markdown inteira.
+ * negrito, `![alt](url)` vira imagem inline. Suficiente pro caso real
+ * (referência bibliográfica em negrito, fórmula recortada como imagem) sem
+ * puxar uma lib de markdown inteira.
  */
 function renderEnunciado(texto: string) {
-  return texto.split(/\n\n+/).map((paragrafo, i) => {
-    const partes = paragrafo.split(/\*\*(.+?)\*\*/g);
-    return (
-      <p key={i} className={styles.enunciadoParagrafo}>
-        {partes.map((parte, j) => (j % 2 === 1 ? <strong key={j}>{parte}</strong> : parte))}
-      </p>
-    );
-  });
+  return texto.split(/\n\n+/).map((paragrafo, i) => (
+    <p key={i} className={styles.enunciadoParagrafo}>
+      {renderInlineTokens(paragrafo, `p${i}`)}
+    </p>
+  ));
 }
 
 type Etapa = 'selecao' | 'praticando' | 'resumo';

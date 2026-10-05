@@ -188,6 +188,16 @@
   color: var(--slate-500);
 }
 
+/* Fórmula recortada (matemática/química) que o extrator de PDF não
+   reconstrói como texto, embutida via ![alt](url) no meio do Enunciado —
+   tamanho de ~1 linha de texto, nunca uma foto grande de página. */
+.enunciadoImagemInline {
+  display: inline;
+  height: 1.4em;
+  width: auto;
+  vertical-align: middle;
+}
+
 .anexos {
   width: 100%;
   display: flex;
