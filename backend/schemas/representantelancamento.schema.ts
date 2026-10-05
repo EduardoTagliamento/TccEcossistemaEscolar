@@ -22,7 +22,7 @@ export const CriarProvaRepresentanteBodySchema = z.object({
   ProvaTitulo: z.string({ message: "Informe o título" }).min(1).max(128),
   ProvaData: z.string({ message: "Informe a data" }),
   ProvaDescricao: z.string().max(1024).optional(),
-  MaterialDidaticoCapituloGUID: z.string().regex(GUID_REGEX, "Capítulo inválido").optional(),
+  CapitulosGUIDs: z.array(z.string().regex(GUID_REGEX, "Capítulo inválido")).optional(),
   ...modoAgendamentoCampos,
 });
 

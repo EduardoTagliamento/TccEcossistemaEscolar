@@ -16,7 +16,7 @@ interface ProvaAgendadaRecomendacaoRow extends RowDataPacket {
   ModeloUsado: string | null;
   StatusGeracao: ProvaAgendadaRecomendacaoStatus;
   ErroGeracao: string | null;
-  PaginaLivroJson: RecomendacaoPaginaLivro | string | null;
+  PaginaLivroJson: RecomendacaoPaginaLivro[] | string | null;
   SubMateriaGlobalGUID: string | null;
   GeradoEm: Date;
   UpdatedAt: Date;
@@ -61,7 +61,7 @@ export class ProvaAgendadaRecomendacaoDAO {
       recomendacao.ModeloUsado,
       recomendacao.StatusGeracao,
       recomendacao.ErroGeracao,
-      recomendacao.PaginaLivroJson ? JSON.stringify(recomendacao.PaginaLivroJson) : null,
+      recomendacao.PaginaLivroJson.length > 0 ? JSON.stringify(recomendacao.PaginaLivroJson) : null,
       recomendacao.SubMateriaGlobalGUID,
     ];
 
@@ -89,7 +89,15 @@ export class ProvaAgendadaRecomendacaoDAO {
     recomendacao.ModeloUsado = row.ModeloUsado;
     recomendacao.StatusGeracao = row.StatusGeracao;
     recomendacao.ErroGeracao = row.ErroGeracao;
-    recomendacao.PaginaLivroJson = this.parseJsonColuna<RecomendacaoPaginaLivro>(row.PaginaLivroJson);
+    // Dado legado (antes da prova suportar N capítulos) guardava um objeto
+    // único em vez de array — normaliza pra não quebrar leitura de cache
+    // antigo ainda não regenerado.
+    const paginaLivroParseada = this.parseJsonColuna<RecomendacaoPaginaLivro[] | RecomendacaoPaginaLivro>(row.PaginaLivroJson);
+    recomendacao.PaginaLivroJson = Array.isArray(paginaLivroParseada)
+      ? paginaLivroParseada
+      : paginaLivroParseada
+        ? [paginaLivroParseada]
+        : [];
     recomendacao.SubMateriaGlobalGUID = row.SubMateriaGlobalGUID;
     recomendacao.GeradoEm = row.GeradoEm ? new Date(row.GeradoEm) : null;
     recomendacao.UpdatedAt = row.UpdatedAt ? new Date(row.UpdatedAt) : null;

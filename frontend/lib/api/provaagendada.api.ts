@@ -168,7 +168,7 @@ export interface RecomendacaoEstudo {
   Videos: RecomendacaoVideo[];
   Resumo: string | null;
   FontesUsadas: RecomendacaoFonte[];
-  PaginaLivro: RecomendacaoPaginaLivro | null;
+  PaginasLivro: RecomendacaoPaginaLivro[];
   SubMateriaGlobalGUID: string | null;
   StatusGeracao: 'Pendente' | 'Concluida' | 'Falhou';
   GeradoEm: string | null;

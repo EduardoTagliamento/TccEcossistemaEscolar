@@ -54,7 +54,7 @@ export default class ProvaAgendadaControl {
         DatasPorTurma: datasPorTurma,
         CategoriasPorTurma: prova.CategoriasPorTurma,
         AssuntoGUIDs: prova.AssuntoGUIDs,
-        MaterialDidaticoCapituloGUID: prova.MaterialDidaticoCapituloGUID,
+        CapitulosGUIDs: prova.CapitulosGUIDs,
       };
 
       const provaCriada = await this.#provaService.criarProva(createData, usuarioGUID);
@@ -197,7 +197,7 @@ export default class ProvaAgendadaControl {
         ProvaDescricao: prova.ProvaDescricao,
         ProvaStatus: prova.ProvaStatus,
         AssuntoGUIDs: prova.AssuntoGUIDs,
-        MaterialDidaticoCapituloGUID: prova.MaterialDidaticoCapituloGUID,
+        CapitulosGUIDs: prova.CapitulosGUIDs,
       };
 
       const provaAtualizada = await this.#provaService.atualizarProva(

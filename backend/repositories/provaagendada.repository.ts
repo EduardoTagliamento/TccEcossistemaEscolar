@@ -9,7 +9,6 @@ interface ProvaAgendadaRow extends RowDataPacket {
   ProvaData: Date;
   ProvaDescricao: string | null;
   ProvaStatus: "Agendada" | "Realizada" | "Cancelada";
-  MaterialDidaticoCapituloGUID: string | null;
   CriadoPorRepresentanteUsuarioGUID: string | null;
   ProvaModoAutomatico: number | boolean;
   ProvaSemanaBase: string | null;
@@ -63,9 +62,9 @@ export class ProvaAgendadaDAO {
 
     const SQL = `
       INSERT INTO provaagendada
-      (ProvaAgendadaGUID, MateriaGUID, ProvaTitulo, ProvaData, ProvaDescricao, ProvaStatus, MaterialDidaticoCapituloGUID,
+      (ProvaAgendadaGUID, MateriaGUID, ProvaTitulo, ProvaData, ProvaDescricao, ProvaStatus,
        CriadoPorRepresentanteUsuarioGUID, ProvaModoAutomatico, ProvaSemanaBase, ProvaDiaSemana)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     `;
     const params = [
       prova.ProvaAgendadaGUID,
@@ -74,7 +73,6 @@ export class ProvaAgendadaDAO {
       prova.ProvaData,
       prova.ProvaDescricao,
       prova.ProvaStatus,
-      prova.MaterialDidaticoCapituloGUID,
       prova.CriadoPorRepresentanteUsuarioGUID,
       prova.ProvaModoAutomatico,
       prova.ProvaSemanaBase,
@@ -84,7 +82,57 @@ export class ProvaAgendadaDAO {
     const pool = await this.#database.getPool();
     await pool.execute(SQL, params);
 
+    if (prova.CapitulosGUIDs.length > 0) {
+      await this.substituirCapitulos(prova.ProvaAgendadaGUID, prova.CapitulosGUIDs);
+    }
+
     return prova;
+  };
+
+  /**
+   * Substitui todos os capítulos vinculados a uma prova (apaga e recria) —
+   * mais simples que diff, e o volume por prova é baixo (poucos capítulos).
+   */
+  substituirCapitulos = async (ProvaAgendadaGUID: string, capitulosGUIDs: string[]): Promise<void> => {
+    console.log("🟢 ProvaAgendadaDAO.substituirCapitulos()");
+
+    const pool = await this.#database.getPool();
+    await pool.execute("DELETE FROM provaagendadacapitulo WHERE ProvaAgendadaGUID = ?;", [ProvaAgendadaGUID]);
+
+    for (const capituloGUID of capitulosGUIDs) {
+      await pool.execute(
+        `INSERT INTO provaagendadacapitulo (ProvaAgendadaCapituloGUID, ProvaAgendadaGUID, MaterialDidaticoCapituloGUID)
+         VALUES (UUID(), ?, ?);`,
+        [ProvaAgendadaGUID, capituloGUID]
+      );
+    }
+  };
+
+  buscarCapitulos = async (ProvaAgendadaGUID: string): Promise<string[]> => {
+    console.log("🟢 ProvaAgendadaDAO.buscarCapitulos()");
+
+    const SQL = "SELECT MaterialDidaticoCapituloGUID FROM provaagendadacapitulo WHERE ProvaAgendadaGUID = ?;";
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(SQL, [ProvaAgendadaGUID]);
+    return rows.map((r) => r.MaterialDidaticoCapituloGUID as string);
+  };
+
+  /** Bulk pra evitar N+1 em findAll — mapa ProvaAgendadaGUID -> MaterialDidaticoCapituloGUID[]. */
+  private buscarCapitulosEmLote = async (provaGUIDs: string[]): Promise<Map<string, string[]>> => {
+    const mapa = new Map<string, string[]>();
+    if (provaGUIDs.length === 0) return mapa;
+
+    const placeholders = provaGUIDs.map(() => "?").join(", ");
+    const SQL = `SELECT ProvaAgendadaGUID, MaterialDidaticoCapituloGUID FROM provaagendadacapitulo WHERE ProvaAgendadaGUID IN (${placeholders});`;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(SQL, provaGUIDs);
+
+    for (const row of rows) {
+      const lista = mapa.get(row.ProvaAgendadaGUID) || [];
+      lista.push(row.MaterialDidaticoCapituloGUID);
+      mapa.set(row.ProvaAgendadaGUID, lista);
+    }
+    return mapa;
   };
 
   findAll = async (filters?: ProvaAgendadaFilters): Promise<ProvaAgendada[]> => {
@@ -128,7 +176,8 @@ export class ProvaAgendadaDAO {
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute<ProvaAgendadaRow[]>(SQL, params);
 
-    return rows.map((row) => this.mapRowToProva(row));
+    const capitulosPorProva = await this.buscarCapitulosEmLote(rows.map((r) => r.ProvaAgendadaGUID));
+    return rows.map((row) => this.mapRowToProva(row, capitulosPorProva.get(row.ProvaAgendadaGUID) || []));
   };
 
   /**
@@ -168,14 +217,15 @@ export class ProvaAgendadaDAO {
       return null;
     }
 
-    return this.mapRowToProva(rows[0]);
+    const capitulos = await this.buscarCapitulos(rows[0].ProvaAgendadaGUID);
+    return this.mapRowToProva(rows[0], capitulos);
   };
 
   update = async (
     ProvaAgendadaGUID: string,
-    updates: Partial<
-      Pick<ProvaAgendada, "ProvaTitulo" | "ProvaData" | "ProvaDescricao" | "ProvaStatus" | "MaterialDidaticoCapituloGUID">
-    >
+    updates: Partial<Pick<ProvaAgendada, "ProvaTitulo" | "ProvaData" | "ProvaDescricao" | "ProvaStatus">> & {
+      CapitulosGUIDs?: string[];
+    }
   ): Promise<ProvaAgendada | null> => {
     console.log("🟢 ProvaAgendadaDAO.update()");
 
@@ -202,25 +252,21 @@ export class ProvaAgendadaDAO {
       values.push(updates.ProvaStatus);
     }
 
-    if (updates.MaterialDidaticoCapituloGUID !== undefined) {
-      fields.push("MaterialDidaticoCapituloGUID = ?");
-      values.push(updates.MaterialDidaticoCapituloGUID);
-    }
-
-    if (fields.length === 0) {
-      return this.findById(ProvaAgendadaGUID);
-    }
-
-    values.push(ProvaAgendadaGUID);
-
-    const SQL = `
-      UPDATE provaagendada
-      SET ${fields.join(", ")}, UpdatedAt = CURRENT_TIMESTAMP
-      WHERE ProvaAgendadaGUID = ?;
-    `;
-
     const pool = await this.#database.getPool();
-    await pool.execute(SQL, values);
+
+    if (fields.length > 0) {
+      values.push(ProvaAgendadaGUID);
+      const SQL = `
+        UPDATE provaagendada
+        SET ${fields.join(", ")}, UpdatedAt = CURRENT_TIMESTAMP
+        WHERE ProvaAgendadaGUID = ?;
+      `;
+      await pool.execute(SQL, values);
+    }
+
+    if (updates.CapitulosGUIDs !== undefined) {
+      await this.substituirCapitulos(ProvaAgendadaGUID, updates.CapitulosGUIDs);
+    }
 
     return this.findById(ProvaAgendadaGUID);
   };
@@ -282,7 +328,7 @@ export class ProvaAgendadaDAO {
   /**
    * Mapeia uma linha do banco para uma instância de ProvaAgendada
    */
-  private mapRowToProva(row: ProvaAgendadaRow): ProvaAgendada {
+  private mapRowToProva(row: ProvaAgendadaRow, capitulosGUIDs: string[] = []): ProvaAgendada {
     const prova = new ProvaAgendada();
     prova.ProvaAgendadaGUID = row.ProvaAgendadaGUID;
     prova.MateriaGUID = row.MateriaGUID;
@@ -290,7 +336,7 @@ export class ProvaAgendadaDAO {
     prova.ProvaData = row.ProvaData;
     prova.ProvaDescricao = row.ProvaDescricao;
     prova.ProvaStatus = row.ProvaStatus;
-    prova.MaterialDidaticoCapituloGUID = row.MaterialDidaticoCapituloGUID;
+    prova.CapitulosGUIDs = capitulosGUIDs;
     prova.CriadoPorRepresentanteUsuarioGUID = row.CriadoPorRepresentanteUsuarioGUID;
     prova.ProvaModoAutomatico = !!row.ProvaModoAutomatico;
     prova.ProvaSemanaBase = row.ProvaSemanaBase;

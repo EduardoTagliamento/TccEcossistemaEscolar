@@ -38,7 +38,7 @@ export default class ProvaAgendadaRecomendacao {
   #ModeloUsado: string | null = null;
   #StatusGeracao: ProvaAgendadaRecomendacaoStatus = "Pendente";
   #ErroGeracao: string | null = null;
-  #PaginaLivroJson: RecomendacaoPaginaLivro | null = null;
+  #PaginaLivroJson: RecomendacaoPaginaLivro[] = [];
   #SubMateriaGlobalGUID: string | null = null;
   #GeradoEm: Date | null = null;
   #UpdatedAt: Date | null = null;
@@ -117,12 +117,12 @@ export default class ProvaAgendadaRecomendacao {
     this.#ErroGeracao = value ? value.slice(0, 500) : null;
   }
 
-  get PaginaLivroJson(): RecomendacaoPaginaLivro | null {
+  get PaginaLivroJson(): RecomendacaoPaginaLivro[] {
     return this.#PaginaLivroJson;
   }
 
-  set PaginaLivroJson(value: RecomendacaoPaginaLivro | null) {
-    this.#PaginaLivroJson = value ?? null;
+  set PaginaLivroJson(value: RecomendacaoPaginaLivro[] | null) {
+    this.#PaginaLivroJson = value ?? [];
   }
 
   get SubMateriaGlobalGUID(): string | null {

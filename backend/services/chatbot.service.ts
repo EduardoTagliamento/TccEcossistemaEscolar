@@ -1293,8 +1293,8 @@ export default class ChatbotService {
           status: "pronta",
           resumo: rec.Resumo ?? undefined,
           videos: rec.Videos.map((v) => ({ titulo: v.titulo, canal: v.canal, url: v.url })),
-          paginaLivro: rec.PaginaLivro
-            ? `${rec.PaginaLivro.materialDidaticoTitulo} — ${rec.PaginaLivro.capituloTitulo}, p. ${rec.PaginaLivro.paginaInicio}–${rec.PaginaLivro.paginaFim}`
+          paginasLivro: rec.PaginasLivro.length > 0
+            ? rec.PaginasLivro.map((p) => `${p.materialDidaticoTitulo} — ${p.capituloTitulo}, p. ${p.paginaInicio}–${p.paginaFim}`)
             : undefined,
           temExerciciosParaPraticar: !!rec.SubMateriaGlobalGUID,
         };

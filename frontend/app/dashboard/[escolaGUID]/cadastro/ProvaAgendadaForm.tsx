@@ -29,7 +29,7 @@ interface Prova {
   ProvaStatus: 'Agendada' | 'Realizada' | 'Cancelada';
   TurmasAtribuidas: string[];
   AssuntoGUIDs?: string[];
-  MaterialDidaticoCapituloGUID?: string | null;
+  CapitulosGUIDs?: string[];
 }
 
 interface ResultadoCalculoUI extends GradeHorariaAPI.ResultadoCalculo {
@@ -112,16 +112,17 @@ export default function ProvaAgendadaForm({
   const [livrosDisponiveis, setLivrosDisponiveis] = useState<MaterialDidaticoAPI.MaterialDidatico[]>([]);
   const [livroEscolhidoGUID, setLivroEscolhidoGUID] = useState('');
   const [capitulosDoLivro, setCapitulosDoLivro] = useState<MaterialDidaticoAPI.MaterialDidaticoCapitulo[]>([]);
-  const [capituloEscolhidoGUID, setCapituloEscolhidoGUID] = useState('');
+  const [capitulosEscolhidosGUIDs, setCapitulosEscolhidosGUIDs] = useState<string[]>([]);
   // Só entra no payload de UPDATE se o professor mexeu nesta sessão — sem
   // isso, editar a prova por outro motivo (ex.: só a data) apagaria
-  // silenciosamente uma referência de capítulo já existente.
+  // silenciosamente referências de capítulo já existentes.
   const [capituloTocado, setCapituloTocado] = useState(false);
-  // GUID do capítulo já salvo na prova sendo editada, aguardando descobrir a
-  // qual livro ele pertence (a prova só guarda o GUID do capítulo, não do
-  // livro — ver useEffect de resolução abaixo). Null quando não há edição em
-  // andamento ou a prova editada não tem capítulo referenciado.
-  const [capituloAlvoResolvendo, setCapituloAlvoResolvendo] = useState<string | null>(null);
+  // GUIDs dos capítulos já salvos na prova sendo editada, aguardando
+  // descobrir a qual livro pertencem (a prova só guarda o GUID do capítulo,
+  // não do livro — ver useEffect de resolução abaixo). Assume que todos
+  // pertencem ao mesmo livro (uso real de hoje); null quando não há edição
+  // em andamento ou a prova editada não tem capítulo referenciado.
+  const [capitulosAlvoResolvendo, setCapitulosAlvoResolvendo] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingGUID, setEditingGUID] = useState<string | null>(null);
@@ -373,20 +374,21 @@ export default function ProvaAgendadaForm({
   // capituloTocado — isso é dado existente sendo exibido, não uma mudança do
   // professor nesta sessão.
   useEffect(() => {
-    if (!capituloAlvoResolvendo || livrosDisponiveis.length === 0 || !form.MateriaGUID) return;
+    if (!capitulosAlvoResolvendo || livrosDisponiveis.length === 0 || !form.MateriaGUID) return;
 
     let cancelado = false;
-    const alvo = capituloAlvoResolvendo;
+    const alvos = capitulosAlvoResolvendo;
 
     (async () => {
       for (const livro of livrosDisponiveis) {
         try {
           const capitulos = await MaterialDidaticoAPI.listarCapitulosPorMateria(livro.MaterialDidaticoGUID, form.MateriaGUID);
           if (cancelado) return;
-          if (capitulos.some((c) => c.MaterialDidaticoCapituloGUID === alvo)) {
+          const encontrados = capitulos.filter((c) => alvos.includes(c.MaterialDidaticoCapituloGUID));
+          if (encontrados.length > 0) {
             setLivroEscolhidoGUID(livro.MaterialDidaticoGUID);
-            setCapituloEscolhidoGUID(alvo);
-            setCapituloAlvoResolvendo(null);
+            setCapitulosEscolhidosGUIDs(encontrados.map((c) => c.MaterialDidaticoCapituloGUID));
+            setCapitulosAlvoResolvendo(null);
             return;
           }
         } catch {
@@ -394,13 +396,13 @@ export default function ProvaAgendadaForm({
           // não é crítico, só o preenchimento automático do formulário.
         }
       }
-      if (!cancelado) setCapituloAlvoResolvendo(null);
+      if (!cancelado) setCapitulosAlvoResolvendo(null);
     })();
 
     return () => {
       cancelado = true;
     };
-  }, [capituloAlvoResolvendo, livrosDisponiveis, form.MateriaGUID]);
+  }, [capitulosAlvoResolvendo, livrosDisponiveis, form.MateriaGUID]);
 
   // Lista de Assunto pra travamento manual (spec item 3) — opcional; sem
   // nenhum assunto cadastrado pra matéria, o bloco simplesmente não aparece
@@ -618,7 +620,7 @@ export default function ProvaAgendadaForm({
     setAssuntoGUIDsSelecionados([]);
     setNovoAssuntoNome('');
     setLivroEscolhidoGUID('');
-    setCapituloEscolhidoGUID('');
+    setCapitulosEscolhidosGUIDs([]);
     setCapitulosDoLivro([]);
     setCapituloTocado(false);
   };
@@ -644,7 +646,7 @@ export default function ProvaAgendadaForm({
             ProvaDescricao: form.ProvaDescricao || undefined,
             ProvaStatus: form.ProvaStatus,
             AssuntoGUIDs: assuntoGUIDsSelecionados,
-            ...(capituloTocado ? { MaterialDidaticoCapituloGUID: capituloEscolhidoGUID || null } : {}),
+            ...(capituloTocado ? { CapitulosGUIDs: capitulosEscolhidosGUIDs } : {}),
           },
         };
 
@@ -720,7 +722,7 @@ export default function ProvaAgendadaForm({
           DatasPorTurma: datasPorTurma,
           CategoriasPorTurma: categoriasPorTurma,
           AssuntoGUIDs: assuntoGUIDsSelecionados.length > 0 ? assuntoGUIDsSelecionados : undefined,
-          MaterialDidaticoCapituloGUID: capituloEscolhidoGUID || undefined,
+          CapitulosGUIDs: capitulosEscolhidosGUIDs.length > 0 ? capitulosEscolhidosGUIDs : undefined,
         },
       };
 
@@ -768,9 +770,9 @@ export default function ProvaAgendadaForm({
     // faria o PUT sobrescrever o capítulo desta prova com o de outra.
     setLivroEscolhidoGUID('');
     setCapitulosDoLivro([]);
-    setCapituloEscolhidoGUID('');
+    setCapitulosEscolhidosGUIDs([]);
     setCapituloTocado(false);
-    setCapituloAlvoResolvendo(prova.MaterialDidaticoCapituloGUID || null);
+    setCapitulosAlvoResolvendo(prova.CapitulosGUIDs && prova.CapitulosGUIDs.length > 0 ? prova.CapitulosGUIDs : null);
     // Scroll para o topo para visualizar o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -936,7 +938,7 @@ export default function ProvaAgendadaForm({
               value={livroEscolhidoGUID}
               onChange={(e) => {
                 setLivroEscolhidoGUID(e.target.value);
-                setCapituloEscolhidoGUID('');
+                setCapitulosEscolhidosGUIDs([]);
                 setCapituloTocado(true);
               }}
             >
@@ -948,21 +950,27 @@ export default function ProvaAgendadaForm({
               ))}
             </select>
 
-            {livroEscolhidoGUID && (
-              <select
-                value={capituloEscolhidoGUID}
-                onChange={(e) => {
-                  setCapituloEscolhidoGUID(e.target.value);
-                  setCapituloTocado(true);
-                }}
-              >
-                <option value="">Selecione o capítulo...</option>
+            {livroEscolhidoGUID && capitulosDoLivro.length > 0 && (
+              <div className={styles.assuntoLista}>
                 {capitulosDoLivro.map((capitulo) => (
-                  <option key={capitulo.MaterialDidaticoCapituloGUID} value={capitulo.MaterialDidaticoCapituloGUID}>
+                  <label key={capitulo.MaterialDidaticoCapituloGUID} className={styles.assuntoItem}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkbox}
+                      checked={capitulosEscolhidosGUIDs.includes(capitulo.MaterialDidaticoCapituloGUID)}
+                      onChange={(e) => {
+                        setCapitulosEscolhidosGUIDs((atual) =>
+                          e.target.checked
+                            ? [...atual, capitulo.MaterialDidaticoCapituloGUID]
+                            : atual.filter((g) => g !== capitulo.MaterialDidaticoCapituloGUID)
+                        );
+                        setCapituloTocado(true);
+                      }}
+                    />
                     {capitulo.Titulo} (p. {capitulo.PaginaInicio}–{capitulo.PaginaFim})
-                  </option>
+                  </label>
                 ))}
-              </select>
+              </div>
             )}
           </div>
         )}

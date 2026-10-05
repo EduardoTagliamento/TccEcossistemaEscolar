@@ -748,7 +748,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
             )}
 
             {recomendacao?.StatusGeracao === 'Concluida' &&
-              (recomendacao.Resumo || recomendacao.Videos.length > 0 || recomendacao.PaginaLivro || recomendacao.SubMateriaGlobalGUID) && (
+              (recomendacao.Resumo || recomendacao.Videos.length > 0 || recomendacao.PaginasLivro.length > 0 || recomendacao.SubMateriaGlobalGUID) && (
               <div className={styles.recomendacaoBloco}>
                 <h3 className={styles.recomendacaoTitulo}>
                   <Icon name="star" size={16} /> Recomendação de estudo
@@ -788,16 +788,18 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
                   </div>
                 )}
 
-                {recomendacao.PaginaLivro && (
+                {recomendacao.PaginasLivro.length > 0 && (
                   <div className={styles.recomendacaoCard}>
                     <h4 className={styles.recomendacaoCardTitulo}>
                       <Icon name="book-open" size={14} /> Página de livro
                     </h4>
-                    <p className={styles.recomendacaoResumoTexto}>
-                      {recomendacao.PaginaLivro.materialDidaticoTitulo} — {recomendacao.PaginaLivro.capituloTitulo}
-                      <br />
-                      Páginas {recomendacao.PaginaLivro.paginaInicio}–{recomendacao.PaginaLivro.paginaFim}
-                    </p>
+                    {recomendacao.PaginasLivro.map((pagina) => (
+                      <p key={pagina.capituloGUID} className={styles.recomendacaoResumoTexto}>
+                        {pagina.materialDidaticoTitulo} — {pagina.capituloTitulo}
+                        <br />
+                        Páginas {pagina.paginaInicio}–{pagina.paginaFim}
+                      </p>
+                    ))}
                   </div>
                 )}
 
@@ -824,7 +826,7 @@ export default function VisualizadorItemModal({ item, ehProfessor, escolaGUID, t
               (recomendacao?.StatusGeracao === 'Concluida' &&
                 !recomendacao.Resumo &&
                 recomendacao.Videos.length === 0 &&
-                !recomendacao.PaginaLivro &&
+                recomendacao.PaginasLivro.length === 0 &&
                 !recomendacao.SubMateriaGlobalGUID)) && (
               <p className={styles.hintFuturo}>
                 Não foi possível gerar recomendação de estudo para esta prova. Isso pode acontecer quando não há

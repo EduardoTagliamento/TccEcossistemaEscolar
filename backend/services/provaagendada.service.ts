@@ -56,8 +56,8 @@ export interface ProvaAgendadaDTO {
   DatasPorTurma: Record<string, string>;
   /** Assunto(s) travado(s) manualmente pelo professor (spec item 3) — vazio se a IA que classifica. */
   AssuntoGUIDs: string[];
-  /** Capítulo de MaterialDidatico referenciado (spec item 9) — null se nenhum. */
-  MaterialDidaticoCapituloGUID: string | null;
+  /** Capítulo(s) de MaterialDidatico referenciado(s) (spec item 9) — vazio se nenhum. */
+  CapitulosGUIDs: string[];
   CreatedAt: string | null;
   UpdatedAt: string | null;
 }
@@ -75,8 +75,8 @@ export interface ProvaAgendadaCreateDTO {
   CategoriasPorTurma?: Record<string, string>;
   /** Travamento manual do assunto (spec item 3) — opcional; sem isso, a IA classifica sozinha. */
   AssuntoGUIDs?: string[];
-  /** Capítulo de MaterialDidatico referenciado (spec item 9) — opcional. */
-  MaterialDidaticoCapituloGUID?: string | null;
+  /** Capítulo(s) de MaterialDidatico referenciado(s) (spec item 9) — opcional. */
+  CapitulosGUIDs?: string[];
   /**
    * Lançamento por Representante (ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md)
    * — quando presente, `usuarioGUID` passado a `criarProva` já é o do PROFESSOR
@@ -96,7 +96,7 @@ export interface ProvaAgendadaUpdateDTO {
   ProvaDescricao?: string;
   ProvaStatus?: "Agendada" | "Realizada" | "Cancelada";
   AssuntoGUIDs?: string[];
-  MaterialDidaticoCapituloGUID?: string | null;
+  CapitulosGUIDs?: string[];
 }
 
 /**
@@ -161,12 +161,15 @@ export default class ProvaAgendadaService {
   }
 
   /** Valida que o capítulo existe e pertence à MESMA matéria da prova (guardrail §7: nunca texto livre de página). */
-  #validarCapitulo = async (materiaGUID: string, materialDidaticoCapituloGUID: string): Promise<void> => {
-    const capitulo = await this.#materialDidaticoCapituloDAO.findById(materialDidaticoCapituloGUID);
-    if (!capitulo || capitulo.MateriaGUID !== materiaGUID) {
-      throw new ErrorResponse(400, "Capítulo inválido", {
-        message: "O capítulo de material didático informado não existe ou não pertence a esta matéria.",
-      });
+  /** Valida que cada capítulo existe e pertence à MESMA matéria da prova. */
+  #validarCapitulos = async (materiaGUID: string, capitulosGUIDs: string[]): Promise<void> => {
+    for (const materialDidaticoCapituloGUID of capitulosGUIDs) {
+      const capitulo = await this.#materialDidaticoCapituloDAO.findById(materialDidaticoCapituloGUID);
+      if (!capitulo || capitulo.MateriaGUID !== materiaGUID) {
+        throw new ErrorResponse(400, "Capítulo inválido", {
+          message: `O capítulo ${materialDidaticoCapituloGUID} não existe ou não pertence a esta matéria.`,
+        });
+      }
     }
   };
 
@@ -293,9 +296,9 @@ export default class ProvaAgendadaService {
       await this.#validarAssuntos(data.MateriaGUID, data.AssuntoGUIDs);
     }
 
-    // Validar capítulo de material didático referenciado (spec item 9), se fornecido
-    if (data.MaterialDidaticoCapituloGUID) {
-      await this.#validarCapitulo(data.MateriaGUID, data.MaterialDidaticoCapituloGUID);
+    // Validar capítulo(s) de material didático referenciado(s) (spec item 9), se fornecido(s)
+    if (data.CapitulosGUIDs && data.CapitulosGUIDs.length > 0) {
+      await this.#validarCapitulos(data.MateriaGUID, data.CapitulosGUIDs);
     }
 
     const agoraComTolerancia = new Date(Date.now() - DATA_VALIDACAO_TOLERANCIA_MS);
@@ -332,7 +335,7 @@ export default class ProvaAgendadaService {
     prova.ProvaData = dataProva;
     prova.ProvaDescricao = data.ProvaDescricao ? data.ProvaDescricao.trim() : null;
     prova.ProvaStatus = "Agendada";
-    prova.MaterialDidaticoCapituloGUID = data.MaterialDidaticoCapituloGUID ?? null;
+    prova.CapitulosGUIDs = data.CapitulosGUIDs ?? [];
     prova.CriadoPorRepresentanteUsuarioGUID = data.CriadoPorRepresentanteUsuarioGUID ?? null;
     prova.ProvaModoAutomatico = !!data.ModoAutomatico;
     prova.ProvaSemanaBase = data.ModoAutomatico ? data.SemanaBase ?? null : null;
@@ -530,9 +533,9 @@ export default class ProvaAgendadaService {
 
     await this.#validarProfessorResponsavel(prova.MateriaGUID, usuarioGUID);
 
-    const updates: Partial<
-      Pick<ProvaAgendada, "ProvaTitulo" | "ProvaData" | "ProvaDescricao" | "ProvaStatus" | "MaterialDidaticoCapituloGUID">
-    > = {};
+    const updates: Partial<Pick<ProvaAgendada, "ProvaTitulo" | "ProvaData" | "ProvaDescricao" | "ProvaStatus">> & {
+      CapitulosGUIDs?: string[];
+    } = {};
 
     if (data.ProvaTitulo !== undefined) updates.ProvaTitulo = data.ProvaTitulo.trim();
 
@@ -548,18 +551,21 @@ export default class ProvaAgendadaService {
     }
     if (data.ProvaDescricao !== undefined) updates.ProvaDescricao = data.ProvaDescricao?.trim() ?? null;
     if (data.ProvaStatus !== undefined) updates.ProvaStatus = data.ProvaStatus;
-    if (data.MaterialDidaticoCapituloGUID !== undefined) {
-      if (data.MaterialDidaticoCapituloGUID) {
-        await this.#validarCapitulo(prova.MateriaGUID, data.MaterialDidaticoCapituloGUID);
+    let capituloMudou = false;
+    if (data.CapitulosGUIDs !== undefined) {
+      if (data.CapitulosGUIDs.length > 0) {
+        await this.#validarCapitulos(prova.MateriaGUID, data.CapitulosGUIDs);
       }
-      updates.MaterialDidaticoCapituloGUID = data.MaterialDidaticoCapituloGUID;
+      const capitulosAtuais = new Set(prova.CapitulosGUIDs);
+      const capitulosNovos = new Set(data.CapitulosGUIDs);
+      capituloMudou =
+        capitulosAtuais.size !== capitulosNovos.size ||
+        [...capitulosNovos].some((guid) => !capitulosAtuais.has(guid));
+      updates.CapitulosGUIDs = data.CapitulosGUIDs;
     }
 
     const descricaoMudou =
       updates.ProvaDescricao !== undefined && updates.ProvaDescricao !== prova.ProvaDescricao;
-    const capituloMudou =
-      updates.MaterialDidaticoCapituloGUID !== undefined &&
-      updates.MaterialDidaticoCapituloGUID !== prova.MaterialDidaticoCapituloGUID;
 
     let assuntoMudou = false;
     if (data.AssuntoGUIDs !== undefined) {
@@ -751,7 +757,7 @@ export default class ProvaAgendadaService {
       TurmasAtribuidasDetalhe: turmasAtribuidasDetalhe,
       DatasPorTurma: datasPorTurma,
       AssuntoGUIDs: assuntoGUIDs,
-      MaterialDidaticoCapituloGUID: prova.MaterialDidaticoCapituloGUID,
+      CapitulosGUIDs: prova.CapitulosGUIDs,
       CreatedAt: prova.CreatedAt ? prova.CreatedAt.toISOString() : null,
       UpdatedAt: prova.UpdatedAt ? prova.UpdatedAt.toISOString() : null,
     };

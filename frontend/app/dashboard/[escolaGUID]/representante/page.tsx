@@ -81,7 +81,7 @@ export default function RepresentantePage() {
   const [livrosDisponiveis, setLivrosDisponiveis] = useState<MaterialDidaticoAPI.MaterialDidatico[]>([]);
   const [livroEscolhidoGUID, setLivroEscolhidoGUID] = useState('');
   const [capitulosDoLivro, setCapitulosDoLivro] = useState<MaterialDidaticoAPI.MaterialDidaticoCapitulo[]>([]);
-  const [capituloEscolhidoGUID, setCapituloEscolhidoGUID] = useState('');
+  const [capitulosEscolhidosGUIDs, setCapitulosEscolhidosGUIDs] = useState<string[]>([]);
 
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
@@ -175,7 +175,7 @@ export default function RepresentantePage() {
           ProvaTitulo: titulo,
           ProvaData: modoDataEfetivo === 'automatico' ? resultadoCalculo!.DataCalculada! : data,
           ProvaDescricao: descricao || undefined,
-          MaterialDidaticoCapituloGUID: capituloEscolhidoGUID || undefined,
+          CapitulosGUIDs: capitulosEscolhidosGUIDs.length > 0 ? capitulosEscolhidosGUIDs : undefined,
           ModoAutomatico: modoDataEfetivo === 'automatico',
           SemanaBase: modoDataEfetivo === 'automatico' ? semanaBase : undefined,
           DiaSemana: modoDataEfetivo === 'automatico' ? resultadoCalculo?.DiaSemana : undefined,
@@ -325,7 +325,7 @@ export default function RepresentantePage() {
             value={livroEscolhidoGUID}
             onChange={(e) => {
               setLivroEscolhidoGUID(e.target.value);
-              setCapituloEscolhidoGUID('');
+              setCapitulosEscolhidosGUIDs([]);
             }}
           >
             <option value="">Nenhum livro selecionado</option>
@@ -337,19 +337,24 @@ export default function RepresentantePage() {
           </select>
 
           {livroEscolhidoGUID && (
-            <select
-              className={styles.select}
-              style={{ marginTop: 6 }}
-              value={capituloEscolhidoGUID}
-              onChange={(e) => setCapituloEscolhidoGUID(e.target.value)}
-            >
-              <option value="">Nenhum capítulo selecionado</option>
+            <div className={styles.capitulosLista} style={{ marginTop: 6 }}>
               {capitulosDoLivro.map((capitulo) => (
-                <option key={capitulo.MaterialDidaticoCapituloGUID} value={capitulo.MaterialDidaticoCapituloGUID}>
+                <label key={capitulo.MaterialDidaticoCapituloGUID} className={styles.capituloCheckboxItem}>
+                  <input
+                    type="checkbox"
+                    checked={capitulosEscolhidosGUIDs.includes(capitulo.MaterialDidaticoCapituloGUID)}
+                    onChange={(e) => {
+                      setCapitulosEscolhidosGUIDs((atual) =>
+                        e.target.checked
+                          ? [...atual, capitulo.MaterialDidaticoCapituloGUID]
+                          : atual.filter((g) => g !== capitulo.MaterialDidaticoCapituloGUID)
+                      );
+                    }}
+                  />
                   {capitulo.Titulo} (págs. {capitulo.PaginaInicio}-{capitulo.PaginaFim})
-                </option>
+                </label>
               ))}
-            </select>
+            </div>
           )}
         </div>
       )}

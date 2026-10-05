@@ -40,7 +40,7 @@ export interface RecomendacaoDTO {
   Videos: RecomendacaoVideo[];
   Resumo: string | null;
   FontesUsadas: RecomendacaoFonte[];
-  PaginaLivro: RecomendacaoPaginaLivro | null;
+  PaginasLivro: RecomendacaoPaginaLivro[];
   SubMateriaGlobalGUID: string | null;
   StatusGeracao: ProvaAgendadaRecomendacaoStatus;
   GeradoEm: string | null;
@@ -126,7 +126,7 @@ export default class ProvaAgendadaRecomendacaoService {
       Videos: recomendacao.VideosJson ?? [],
       Resumo: recomendacao.ResumoTexto,
       FontesUsadas: recomendacao.FontesUsadas ?? [],
-      PaginaLivro: recomendacao.PaginaLivroJson,
+      PaginasLivro: recomendacao.PaginaLivroJson,
       SubMateriaGlobalGUID: recomendacao.SubMateriaGlobalGUID,
       StatusGeracao: recomendacao.StatusGeracao,
       GeradoEm: recomendacao.GeradoEm ? recomendacao.GeradoEm.toISOString() : null,
@@ -163,10 +163,10 @@ export default class ProvaAgendadaRecomendacaoService {
         prova.ProvaData
       );
 
-      const { fonteTexto: fontePaginaLivro, paginaLivro } = await this.#coletarPaginaLivro(
-        prova.MaterialDidaticoCapituloGUID
+      const { fontesTexto: fontesPaginaLivro, paginasLivro } = await this.#coletarPaginasLivro(
+        prova.CapitulosGUIDs
       );
-      if (fontePaginaLivro) {
+      for (const fontePaginaLivro of fontesPaginaLivro) {
         fontesTexto.push(fontePaginaLivro);
         fontesUsadas.push({ tipo: "MaterialDidatico", guid: fontePaginaLivro.guid, rotulo: fontePaginaLivro.rotulo });
       }
@@ -195,7 +195,7 @@ export default class ProvaAgendadaRecomendacaoService {
       recomendacao.VideosJson = videos;
       recomendacao.ResumoTexto = resumo;
       recomendacao.FontesUsadas = fontesUsadas;
-      recomendacao.PaginaLivroJson = paginaLivro;
+      recomendacao.PaginaLivroJson = paginasLivro;
       recomendacao.SubMateriaGlobalGUID = subMateriaGlobalGUID;
       recomendacao.ModeloUsado = modeloUsadoDescricao();
       recomendacao.StatusGeracao = houveFalhaTotal ? "Falhou" : "Concluida";
@@ -311,47 +311,43 @@ export default class ProvaAgendadaRecomendacaoService {
    * página). Sem capítulo referenciado, ou sem nenhuma página revisada
    * ainda na faixa, a peça simplesmente não aparece.
    */
-  #coletarPaginaLivro = async (
-    materialDidaticoCapituloGUID: string | null
-  ): Promise<{ fonteTexto: FonteTexto | null; paginaLivro: RecomendacaoPaginaLivro | null }> => {
-    if (!materialDidaticoCapituloGUID) {
-      return { fonteTexto: null, paginaLivro: null };
+  #coletarPaginasLivro = async (
+    capitulosGUIDs: string[]
+  ): Promise<{ fontesTexto: FonteTexto[]; paginasLivro: RecomendacaoPaginaLivro[] }> => {
+    const fontesTexto: FonteTexto[] = [];
+    const paginasLivro: RecomendacaoPaginaLivro[] = [];
+
+    for (const materialDidaticoCapituloGUID of capitulosGUIDs) {
+      const capitulo = await this.#materialDidaticoCapituloDAO.findById(materialDidaticoCapituloGUID);
+      if (!capitulo) continue;
+
+      const material = await this.#materialDidaticoDAO.findById(capitulo.MaterialDidaticoGUID);
+      if (!material) continue;
+
+      // Card de página de livro aparece (referência é determinística, não
+      // depende de IA) mesmo sem texto revisado pra alimentar o resumo.
+      paginasLivro.push({
+        materialDidaticoGUID: material.MaterialDidaticoGUID,
+        materialDidaticoTitulo: material.Titulo,
+        capituloGUID: capitulo.MaterialDidaticoCapituloGUID,
+        capituloTitulo: capitulo.Titulo,
+        paginaInicio: capitulo.PaginaInicio,
+        paginaFim: capitulo.PaginaFim,
+      });
+
+      const paginasRevisadas = await this.#materialDidaticoPaginaDAO.findRevisadasNaFaixa(
+        capitulo.MaterialDidaticoGUID,
+        capitulo.PaginaInicio,
+        capitulo.PaginaFim
+      );
+      if (paginasRevisadas.length === 0) continue;
+
+      const texto = paginasRevisadas.map((p) => p.TextoExtraido).filter(Boolean).join("\n\n");
+      const rotulo = `${material.Titulo} — ${capitulo.Titulo}`;
+      fontesTexto.push({ guid: capitulo.MaterialDidaticoCapituloGUID, rotulo, texto });
     }
 
-    const capitulo = await this.#materialDidaticoCapituloDAO.findById(materialDidaticoCapituloGUID);
-    if (!capitulo) return { fonteTexto: null, paginaLivro: null };
-
-    const material = await this.#materialDidaticoDAO.findById(capitulo.MaterialDidaticoGUID);
-    if (!material) return { fonteTexto: null, paginaLivro: null };
-
-    const paginaLivro: RecomendacaoPaginaLivro = {
-      materialDidaticoGUID: material.MaterialDidaticoGUID,
-      materialDidaticoTitulo: material.Titulo,
-      capituloGUID: capitulo.MaterialDidaticoCapituloGUID,
-      capituloTitulo: capitulo.Titulo,
-      paginaInicio: capitulo.PaginaInicio,
-      paginaFim: capitulo.PaginaFim,
-    };
-
-    const paginasRevisadas = await this.#materialDidaticoPaginaDAO.findRevisadasNaFaixa(
-      capitulo.MaterialDidaticoGUID,
-      capitulo.PaginaInicio,
-      capitulo.PaginaFim
-    );
-
-    if (paginasRevisadas.length === 0) {
-      // Card de página de livro ainda aparece (referência é determinística,
-      // não depende de IA) mesmo sem texto pra alimentar o resumo.
-      return { fonteTexto: null, paginaLivro };
-    }
-
-    const texto = paginasRevisadas.map((p) => p.TextoExtraido).filter(Boolean).join("\n\n");
-    const rotulo = `${material.Titulo} — ${capitulo.Titulo}`;
-
-    return {
-      fonteTexto: { guid: capitulo.MaterialDidaticoCapituloGUID, rotulo, texto },
-      paginaLivro,
-    };
+    return { fontesTexto, paginasLivro };
   };
 
   /**

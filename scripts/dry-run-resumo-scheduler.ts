@@ -38,9 +38,14 @@ async function main() {
   console.log("Criando prova temporária de teste...");
 
   await conn.execute(
-    `INSERT INTO provaagendada (ProvaAgendadaGUID, MateriaGUID, ProvaTitulo, ProvaData, ProvaDescricao, ProvaStatus, MaterialDidaticoCapituloGUID)
-     VALUES (?, ?, ?, DATE(NOW() + INTERVAL 1 DAY), ?, 'Agendada', ?)`,
-    [provaGUID, MATERIA_LINGUA_PORTUGUESA, "[DRY-RUN TESTE] Prova de Português", "Apenas um teste de dry-run do cron — não é uma prova real.", capitulo.MaterialDidaticoCapituloGUID]
+    `INSERT INTO provaagendada (ProvaAgendadaGUID, MateriaGUID, ProvaTitulo, ProvaData, ProvaDescricao, ProvaStatus)
+     VALUES (?, ?, ?, DATE(NOW() + INTERVAL 1 DAY), ?, 'Agendada')`,
+    [provaGUID, MATERIA_LINGUA_PORTUGUESA, "[DRY-RUN TESTE] Prova de Português", "Apenas um teste de dry-run do cron — não é uma prova real."]
+  );
+  await conn.execute(
+    `INSERT INTO provaagendadacapitulo (ProvaAgendadaCapituloGUID, ProvaAgendadaGUID, MaterialDidaticoCapituloGUID)
+     VALUES (UUID(), ?, ?)`,
+    [provaGUID, capitulo.MaterialDidaticoCapituloGUID]
   );
   await conn.execute(
     `INSERT INTO provaagendada_turma (ProvaAgendadaTurmaGUID, ProvaAgendadaGUID, TurmaGUID, CategoriaGUID, ItemOrdem)

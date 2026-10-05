@@ -20,7 +20,8 @@ export default class ProvaAgendada {
   #ProvaData!: Date;
   #ProvaDescricao: string | null = null;
   #ProvaStatus: "Agendada" | "Realizada" | "Cancelada" = "Agendada";
-  #MaterialDidaticoCapituloGUID: string | null = null;
+  /** Carregado/salvo via tabela de ligação `provaagendadacapitulo` (N:N) — não é mais coluna direta. */
+  #CapitulosGUIDs: string[] = [];
   /** Ver docs/PLANO_IMPLEMENTACAO_LANCAMENTO_POR_REPRESENTANTE.md — quem de fato criou, quando não foi o próprio professor (UsuarioGUID acima nunca muda). */
   #CriadoPorRepresentanteUsuarioGUID: string | null = null;
   #ProvaModoAutomatico: boolean = false;
@@ -128,15 +129,18 @@ export default class ProvaAgendada {
     this.#ProvaStatus = value;
   }
 
-  // ========== MaterialDidaticoCapituloGUID ==========
-  // Referência opcional de capítulo do livro didático (spec item 9) —
-  // compartilhada entre turmas, igual o resto da prova.
-  get MaterialDidaticoCapituloGUID(): string | null {
-    return this.#MaterialDidaticoCapituloGUID;
+  // ========== CapitulosGUIDs ==========
+  // Referência opcional a capítulo(s) do livro didático (spec item 9) —
+  // compartilhada entre turmas, igual o resto da prova. Agora N:N.
+  get CapitulosGUIDs(): string[] {
+    return this.#CapitulosGUIDs;
   }
 
-  set MaterialDidaticoCapituloGUID(value: string | null) {
-    this.#MaterialDidaticoCapituloGUID = value && value.trim() ? value.trim() : null;
+  set CapitulosGUIDs(value: string[]) {
+    if (!Array.isArray(value)) {
+      throw new Error("CapitulosGUIDs deve ser uma lista.");
+    }
+    this.#CapitulosGUIDs = value.map((v) => v.trim()).filter(Boolean);
   }
 
   // ========== CriadoPorRepresentanteUsuarioGUID ==========
