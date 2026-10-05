@@ -137,7 +137,7 @@ export default function RepresentantePage() {
     setModoConteudo('agora');
     setLivroEscolhidoGUID('');
     setCapitulosDoLivro([]);
-    setCapituloEscolhidoGUID('');
+    setCapitulosEscolhidosGUIDs([]);
   };
 
   // Usuário escolhe a SEMANA (não o dia) — se a matéria só ocorre num dia
