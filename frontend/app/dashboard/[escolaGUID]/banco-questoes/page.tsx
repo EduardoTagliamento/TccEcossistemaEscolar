@@ -67,6 +67,7 @@ export default function BancoQuestoesPage() {
   const [submaterias, setSubmaterias] = useState<MateriaGlobalAPI.SubMateriaGlobal[]>([]);
   const [carregandoSubmaterias, setCarregandoSubmaterias] = useState(false);
   const [submateriaGUID, setSubmateriaGUID] = useState('');
+  const [todasSubmaterias, setTodasSubmaterias] = useState(false);
 
   const [etapa, setEtapa] = useState<Etapa>('selecao');
   const [carregandoQuestoes, setCarregandoQuestoes] = useState(false);
@@ -87,6 +88,7 @@ export default function BancoQuestoesPage() {
 
   useEffect(() => {
     setSubmateriaGUID('');
+    setTodasSubmaterias(false);
     if (!materiaGUID) {
       setSubmaterias([]);
       return;
@@ -106,13 +108,19 @@ export default function BancoQuestoesPage() {
   }, [questaoAtual]);
 
   const handleComecar = async () => {
-    if (!submateriaGUID) return;
+    if (!todasSubmaterias && !submateriaGUID) return;
     setErro('');
     setCarregandoQuestoes(true);
     try {
-      const resultado = await QuestaoBancoAPI.listarQuestoes({ SubMateriaGlobalGUID: submateriaGUID });
+      const resultado = await QuestaoBancoAPI.listarQuestoes(
+        todasSubmaterias ? { MateriaGlobalGUID: materiaGUID } : { SubMateriaGlobalGUID: submateriaGUID }
+      );
       if (resultado.length === 0) {
-        setErro('Ainda não tem questões cadastradas pra essa submatéria. Tenta outra!');
+        setErro(
+          todasSubmaterias
+            ? 'Ainda não tem questões cadastradas pra essa matéria. Tenta outra!'
+            : 'Ainda não tem questões cadastradas pra essa submatéria. Tenta outra!'
+        );
         return;
       }
       setQuestoes(embaralhar(resultado));
@@ -187,7 +195,7 @@ export default function BancoQuestoesPage() {
               className={styles.select}
               value={submateriaGUID}
               onChange={(e) => setSubmateriaGUID(e.target.value)}
-              disabled={!materiaGUID || carregandoSubmaterias}
+              disabled={!materiaGUID || carregandoSubmaterias || todasSubmaterias}
             >
               <option value="">{carregandoSubmaterias ? 'Carregando...' : 'Selecione a submatéria'}</option>
               {submaterias.map((s) => (
@@ -198,12 +206,25 @@ export default function BancoQuestoesPage() {
             </select>
           </label>
 
+          <label className={styles.checkboxTodas}>
+            <input
+              type="checkbox"
+              checked={todasSubmaterias}
+              onChange={(e) => {
+                setTodasSubmaterias(e.target.checked);
+                setSubmateriaGUID('');
+              }}
+              disabled={!materiaGUID}
+            />
+            Praticar com todas as submatérias de uma vez
+          </label>
+
           {erro && <p className={styles.erro}>{erro}</p>}
 
           <button
             className={styles.botaoPrimario}
             onClick={handleComecar}
-            disabled={!submateriaGUID || carregandoQuestoes}
+            disabled={(!todasSubmaterias && !submateriaGUID) || carregandoQuestoes}
           >
             {carregandoQuestoes ? 'Carregando questões...' : 'Começar a praticar'}
           </button>

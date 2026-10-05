@@ -14,6 +14,7 @@ interface QuestaoBancoRow {
 }
 
 export interface QuestaoBancoFiltros {
+  MateriaGlobalGUID?: string;
   SubMateriaGlobalGUID?: string;
   Dificuldade?: QuestaoBancoDificuldade;
   VestibularGUID?: string;
@@ -66,6 +67,10 @@ export class QuestaoBancoDAO {
     const conditions: string[] = [];
     const params: any[] = [];
 
+    if (filtros.MateriaGlobalGUID) {
+      conditions.push("MateriaGlobalGUID = ?");
+      params.push(filtros.MateriaGlobalGUID);
+    }
     if (filtros.SubMateriaGlobalGUID) {
       conditions.push("SubMateriaGlobalGUID = ?");
       params.push(filtros.SubMateriaGlobalGUID);

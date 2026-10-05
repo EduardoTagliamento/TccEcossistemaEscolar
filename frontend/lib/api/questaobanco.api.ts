@@ -59,11 +59,13 @@ export interface QuestaoBancoCreateDados {
 }
 
 export async function listarQuestoes(filtros?: {
+  MateriaGlobalGUID?: string;
   SubMateriaGlobalGUID?: string;
   Dificuldade?: QuestaoBancoDificuldade;
   VestibularGUID?: string;
 }): Promise<QuestaoBanco[]> {
   const params = new URLSearchParams();
+  if (filtros?.MateriaGlobalGUID) params.append('MateriaGlobalGUID', filtros.MateriaGlobalGUID);
   if (filtros?.SubMateriaGlobalGUID) params.append('SubMateriaGlobalGUID', filtros.SubMateriaGlobalGUID);
   if (filtros?.Dificuldade) params.append('Dificuldade', filtros.Dificuldade);
   if (filtros?.VestibularGUID) params.append('VestibularGUID', filtros.VestibularGUID);

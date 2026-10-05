@@ -22,11 +22,12 @@ export class QuestaoBancoController {
     }
   };
 
-  // GET /api/questaobanco?SubMateriaGlobalGUID=&Dificuldade=&VestibularGUID= — livre pro aluno
+  // GET /api/questaobanco?MateriaGlobalGUID=&SubMateriaGlobalGUID=&Dificuldade=&VestibularGUID= — livre pro aluno
   index = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 QuestaoBancoController.index()");
     try {
       const questoes = await this.#service.listarQuestoes({
+        MateriaGlobalGUID: req.query.MateriaGlobalGUID as string | undefined,
         SubMateriaGlobalGUID: req.query.SubMateriaGlobalGUID as string | undefined,
         Dificuldade: req.query.Dificuldade as QuestaoBancoDificuldade | undefined,
         VestibularGUID: req.query.VestibularGUID as string | undefined,
