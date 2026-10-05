@@ -117,6 +117,21 @@ export class GeminiProvider {
       }
       return texto.trim();
     } catch (error) {
+      // Fallback automático "cheio" -> "leve": cota do modelo Pro pode
+      // esgotar (visto em produção em 2026-10-05, erro 429 RESOURCE_EXHAUSTED
+      // com limit=0 no free tier) sem que o "leve" esteja comprometido — nesse
+      // caso é melhor um resumo gerado pelo modelo mais fraco do que nenhum
+      // resumo. Só tenta uma vez, nunca recursivo (tier já é "leve" na
+      // segunda chamada).
+      if (tier === "cheio") {
+        console.warn("🟡 GeminiProvider.gerarTexto: tier 'cheio' falhou, tentando fallback com tier 'leve':", error);
+        try {
+          return await this.gerarTexto(prompt, "leve", timeoutMs);
+        } catch (erroFallback) {
+          if (erroFallback instanceof IAIndisponivelError) throw erroFallback;
+          throw new IAIndisponivelError("Gemini", erroFallback);
+        }
+      }
       if (error instanceof IAIndisponivelError) throw error;
       throw new IAIndisponivelError("Gemini", error);
     }
@@ -158,6 +173,17 @@ export class GeminiProvider {
       }
       return texto.trim();
     } catch (error) {
+      // Mesmo fallback cheio->leve de gerarTexto (ver comentário lá) —
+      // extração de página de livro (ExtracaoPaginaAgent) usa tier "cheio".
+      if (tier === "cheio") {
+        console.warn("🟡 GeminiProvider.gerarTextoComImagem: tier 'cheio' falhou, tentando fallback com tier 'leve':", error);
+        try {
+          return await this.gerarTextoComImagem(prompt, imagemBase64, mimeType, "leve", timeoutMs);
+        } catch (erroFallback) {
+          if (erroFallback instanceof IAIndisponivelError) throw erroFallback;
+          throw new IAIndisponivelError("Gemini", erroFallback);
+        }
+      }
       if (error instanceof IAIndisponivelError) throw error;
       throw new IAIndisponivelError("Gemini", error);
     }
@@ -200,6 +226,16 @@ export class GeminiProvider {
       }
       return texto.trim();
     } catch (error) {
+      // Mesmo fallback cheio->leve de gerarTexto (ver comentário lá).
+      if (tier === "cheio") {
+        console.warn("🟡 GeminiProvider.gerarTextoComAudio: tier 'cheio' falhou, tentando fallback com tier 'leve':", error);
+        try {
+          return await this.gerarTextoComAudio(prompt, audioBase64, mimeType, "leve", timeoutMs);
+        } catch (erroFallback) {
+          if (erroFallback instanceof IAIndisponivelError) throw erroFallback;
+          throw new IAIndisponivelError("Gemini", erroFallback);
+        }
+      }
       if (error instanceof IAIndisponivelError) throw error;
       throw new IAIndisponivelError("Gemini", error);
     }
@@ -247,6 +283,16 @@ export class GeminiProvider {
 
       return { content, functionCalls: response.functionCalls, texto: response.text };
     } catch (error) {
+      // Mesmo fallback cheio->leve de gerarTexto (ver comentário lá).
+      if (tier === "cheio") {
+        console.warn("🟡 GeminiProvider.conversarComFerramentas: tier 'cheio' falhou, tentando fallback com tier 'leve':", error);
+        try {
+          return await this.conversarComFerramentas(contents, tools, systemInstruction, "leve", timeoutMs);
+        } catch (erroFallback) {
+          if (erroFallback instanceof IAIndisponivelError) throw erroFallback;
+          throw new IAIndisponivelError("Gemini", erroFallback);
+        }
+      }
       if (error instanceof IAIndisponivelError) throw error;
       throw new IAIndisponivelError("Gemini", error);
     }
@@ -290,6 +336,17 @@ export class GeminiProvider {
       }
       return JSON.parse(texto) as T;
     } catch (error) {
+      // Mesmo fallback cheio->leve de gerarTexto (ver comentário lá) —
+      // SumarioLivroAgent usa tier "cheio" aqui.
+      if (tier === "cheio") {
+        console.warn("🟡 GeminiProvider.gerarEstruturado: tier 'cheio' falhou, tentando fallback com tier 'leve':", error);
+        try {
+          return await this.gerarEstruturado<T>(prompt, schema, "leve", timeoutMs);
+        } catch (erroFallback) {
+          if (erroFallback instanceof IAIndisponivelError) throw erroFallback;
+          throw new IAIndisponivelError("Gemini", erroFallback);
+        }
+      }
       if (error instanceof IAIndisponivelError) throw error;
       throw new IAIndisponivelError("Gemini", error);
     }
