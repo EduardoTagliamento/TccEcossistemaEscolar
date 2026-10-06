@@ -173,8 +173,22 @@ function ModalRecorteImagem({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
+          {/* crossOrigin="anonymous": sem isso, o canvas fica "tainted" ao desenhar uma imagem de
+              outra origem (R2) — toBlob()/getImageData() são bloqueados pelo navegador mesmo só
+              pra LER os pixels (exibir sem recortar funciona sem isso, só por isso não dava pra
+              notar antes). R2.dev público manda Access-Control-Allow-Origin: * por padrão. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img ref={imgRef} src={src} alt="Imagem a recortar" className={styles.recorteImagem} draggable={false} />
+          <img
+            ref={imgRef}
+            src={src}
+            alt="Imagem a recortar"
+            className={styles.recorteImagem}
+            draggable={false}
+            crossOrigin="anonymous"
+            onError={() =>
+              setErro('Não deu pra carregar a imagem com permissão de recorte (CORS). Tente recarregar a página.')
+            }
+          />
           {area && (
             <div
               className={styles.recorteSelecao}
@@ -347,6 +361,9 @@ export default function AdminPlataformaPage() {
   const [validandoGUID, setValidandoGUID] = useState<string | null>(null);
   const [enviandoImagem, setEnviandoImagem] = useState(false);
   const [recorteAberto, setRecorteAberto] = useState<{ src: string; aoConfirmar: (blob: Blob) => void } | null>(null);
+  // Só 1 questão fica aberta pra edição por vez (`editandoGUID`), então 1 ref compartilhada
+  // entre todas as linhas do .map() é suficiente (nunca renderiza 2 textareas ao mesmo tempo).
+  const enunciadoEdicaoRef = useRef<HTMLTextAreaElement>(null);
 
   const carregarPendentes = async () => {
     try {
@@ -570,6 +587,21 @@ export default function AdminPlataformaPage() {
     setFormEdicao((prev) =>
       prev ? { ...prev, Enunciado: prev.Enunciado.split(img.ocorrencia).join('').replace(/[ \t]{2,}/g, ' ').trim() } : prev
     );
+  };
+
+  /** Insere `\n\n` (quebra de PARÁGRAFO — a prévia só reconhece essa, não um Enter só) na
+   * posição do cursor do textarea, no lugar de pedir pro admin decorar a sintaxe. */
+  const inserirQuebraParagrafo = () => {
+    const el = enunciadoEdicaoRef.current;
+    if (!el || !formEdicao) return;
+    const inicio = el.selectionStart ?? formEdicao.Enunciado.length;
+    const fim = el.selectionEnd ?? inicio;
+    const novoTexto = formEdicao.Enunciado.slice(0, inicio) + '\n\n' + formEdicao.Enunciado.slice(fim);
+    setFormEdicao((p) => (p ? { ...p, Enunciado: novoTexto } : p));
+    requestAnimationFrame(() => {
+      el.focus();
+      el.selectionStart = el.selectionEnd = inicio + 2;
+    });
   };
 
   // ---- Registrar aluno — Colégio Univap (feira técnica, temporário) ----
@@ -902,10 +934,20 @@ export default function AdminPlataformaPage() {
                       </div>
 
                       <textarea
+                        ref={enunciadoEdicaoRef}
                         value={formEdicao.Enunciado}
                         onChange={(e) => setFormEdicao((p) => (p ? { ...p, Enunciado: e.target.value } : p))}
                         rows={6}
                       />
+                      <div className={styles.linhaForm}>
+                        <button type="button" onClick={inserirQuebraParagrafo}>
+                          ¶ Quebra de parágrafo
+                        </button>
+                        <p className={styles.hint}>
+                          Enter sozinho não separa parágrafo na prévia — deixe uma linha em branco entre trechos (ou
+                          use o botão, que insere no cursor). <code>**texto**</code> vira negrito.
+                        </p>
+                      </div>
 
                       {imagensInline.length > 0 && (
                         <div className={styles.imagensEdicao}>
