@@ -1,6 +1,8 @@
 'use client';
 
 import { ReactNode, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
 import * as MateriaGlobalAPI from '@/lib/api/materiaglobal.api';
@@ -60,6 +62,9 @@ function renderEnunciado(texto: string) {
 type Etapa = 'selecao' | 'praticando' | 'resumo';
 
 export default function BancoQuestoesPage() {
+  const params = useParams();
+  const escolaGUID = (params?.escolaGUID as string) || '';
+
   const [materias, setMaterias] = useState<MateriaGlobalAPI.MateriaGlobal[]>([]);
   const [carregandoMaterias, setCarregandoMaterias] = useState(true);
   const [materiaGUID, setMateriaGUID] = useState('');
@@ -78,6 +83,7 @@ export default function BancoQuestoesPage() {
   const [alternativaEscolhida, setAlternativaEscolhida] = useState<string | null>(null);
   const [respondida, setRespondida] = useState(false);
   const [acertos, setAcertos] = useState(0);
+  const [marcadaAtual, setMarcadaAtual] = useState(false);
 
   useEffect(() => {
     setCarregandoMaterias(true);
@@ -156,14 +162,28 @@ export default function BancoQuestoesPage() {
   };
 
   const handleResponder = (alternativaGUID: string) => {
-    if (respondida) return;
+    if (respondida || !questaoAtual) return;
     setAlternativaEscolhida(alternativaGUID);
     setRespondida(true);
     const alt = alternativasOrdenadas.find((a) => a.AlternativaGUID === alternativaGUID);
-    if (alt?.AlternativaCorreta) setAcertos((a) => a + 1);
+    const acertou = !!alt?.AlternativaCorreta;
+    if (acertou) setAcertos((a) => a + 1);
+    QuestaoBancoAPI.registrarResposta(questaoAtual.QuestaoBancoGUID, acertou).catch(() => {
+      // Não bloqueia a prática por falha de tracking — só não entra no histórico/exclusão do pool.
+    });
+  };
+
+  const handleToggleMarcada = () => {
+    if (!questaoAtual) return;
+    const novoValor = !marcadaAtual;
+    setMarcadaAtual(novoValor);
+    QuestaoBancoAPI.definirMarcada(questaoAtual.QuestaoBancoGUID, novoValor).catch(() => {
+      setMarcadaAtual(!novoValor);
+    });
   };
 
   const handleProxima = () => {
+    setMarcadaAtual(false);
     if (indice + 1 >= questoes.length) {
       setEtapa('resumo');
       return;
@@ -187,6 +207,10 @@ export default function BancoQuestoesPage() {
           Banco de Questões
         </h1>
         <p className={styles.subtitulo}>Escolha uma matéria e uma submatéria pra praticar com questões de vestibular.</p>
+        <Link href={`/dashboard/${escolaGUID}/banco-questoes/historico`} className={styles.linkHistorico}>
+          <Icon name="clock" className={styles.linkHistoricoIcone} />
+          Ver questões feitas e marcadas
+        </Link>
       </header>
 
       {etapa === 'selecao' && (
@@ -254,7 +278,17 @@ export default function BancoQuestoesPage() {
         <div className={styles.card}>
           <div className={styles.progresso}>
             <span>Questão {indice + 1} de {questoes.length}</span>
-            <span className={styles.badgeDificuldade}>{questaoAtual.Dificuldade}</span>
+            <div className={styles.progressoAcoes}>
+              <span className={styles.badgeDificuldade}>{questaoAtual.Dificuldade}</span>
+              <button
+                type="button"
+                className={marcadaAtual ? styles.botaoMarcarAtivo : styles.botaoMarcar}
+                onClick={handleToggleMarcada}
+                title={marcadaAtual ? 'Remover marcação' : 'Marcar pra ver depois'}
+              >
+                <Icon name="star" />
+              </button>
+            </div>
           </div>
 
           <div className={styles.enunciado}>{renderEnunciado(questaoAtual.Enunciado)}</div>

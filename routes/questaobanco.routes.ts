@@ -4,6 +4,8 @@ import { QuestaoBancoController } from "../backend/controllers/questaobanco.cont
 import QuestaoBancoService from "../backend/services/questaobanco.service";
 import { QuestaoBancoDAO } from "../backend/repositories/questaobanco.repository";
 import { QuestaoBancoAlternativaDAO } from "../backend/repositories/questaobancoalternativa.repository";
+import QuestaoBancoProgressoService from "../backend/services/questaobancoprogresso.service";
+import { QuestaoBancoProgressoDAO } from "../backend/repositories/questaobancoprogresso.repository";
 import { VestibularDAO } from "../backend/repositories/vestibular.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { RelacaoAnexosDAO } from "../backend/repositories/relacaoanexos.repository";
@@ -30,10 +32,16 @@ export default class QuestaoBancoRoteador {
     // Leitura: qualquer usuário autenticado (aluno praticando, spec item 12) — só Status=Validado
     this.#router.get("/", this.#controller.index);
     this.#router.get("/contagem", this.#controller.indexContagem);
+    this.#router.get("/progresso", this.#controller.indexProgresso);
     this.#router.get("/vestibular", this.#controller.indexVestibulares);
 
     // Fila de validação: só admin de plataforma (vê Status=Pendente, não exposto na rota pública)
     this.#router.get("/pendentes", plataformaAdminGuard, this.#controller.indexPendentes);
+
+    // Progresso por aluno (tracking "feita"/"marcada") — qualquer aluno autenticado, só na própria conta
+    this.#router.post("/:guid/progresso", this.#controller.registrarResposta);
+    this.#router.delete("/:guid/progresso", this.#controller.desmarcarFeita);
+    this.#router.patch("/:guid/marcar", this.#controller.definirMarcada);
 
     // Escrita: só admin de plataforma (spec item 13)
     this.#router.post("/", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, this.#controller.store);
@@ -54,8 +62,10 @@ export const questaoBancoRouterFactory = () => {
   const usuarioDAO = new UsuarioDAO(database);
   const relacaoAnexosDAO = new RelacaoAnexosDAO(database);
   const anexoDAO = new AnexoDAO(database);
+  const progressoDAO = new QuestaoBancoProgressoDAO(database);
   const service = new QuestaoBancoService(questaoDAO, alternativaDAO, vestibularDAO, usuarioDAO, relacaoAnexosDAO, anexoDAO);
-  const controller = new QuestaoBancoController(service);
+  const progressoService = new QuestaoBancoProgressoService(progressoDAO);
+  const controller = new QuestaoBancoController(service, progressoService);
   const roteador = new QuestaoBancoRoteador(controller);
 
   return roteador.createRoutes();

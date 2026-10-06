@@ -20,6 +20,9 @@ export interface QuestaoBancoFiltros {
   Dificuldade?: QuestaoBancoDificuldade;
   VestibularGUID?: string;
   Status?: QuestaoBancoStatus;
+  /** Exclui questões que esse aluno já marcou como Feita (spec: some do pool de
+   * randomização da prática) — só usado pela listagem pública, nunca pelas telas de admin. */
+  ExcluirFeitasDoUsuarioGUID?: string;
 }
 
 /** Campos editáveis via tela de validação — todos opcionais (atualiza só o que vier). */
@@ -114,6 +117,12 @@ export class QuestaoBancoDAO {
     if (filtros.Status) {
       conditions.push("Status = ?");
       params.push(filtros.Status);
+    }
+    if (filtros.ExcluirFeitasDoUsuarioGUID) {
+      conditions.push(
+        "QuestaoBancoGUID NOT IN (SELECT QuestaoBancoGUID FROM questaobancoprogresso WHERE UsuarioGUID = ? AND Feita = 1)"
+      );
+      params.push(filtros.ExcluirFeitasDoUsuarioGUID);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";

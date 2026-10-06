@@ -61,6 +61,26 @@
   margin: 0;
 }
 
+.linkHistorico {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green-700);
+  text-decoration: none;
+}
+
+.linkHistorico:hover {
+  text-decoration: underline;
+}
+
+.linkHistoricoIcone {
+  width: 15px;
+  height: 15px;
+}
+
 .card {
   background: var(--white);
   border: 1px solid var(--line-200);
@@ -172,6 +192,39 @@
   background: var(--surface-50);
   color: var(--slate-600);
   font-size: 12px;
+}
+
+.progressoAcoes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.botaoMarcar,
+.botaoMarcarAtivo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.botaoMarcar svg {
+  width: 16px;
+  height: 16px;
+  color: var(--slate-400);
+}
+
+.botaoMarcarAtivo svg {
+  width: 16px;
+  height: 16px;
+  color: var(--gold-500);
+  fill: var(--gold-500);
 }
 
 .enunciado {

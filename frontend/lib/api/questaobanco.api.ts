@@ -159,6 +159,59 @@ export async function listarVestibulares(): Promise<Vestibular[]> {
   return result.data?.vestibulares || [];
 }
 
+export interface QuestaoHistorico {
+  QuestaoBancoGUID: string;
+  EnunciadoPreview: string;
+  Dificuldade: QuestaoBancoDificuldade;
+  VestibularGUID: string;
+  Acertou: boolean | null;
+  FeitaEm: string | null;
+  MarcadaEm: string | null;
+}
+
+/** Marca a questão como Feita pra esse aluno (sai do pool de randomização da prática). */
+export async function registrarResposta(guid: string, acertou: boolean): Promise<void> {
+  const response = await fetch(`${API_URL}/questaobanco/${guid}/progresso`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ Acertou: acertou }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao registrar resposta');
+}
+
+/** "Revisitar" — desmarca Feita, a questão volta a entrar na randomização da prática. */
+export async function desmarcarFeita(guid: string): Promise<void> {
+  const response = await fetch(`${API_URL}/questaobanco/${guid}/progresso`, { method: 'DELETE', headers: getHeaders() });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao desmarcar questão');
+}
+
+/** Marcar/desmarcar pra ver depois — independente de Feita. */
+export async function definirMarcada(guid: string, marcada: boolean): Promise<void> {
+  const response = await fetch(`${API_URL}/questaobanco/${guid}/marcar`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ Marcada: marcada }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao marcar questão');
+}
+
+export async function listarHistorico(
+  status: 'Feitas' | 'Marcadas',
+  filtros?: { VestibularGUID?: string; Dificuldade?: QuestaoBancoDificuldade }
+): Promise<QuestaoHistorico[]> {
+  const params = new URLSearchParams({ Status: status });
+  if (filtros?.VestibularGUID) params.append('VestibularGUID', filtros.VestibularGUID);
+  if (filtros?.Dificuldade) params.append('Dificuldade', filtros.Dificuldade);
+
+  const response = await fetch(`${API_URL}/questaobanco/progresso?${params}`, { headers: getHeaders() });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao listar histórico');
+  return result.data?.questoes || [];
+}
+
 export async function criarVestibular(nome: string): Promise<Vestibular> {
   const response = await fetch(`${API_URL}/questaobanco/vestibular`, {
     method: 'POST',
