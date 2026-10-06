@@ -79,6 +79,14 @@ export async function listarQuestoes(filtros?: {
   return result.data?.questoes || [];
 }
 
+/** Busca individual — usado pra "refazer essa questão" a partir do histórico. */
+export async function buscarQuestao(guid: string): Promise<QuestaoBanco> {
+  const response = await fetch(`${API_URL}/questaobanco/${guid}`, { headers: getHeaders() });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao buscar questão');
+  return result.data.questao;
+}
+
 export interface ContagemQuestoes {
   PorMateria: { MateriaGlobalGUID: string; Quantidade: number }[];
   PorSubMateria: { SubMateriaGlobalGUID: string; Quantidade: number }[];
@@ -200,11 +208,12 @@ export async function definirMarcada(guid: string, marcada: boolean): Promise<vo
 
 export async function listarHistorico(
   status: 'Feitas' | 'Marcadas',
-  filtros?: { VestibularGUID?: string; Dificuldade?: QuestaoBancoDificuldade }
+  filtros?: { VestibularGUID?: string; Dificuldade?: QuestaoBancoDificuldade; Acertou?: boolean }
 ): Promise<QuestaoHistorico[]> {
   const params = new URLSearchParams({ Status: status });
   if (filtros?.VestibularGUID) params.append('VestibularGUID', filtros.VestibularGUID);
   if (filtros?.Dificuldade) params.append('Dificuldade', filtros.Dificuldade);
+  if (filtros?.Acertou !== undefined) params.append('Acertou', String(filtros.Acertou));
 
   const response = await fetch(`${API_URL}/questaobanco/progresso?${params}`, { headers: getHeaders() });
   const result = await response.json();

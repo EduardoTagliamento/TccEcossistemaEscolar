@@ -68,6 +68,12 @@ const SYSTEM_INSTRUCTION = [
   "Use apenas as que estiverem realmente disponíveis nesta conversa. Se o usuário pedir algo que nenhuma",
   "ferramenta cobre, explique educadamente que ainda não consegue fazer isso.",
   "",
+  "Data/hora: você NÃO sabe de forma confiável que dia é hoje. Sempre que a pergunta envolver data relativa —",
+  "hoje, ontem, amanhã, essa semana, próxima semana, semana passada, mês que vem, 'daqui a 3 dias', etc. — ou",
+  "qualquer cálculo de data pra passar como dataInicio/dataFim de outra ferramenta (ex.: consultar_calendario,",
+  "consultar_provas), chame consultar_data_hora_atual PRIMEIRO pra ancorar o cálculo na data real de agora.",
+  "Nunca assuma ou invente qual é a data de hoje.",
+  "",
   "Toda ferramenta 'ver_detalhe_*' / 'ver_mensagens_*' / 'ver_recomendacao_*' exige um GUID que veio da",
   "ferramenta de listagem correspondente (consultar_conversas → ver_mensagens_conversa; consultar_tarefas →",
   "ver_detalhe_tarefa / marcar_tarefa_feita / enviar_atividade; consultar_avisos → ver_detalhe_aviso;",
@@ -218,6 +224,14 @@ const FERRAMENTAS: FunctionDeclaration[] = [
       },
       required: ["conteudoGUID"],
     },
+  },
+  {
+    name: "consultar_data_hora_atual",
+    description:
+      "Devolve a data, dia da semana e horário atuais reais (fuso de São Paulo). Chame SEMPRE antes de calcular " +
+      "qualquer data relativa (hoje, ontem, amanhã, essa semana, próxima semana, semana passada, mês que vem etc.) " +
+      "pra qualquer outra ferramenta — você não sabe de forma confiável que dia é hoje sem chamar isso primeiro.",
+    parameters: { type: Type.OBJECT, properties: {} },
   },
   {
     name: "consultar_calendario",

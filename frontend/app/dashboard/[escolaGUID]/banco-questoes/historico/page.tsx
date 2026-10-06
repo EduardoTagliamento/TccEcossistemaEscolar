@@ -27,6 +27,7 @@ export default function HistoricoQuestoesPage() {
   const [vestibulares, setVestibulares] = useState<QuestaoBancoAPI.Vestibular[]>([]);
   const [vestibularGUID, setVestibularGUID] = useState('');
   const [dificuldade, setDificuldade] = useState<QuestaoBancoAPI.QuestaoBancoDificuldade | ''>('');
+  const [acertouFiltro, setAcertouFiltro] = useState<'' | 'certas' | 'erradas'>('');
 
   const [questoes, setQuestoes] = useState<QuestaoBancoAPI.QuestaoHistorico[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -43,6 +44,7 @@ export default function HistoricoQuestoesPage() {
     QuestaoBancoAPI.listarHistorico(aba, {
       VestibularGUID: vestibularGUID || undefined,
       Dificuldade: dificuldade || undefined,
+      Acertou: aba === 'Feitas' && acertouFiltro ? acertouFiltro === 'certas' : undefined,
     })
       .then(setQuestoes)
       .catch((e) => setErro(e.message || 'Erro ao carregar histórico.'))
@@ -52,7 +54,7 @@ export default function HistoricoQuestoesPage() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aba, vestibularGUID, dificuldade]);
+  }, [aba, vestibularGUID, dificuldade, acertouFiltro]);
 
   const vestibularPorGUID = useMemo(() => {
     const mapa = new Map<string, string>();
@@ -97,13 +99,18 @@ export default function HistoricoQuestoesPage() {
       <div className={styles.tabs}>
         <button
           className={aba === 'Feitas' ? styles.tabAtiva : styles.tab}
-          onClick={() => setAba('Feitas')}
+          onClick={() => {
+            setAba('Feitas');
+          }}
         >
           Feitas
         </button>
         <button
           className={aba === 'Marcadas' ? styles.tabAtiva : styles.tab}
-          onClick={() => setAba('Marcadas')}
+          onClick={() => {
+            setAba('Marcadas');
+            setAcertouFiltro('');
+          }}
         >
           Marcadas
         </button>
@@ -131,6 +138,18 @@ export default function HistoricoQuestoesPage() {
             </option>
           ))}
         </select>
+
+        {aba === 'Feitas' && (
+          <select
+            className={styles.select}
+            value={acertouFiltro}
+            onChange={(e) => setAcertouFiltro(e.target.value as '' | 'certas' | 'erradas')}
+          >
+            <option value="">Certas e erradas</option>
+            <option value="certas">Só certas</option>
+            <option value="erradas">Só erradas</option>
+          </select>
+        )}
       </div>
 
       {erro && <p className={styles.erro}>{erro}</p>}
@@ -151,13 +170,19 @@ export default function HistoricoQuestoesPage() {
               aba === 'Feitas' ? (q.Acertou ? styles.cardAcerto : styles.cardErro) : ''
             }`}
           >
-            <div className={styles.cardTopo}>
-              <span className={styles.badgeDificuldade}>{q.Dificuldade}</span>
-              {vestibularPorGUID.get(q.VestibularGUID) && (
-                <span className={styles.badgeVestibular}>{vestibularPorGUID.get(q.VestibularGUID)}</span>
-              )}
-            </div>
-            <p className={styles.previewTexto}>{q.EnunciadoPreview}</p>
+            <Link
+              href={`/dashboard/${escolaGUID}/banco-questoes?questaoGUID=${q.QuestaoBancoGUID}`}
+              className={styles.cardConteudoClicavel}
+              title="Clique pra refazer essa questão"
+            >
+              <div className={styles.cardTopo}>
+                <span className={styles.badgeDificuldade}>{q.Dificuldade}</span>
+                {vestibularPorGUID.get(q.VestibularGUID) && (
+                  <span className={styles.badgeVestibular}>{vestibularPorGUID.get(q.VestibularGUID)}</span>
+                )}
+              </div>
+              <p className={styles.previewTexto}>{q.EnunciadoPreview}</p>
+            </Link>
             <div className={styles.cardRodape}>
               <span className={styles.dataTexto}>
                 {aba === 'Feitas' ? `Feita em ${formatarData(q.FeitaEm)}` : `Marcada em ${formatarData(q.MarcadaEm)}`}

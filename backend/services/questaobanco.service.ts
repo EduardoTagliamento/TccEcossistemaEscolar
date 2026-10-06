@@ -286,6 +286,18 @@ export default class QuestaoBancoService {
     return this.buscarQuestaoCompleta(guid);
   };
 
+  /** Busca individual livre pro aluno (ex.: "refazer essa questão" a partir do histórico) — só
+   * Status='Validado', nunca expõe Pendente mesmo que o GUID seja adivinhado/copiado. */
+  buscarQuestaoValidada = async (guid: string): Promise<QuestaoBancoDTO> => {
+    console.log("🟣 QuestaoBancoService.buscarQuestaoValidada()");
+
+    const questao = await this.#questaoDAO.findById(guid);
+    if (!questao || questao.Status !== "Validado") {
+      throw new ErrorResponse(404, "Questão não encontrada");
+    }
+    return this.buscarQuestaoCompleta(guid);
+  };
+
   private buscarQuestaoCompleta = async (guid: string): Promise<QuestaoBancoDTO> => {
     const questao = await this.#questaoDAO.findById(guid);
     if (!questao) {

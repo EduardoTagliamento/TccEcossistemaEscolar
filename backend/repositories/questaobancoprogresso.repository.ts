@@ -6,6 +6,8 @@ import { QuestaoBancoDificuldade } from "../entities/questaobanco.model";
 export interface QuestaoBancoProgressoFiltros {
   VestibularGUID?: string;
   Dificuldade?: QuestaoBancoDificuldade;
+  /** Só relevante na aba "Feitas" (filtro certas/erradas). */
+  Acertou?: boolean;
 }
 
 /** Linha de `listarComQuestao` — progresso + os campos da questão pra preview (spec: não a
@@ -99,6 +101,10 @@ export class QuestaoBancoProgressoDAO {
     if (filtros.Dificuldade) {
       conditions.push("qb.Dificuldade = ?");
       params.push(filtros.Dificuldade);
+    }
+    if (filtros.Acertou !== undefined) {
+      conditions.push("qbp.Acertou = ?");
+      params.push(filtros.Acertou ? 1 : 0);
     }
 
     const SQL = `

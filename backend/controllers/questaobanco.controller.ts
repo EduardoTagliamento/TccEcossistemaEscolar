@@ -137,9 +137,11 @@ export class QuestaoBancoController {
       const usuarioGUID = req.user?.UsuarioGUID;
       if (!usuarioGUID) throw new ErrorResponse(401, "Não autenticado");
       const status = req.query.Status === "Marcadas" ? "Marcadas" : "Feitas";
+      const acertouQuery = req.query.Acertou;
       const questoes = await this.#progressoService.listarHistorico(usuarioGUID, status, {
         VestibularGUID: req.query.VestibularGUID as string | undefined,
         Dificuldade: req.query.Dificuldade as QuestaoBancoDificuldade | undefined,
+        Acertou: acertouQuery === "true" ? true : acertouQuery === "false" ? false : undefined,
       });
       res.status(200).json({ success: true, message: "Histórico listado com sucesso", data: { questoes } });
     } catch (error) {
@@ -153,6 +155,19 @@ export class QuestaoBancoController {
     try {
       await this.#service.excluirQuestao(req.params.guid);
       res.status(200).json({ success: true, message: "Questão excluída com sucesso", data: null });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // GET /api/questaobanco/:guid — livre pro aluno (ex.: "refazer essa questão" a partir do
+  // histórico) — só Status='Validado'. Registrado DEPOIS de /contagem, /progresso, /vestibular,
+  // /pendentes (literais) na rota, pra não ser engolido por eles como se fossem um :guid.
+  show = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 QuestaoBancoController.show()");
+    try {
+      const questao = await this.#service.buscarQuestaoValidada(req.params.guid);
+      res.status(200).json({ success: true, message: "Questão encontrada com sucesso", data: { questao } });
     } catch (error) {
       next(error);
     }

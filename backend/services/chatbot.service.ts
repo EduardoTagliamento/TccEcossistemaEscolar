@@ -979,6 +979,18 @@ export default class ChatbotService {
         };
       }
 
+      // Data/hora atual: disponível pra qualquer papel — o modelo não sabe de forma confiável
+      // "que dia é hoje" por conta própria, então qualquer cálculo de data relativa (hoje, essa
+      // semana, próxima semana, semana passada etc.) precisa chamar isso primeiro pra ancorar o
+      // cálculo num "hoje" real, nunca um "hoje" assumido/alucinado pelo modelo.
+      handlers.consultar_data_hora_atual = async () => {
+        const agora = new Date();
+        const dataAtual = agora.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }); // en-CA = YYYY-MM-DD
+        const diaDaSemana = agora.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", weekday: "long" });
+        const horario = agora.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+        return { dataAtual, diaDaSemana, horario, timezone: "America/Sao_Paulo (GMT-3)" };
+      };
+
       // Calendário: disponível pra qualquer papel.
       handlers.consultar_calendario = async (args) => {
         const hoje = new Date();

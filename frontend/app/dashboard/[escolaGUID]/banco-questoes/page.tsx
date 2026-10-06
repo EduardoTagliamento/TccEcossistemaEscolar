@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
 import * as MateriaGlobalAPI from '@/lib/api/materiaglobal.api';
@@ -63,7 +63,10 @@ type Etapa = 'selecao' | 'praticando' | 'resumo';
 
 export default function BancoQuestoesPage() {
   const params = useParams();
+  const router = useRouter();
   const escolaGUID = (params?.escolaGUID as string) || '';
+  const searchParams = useSearchParams();
+  const questaoGUIDParaRefazer = searchParams?.get('questaoGUID') || '';
 
   const [materias, setMaterias] = useState<MateriaGlobalAPI.MateriaGlobal[]>([]);
   const [carregandoMaterias, setCarregandoMaterias] = useState(true);
@@ -84,8 +87,28 @@ export default function BancoQuestoesPage() {
   const [respondida, setRespondida] = useState(false);
   const [acertos, setAcertos] = useState(0);
   const [marcadaAtual, setMarcadaAtual] = useState(false);
+  const [modoIndividual, setModoIndividual] = useState(false);
 
   useEffect(() => {
+    // "Refazer essa questão" a partir do histórico (?questaoGUID=) — pula a seleção de
+    // matéria/submatéria e vai direto pra prática com só essa questão.
+    if (questaoGUIDParaRefazer) {
+      setModoIndividual(true);
+      setCarregandoQuestoes(true);
+      QuestaoBancoAPI.buscarQuestao(questaoGUIDParaRefazer)
+        .then((questao) => {
+          setQuestoes([questao]);
+          setIndice(0);
+          setAcertos(0);
+          setAlternativaEscolhida(null);
+          setRespondida(false);
+          setEtapa('praticando');
+        })
+        .catch((e) => setErro(e.message || 'Erro ao carregar questão.'))
+        .finally(() => setCarregandoQuestoes(false));
+      return;
+    }
+
     setCarregandoMaterias(true);
     MateriaGlobalAPI.listarMateriasGlobais('Confirmado')
       .then(setMaterias)
@@ -97,7 +120,8 @@ export default function BancoQuestoesPage() {
       .catch(() => {
         // Não bloqueia a tela — sem contagem, os selects só mostram o nome puro (fallback natural).
       });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [questaoGUIDParaRefazer]);
 
   const contagemPorMateria = useMemo(() => {
     const mapa = new Map<string, number>();
@@ -194,6 +218,10 @@ export default function BancoQuestoesPage() {
   };
 
   const handleReiniciar = () => {
+    if (modoIndividual) {
+      router.push(`/dashboard/${escolaGUID}/banco-questoes/historico`);
+      return;
+    }
     setEtapa('selecao');
     setQuestoes([]);
     setErro('');
@@ -213,7 +241,22 @@ export default function BancoQuestoesPage() {
         </Link>
       </header>
 
-      {etapa === 'selecao' && (
+      {etapa === 'selecao' && modoIndividual && (
+        <div className={styles.card}>
+          {erro ? (
+            <>
+              <p className={styles.erro}>{erro}</p>
+              <Link href={`/dashboard/${escolaGUID}/banco-questoes/historico`} className={styles.botaoPrimario}>
+                Voltar pro histórico
+              </Link>
+            </>
+          ) : (
+            <Loader />
+          )}
+        </div>
+      )}
+
+      {etapa === 'selecao' && !modoIndividual && (
         <div className={styles.card}>
           <label className={styles.campo}>
             <span className={styles.rotulo}>Matéria</span>
@@ -357,12 +400,12 @@ export default function BancoQuestoesPage() {
             {acertos === questoes.length ? 'Mandou muito bem, gabaritou!' : 'Continue praticando pra melhorar ainda mais.'}
           </p>
           <button className={styles.botaoPrimario} onClick={handleReiniciar}>
-            Praticar outra submatéria
+            {modoIndividual ? 'Voltar pro histórico' : 'Praticar outra submatéria'}
           </button>
         </div>
       )}
 
-      {carregandoMaterias && etapa === 'selecao' && materias.length === 0 && <Loader />}
+      {!modoIndividual && carregandoMaterias && etapa === 'selecao' && materias.length === 0 && <Loader />}
     </div>
   );
 }

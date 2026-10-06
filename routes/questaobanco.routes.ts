@@ -38,6 +38,10 @@ export default class QuestaoBancoRoteador {
     // Fila de validação: só admin de plataforma (vê Status=Pendente, não exposto na rota pública)
     this.#router.get("/pendentes", plataformaAdminGuard, this.#controller.indexPendentes);
 
+    // Busca individual (ex.: "refazer essa questão" a partir do histórico) — DEPOIS dos literais
+    // acima (/contagem, /progresso, /vestibular, /pendentes), senão eles cairiam aqui como :guid.
+    this.#router.get("/:guid", this.#controller.show);
+
     // Progresso por aluno (tracking "feita"/"marcada") — qualquer aluno autenticado, só na própria conta
     this.#router.post("/:guid/progresso", this.#controller.registrarResposta);
     this.#router.delete("/:guid/progresso", this.#controller.desmarcarFeita);
