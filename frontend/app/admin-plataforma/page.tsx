@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Icon } from '@/components/Icon';
@@ -11,6 +11,190 @@ import * as AnexoAPI from '@/lib/api/anexo.api';
 import * as TurmaAPI from '@/lib/api/turma.api';
 import * as AlunoAPI from '@/lib/api/aluno.api';
 import styles from './page.module.css';
+
+// Mesmo parser mínimo de `banco-questoes/page.tsx` (não extraído pra componente
+// compartilhado de propósito — evita acoplar essa tela, em desenvolvimento ativo
+// em paralelo por outra sessão, a uma mudança de contrato aqui). `\n\n` vira
+// parágrafo, `**texto**` vira negrito, `![alt](url)` vira imagem inline.
+const TOKEN_REGEX_PREVIEW = /\*\*(.+?)\*\*|!\[([^\]]*)\]\(([^)]+)\)/g;
+function renderInlineTokensPreview(texto: string, keyPrefix: string): ReactNode[] {
+  const partes: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let idx = 0;
+  TOKEN_REGEX_PREVIEW.lastIndex = 0;
+  while ((match = TOKEN_REGEX_PREVIEW.exec(texto)) !== null) {
+    if (match.index > lastIndex) partes.push(texto.slice(lastIndex, match.index));
+    if (match[1] !== undefined) {
+      partes.push(<strong key={`${keyPrefix}-${idx++}`}>{match[1]}</strong>);
+    } else {
+      partes.push(
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={`${keyPrefix}-${idx++}`} src={match[3]} alt={match[2]} className={styles.enunciadoImagemInline} />
+      );
+    }
+    lastIndex = TOKEN_REGEX_PREVIEW.lastIndex;
+  }
+  if (lastIndex < texto.length) partes.push(texto.slice(lastIndex));
+  return partes;
+}
+function renderEnunciadoPreview(texto: string) {
+  return texto.split(/\n\n+/).map((paragrafo, i) => (
+    <p key={i} className={styles.enunciadoParagrafo}>
+      {renderInlineTokensPreview(paragrafo, `p${i}`)}
+    </p>
+  ));
+}
+
+/** Acha todas as ocorrências `![alt](url)` dentro do Enunciado — cada uma vira um
+ * cartão de imagem editável (recortar/trocar/remover) na tela de validação. */
+function extrairImagensInline(texto: string): { alt: string; url: string; ocorrencia: string }[] {
+  const regex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  const resultado: { alt: string; url: string; ocorrencia: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(texto)) !== null) {
+    resultado.push({ alt: m[1], url: m[2], ocorrencia: m[0] });
+  }
+  return resultado;
+}
+
+interface AreaRecorte {
+  x: number;
+  y: number;
+  largura: number;
+  altura: number;
+}
+
+/**
+ * Modal de recorte de imagem — canvas simples (sem lib externa), arrasta um
+ * retângulo sobre a imagem carregada e devolve o Blob recortado. Pedido do
+ * Eduardo, 2026-10-05 ("dá pra arrastar e cortar parte da imagem").
+ */
+function ModalRecorteImagem({
+  src,
+  onCancelar,
+  onConfirmar,
+}: {
+  src: string;
+  onCancelar: () => void;
+  onConfirmar: (blob: Blob) => void;
+}) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [arrastando, setArrastando] = useState(false);
+  const [inicio, setInicio] = useState<{ x: number; y: number } | null>(null);
+  const [area, setArea] = useState<AreaRecorte | null>(null);
+  const [processando, setProcessando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  const posRelativa = (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(e.clientX - rect.left, rect.width)),
+      y: Math.max(0, Math.min(e.clientY - rect.top, rect.height)),
+    };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const p = posRelativa(e);
+    setInicio(p);
+    setArea({ x: p.x, y: p.y, largura: 0, altura: 0 });
+    setArrastando(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!arrastando || !inicio) return;
+    const p = posRelativa(e);
+    setArea({
+      x: Math.min(inicio.x, p.x),
+      y: Math.min(inicio.y, p.y),
+      largura: Math.abs(p.x - inicio.x),
+      altura: Math.abs(p.y - inicio.y),
+    });
+  };
+
+  const handleMouseUp = () => setArrastando(false);
+
+  const handleConfirmar = () => {
+    const img = imgRef.current;
+    if (!img || !area || area.largura < 5 || area.altura < 5) {
+      setErro('Arraste um retângulo sobre a imagem pra marcar o recorte.');
+      return;
+    }
+    setProcessando(true);
+    setErro('');
+    try {
+      // Imagem exibida (CSS) pode ter escala diferente do pixel real do arquivo —
+      // converte a área arrastada (coordenada de tela) pra coordenada natural antes
+      // de recortar, senão o recorte final sai errado em qualquer zoom/tamanho de tela.
+      const escalaX = img.naturalWidth / img.clientWidth;
+      const escalaY = img.naturalHeight / img.clientHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(area.largura * escalaX);
+      canvas.height = Math.round(area.altura * escalaY);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas não suportado');
+      ctx.drawImage(
+        img,
+        area.x * escalaX,
+        area.y * escalaY,
+        area.largura * escalaX,
+        area.altura * escalaY,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+      canvas.toBlob(
+        (blob) => {
+          setProcessando(false);
+          if (!blob) {
+            setErro('Falha ao gerar o recorte.');
+            return;
+          }
+          onConfirmar(blob);
+        },
+        'image/jpeg',
+        0.92
+      );
+    } catch (e: any) {
+      setProcessando(false);
+      setErro(e.message || 'Erro ao recortar');
+    }
+  };
+
+  return (
+    <div className={styles.recorteOverlay} onClick={onCancelar}>
+      <div className={styles.recorteModal} onClick={(e) => e.stopPropagation()}>
+        <p className={styles.hint}>Arraste um retângulo sobre a parte da imagem que quer manter.</p>
+        <div
+          className={styles.recorteArea}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img ref={imgRef} src={src} alt="Imagem a recortar" className={styles.recorteImagem} draggable={false} />
+          {area && (
+            <div
+              className={styles.recorteSelecao}
+              style={{ left: area.x, top: area.y, width: area.largura, height: area.altura }}
+            />
+          )}
+        </div>
+        {erro && <p className={styles.erroTexto}>{erro}</p>}
+        <div className={styles.recorteAcoes}>
+          <button type="button" onClick={onCancelar} disabled={processando}>
+            Cancelar
+          </button>
+          <button type="button" className={styles.botaoSalvar} onClick={handleConfirmar} disabled={processando}>
+            {processando ? 'Recortando...' : 'Confirmar recorte'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const DIFICULDADES: QuestaoBancoAPI.QuestaoBancoDificuldade[] = ['Facil', 'Media', 'Dificil'];
 
@@ -143,6 +327,251 @@ export default function AdminPlataformaPage() {
     }
   };
 
+  // ---- Fila de validação de questões (Status='Pendente') ----
+  interface FormEdicaoQuestao {
+    MateriaGlobalGUID: string;
+    SubMateriaGlobalGUID: string;
+    VestibularGUID: string;
+    Dificuldade: QuestaoBancoAPI.QuestaoBancoDificuldade;
+    Enunciado: string;
+    Alternativas: { Texto: string; Correta: boolean }[];
+  }
+
+  const [questoesPendentes, setQuestoesPendentes] = useState<QuestaoBancoAPI.QuestaoBanco[]>([]);
+  const [carregandoPendentes, setCarregandoPendentes] = useState(true);
+  const [editandoGUID, setEditandoGUID] = useState<string | null>(null);
+  const [formEdicao, setFormEdicao] = useState<FormEdicaoQuestao | null>(null);
+  const [subMateriasEdicao, setSubMateriasEdicao] = useState<MateriaGlobalAPI.SubMateriaGlobal[]>([]);
+  const [anexosEdicao, setAnexosEdicao] = useState<{ AnexoGUID: string; AnexoCaminho: string }[]>([]);
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  const [validandoGUID, setValidandoGUID] = useState<string | null>(null);
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
+  const [recorteAberto, setRecorteAberto] = useState<{ src: string; aoConfirmar: (blob: Blob) => void } | null>(null);
+
+  const carregarPendentes = async () => {
+    try {
+      setCarregandoPendentes(true);
+      setQuestoesPendentes(await QuestaoBancoAPI.listarPendentes());
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao carregar questões pendentes');
+    } finally {
+      setCarregandoPendentes(false);
+    }
+  };
+
+  const abrirEdicao = (questao: QuestaoBancoAPI.QuestaoBanco) => {
+    setEditandoGUID(questao.QuestaoBancoGUID);
+    setFormEdicao({
+      MateriaGlobalGUID: questao.MateriaGlobalGUID,
+      SubMateriaGlobalGUID: questao.SubMateriaGlobalGUID,
+      VestibularGUID: questao.VestibularGUID,
+      Dificuldade: questao.Dificuldade,
+      Enunciado: questao.Enunciado,
+      Alternativas: questao.Alternativas.map((a) => ({ Texto: a.AlternativaTexto, Correta: a.AlternativaCorreta })),
+    });
+    setAnexosEdicao(questao.Anexos.map((a) => ({ AnexoGUID: a.AnexoGUID, AnexoCaminho: a.AnexoCaminho })));
+  };
+
+  const fecharEdicao = () => {
+    setEditandoGUID(null);
+    setFormEdicao(null);
+    setAnexosEdicao([]);
+    setSubMateriasEdicao([]);
+  };
+
+  useEffect(() => {
+    if (!editandoGUID || !formEdicao?.MateriaGlobalGUID) return;
+    MateriaGlobalAPI.listarSubMaterias(formEdicao.MateriaGlobalGUID)
+      .then(setSubMateriasEdicao)
+      .catch((erro: any) => alert(erro.message || 'Erro ao carregar submatérias'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formEdicao?.MateriaGlobalGUID, editandoGUID]);
+
+  const validarFormEdicao = (): { Texto: string; Correta: boolean }[] | null => {
+    if (!formEdicao) return null;
+    if (!formEdicao.Enunciado.trim()) {
+      alert('Informe o enunciado.');
+      return null;
+    }
+    const alternativasPreenchidas = formEdicao.Alternativas.filter((a) => a.Texto.trim());
+    if (alternativasPreenchidas.length < 2 || alternativasPreenchidas.filter((a) => a.Correta).length !== 1) {
+      alert('Pelo menos 2 alternativas preenchidas, exatamente uma marcada como correta.');
+      return null;
+    }
+    return alternativasPreenchidas;
+  };
+
+  const handleSalvarEdicao = async () => {
+    if (!editandoGUID || !formEdicao) return;
+    const alternativasPreenchidas = validarFormEdicao();
+    if (!alternativasPreenchidas) return;
+    setSalvandoEdicao(true);
+    try {
+      const atualizada = await QuestaoBancoAPI.atualizarQuestao(editandoGUID, {
+        MateriaGlobalGUID: formEdicao.MateriaGlobalGUID,
+        SubMateriaGlobalGUID: formEdicao.SubMateriaGlobalGUID,
+        VestibularGUID: formEdicao.VestibularGUID,
+        Dificuldade: formEdicao.Dificuldade,
+        Enunciado: formEdicao.Enunciado.trim(),
+        Alternativas: alternativasPreenchidas,
+        AnexoGUIDs: anexosEdicao.map((a) => a.AnexoGUID),
+      });
+      setQuestoesPendentes((prev) => prev.map((p) => (p.QuestaoBancoGUID === editandoGUID ? atualizada : p)));
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao salvar edição');
+    } finally {
+      setSalvandoEdicao(false);
+    }
+  };
+
+  /** "Validar com o estado atual" — salva o formulário (como está AGORA, mesmo que nunca
+   * tenha clicado em "Salvar" antes) e só então marca Status='Validado', num clique só. */
+  const handleValidarComEdicao = async (guid: string) => {
+    if (editandoGUID !== guid || !formEdicao) {
+      // Pendente ainda não aberta pra edição (lista recolhida) — valida direto, sem tocar
+      // em nada do conteúdo (equivalente a "está bom do jeito que está").
+      setValidandoGUID(guid);
+      try {
+        await QuestaoBancoAPI.validarQuestao(guid);
+        setQuestoesPendentes((prev) => prev.filter((p) => p.QuestaoBancoGUID !== guid));
+      } catch (erro: any) {
+        alert(erro.message || 'Erro ao validar questão');
+      } finally {
+        setValidandoGUID(null);
+      }
+      return;
+    }
+
+    const alternativasPreenchidas = validarFormEdicao();
+    if (!alternativasPreenchidas) return;
+    setValidandoGUID(guid);
+    try {
+      await QuestaoBancoAPI.atualizarQuestao(guid, {
+        MateriaGlobalGUID: formEdicao.MateriaGlobalGUID,
+        SubMateriaGlobalGUID: formEdicao.SubMateriaGlobalGUID,
+        VestibularGUID: formEdicao.VestibularGUID,
+        Dificuldade: formEdicao.Dificuldade,
+        Enunciado: formEdicao.Enunciado.trim(),
+        Alternativas: alternativasPreenchidas,
+        AnexoGUIDs: anexosEdicao.map((a) => a.AnexoGUID),
+      });
+      await QuestaoBancoAPI.validarQuestao(guid);
+      setQuestoesPendentes((prev) => prev.filter((p) => p.QuestaoBancoGUID !== guid));
+      fecharEdicao();
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao validar questão');
+    } finally {
+      setValidandoGUID(null);
+    }
+  };
+
+  const handleExcluirPendente = async (guid: string) => {
+    if (!confirm('Excluir esta questão pendente? Essa ação não pode ser desfeita.')) return;
+    try {
+      await QuestaoBancoAPI.excluirQuestao(guid);
+      setQuestoesPendentes((prev) => prev.filter((p) => p.QuestaoBancoGUID !== guid));
+      if (editandoGUID === guid) fecharEdicao();
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao excluir questão');
+    }
+  };
+
+  const handleAlternativaEdicaoTexto = (indice: number, texto: string) => {
+    setFormEdicao((prev) =>
+      prev ? { ...prev, Alternativas: prev.Alternativas.map((a, i) => (i === indice ? { ...a, Texto: texto } : a)) } : prev
+    );
+  };
+
+  const handleAlternativaEdicaoCorreta = (indice: number) => {
+    setFormEdicao((prev) =>
+      prev ? { ...prev, Alternativas: prev.Alternativas.map((a, i) => ({ ...a, Correta: i === indice })) } : prev
+    );
+  };
+
+  const uploadRecorte = async (blob: Blob): Promise<AnexoAPI.Anexo> => {
+    const arquivo = new File([blob], `recorte-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    return AnexoAPI.uploadAnexo(arquivo, ESCOLA_GUID_UNIVAP);
+  };
+
+  /** Trocar (recortar de novo) uma imagem já anexada ao enunciado. */
+  const handleTrocarAnexoEnunciado = (anexoAtual: { AnexoGUID: string; AnexoCaminho: string }) => {
+    setRecorteAberto({
+      src: anexoAtual.AnexoCaminho,
+      aoConfirmar: async (blob) => {
+        setRecorteAberto(null);
+        setEnviandoImagem(true);
+        try {
+          const anexo = await uploadRecorte(blob);
+          setAnexosEdicao((prev) =>
+            prev
+              .filter((a) => a.AnexoGUID !== anexoAtual.AnexoGUID)
+              .concat({ AnexoGUID: anexo.AnexoGUID, AnexoCaminho: anexo.AnexoCaminho })
+          );
+        } catch (erro: any) {
+          alert(erro.message || 'Erro ao enviar imagem recortada');
+        } finally {
+          setEnviandoImagem(false);
+        }
+      },
+    });
+  };
+
+  const handleRemoverAnexoEnunciado = (anexoGUID: string) => {
+    setAnexosEdicao((prev) => prev.filter((a) => a.AnexoGUID !== anexoGUID));
+  };
+
+  /** Upload de arquivo novo (não é recorte de um já existente) — abre o modal de recorte
+   * com o arquivo escolhido como fonte, pra sempre passar por um corte antes de anexar. */
+  const handleArquivoNovaImagemEnunciado = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const arquivo = e.target.files?.[0];
+    e.target.value = '';
+    if (!arquivo) return;
+    const src = URL.createObjectURL(arquivo);
+    setRecorteAberto({
+      src,
+      aoConfirmar: async (blob) => {
+        setRecorteAberto(null);
+        URL.revokeObjectURL(src);
+        setEnviandoImagem(true);
+        try {
+          const anexo = await uploadRecorte(blob);
+          setAnexosEdicao((prev) => [...prev, { AnexoGUID: anexo.AnexoGUID, AnexoCaminho: anexo.AnexoCaminho }]);
+        } catch (erro: any) {
+          alert(erro.message || 'Erro ao enviar imagem');
+        } finally {
+          setEnviandoImagem(false);
+        }
+      },
+    });
+  };
+
+  /** Trocar/recortar de novo uma imagem INLINE (`![alt](url)` dentro do próprio Enunciado) —
+   * substitui só aquela ocorrência pela URL nova depois do upload. */
+  const handleTrocarImagemInline = (img: { alt: string; url: string; ocorrencia: string }) => {
+    setRecorteAberto({
+      src: img.url,
+      aoConfirmar: async (blob) => {
+        setRecorteAberto(null);
+        setEnviandoImagem(true);
+        try {
+          const anexo = await uploadRecorte(blob);
+          const novaTag = `![${img.alt}](${anexo.AnexoCaminho})`;
+          setFormEdicao((prev) => (prev ? { ...prev, Enunciado: prev.Enunciado.split(img.ocorrencia).join(novaTag) } : prev));
+        } catch (erro: any) {
+          alert(erro.message || 'Erro ao enviar imagem recortada');
+        } finally {
+          setEnviandoImagem(false);
+        }
+      },
+    });
+  };
+
+  const handleRemoverImagemInline = (img: { ocorrencia: string }) => {
+    setFormEdicao((prev) =>
+      prev ? { ...prev, Enunciado: prev.Enunciado.split(img.ocorrencia).join('').replace(/[ \t]{2,}/g, ' ').trim() } : prev
+    );
+  };
+
   // ---- Registrar aluno — Colégio Univap (feira técnica, temporário) ----
   const [turmasUnivap, setTurmasUnivap] = useState<TurmaAPI.Turma[]>([]);
   const [carregandoTurmasUnivap, setCarregandoTurmasUnivap] = useState(true);
@@ -197,6 +626,7 @@ export default function AdminPlataformaPage() {
     void carregarSugestoes();
     void carregarFila();
     void carregarBanco();
+    void carregarPendentes();
     void carregarTurmasUnivap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ehAdmin]);
@@ -397,6 +827,201 @@ export default function AdminPlataformaPage() {
           </ul>
         )}
       </section>
+
+      <section className={styles.secao}>
+        <h2 className={styles.secaoTitulo}>
+          <Icon name="check-circle" size={18} /> Questões pendentes de validação ({questoesPendentes.length})
+        </h2>
+        <p className={styles.hint}>
+          Questões extraídas automaticamente de livro — nunca foram revisadas por um humano. Só aparecem pro aluno
+          depois de validadas aqui.
+        </p>
+        {carregandoPendentes ? (
+          <p>Carregando...</p>
+        ) : questoesPendentes.length === 0 ? (
+          <p className={styles.hint}>Nenhuma questão pendente no momento.</p>
+        ) : (
+          <ul className={styles.listaQuestoes}>
+            {questoesPendentes.map((q) => {
+              const imagensInline = editandoGUID === q.QuestaoBancoGUID && formEdicao ? extrairImagensInline(formEdicao.Enunciado) : [];
+              return (
+                <li key={q.QuestaoBancoGUID} className={styles.itemQuestaoPendente}>
+                  {editandoGUID === q.QuestaoBancoGUID && formEdicao ? (
+                    <div className={styles.formQuestao}>
+                      <div className={styles.linhaForm}>
+                        <select
+                          value={formEdicao.MateriaGlobalGUID}
+                          onChange={(e) =>
+                            setFormEdicao((p) => (p ? { ...p, MateriaGlobalGUID: e.target.value, SubMateriaGlobalGUID: '' } : p))
+                          }
+                        >
+                          <option value="">Matéria global...</option>
+                          {confirmados.map((c) => (
+                            <option key={c.MateriaGlobalGUID} value={c.MateriaGlobalGUID}>
+                              {c.Nome}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={formEdicao.SubMateriaGlobalGUID}
+                          onChange={(e) => setFormEdicao((p) => (p ? { ...p, SubMateriaGlobalGUID: e.target.value } : p))}
+                        >
+                          <option value="">Submatéria...</option>
+                          {subMateriasEdicao.map((s) => (
+                            <option key={s.SubMateriaGlobalGUID} value={s.SubMateriaGlobalGUID}>
+                              {s.Nome}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className={styles.linhaForm}>
+                        <select
+                          value={formEdicao.VestibularGUID}
+                          onChange={(e) => setFormEdicao((p) => (p ? { ...p, VestibularGUID: e.target.value } : p))}
+                        >
+                          <option value="">Vestibular...</option>
+                          {vestibulares.map((v) => (
+                            <option key={v.VestibularGUID} value={v.VestibularGUID}>
+                              {v.Nome}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={formEdicao.Dificuldade}
+                          onChange={(e) =>
+                            setFormEdicao((p) => (p ? { ...p, Dificuldade: e.target.value as QuestaoBancoAPI.QuestaoBancoDificuldade } : p))
+                          }
+                        >
+                          {DIFICULDADES.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <textarea
+                        value={formEdicao.Enunciado}
+                        onChange={(e) => setFormEdicao((p) => (p ? { ...p, Enunciado: e.target.value } : p))}
+                        rows={6}
+                      />
+
+                      {imagensInline.length > 0 && (
+                        <div className={styles.imagensEdicao}>
+                          <p className={styles.hint}>Imagens embutidas no texto (fórmula/gráfico/tabela recortada):</p>
+                          {imagensInline.map((img, i) => (
+                            <div key={i} className={styles.imagemEdicaoCartao}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={img.url} alt={img.alt} className={styles.imagemEdicaoThumb} />
+                              <div className={styles.imagemEdicaoAcoes}>
+                                <button type="button" onClick={() => handleTrocarImagemInline(img)} disabled={enviandoImagem}>
+                                  Recortar/trocar
+                                </button>
+                                <button type="button" onClick={() => handleRemoverImagemInline(img)}>
+                                  Remover
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className={styles.previaTitulo}>Prévia (como o aluno vê):</p>
+                      <div className={styles.previaEnunciado}>{renderEnunciadoPreview(formEdicao.Enunciado)}</div>
+
+                      {anexosEdicao.length > 0 && (
+                        <div className={styles.imagensEdicao}>
+                          <p className={styles.hint}>Imagens anexadas à questão (não embutidas no texto):</p>
+                          {anexosEdicao.map((a) => (
+                            <div key={a.AnexoGUID} className={styles.imagemEdicaoCartao}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={a.AnexoCaminho} alt="Anexo da questão" className={styles.imagemEdicaoThumb} />
+                              <div className={styles.imagemEdicaoAcoes}>
+                                <button type="button" onClick={() => handleTrocarAnexoEnunciado(a)} disabled={enviandoImagem}>
+                                  Recortar/trocar
+                                </button>
+                                <button type="button" onClick={() => handleRemoverAnexoEnunciado(a.AnexoGUID)}>
+                                  Remover
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <label className={styles.botaoUpload}>
+                        {enviandoImagem ? 'Enviando...' : '+ Adicionar imagem'}
+                        <input type="file" accept="image/*" hidden onChange={handleArquivoNovaImagemEnunciado} disabled={enviandoImagem} />
+                      </label>
+
+                      <div className={styles.alternativas}>
+                        {formEdicao.Alternativas.map((a, i) => (
+                          <div key={i} className={styles.alternativaLinha}>
+                            <input type="radio" name={`alt-correta-${q.QuestaoBancoGUID}`} checked={a.Correta} onChange={() => handleAlternativaEdicaoCorreta(i)} />
+                            <input placeholder={`Alternativa ${i + 1}`} value={a.Texto} onChange={(e) => handleAlternativaEdicaoTexto(i, e.target.value)} />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className={styles.acoesPendente}>
+                        <button type="button" onClick={fecharEdicao}>
+                          Cancelar
+                        </button>
+                        <button type="button" onClick={handleSalvarEdicao} disabled={salvandoEdicao}>
+                          {salvandoEdicao ? 'Salvando...' : 'Salvar sem validar'}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.botaoSalvar}
+                          onClick={() => handleValidarComEdicao(q.QuestaoBancoGUID)}
+                          disabled={validandoGUID === q.QuestaoBancoGUID}
+                        >
+                          {validandoGUID === q.QuestaoBancoGUID ? 'Validando...' : 'Validar com o estado atual'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={styles.itemQuestao}>
+                      <div>
+                        <span className={styles.badgeDificuldade}>{q.Dificuldade}</span>
+                        <p>
+                          {q.Enunciado.replace(/!\[[^\]]*\]\([^)]+\)/g, '[imagem]').slice(0, 160)}
+                          {q.Enunciado.length > 160 ? '…' : ''}
+                        </p>
+                      </div>
+                      <div className={styles.acoesPendente}>
+                        <button type="button" onClick={() => abrirEdicao(q)}>
+                          Revisar
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.botaoSalvar}
+                          onClick={() => handleValidarComEdicao(q.QuestaoBancoGUID)}
+                          disabled={validandoGUID === q.QuestaoBancoGUID}
+                        >
+                          {validandoGUID === q.QuestaoBancoGUID ? 'Validando...' : 'Validar direto'}
+                        </button>
+                        <button type="button" onClick={() => handleExcluirPendente(q.QuestaoBancoGUID)}>
+                          <Icon name="trash" size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      {recorteAberto && (
+        <ModalRecorteImagem
+          src={recorteAberto.src}
+          onCancelar={() => setRecorteAberto(null)}
+          onConfirmar={recorteAberto.aoConfirmar}
+        />
+      )}
 
       <section className={styles.secao}>
         <h2 className={styles.secaoTitulo}>

@@ -429,6 +429,36 @@ export class RelacaoAnexosDAO {
   }
 
   /**
+   * Desvincular anexo do enunciado de uma questão do banco (tela de validação —
+   * "remover imagem"/"trocar imagem"). Por par AnexoGUID+QuestaoBancoGUID direto
+   * (não pelo RelacaoAnexoQuestaoBancoGUID) — quem chama (service) só tem acesso
+   * aos GUIDs de anexo já expostos no DTO, não ao GUID interno do vínculo.
+   */
+  async desvincularAnexoQuestaoBanco(anexoGUID: string, questaoBancoGUID: string): Promise<void> {
+    console.log("🟢 RelacaoAnexosDAO.desvincularAnexoQuestaoBanco()");
+
+    const pool = await this.#database.getPool();
+    await pool.execute(
+      "DELETE FROM relacaoanexosquestaobanco WHERE AnexoGUID = ? AND QuestaoBancoGUID = ?",
+      [anexoGUID, questaoBancoGUID]
+    );
+  }
+
+  /**
+   * Desvincular anexo de uma alternativa de questão do banco — mesmo formato de
+   * `desvincularAnexoQuestaoBanco`.
+   */
+  async desvincularAnexoQuestaoBancoAlternativa(anexoGUID: string, alternativaGUID: string): Promise<void> {
+    console.log("🟢 RelacaoAnexosDAO.desvincularAnexoQuestaoBancoAlternativa()");
+
+    const pool = await this.#database.getPool();
+    await pool.execute(
+      "DELETE FROM relacaoanexosquestaobancoalternativa WHERE AnexoGUID = ? AND AlternativaGUID = ?",
+      [anexoGUID, alternativaGUID]
+    );
+  }
+
+  /**
    * Buscar anexos de uma alternativa de questão do banco.
    */
   async findAnexosByQuestaoBancoAlternativa(alternativaGUID: string): Promise<Anexo[]> {

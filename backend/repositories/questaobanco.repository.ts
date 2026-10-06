@@ -1,5 +1,5 @@
 import MysqlDatabase from "../database/MysqlDatabase";
-import QuestaoBanco, { QuestaoBancoDificuldade } from "../entities/questaobanco.model";
+import QuestaoBanco, { QuestaoBancoDificuldade, QuestaoBancoStatus } from "../entities/questaobanco.model";
 
 interface QuestaoBancoRow {
   QuestaoBancoGUID: string;
@@ -7,6 +7,7 @@ interface QuestaoBancoRow {
   SubMateriaGlobalGUID: string;
   VestibularGUID: string;
   Dificuldade: QuestaoBancoDificuldade;
+  Status: QuestaoBancoStatus;
   Enunciado: string;
   VideoResolucaoUrl: string | null;
   CriadoPorGUID: string;
@@ -18,6 +19,18 @@ export interface QuestaoBancoFiltros {
   SubMateriaGlobalGUID?: string;
   Dificuldade?: QuestaoBancoDificuldade;
   VestibularGUID?: string;
+  Status?: QuestaoBancoStatus;
+}
+
+/** Campos editáveis via tela de validação — todos opcionais (atualiza só o que vier). */
+export interface QuestaoBancoUpdateCampos {
+  MateriaGlobalGUID?: string;
+  SubMateriaGlobalGUID?: string;
+  VestibularGUID?: string;
+  Dificuldade?: QuestaoBancoDificuldade;
+  Status?: QuestaoBancoStatus;
+  Enunciado?: string;
+  VideoResolucaoUrl?: string | null;
 }
 
 export class QuestaoBancoDAO {
@@ -35,6 +48,9 @@ export class QuestaoBancoDAO {
       INSERT INTO questaobanco (QuestaoBancoGUID, MateriaGlobalGUID, SubMateriaGlobalGUID, VestibularGUID, Dificuldade, Enunciado, VideoResolucaoUrl, CriadoPorGUID)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
+    // Status não entra no INSERT — a coluna já nasce 'Pendente' via DEFAULT do schema, mesmo
+    // valor que `new QuestaoBanco()` usa antes de qualquer set explícito (entity e banco
+    // concordam sem precisar repetir o literal aqui).
     const pool = await this.#database.getPool();
     await pool.execute(SQL, [
       questao.QuestaoBancoGUID,
@@ -46,6 +62,18 @@ export class QuestaoBancoDAO {
       questao.VideoResolucaoUrl,
       questao.CriadoPorGUID,
     ]);
+  };
+
+  /** Atualiza só os campos informados — usado pela tela de validação (editar enunciado,
+   * dificuldade, matéria/submatéria/vestibular) e por `validarQuestao` (Status). */
+  update = async (guid: string, campos: QuestaoBancoUpdateCampos): Promise<void> => {
+    console.log("🟢 QuestaoBancoDAO.update()");
+    const entradas = Object.entries(campos).filter(([, v]) => v !== undefined);
+    if (entradas.length === 0) return;
+
+    const SQL = `UPDATE questaobanco SET ${entradas.map(([campo]) => `${campo} = ?`).join(", ")} WHERE QuestaoBancoGUID = ?`;
+    const pool = await this.#database.getPool();
+    await pool.execute(SQL, [...entradas.map(([, v]) => v), guid]);
   };
 
   findById = async (guid: string): Promise<QuestaoBanco | null> => {
@@ -83,6 +111,10 @@ export class QuestaoBancoDAO {
       conditions.push("VestibularGUID = ?");
       params.push(filtros.VestibularGUID);
     }
+    if (filtros.Status) {
+      conditions.push("Status = ?");
+      params.push(filtros.Status);
+    }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const SQL = `SELECT * FROM questaobanco ${whereClause} ORDER BY CreatedAt DESC`;
@@ -117,6 +149,7 @@ export class QuestaoBancoDAO {
       questao.SubMateriaGlobalGUID = row.SubMateriaGlobalGUID;
       questao.VestibularGUID = row.VestibularGUID;
       questao.Dificuldade = row.Dificuldade;
+      questao.Status = row.Status;
       questao.Enunciado = row.Enunciado;
       questao.VideoResolucaoUrl = row.VideoResolucaoUrl;
       questao.CriadoPorGUID = row.CriadoPorGUID;

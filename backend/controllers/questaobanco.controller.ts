@@ -23,6 +23,9 @@ export class QuestaoBancoController {
   };
 
   // GET /api/questaobanco?MateriaGlobalGUID=&SubMateriaGlobalGUID=&Dificuldade=&VestibularGUID= — livre pro aluno
+  // Status SEMPRE forçado em 'Validado' aqui, ignorando qualquer coisa que o cliente mande — uma
+  // questão extraída de livro e nunca revisada não pode vazar pro aluno só porque alguém chutou
+  // um query param. Quem precisa ver 'Pendente' usa `indexPendentes` (atrás de admin guard).
   index = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 QuestaoBancoController.index()");
     try {
@@ -31,8 +34,47 @@ export class QuestaoBancoController {
         SubMateriaGlobalGUID: req.query.SubMateriaGlobalGUID as string | undefined,
         Dificuldade: req.query.Dificuldade as QuestaoBancoDificuldade | undefined,
         VestibularGUID: req.query.VestibularGUID as string | undefined,
+        Status: "Validado",
       });
       res.status(200).json({ success: true, message: "Questões listadas com sucesso", data: { questoes } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // GET /api/questaobanco/pendentes — só admin de plataforma (fila de validação)
+  indexPendentes = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 QuestaoBancoController.indexPendentes()");
+    try {
+      const questoes = await this.#service.listarQuestoes({
+        MateriaGlobalGUID: req.query.MateriaGlobalGUID as string | undefined,
+        SubMateriaGlobalGUID: req.query.SubMateriaGlobalGUID as string | undefined,
+        Status: "Pendente",
+      });
+      res.status(200).json({ success: true, message: "Questões pendentes listadas com sucesso", data: { questoes } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // PATCH /api/questaobanco/:guid — só admin de plataforma (editar enunciado/alternativas/imagem)
+  update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 QuestaoBancoController.update()");
+    try {
+      const usuarioGUID = req.user?.UsuarioGUID || "";
+      const questao = await this.#service.atualizarQuestao(req.params.guid, req.body, usuarioGUID);
+      res.status(200).json({ success: true, message: "Questão atualizada com sucesso", data: { questao } });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // PATCH /api/questaobanco/:guid/validar — só admin de plataforma
+  validar = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 QuestaoBancoController.validar()");
+    try {
+      const questao = await this.#service.validarQuestao(req.params.guid);
+      res.status(200).json({ success: true, message: "Questão validada com sucesso", data: { questao } });
     } catch (error) {
       next(error);
     }

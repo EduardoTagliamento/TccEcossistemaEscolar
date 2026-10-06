@@ -27,12 +27,17 @@ export default class QuestaoBancoRoteador {
 
     this.#router.use(AuthMiddleware.authenticate);
 
-    // Leitura: qualquer usuário autenticado (aluno praticando, spec item 12)
+    // Leitura: qualquer usuário autenticado (aluno praticando, spec item 12) — só Status=Validado
     this.#router.get("/", this.#controller.index);
     this.#router.get("/vestibular", this.#controller.indexVestibulares);
 
+    // Fila de validação: só admin de plataforma (vê Status=Pendente, não exposto na rota pública)
+    this.#router.get("/pendentes", plataformaAdminGuard, this.#controller.indexPendentes);
+
     // Escrita: só admin de plataforma (spec item 13)
     this.#router.post("/", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, this.#controller.store);
+    this.#router.patch("/:guid", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, this.#controller.update);
+    this.#router.patch("/:guid/validar", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, this.#controller.validar);
     this.#router.delete("/:guid", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, this.#controller.destroy);
     this.#router.post("/vestibular", plataformaAdminGuard, escritaSensivelRateLimitMiddleware, this.#controller.storeVestibular);
 

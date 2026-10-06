@@ -30,12 +30,15 @@ export interface AlternativaQuestaoBanco {
   Anexos: AnexoQuestaoBanco[];
 }
 
+export type QuestaoBancoStatus = 'Pendente' | 'Validado';
+
 export interface QuestaoBanco {
   QuestaoBancoGUID: string;
   MateriaGlobalGUID: string;
   SubMateriaGlobalGUID: string;
   VestibularGUID: string;
   Dificuldade: QuestaoBancoDificuldade;
+  Status: QuestaoBancoStatus;
   Enunciado: string;
   VideoResolucaoUrl: string | null;
   Alternativas: AlternativaQuestaoBanco[];
@@ -91,6 +94,49 @@ export async function excluirQuestao(guid: string): Promise<void> {
   const response = await fetch(`${API_URL}/questaobanco/${guid}`, { method: 'DELETE', headers: getHeaders() });
   const result = await response.json();
   if (!response.ok) throw new Error(result.message || 'Erro ao excluir questão');
+}
+
+/** Fila de validação — só Status='Pendente' (admin, nunca exposto na listagem pública). */
+export async function listarPendentes(filtros?: { MateriaGlobalGUID?: string; SubMateriaGlobalGUID?: string }): Promise<QuestaoBanco[]> {
+  const params = new URLSearchParams();
+  if (filtros?.MateriaGlobalGUID) params.append('MateriaGlobalGUID', filtros.MateriaGlobalGUID);
+  if (filtros?.SubMateriaGlobalGUID) params.append('SubMateriaGlobalGUID', filtros.SubMateriaGlobalGUID);
+
+  const response = await fetch(`${API_URL}/questaobanco/pendentes?${params}`, { headers: getHeaders() });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao listar questões pendentes');
+  return result.data?.questoes || [];
+}
+
+export interface QuestaoBancoUpdateDados {
+  MateriaGlobalGUID?: string;
+  SubMateriaGlobalGUID?: string;
+  VestibularGUID?: string;
+  Dificuldade?: QuestaoBancoDificuldade;
+  Enunciado?: string;
+  VideoResolucaoUrl?: string | null;
+  /** Substitui o conjunto inteiro de alternativas (não faz merge incremental). */
+  Alternativas?: { Texto: string; Correta: boolean; AnexoGUIDs?: string[] }[];
+  /** Substitui o conjunto inteiro de anexos do enunciado. */
+  AnexoGUIDs?: string[];
+}
+
+export async function atualizarQuestao(guid: string, dados: QuestaoBancoUpdateDados): Promise<QuestaoBanco> {
+  const response = await fetch(`${API_URL}/questaobanco/${guid}`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify(dados),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao atualizar questão');
+  return result.data.questao;
+}
+
+export async function validarQuestao(guid: string): Promise<QuestaoBanco> {
+  const response = await fetch(`${API_URL}/questaobanco/${guid}/validar`, { method: 'PATCH', headers: getHeaders() });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao validar questão');
+  return result.data.questao;
 }
 
 export async function listarVestibulares(): Promise<Vestibular[]> {

@@ -3,6 +3,7 @@
  * plataforma (admin de plataforma, item 13), vale pra todas as escolas.
  */
 export type QuestaoBancoDificuldade = "Facil" | "Media" | "Dificil";
+export type QuestaoBancoStatus = "Pendente" | "Validado";
 
 export default class QuestaoBanco {
   #QuestaoBancoGUID!: string;
@@ -10,6 +11,7 @@ export default class QuestaoBanco {
   #SubMateriaGlobalGUID!: string;
   #VestibularGUID!: string;
   #Dificuldade!: QuestaoBancoDificuldade;
+  #Status: QuestaoBancoStatus = "Pendente";
   #Enunciado!: string;
   #VideoResolucaoUrl: string | null = null;
   #CriadoPorGUID!: string;
@@ -72,6 +74,17 @@ export default class QuestaoBanco {
       throw new Error("Dificuldade deve ser 'Facil', 'Media' ou 'Dificil'.");
     }
     this.#Dificuldade = value;
+  }
+
+  get Status(): QuestaoBancoStatus {
+    return this.#Status;
+  }
+
+  set Status(value: QuestaoBancoStatus) {
+    if (!["Pendente", "Validado"].includes(value)) {
+      throw new Error("Status deve ser 'Pendente' ou 'Validado'.");
+    }
+    this.#Status = value;
   }
 
   get Enunciado(): string {
