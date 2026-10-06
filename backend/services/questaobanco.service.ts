@@ -202,6 +202,19 @@ export default class QuestaoBancoService {
       }
     }
 
+    // String vazia (não `undefined`) nos GUIDs passa pelo filtro de "campo não informado" do
+    // `update()` genérico e ia direto pro UPDATE — só estourava na constraint de FK do MySQL,
+    // bem mais tarde e mais confuso do que validar aqui. Caso real confirmado em produção.
+    for (const [campo, valor] of Object.entries({
+      MateriaGlobalGUID: data.MateriaGlobalGUID,
+      SubMateriaGlobalGUID: data.SubMateriaGlobalGUID,
+      VestibularGUID: data.VestibularGUID,
+    })) {
+      if (valor !== undefined && !valor.trim()) {
+        throw new ErrorResponse(400, "Campo inválido", { message: `${campo} não pode ser vazio.` });
+      }
+    }
+
     await this.#questaoDAO.update(guid, {
       MateriaGlobalGUID: data.MateriaGlobalGUID,
       SubMateriaGlobalGUID: data.SubMateriaGlobalGUID,

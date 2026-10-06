@@ -118,6 +118,46 @@ export async function buscarAnexo(anexoGUID: string): Promise<Anexo> {
   return resultado.data.anexo as Anexo;
 }
 
+export interface AreaRecorte {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * POST /api/anexo/:AnexoGUID/recortar — recorta uma imagem já enviada e devolve um anexo NOVO
+ * com o resultado (não altera o original). Roda no SERVIDOR (sharp) — não dá pra recortar no
+ * `<canvas>` do navegador uma imagem de outra origem (R2): `toBlob()`/`getImageData()` ficam
+ * bloqueados por CORS ("tainted canvas") mesmo só pra ler os pixels, mesmo que a imagem
+ * apareça normal na tela (exibir não precisa de CORS, exportar precisa).
+ */
+export async function recortarAnexo(anexoGUID: string, area: AreaRecorte): Promise<Anexo> {
+  const response = await fetch(`${API_URL}/anexo/${anexoGUID}/recortar`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(area),
+  });
+  const resultado = await response.json();
+  if (!response.ok || resultado?.success === false) {
+    throw new Error(resultado?.message || 'Erro ao recortar imagem');
+  }
+  return resultado.data.anexo as Anexo;
+}
+
+/** GET /api/anexo/por-caminho?caminho=<url> — resolve o AnexoGUID a partir da URL pública (ex.
+ * imagem inline embutida num Enunciado via markdown, que só guarda a URL no texto). */
+export async function buscarAnexoPorCaminho(caminho: string): Promise<Anexo> {
+  const response = await fetch(`${API_URL}/anexo/por-caminho?caminho=${encodeURIComponent(caminho)}`, {
+    headers: getHeaders(),
+  });
+  const resultado = await response.json();
+  if (!response.ok || resultado?.success === false) {
+    throw new Error(resultado?.message || 'Erro ao buscar anexo pela URL');
+  }
+  return resultado.data.anexo as Anexo;
+}
+
 /** DELETE /api/anexo/:AnexoGUID — excluir anexo (banco + arquivo físico). */
 export async function excluirAnexo(anexoGUID: string): Promise<void> {
   const response = await fetch(`${API_URL}/anexo/${anexoGUID}`, {

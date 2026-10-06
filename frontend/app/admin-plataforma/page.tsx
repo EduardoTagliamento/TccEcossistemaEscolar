@@ -58,7 +58,7 @@ function extrairImagensInline(texto: string): { alt: string; url: string; ocorre
   return resultado;
 }
 
-interface AreaRecorte {
+interface AreaRecorteTela {
   x: number;
   y: number;
   largura: number;
@@ -66,8 +66,12 @@ interface AreaRecorte {
 }
 
 /**
- * Modal de recorte de imagem — canvas simples (sem lib externa), arrasta um
- * retângulo sobre a imagem carregada e devolve o Blob recortado. Pedido do
+ * Modal de recorte de imagem — sem lib externa, arrasta um retângulo sobre a imagem carregada.
+ * Só calcula a ÁREA (em pixels reais do arquivo, não de tela) e devolve pro chamador — o recorte
+ * em si roda no SERVIDOR (`AnexoAPI.recortarAnexo`, via sharp), não aqui. Tentativa inicial usava
+ * `<canvas>`/`toBlob()` no navegador, mas imagem de outra origem (R2) deixa o canvas "tainted"
+ * (bloqueado pelo navegador por CORS) mesmo só pra EXIBIR funcionando normalmente — `toBlob()`
+ * falhava sempre com "Tainted canvases may not be exported", confirmado em produção. Pedido do
  * Eduardo, 2026-10-05 ("dá pra arrastar e cortar parte da imagem").
  */
 function ModalRecorteImagem({
@@ -77,13 +81,12 @@ function ModalRecorteImagem({
 }: {
   src: string;
   onCancelar: () => void;
-  onConfirmar: (blob: Blob) => void;
+  onConfirmar: (area: AnexoAPI.AreaRecorte) => void;
 }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [arrastando, setArrastando] = useState(false);
   const [inicio, setInicio] = useState<{ x: number; y: number } | null>(null);
-  const [area, setArea] = useState<AreaRecorte | null>(null);
-  const [processando, setProcessando] = useState(false);
+  const [area, setArea] = useState<AreaRecorteTela | null>(null);
   const [erro, setErro] = useState('');
 
   const posRelativa = (e: React.MouseEvent) => {
@@ -120,46 +123,16 @@ function ModalRecorteImagem({
       setErro('Arraste um retângulo sobre a imagem pra marcar o recorte.');
       return;
     }
-    setProcessando(true);
-    setErro('');
-    try {
-      // Imagem exibida (CSS) pode ter escala diferente do pixel real do arquivo —
-      // converte a área arrastada (coordenada de tela) pra coordenada natural antes
-      // de recortar, senão o recorte final sai errado em qualquer zoom/tamanho de tela.
-      const escalaX = img.naturalWidth / img.clientWidth;
-      const escalaY = img.naturalHeight / img.clientHeight;
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(area.largura * escalaX);
-      canvas.height = Math.round(area.altura * escalaY);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas não suportado');
-      ctx.drawImage(
-        img,
-        area.x * escalaX,
-        area.y * escalaY,
-        area.largura * escalaX,
-        area.altura * escalaY,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-      canvas.toBlob(
-        (blob) => {
-          setProcessando(false);
-          if (!blob) {
-            setErro('Falha ao gerar o recorte.');
-            return;
-          }
-          onConfirmar(blob);
-        },
-        'image/jpeg',
-        0.92
-      );
-    } catch (e: any) {
-      setProcessando(false);
-      setErro(e.message || 'Erro ao recortar');
-    }
+    // Imagem exibida (CSS) pode ter escala diferente do pixel real do arquivo — converte a área
+    // arrastada (coordenada de tela) pra coordenada natural antes de mandar pro servidor.
+    const escalaX = img.naturalWidth / img.clientWidth;
+    const escalaY = img.naturalHeight / img.clientHeight;
+    onConfirmar({
+      left: Math.round(area.x * escalaX),
+      top: Math.round(area.y * escalaY),
+      width: Math.round(area.largura * escalaX),
+      height: Math.round(area.altura * escalaY),
+    });
   };
 
   return (
@@ -173,10 +146,6 @@ function ModalRecorteImagem({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
-          {/* crossOrigin="anonymous": sem isso, o canvas fica "tainted" ao desenhar uma imagem de
-              outra origem (R2) — toBlob()/getImageData() são bloqueados pelo navegador mesmo só
-              pra LER os pixels (exibir sem recortar funciona sem isso, só por isso não dava pra
-              notar antes). R2.dev público manda Access-Control-Allow-Origin: * por padrão. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={imgRef}
@@ -184,10 +153,7 @@ function ModalRecorteImagem({
             alt="Imagem a recortar"
             className={styles.recorteImagem}
             draggable={false}
-            crossOrigin="anonymous"
-            onError={() =>
-              setErro('Não deu pra carregar a imagem com permissão de recorte (CORS). Tente recarregar a página.')
-            }
+            onError={() => setErro('Não deu pra carregar essa imagem pra recortar.')}
           />
           {area && (
             <div
@@ -198,11 +164,11 @@ function ModalRecorteImagem({
         </div>
         {erro && <p className={styles.erroTexto}>{erro}</p>}
         <div className={styles.recorteAcoes}>
-          <button type="button" onClick={onCancelar} disabled={processando}>
+          <button type="button" onClick={onCancelar}>
             Cancelar
           </button>
-          <button type="button" className={styles.botaoSalvar} onClick={handleConfirmar} disabled={processando}>
-            {processando ? 'Recortando...' : 'Confirmar recorte'}
+          <button type="button" className={styles.botaoSalvar} onClick={handleConfirmar}>
+            Confirmar recorte
           </button>
         </div>
       </div>
@@ -356,11 +322,15 @@ export default function AdminPlataformaPage() {
   const [editandoGUID, setEditandoGUID] = useState<string | null>(null);
   const [formEdicao, setFormEdicao] = useState<FormEdicaoQuestao | null>(null);
   const [subMateriasEdicao, setSubMateriasEdicao] = useState<MateriaGlobalAPI.SubMateriaGlobal[]>([]);
+  const [novoVestibularEdicao, setNovoVestibularEdicao] = useState('');
+  const [novaSubMateriaEdicao, setNovaSubMateriaEdicao] = useState('');
   const [anexosEdicao, setAnexosEdicao] = useState<{ AnexoGUID: string; AnexoCaminho: string }[]>([]);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [validandoGUID, setValidandoGUID] = useState<string | null>(null);
   const [enviandoImagem, setEnviandoImagem] = useState(false);
-  const [recorteAberto, setRecorteAberto] = useState<{ src: string; aoConfirmar: (blob: Blob) => void } | null>(null);
+  const [recorteAberto, setRecorteAberto] = useState<{ src: string; aoConfirmar: (area: AnexoAPI.AreaRecorte) => void } | null>(
+    null
+  );
   // Só 1 questão fica aberta pra edição por vez (`editandoGUID`), então 1 ref compartilhada
   // entre todas as linhas do .map() é suficiente (nunca renderiza 2 textareas ao mesmo tempo).
   const enunciadoEdicaoRef = useRef<HTMLTextAreaElement>(null);
@@ -394,6 +364,34 @@ export default function AdminPlataformaPage() {
     setFormEdicao(null);
     setAnexosEdicao([]);
     setSubMateriasEdicao([]);
+    setNovoVestibularEdicao('');
+    setNovaSubMateriaEdicao('');
+  };
+
+  const handleAdicionarVestibularEdicao = async () => {
+    const nome = novoVestibularEdicao.trim();
+    if (!nome) return;
+    try {
+      const criado = await QuestaoBancoAPI.criarVestibular(nome);
+      setVestibulares((prev) => (prev.some((v) => v.VestibularGUID === criado.VestibularGUID) ? prev : [...prev, criado]));
+      setFormEdicao((p) => (p ? { ...p, VestibularGUID: criado.VestibularGUID } : p));
+      setNovoVestibularEdicao('');
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao criar vestibular');
+    }
+  };
+
+  const handleAdicionarSubMateriaEdicao = async () => {
+    const nome = novaSubMateriaEdicao.trim();
+    if (!nome || !formEdicao?.MateriaGlobalGUID) return;
+    try {
+      const criada = await MateriaGlobalAPI.criarSubMateria(formEdicao.MateriaGlobalGUID, nome);
+      setSubMateriasEdicao((prev) => [...prev, criada]);
+      setFormEdicao((p) => (p ? { ...p, SubMateriaGlobalGUID: criada.SubMateriaGlobalGUID } : p));
+      setNovaSubMateriaEdicao('');
+    } catch (erro: any) {
+      alert(erro.message || 'Erro ao criar submatéria');
+    }
   };
 
   useEffect(() => {
@@ -406,6 +404,13 @@ export default function AdminPlataformaPage() {
 
   const validarFormEdicao = (): { Texto: string; Correta: boolean }[] | null => {
     if (!formEdicao) return null;
+    if (!formEdicao.MateriaGlobalGUID || !formEdicao.SubMateriaGlobalGUID || !formEdicao.VestibularGUID) {
+      // Sem isso, um GUID vazio (ex. admin deixou o dropdown em "Vestibular...") seguia até o
+      // banco e quebrava a foreign key (`FK_QuestaoBanco_Vestibular`) só no PATCH — erro real
+      // confirmado em produção, bem mais tarde e mais confuso do que travar aqui na validação.
+      alert('Selecione matéria global, submatéria e vestibular.');
+      return null;
+    }
     if (!formEdicao.Enunciado.trim()) {
       alert('Informe o enunciado.');
       return null;
@@ -505,27 +510,23 @@ export default function AdminPlataformaPage() {
     );
   };
 
-  const uploadRecorte = async (blob: Blob): Promise<AnexoAPI.Anexo> => {
-    const arquivo = new File([blob], `recorte-${Date.now()}.jpg`, { type: 'image/jpeg' });
-    return AnexoAPI.uploadAnexo(arquivo, ESCOLA_GUID_UNIVAP);
-  };
-
-  /** Trocar (recortar de novo) uma imagem já anexada ao enunciado. */
+  /** Trocar (recortar de novo) uma imagem já anexada ao enunciado — recorta em cima do anexo que
+   * já existe, direto no servidor, sem precisar reenviar o arquivo. */
   const handleTrocarAnexoEnunciado = (anexoAtual: { AnexoGUID: string; AnexoCaminho: string }) => {
     setRecorteAberto({
       src: anexoAtual.AnexoCaminho,
-      aoConfirmar: async (blob) => {
+      aoConfirmar: async (area) => {
         setRecorteAberto(null);
         setEnviandoImagem(true);
         try {
-          const anexo = await uploadRecorte(blob);
+          const anexo = await AnexoAPI.recortarAnexo(anexoAtual.AnexoGUID, area);
           setAnexosEdicao((prev) =>
             prev
               .filter((a) => a.AnexoGUID !== anexoAtual.AnexoGUID)
               .concat({ AnexoGUID: anexo.AnexoGUID, AnexoCaminho: anexo.AnexoCaminho })
           );
         } catch (erro: any) {
-          alert(erro.message || 'Erro ao enviar imagem recortada');
+          alert(erro.message || 'Erro ao recortar imagem');
         } finally {
           setEnviandoImagem(false);
         }
@@ -537,8 +538,10 @@ export default function AdminPlataformaPage() {
     setAnexosEdicao((prev) => prev.filter((a) => a.AnexoGUID !== anexoGUID));
   };
 
-  /** Upload de arquivo novo (não é recorte de um já existente) — abre o modal de recorte
-   * com o arquivo escolhido como fonte, pra sempre passar por um corte antes de anexar. */
+  /** Upload de arquivo novo (não é recorte de um já existente) — abre o modal de recorte com o
+   * arquivo escolhido como fonte, pra sempre passar por um corte antes de anexar. Sobe o arquivo
+   * original primeiro (precisa de um AnexoGUID pra poder chamar o endpoint de recorte), recorta
+   * em cima dele, e descarta o original sem recorte (best-effort, não bloqueia a resposta). */
   const handleArquivoNovaImagemEnunciado = (e: React.ChangeEvent<HTMLInputElement>) => {
     const arquivo = e.target.files?.[0];
     e.target.value = '';
@@ -546,12 +549,14 @@ export default function AdminPlataformaPage() {
     const src = URL.createObjectURL(arquivo);
     setRecorteAberto({
       src,
-      aoConfirmar: async (blob) => {
+      aoConfirmar: async (area) => {
         setRecorteAberto(null);
         URL.revokeObjectURL(src);
         setEnviandoImagem(true);
         try {
-          const anexo = await uploadRecorte(blob);
+          const original = await AnexoAPI.uploadAnexo(arquivo, ESCOLA_GUID_UNIVAP);
+          const anexo = await AnexoAPI.recortarAnexo(original.AnexoGUID, area);
+          AnexoAPI.excluirAnexo(original.AnexoGUID).catch(() => {});
           setAnexosEdicao((prev) => [...prev, { AnexoGUID: anexo.AnexoGUID, AnexoCaminho: anexo.AnexoCaminho }]);
         } catch (erro: any) {
           alert(erro.message || 'Erro ao enviar imagem');
@@ -562,20 +567,21 @@ export default function AdminPlataformaPage() {
     });
   };
 
-  /** Trocar/recortar de novo uma imagem INLINE (`![alt](url)` dentro do próprio Enunciado) —
-   * substitui só aquela ocorrência pela URL nova depois do upload. */
+  /** Trocar/recortar de novo uma imagem INLINE (`![alt](url)` dentro do próprio Enunciado) — só
+   * tem a URL no texto, não o AnexoGUID, então resolve ele primeiro antes de poder recortar. */
   const handleTrocarImagemInline = (img: { alt: string; url: string; ocorrencia: string }) => {
     setRecorteAberto({
       src: img.url,
-      aoConfirmar: async (blob) => {
+      aoConfirmar: async (area) => {
         setRecorteAberto(null);
         setEnviandoImagem(true);
         try {
-          const anexo = await uploadRecorte(blob);
+          const original = await AnexoAPI.buscarAnexoPorCaminho(img.url);
+          const anexo = await AnexoAPI.recortarAnexo(original.AnexoGUID, area);
           const novaTag = `![${img.alt}](${anexo.AnexoCaminho})`;
           setFormEdicao((prev) => (prev ? { ...prev, Enunciado: prev.Enunciado.split(img.ocorrencia).join(novaTag) } : prev));
         } catch (erro: any) {
-          alert(erro.message || 'Erro ao enviar imagem recortada');
+          alert(erro.message || 'Erro ao recortar imagem');
         } finally {
           setEnviandoImagem(false);
         }
@@ -907,6 +913,19 @@ export default function AdminPlataformaPage() {
                         </select>
                       </div>
 
+                      {formEdicao.MateriaGlobalGUID && (
+                        <div className={styles.linhaForm}>
+                          <input
+                            placeholder="Nova submatéria (ex: Trigonometria)"
+                            value={novaSubMateriaEdicao}
+                            onChange={(e) => setNovaSubMateriaEdicao(e.target.value)}
+                          />
+                          <button type="button" onClick={handleAdicionarSubMateriaEdicao} disabled={!novaSubMateriaEdicao.trim()}>
+                            Adicionar submatéria
+                          </button>
+                        </div>
+                      )}
+
                       <div className={styles.linhaForm}>
                         <select
                           value={formEdicao.VestibularGUID}
@@ -919,6 +938,17 @@ export default function AdminPlataformaPage() {
                             </option>
                           ))}
                         </select>
+                        <input
+                          placeholder="Novo vestibular (ex: ENEM)"
+                          value={novoVestibularEdicao}
+                          onChange={(e) => setNovoVestibularEdicao(e.target.value)}
+                        />
+                        <button type="button" onClick={handleAdicionarVestibularEdicao} disabled={!novoVestibularEdicao.trim()}>
+                          Adicionar
+                        </button>
+                      </div>
+
+                      <div className={styles.linhaForm}>
                         <select
                           value={formEdicao.Dificuldade}
                           onChange={(e) =>

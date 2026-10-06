@@ -70,6 +70,37 @@ export default class AnexoControl {
   };
 
   /**
+   * GET /api/anexo/por-caminho?caminho=<url>
+   * Resolve o AnexoGUID a partir da URL pública conhecida (ex. imagem inline embutida num
+   * Enunciado via markdown, que só guarda a URL no texto). Vem ANTES de "/:AnexoGUID" nas rotas
+   * — senão "por-caminho" seria interpretado como valor de :AnexoGUID.
+   */
+  showPorCaminho = async (request: Request, response: Response, next: NextFunction) => {
+    console.log("🔵 AnexoControl.showPorCaminho()");
+    try {
+      const caminho = request.query.caminho as string | undefined;
+      if (!caminho) {
+        response.status(400).json({
+          success: false,
+          message: "Parâmetro 'caminho' é obrigatório",
+          error: { message: "Informe ?caminho=<url> na query string" },
+        });
+        return;
+      }
+      const usuarioGUID = request.user?.UsuarioGUID;
+      const anexo = await this.#anexoService.buscarAnexoPorCaminho(caminho, usuarioGUID);
+
+      response.status(200).json({
+        success: true,
+        message: "Anexo encontrado",
+        data: { anexo },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
    * GET /api/anexo/:AnexoGUID
    * Buscar metadados de um anexo
    */
@@ -104,6 +135,34 @@ export default class AnexoControl {
       const { caminho } = await this.#anexoService.downloadAnexo(AnexoGUID, usuarioGUID);
 
       response.redirect(caminho);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * POST /api/anexo/:AnexoGUID/recortar
+   * Recorta um anexo de imagem existente — cria um anexo NOVO com o resultado (não altera o
+   * original). Recorte roda no servidor (sharp), não no navegador — ver `AnexoService.recortarAnexo`.
+   */
+  recortar = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 AnexoControl.recortar()");
+    try {
+      const { AnexoGUID } = request.params;
+      const usuarioGUID = request.user?.UsuarioGUID;
+      const { left, top, width, height } = request.body;
+
+      const anexoRecortado = await this.#anexoService.recortarAnexo(
+        AnexoGUID,
+        { left: Number(left), top: Number(top), width: Number(width), height: Number(height) },
+        usuarioGUID
+      );
+
+      response.status(201).json({
+        success: true,
+        message: "Imagem recortada com sucesso",
+        data: { anexo: anexoRecortado },
+      });
     } catch (error) {
       next(error);
     }

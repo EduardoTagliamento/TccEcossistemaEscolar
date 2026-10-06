@@ -106,6 +106,12 @@ export default class Server {
     console.log("⬆️  Server.constructor()");
     this.#porta = porta ?? 3000;
     this.#app = express();
+    // Railway roda atrás do próprio proxy/load balancer de borda (1 hop) — sem isso,
+    // express-rate-limit rejeita toda requisição com ERR_ERL_UNEXPECTED_X_FORWARDED_FOR (o
+    // header X-Forwarded-For chega preenchido pelo proxy da Railway, mas o Express não confia
+    // nele por padrão). `1` (não `true`) confia só no hop mais próximo — o que a própria
+    // Railway adiciona — não em qualquer X-Forwarded-For que o cliente tentasse forjar.
+    this.#app.set("trust proxy", 1);
     this.#httpServer = http.createServer(this.#app);
     this.#database = new MysqlDatabase();
     this.#scheduler = new CleanupScheduler();

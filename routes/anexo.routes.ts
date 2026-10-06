@@ -44,6 +44,14 @@ export default class AnexoRoteador {
       this.#anexoControle.index
     );
 
+    // GET /api/anexo/por-caminho?caminho=<url> - Resolver AnexoGUID a partir da URL pública
+    // (ANTES de "/:AnexoGUID" — senão "por-caminho" seria lido como valor de :AnexoGUID)
+    this.#router.get(
+      "/por-caminho",
+      AuthMiddleware.authenticate,
+      this.#anexoControle.showPorCaminho
+    );
+
     // GET /api/anexo/:AnexoGUID - Buscar metadados
     this.#router.get(
       "/:AnexoGUID",
@@ -58,6 +66,15 @@ export default class AnexoRoteador {
       AuthMiddleware.authenticate,
       this.#anexoMiddleware.validateIdParam,
       this.#anexoControle.download
+    );
+
+    // POST /api/anexo/:AnexoGUID/recortar - Recortar imagem (cria anexo novo com o resultado)
+    this.#router.post(
+      "/:AnexoGUID/recortar",
+      AuthMiddleware.authenticate,
+      uploadRateLimitMiddleware,
+      this.#anexoMiddleware.validateIdParam,
+      this.#anexoControle.recortar
     );
 
     // DELETE /api/anexo/:AnexoGUID - Excluir anexo

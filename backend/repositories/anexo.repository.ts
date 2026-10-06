@@ -79,6 +79,18 @@ export class AnexoDAO {
     return anexo;
   };
 
+  /** Busca pelo caminho/URL pública exata — usado pra resolver um `AnexoGUID` a partir de uma
+   * URL já conhecida (ex. imagem embutida inline no Enunciado de uma questão, que só guarda a
+   * URL no texto, não o GUID) sem precisar guardar o GUID em lugar nenhum fora da tabela `anexo`. */
+  findByCaminho = async (caminho: string): Promise<Anexo | null> => {
+    console.log("🟢 AnexoDAO.findByCaminho()");
+
+    const SQL = "SELECT * FROM anexo WHERE AnexoCaminho = ? LIMIT 1;";
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<AnexoRow[]>(SQL, [caminho]);
+    return rows.length > 0 ? this.mapRowToAnexo(rows[0]) : null;
+  };
+
   findAll = async (filters?: AnexoFilters): Promise<Anexo[]> => {
     console.log("🟢 AnexoDAO.findAll()");
 
