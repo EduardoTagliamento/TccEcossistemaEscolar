@@ -8,6 +8,7 @@ import { MateriaGlobalDAO } from "../repositories/materiaglobal.repository";
 import { SubMateriaGlobalDAO } from "../repositories/submateriaglobal.repository";
 import { MateriaGlobalAliasDAO } from "../repositories/materiaglobalalias.repository";
 import { MateriaDAO } from "../repositories/materia.repository";
+import { MateriaMateriaGlobalDAO } from "../repositories/materiamateriaglobal.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import { ordenarPorSimilaridade } from "../utils/stringSimilarity";
 import { getGeminiProvider } from "../ai/providers/geminiProvider";
@@ -60,19 +61,60 @@ export default class MateriaGlobalService {
   #submateriaGlobalDAO: SubMateriaGlobalDAO;
   #aliasDAO: MateriaGlobalAliasDAO;
   #materiaDAO: MateriaDAO;
+  #materiaMateriaGlobalDAO: MateriaMateriaGlobalDAO;
 
   constructor(
     materiaGlobalDAODependency: MateriaGlobalDAO,
     submateriaGlobalDAODependency: SubMateriaGlobalDAO,
     aliasDAODependency: MateriaGlobalAliasDAO,
-    materiaDAODependency: MateriaDAO
+    materiaDAODependency: MateriaDAO,
+    materiaMateriaGlobalDAODependency: MateriaMateriaGlobalDAO
   ) {
     console.log("⬆️  MateriaGlobalService.constructor()");
     this.#materiaGlobalDAO = materiaGlobalDAODependency;
     this.#submateriaGlobalDAO = submateriaGlobalDAODependency;
     this.#aliasDAO = aliasDAODependency;
     this.#materiaDAO = materiaDAODependency;
+    this.#materiaMateriaGlobalDAO = materiaMateriaGlobalDAODependency;
   }
+
+  /** Lista COMPLETA de matérias globais vinculadas a uma matéria de escola (primária +
+   * adicionais) — ver comentário da migration `2026-10-06-materia-materiaglobal-n-n.sql`. */
+  listarVinculosGlobais = async (materiaGUID: string): Promise<MateriaGlobal[]> => {
+    console.log("🟣 MateriaGlobalService.listarVinculosGlobais()");
+    const materia = await this.#materiaDAO.findById(materiaGUID);
+    if (!materia) {
+      throw new ErrorResponse(404, "Matéria não encontrada", { message: `Não existe matéria com id ${materiaGUID}` });
+    }
+    return this.#materiaMateriaGlobalDAO.listarPorMateria(materiaGUID);
+  };
+
+  /** Adiciona um vínculo ADICIONAL (além do primário resolvido automaticamente) — caso de uma
+   * matéria de escola que cobre mais de uma matéria global ao mesmo tempo (ex. "Filosofia/
+   * Sociologia" como 1 aula só). Não mexe no vínculo primário (`materia.MateriaGlobalGUID`). */
+  adicionarVinculoGlobal = async (materiaGUID: string, materiaGlobalGUID: string): Promise<MateriaGlobal[]> => {
+    console.log("🟣 MateriaGlobalService.adicionarVinculoGlobal()");
+    const [materia, materiaGlobal] = await Promise.all([
+      this.#materiaDAO.findById(materiaGUID),
+      this.#materiaGlobalDAO.findById(materiaGlobalGUID),
+    ]);
+    if (!materia) {
+      throw new ErrorResponse(404, "Matéria não encontrada", { message: `Não existe matéria com id ${materiaGUID}` });
+    }
+    if (!materiaGlobal) {
+      throw new ErrorResponse(404, "MateriaGlobal não encontrada", { message: `Não existe MateriaGlobal com id ${materiaGlobalGUID}` });
+    }
+    await this.#materiaMateriaGlobalDAO.vincular(materiaGUID, materiaGlobalGUID);
+    return this.#materiaMateriaGlobalDAO.listarPorMateria(materiaGUID);
+  };
+
+  /** Remove um vínculo — inclusive o primário, se for o caso (não reseta `materia.MateriaGlobalGUID`
+   * sozinho; se o chamador quiser trocar o primário, usa `confirmarMapeamentoManual` separadamente). */
+  removerVinculoGlobal = async (materiaGUID: string, materiaGlobalGUID: string): Promise<MateriaGlobal[]> => {
+    console.log("🟣 MateriaGlobalService.removerVinculoGlobal()");
+    await this.#materiaMateriaGlobalDAO.desvincular(materiaGUID, materiaGlobalGUID);
+    return this.#materiaMateriaGlobalDAO.listarPorMateria(materiaGUID);
+  };
 
   listarSubMaterias = async (materiaGlobalGUID: string) => {
     console.log("🟣 MateriaGlobalService.listarSubMaterias()");
@@ -142,6 +184,7 @@ export default class MateriaGlobalService {
     }
 
     await this.#materiaDAO.atualizarMateriaGlobal(materiaGUID, resultado.MateriaGlobalGUID);
+    await this.#materiaMateriaGlobalDAO.vincular(materiaGUID, resultado.MateriaGlobalGUID);
     const materiaGlobal = await this.#materiaGlobalDAO.findById(resultado.MateriaGlobalGUID);
     return {
       MateriaGlobalGUID: resultado.MateriaGlobalGUID,
@@ -190,6 +233,7 @@ export default class MateriaGlobalService {
     await this.#aliasDAO.create(alias);
 
     await this.#materiaDAO.reatribuirMateriaGlobal(materiaGlobalPendenteGUID, mesclarEmGUID);
+    await this.#materiaMateriaGlobalDAO.reatribuir(materiaGlobalPendenteGUID, mesclarEmGUID);
     // O registro `Pendente` original fica órfão (sem Materia apontando pra
     // ele) — não é excluído pra não arriscar violar FK de futuras
     // referências (submateriaglobal/questaobanco), mas deixa de aparecer
@@ -298,6 +342,9 @@ export default class MateriaGlobalService {
     }
 
     await this.#materiaDAO.atualizarMateriaGlobal(materiaGUID, materiaGlobalGUIDFinal);
+    // O vínculo primário sempre entra na lista completa também (invariante: a lista N:N nunca
+    // fica "atrás" do primário) — ver migration 2026-10-06.
+    await this.#materiaMateriaGlobalDAO.vincular(materiaGUID, materiaGlobalGUIDFinal);
     return materiaGlobalGUIDFinal;
   };
 
@@ -379,7 +426,8 @@ export function getMateriaGlobalService(): MateriaGlobalService {
       new MateriaGlobalDAO(database),
       new SubMateriaGlobalDAO(database),
       new MateriaGlobalAliasDAO(database),
-      new MateriaDAO(database)
+      new MateriaDAO(database),
+      new MateriaMateriaGlobalDAO(database)
     );
   }
   return instanciaSingleton;

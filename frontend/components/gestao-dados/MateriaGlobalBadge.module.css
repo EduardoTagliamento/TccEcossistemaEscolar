@@ -185,3 +185,62 @@
   color: var(--slate-600, #46564D);
   font-style: italic;
 }
+
+.listaChips {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.badgeAdicional {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-muted, #F0F4F1);
+  color: var(--slate-600, #46564D);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.botaoRemoverChip {
+  border: none;
+  background: transparent;
+  color: var(--slate-400, #8A968E);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+
+.botaoRemoverChip:hover {
+  color: var(--amber-500, #B45309);
+}
+
+.botaoRemoverChip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.botaoAdicionarChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  border: 1px dashed var(--line-200, #E2EAE5);
+  background: transparent;
+  color: var(--slate-500, #647268);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.botaoAdicionarChip:hover {
+  border-color: var(--green-500, #17C077);
+  color: var(--green-500, #17C077);
+}

@@ -83,6 +83,27 @@ export default class MateriaRoteador {
       this.#materiaController.confirmarMapeamentoGlobal
     );
 
+    // GET /api/materia/:guid/materias-globais — lista completa (primária + adicionais, N:N)
+    this.#router.get(
+      "/:guid/materias-globais",
+      MateriaMiddleware.validarGUID,
+      this.#materiaController.listarMateriasGlobais
+    );
+
+    // POST /api/materia/:guid/materias-globais — body: { MateriaGlobalGUID } — vínculo adicional
+    this.#router.post(
+      "/:guid/materias-globais",
+      MateriaMiddleware.validarGUID,
+      this.#materiaController.adicionarMateriaGlobal
+    );
+
+    // DELETE /api/materia/:guid/materias-globais/:materiaGlobalGuid
+    this.#router.delete(
+      "/:guid/materias-globais/:materiaGlobalGuid",
+      MateriaMiddleware.validarGUID,
+      this.#materiaController.removerMateriaGlobal
+    );
+
     // PUT /api/materia/:guid/customizacao
     this.#router.put(
       "/:guid/customizacao",

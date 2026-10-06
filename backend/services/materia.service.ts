@@ -247,6 +247,8 @@ export default class MateriaService {
 
       await this.#materiaDAO.atualizarMateriaGlobal(materia.MateriaGUID, resultado.MateriaGlobalGUID);
       materia.MateriaGlobalGUID = resultado.MateriaGlobalGUID;
+      // Vínculo primário sempre entra na lista N:N completa também — ver migration 2026-10-06.
+      await getMateriaGlobalService().adicionarVinculoGlobal(materia.MateriaGUID, resultado.MateriaGlobalGUID);
     } catch (error) {
       console.warn("🟡 MateriaService.#resolverMapeamentoGlobal() falhou, seguindo sem MateriaGlobal:", error);
     }

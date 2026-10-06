@@ -260,3 +260,57 @@ export async function confirmarMapeamentoGlobal(
   }
   return result.data.MateriaGlobalGUID;
 }
+
+// ==================== VÍNCULOS N:N (matéria de escola pode cobrir mais de 1 matéria global) ====================
+
+export interface MateriaGlobalVinculada {
+  MateriaGlobalGUID: string;
+  Nome: string;
+  Status: 'Confirmado' | 'Pendente';
+}
+
+/** Lista COMPLETA (vínculo primário + adicionais) — superset do que `buscarMapeamentoGlobal`
+ * devolve sozinho. Use esta quando a matéria pode cobrir mais de 1 matéria global ao mesmo tempo
+ * (ex. "Filosofia/Sociologia" como 1 aula só). */
+export async function listarMateriasGlobaisVinculadas(materiaGUID: string): Promise<MateriaGlobalVinculada[]> {
+  const response = await fetch(`${API_URL}/materia/${materiaGUID}/materias-globais`, {
+    headers: getHeaders(),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao listar matérias globais vinculadas');
+  }
+  return result.data.materiasGlobais;
+}
+
+/** Adiciona um vínculo ADICIONAL (não mexe no primário resolvido automaticamente). */
+export async function adicionarMateriaGlobalVinculada(
+  materiaGUID: string,
+  materiaGlobalGUID: string
+): Promise<MateriaGlobalVinculada[]> {
+  const response = await fetch(`${API_URL}/materia/${materiaGUID}/materias-globais`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ MateriaGlobalGUID: materiaGlobalGUID }),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao adicionar vínculo de matéria global');
+  }
+  return result.data.materiasGlobais;
+}
+
+export async function removerMateriaGlobalVinculada(
+  materiaGUID: string,
+  materiaGlobalGUID: string
+): Promise<MateriaGlobalVinculada[]> {
+  const response = await fetch(`${API_URL}/materia/${materiaGUID}/materias-globais/${materiaGlobalGUID}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result.message || 'Erro ao remover vínculo de matéria global');
+  }
+  return result.data.materiasGlobais;
+}

@@ -246,4 +246,60 @@ export class MateriaController {
       next(error);
     }
   };
+
+  // GET /api/materia/:guid/materias-globais — lista completa (primária + adicionais, N:N)
+  listarMateriasGlobais = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 MateriaController.listarMateriasGlobais()");
+    try {
+      const materiasGlobais = await getMateriaGlobalService().listarVinculosGlobais(req.params.guid);
+
+      res.status(200).json({
+        success: true,
+        message: "Matérias globais vinculadas listadas com sucesso",
+        data: { materiasGlobais },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // POST /api/materia/:guid/materias-globais — body: { MateriaGlobalGUID: string }
+  // Vínculo ADICIONAL (além do primário) — caso de 1 matéria de escola cobrir mais de 1 matéria
+  // global (ex. "Filosofia/Sociologia" como 1 aula só).
+  adicionarMateriaGlobal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 MateriaController.adicionarMateriaGlobal()");
+    try {
+      const materiasGlobais = await getMateriaGlobalService().adicionarVinculoGlobal(
+        req.params.guid,
+        req.body.MateriaGlobalGUID
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Vínculo adicionado com sucesso",
+        data: { materiasGlobais },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // DELETE /api/materia/:guid/materias-globais/:materiaGlobalGuid
+  removerMateriaGlobal = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 MateriaController.removerMateriaGlobal()");
+    try {
+      const materiasGlobais = await getMateriaGlobalService().removerVinculoGlobal(
+        req.params.guid,
+        req.params.materiaGlobalGuid
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Vínculo removido com sucesso",
+        data: { materiasGlobais },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

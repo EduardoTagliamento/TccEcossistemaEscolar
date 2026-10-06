@@ -31,4 +31,12 @@ export default class Vestibular {
     }
     this.#Nome = value.trim();
   }
+
+  // Sem isso, res.json() serializa a instância como {} (private fields não são
+  // own-enumerable pro JSON.stringify padrão) — GET /api/questaobanco/vestibular devolve
+  // `Vestibular[]` cru (sem passar por um toDTO() manual), então ficava todo mundo em branco
+  // no dropdown do admin. Mesma classe de bug já corrigida antes em `Anexo`/`MaterialDidatico`.
+  toJSON() {
+    return { VestibularGUID: this.VestibularGUID, Nome: this.Nome };
+  }
 }
