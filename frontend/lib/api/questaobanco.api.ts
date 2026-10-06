@@ -79,6 +79,19 @@ export async function listarQuestoes(filtros?: {
   return result.data?.questoes || [];
 }
 
+export interface ContagemQuestoes {
+  PorMateria: { MateriaGlobalGUID: string; Quantidade: number }[];
+  PorSubMateria: { SubMateriaGlobalGUID: string; Quantidade: number }[];
+}
+
+/** Só conta Status='Validado' — alimenta os selects da tela de prática com "Matéria (N)". */
+export async function contarQuestoesValidadas(): Promise<ContagemQuestoes> {
+  const response = await fetch(`${API_URL}/questaobanco/contagem`, { headers: getHeaders() });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao contar questões');
+  return result.data;
+}
+
 export async function criarQuestao(dados: QuestaoBancoCreateDados): Promise<QuestaoBanco> {
   const response = await fetch(`${API_URL}/questaobanco`, {
     method: 'POST',

@@ -68,6 +68,7 @@ export default function BancoQuestoesPage() {
   const [carregandoSubmaterias, setCarregandoSubmaterias] = useState(false);
   const [submateriaGUID, setSubmateriaGUID] = useState('');
   const [todasSubmaterias, setTodasSubmaterias] = useState(false);
+  const [contagem, setContagem] = useState<QuestaoBancoAPI.ContagemQuestoes | null>(null);
 
   const [etapa, setEtapa] = useState<Etapa>('selecao');
   const [carregandoQuestoes, setCarregandoQuestoes] = useState(false);
@@ -84,7 +85,25 @@ export default function BancoQuestoesPage() {
       .then(setMaterias)
       .catch((e) => setErro(e.message))
       .finally(() => setCarregandoMaterias(false));
+
+    QuestaoBancoAPI.contarQuestoesValidadas()
+      .then(setContagem)
+      .catch(() => {
+        // Não bloqueia a tela — sem contagem, os selects só mostram o nome puro (fallback natural).
+      });
   }, []);
+
+  const contagemPorMateria = useMemo(() => {
+    const mapa = new Map<string, number>();
+    contagem?.PorMateria.forEach((c) => mapa.set(c.MateriaGlobalGUID, c.Quantidade));
+    return mapa;
+  }, [contagem]);
+
+  const contagemPorSubMateria = useMemo(() => {
+    const mapa = new Map<string, number>();
+    contagem?.PorSubMateria.forEach((c) => mapa.set(c.SubMateriaGlobalGUID, c.Quantidade));
+    return mapa;
+  }, [contagem]);
 
   useEffect(() => {
     setSubmateriaGUID('');
@@ -183,7 +202,7 @@ export default function BancoQuestoesPage() {
               <option value="">{carregandoMaterias ? 'Carregando...' : 'Selecione a matéria'}</option>
               {materias.map((m) => (
                 <option key={m.MateriaGlobalGUID} value={m.MateriaGlobalGUID}>
-                  {m.Nome}
+                  {m.Nome} ({contagemPorMateria.get(m.MateriaGlobalGUID) ?? 0})
                 </option>
               ))}
             </select>
@@ -200,7 +219,7 @@ export default function BancoQuestoesPage() {
               <option value="">{carregandoSubmaterias ? 'Carregando...' : 'Selecione a submatéria'}</option>
               {submaterias.map((s) => (
                 <option key={s.SubMateriaGlobalGUID} value={s.SubMateriaGlobalGUID}>
-                  {s.Nome}
+                  {s.Nome} ({contagemPorSubMateria.get(s.SubMateriaGlobalGUID) ?? 0})
                 </option>
               ))}
             </select>

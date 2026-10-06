@@ -91,6 +91,18 @@ export class QuestaoBancoController {
     }
   };
 
+  // GET /api/questaobanco/contagem — livre pro aluno (selects de matéria/submatéria da tela
+  // de prática mostrarem "Matemática (45)"). Só conta Validada, nunca Pendente.
+  indexContagem = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 QuestaoBancoController.indexContagem()");
+    try {
+      const contagem = await this.#service.contarQuestoesValidadas();
+      res.status(200).json({ success: true, message: "Contagem calculada com sucesso", data: contagem });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // GET /api/questaobanco/vestibular — livre (usado pro filtro do modal)
   indexVestibulares = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 QuestaoBancoController.indexVestibulares()");

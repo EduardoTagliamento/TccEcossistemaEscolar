@@ -29,6 +29,7 @@ export default class QuestaoBancoRoteador {
 
     // Leitura: qualquer usuário autenticado (aluno praticando, spec item 12) — só Status=Validado
     this.#router.get("/", this.#controller.index);
+    this.#router.get("/contagem", this.#controller.indexContagem);
     this.#router.get("/vestibular", this.#controller.indexVestibulares);
 
     // Fila de validação: só admin de plataforma (vê Status=Pendente, não exposto na rota pública)

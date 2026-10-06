@@ -34,6 +34,11 @@ export interface QuestaoBancoDTO {
   CreatedAt: string | null;
 }
 
+export interface ContagemQuestoesDTO {
+  PorMateria: { MateriaGlobalGUID: string; Quantidade: number }[];
+  PorSubMateria: { SubMateriaGlobalGUID: string; Quantidade: number }[];
+}
+
 export interface QuestaoBancoCreateDTO {
   MateriaGlobalGUID: string;
   SubMateriaGlobalGUID: string;
@@ -303,6 +308,24 @@ export default class QuestaoBancoService {
 
   existeParaSubMateria = async (subMateriaGlobalGUID: string): Promise<boolean> => {
     return this.#questaoDAO.existeParaSubMateria(subMateriaGlobalGUID);
+  };
+
+  /** Alimenta os selects de matéria/submatéria da tela de prática do aluno com "quantas
+   * questões Validadas existem" — contagem por matéria é a soma das submatérias dela. */
+  contarQuestoesValidadas = async (): Promise<ContagemQuestoesDTO> => {
+    console.log("🟣 QuestaoBancoService.contarQuestoesValidadas()");
+
+    const porSubMateria = await this.#questaoDAO.contarValidadasPorSubMateria();
+
+    const porMateriaMapa = new Map<string, number>();
+    for (const linha of porSubMateria) {
+      porMateriaMapa.set(linha.MateriaGlobalGUID, (porMateriaMapa.get(linha.MateriaGlobalGUID) ?? 0) + linha.Quantidade);
+    }
+
+    return {
+      PorMateria: Array.from(porMateriaMapa.entries()).map(([MateriaGlobalGUID, Quantidade]) => ({ MateriaGlobalGUID, Quantidade })),
+      PorSubMateria: porSubMateria.map(({ SubMateriaGlobalGUID, Quantidade }) => ({ SubMateriaGlobalGUID, Quantidade })),
+    };
   };
 
   listarVestibulares = async (): Promise<Vestibular[]> => {

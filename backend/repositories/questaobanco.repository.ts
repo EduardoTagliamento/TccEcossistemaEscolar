@@ -122,6 +122,27 @@ export class QuestaoBancoDAO {
     return this.mapRows(rows as QuestaoBancoRow[]);
   };
 
+  /** Contagem de Validadas por submatéria (spec: selects de matéria/submatéria mostrarem
+   * quanto conteúdo tem disponível) — a contagem por matéria é a soma das submatérias dela,
+   * calculada no service, pra não duplicar a mesma lógica de agregação em 2 queries. */
+  contarValidadasPorSubMateria = async (): Promise<{ MateriaGlobalGUID: string; SubMateriaGlobalGUID: string; Quantidade: number }[]> => {
+    console.log("🟢 QuestaoBancoDAO.contarValidadasPorSubMateria()");
+
+    const SQL = `
+      SELECT MateriaGlobalGUID, SubMateriaGlobalGUID, COUNT(*) as Quantidade
+      FROM questaobanco
+      WHERE Status = 'Validado'
+      GROUP BY MateriaGlobalGUID, SubMateriaGlobalGUID
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL);
+    return (rows as any[]).map((r) => ({
+      MateriaGlobalGUID: r.MateriaGlobalGUID,
+      SubMateriaGlobalGUID: r.SubMateriaGlobalGUID,
+      Quantidade: Number(r.Quantidade),
+    }));
+  };
+
   /** Só existência (spec: passo "banco de questões" do pipeline só precisa saber se há alguma). */
   existeParaSubMateria = async (subMateriaGlobalGUID: string): Promise<boolean> => {
     console.log("🟢 QuestaoBancoDAO.existeParaSubMateria()");
