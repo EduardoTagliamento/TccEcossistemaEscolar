@@ -1,0 +1,53 @@
+.barra {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.botaoFiltro,
+.botaoFiltroAtivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line-200, #E2EAE5);
+  background: var(--white, #fff);
+  color: var(--slate-600, #46564D);
+}
+
+.botaoFiltro:hover,
+.botaoFiltroAtivo:hover {
+  border-color: var(--green-500, #17C077);
+}
+
+.botaoFiltroAtivo {
+  border-color: var(--green-500, #17C077);
+  background: var(--green-50, #E7F9F0);
+  color: var(--green-700, #0E7D4E);
+}
+
+.botaoFiltro svg,
+.botaoFiltroAtivo svg {
+  width: 14px;
+  height: 14px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--green-500, #17C077);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}

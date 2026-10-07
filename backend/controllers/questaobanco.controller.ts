@@ -4,6 +4,21 @@ import QuestaoBancoProgressoService from "../services/questaobancoprogresso.serv
 import { QuestaoBancoDificuldade } from "../entities/questaobanco.model";
 import ErrorResponse from "../utils/ErrorResponse";
 
+/** Query param multi-seleção vem como CSV (ex.: ?VestibularGUIDs=guid1,guid2) — undefined se
+ * ausente/vazio, nunca array vazio (simplifica o "if" de quem usa: ausente = sem filtro). */
+function parseListaQuery(valor: unknown): string[] | undefined {
+  if (typeof valor !== "string" || !valor.trim()) return undefined;
+  const lista = valor.split(",").map((v) => v.trim()).filter(Boolean);
+  return lista.length > 0 ? lista : undefined;
+}
+
+function parseListaAnos(valor: unknown): number[] | undefined {
+  const lista = parseListaQuery(valor);
+  if (!lista) return undefined;
+  const numeros = lista.map(Number).filter((n) => Number.isFinite(n));
+  return numeros.length > 0 ? numeros : undefined;
+}
+
 export class QuestaoBancoController {
   #service: QuestaoBancoService;
   #progressoService: QuestaoBancoProgressoService;
@@ -40,6 +55,9 @@ export class QuestaoBancoController {
         VestibularGUID: req.query.VestibularGUID as string | undefined,
         Status: "Validado",
         ExcluirFeitasDoUsuarioGUID: req.user?.UsuarioGUID,
+        VestibularGUIDs: parseListaQuery(req.query.VestibularGUIDs),
+        Anos: parseListaAnos(req.query.Anos),
+        Dificuldades: parseListaQuery(req.query.Dificuldades) as QuestaoBancoDificuldade[] | undefined,
       });
       res.status(200).json({ success: true, message: "Questões listadas com sucesso", data: { questoes } });
     } catch (error) {
@@ -173,13 +191,30 @@ export class QuestaoBancoController {
     }
   };
 
-  // GET /api/questaobanco/contagem — livre pro aluno (selects de matéria/submatéria da tela
-  // de prática mostrarem "Matemática (45)"). Só conta Validada, nunca Pendente.
-  indexContagem = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  // GET /api/questaobanco/contagem?VestibularGUIDs=&Anos=&Dificuldades= — livre pro aluno (cards
+  // de matéria/submatéria da tela de prática). Só conta Validada, nunca Pendente. Filtros são CSV,
+  // mesma convenção de `index`.
+  indexContagem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 QuestaoBancoController.indexContagem()");
     try {
-      const contagem = await this.#service.contarQuestoesValidadas();
+      const contagem = await this.#service.contarQuestoesValidadas({
+        VestibularGUIDs: parseListaQuery(req.query.VestibularGUIDs),
+        Anos: parseListaAnos(req.query.Anos),
+        Dificuldades: parseListaQuery(req.query.Dificuldades) as QuestaoBancoDificuldade[] | undefined,
+      });
       res.status(200).json({ success: true, message: "Contagem calculada com sucesso", data: contagem });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // GET /api/questaobanco/anos — livre pro aluno (modal de filtro de ano). Só anos com pelo
+  // menos 1 questão Validada.
+  indexAnos = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 QuestaoBancoController.indexAnos()");
+    try {
+      const anos = await this.#service.listarAnosDisponiveis();
+      res.status(200).json({ success: true, message: "Anos listados com sucesso", data: { anos } });
     } catch (error) {
       next(error);
     }

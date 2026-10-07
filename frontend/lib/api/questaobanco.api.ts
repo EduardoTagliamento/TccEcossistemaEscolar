@@ -37,6 +37,7 @@ export interface QuestaoBanco {
   MateriaGlobalGUID: string;
   SubMateriaGlobalGUID: string;
   VestibularGUID: string;
+  Ano: number | null;
   Dificuldade: QuestaoBancoDificuldade;
   Status: QuestaoBancoStatus;
   Enunciado: string;
@@ -61,17 +62,36 @@ export interface QuestaoBancoCreateDados {
   Alternativas: { Texto: string; Correta: boolean }[];
 }
 
+export interface FiltrosBancoQuestoes {
+  vestibularGUIDs?: string[];
+  anos?: number[];
+  dificuldades?: QuestaoBancoDificuldade[];
+}
+
+function anexarFiltrosMultiplos(params: URLSearchParams, filtros?: FiltrosBancoQuestoes): void {
+  if (filtros?.vestibularGUIDs && filtros.vestibularGUIDs.length > 0) {
+    params.append('VestibularGUIDs', filtros.vestibularGUIDs.join(','));
+  }
+  if (filtros?.anos && filtros.anos.length > 0) {
+    params.append('Anos', filtros.anos.join(','));
+  }
+  if (filtros?.dificuldades && filtros.dificuldades.length > 0) {
+    params.append('Dificuldades', filtros.dificuldades.join(','));
+  }
+}
+
 export async function listarQuestoes(filtros?: {
   MateriaGlobalGUID?: string;
   SubMateriaGlobalGUID?: string;
   Dificuldade?: QuestaoBancoDificuldade;
   VestibularGUID?: string;
-}): Promise<QuestaoBanco[]> {
+} & FiltrosBancoQuestoes): Promise<QuestaoBanco[]> {
   const params = new URLSearchParams();
   if (filtros?.MateriaGlobalGUID) params.append('MateriaGlobalGUID', filtros.MateriaGlobalGUID);
   if (filtros?.SubMateriaGlobalGUID) params.append('SubMateriaGlobalGUID', filtros.SubMateriaGlobalGUID);
   if (filtros?.Dificuldade) params.append('Dificuldade', filtros.Dificuldade);
   if (filtros?.VestibularGUID) params.append('VestibularGUID', filtros.VestibularGUID);
+  anexarFiltrosMultiplos(params, filtros);
 
   const response = await fetch(`${API_URL}/questaobanco?${params}`, { headers: getHeaders() });
   const result = await response.json();
@@ -92,12 +112,23 @@ export interface ContagemQuestoes {
   PorSubMateria: { SubMateriaGlobalGUID: string; Quantidade: number }[];
 }
 
-/** Só conta Status='Validado' — alimenta os selects da tela de prática com "Matéria (N)". */
-export async function contarQuestoesValidadas(): Promise<ContagemQuestoes> {
-  const response = await fetch(`${API_URL}/questaobanco/contagem`, { headers: getHeaders() });
+/** Só conta Status='Validado' — alimenta os cards de matéria/submatéria com "N questões",
+ * recalculando ao vivo conforme os filtros de vestibular/ano/dificuldade. */
+export async function contarQuestoesValidadas(filtros?: FiltrosBancoQuestoes): Promise<ContagemQuestoes> {
+  const params = new URLSearchParams();
+  anexarFiltrosMultiplos(params, filtros);
+  const response = await fetch(`${API_URL}/questaobanco/contagem?${params}`, { headers: getHeaders() });
   const result = await response.json();
   if (!response.ok) throw new Error(result.message || 'Erro ao contar questões');
   return result.data;
+}
+
+/** Anos com pelo menos 1 questão Validada — alimenta o modal de filtro de Ano. */
+export async function listarAnosDisponiveis(): Promise<number[]> {
+  const response = await fetch(`${API_URL}/questaobanco/anos`, { headers: getHeaders() });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || 'Erro ao listar anos');
+  return result.data?.anos || [];
 }
 
 export async function criarQuestao(dados: QuestaoBancoCreateDados): Promise<QuestaoBanco> {

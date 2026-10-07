@@ -34,6 +34,7 @@ export default class QuestaoBancoRoteador {
     this.#router.get("/contagem", this.#controller.indexContagem);
     this.#router.get("/progresso", this.#controller.indexProgresso);
     this.#router.get("/vestibular", this.#controller.indexVestibulares);
+    this.#router.get("/anos", this.#controller.indexAnos);
 
     // Fila de validação: só admin de plataforma (vê Status=Pendente, não exposto na rota pública)
     this.#router.get("/pendentes", plataformaAdminGuard, this.#controller.indexPendentes);

@@ -25,6 +25,7 @@ export interface QuestaoBancoDTO {
   MateriaGlobalGUID: string;
   SubMateriaGlobalGUID: string;
   VestibularGUID: string;
+  Ano: number | null;
   Dificuldade: QuestaoBancoDificuldade;
   Status: QuestaoBancoStatus;
   Enunciado: string;
@@ -43,6 +44,10 @@ export interface QuestaoBancoCreateDTO {
   MateriaGlobalGUID: string;
   SubMateriaGlobalGUID: string;
   VestibularGUID: string;
+  /** Opcional — se não vier, é derivado automaticamente do ano embutido no Nome do Vestibular
+   * (ex.: "ENEM 2023" → 2023). Só precisa informar manualmente se o Vestibular não tiver ano
+   * parseável no nome. */
+  Ano?: number | null;
   Dificuldade: QuestaoBancoDificuldade;
   Enunciado: string;
   VideoResolucaoUrl?: string | null;
@@ -61,6 +66,7 @@ export interface QuestaoBancoUpdateDTO {
   MateriaGlobalGUID?: string;
   SubMateriaGlobalGUID?: string;
   VestibularGUID?: string;
+  Ano?: number | null;
   Dificuldade?: QuestaoBancoDificuldade;
   Enunciado?: string;
   VideoResolucaoUrl?: string | null;
@@ -118,6 +124,7 @@ export default class QuestaoBancoService {
     questao.MateriaGlobalGUID = data.MateriaGlobalGUID;
     questao.SubMateriaGlobalGUID = data.SubMateriaGlobalGUID;
     questao.VestibularGUID = data.VestibularGUID;
+    questao.Ano = data.Ano !== undefined ? data.Ano : await this.#derivarAnoDoVestibular(data.VestibularGUID);
     questao.Dificuldade = data.Dificuldade;
     questao.Enunciado = data.Enunciado;
     questao.VideoResolucaoUrl = data.VideoResolucaoUrl ?? null;
@@ -151,6 +158,16 @@ export default class QuestaoBancoService {
     }
 
     return this.toDTO(questao, alternativas, [], alternativas.map(() => []));
+  };
+
+  /** Extrai o ano de 4 dígitos embutido no Nome do Vestibular (ex.: "ENEM 2023" → 2023) — mesma
+   * regra usada no backfill (migration 2026-10-07-questaobanco-ano.ts). Null se o Vestibular não
+   * existir ou não tiver ano parseável no nome. */
+  #derivarAnoDoVestibular = async (vestibularGUID: string): Promise<number | null> => {
+    const vestibular = await this.#vestibularDAO.findById(vestibularGUID);
+    if (!vestibular) return null;
+    const match = vestibular.Nome.match(/\b(19|20)\d{2}\b/);
+    return match ? Number(match[0]) : null;
   };
 
   private vincularAnexos = async (
@@ -220,10 +237,20 @@ export default class QuestaoBancoService {
       }
     }
 
+    // Se o Vestibular mudou e o admin não informou Ano explicitamente, re-deriva — senão o Ano
+    // ficaria "preso" ao vestibular antigo depois da edição.
+    const anoParaSalvar =
+      data.Ano !== undefined
+        ? data.Ano
+        : data.VestibularGUID !== undefined
+          ? await this.#derivarAnoDoVestibular(data.VestibularGUID)
+          : undefined;
+
     await this.#questaoDAO.update(guid, {
       MateriaGlobalGUID: data.MateriaGlobalGUID,
       SubMateriaGlobalGUID: data.SubMateriaGlobalGUID,
       VestibularGUID: data.VestibularGUID,
+      Ano: anoParaSalvar,
       Dificuldade: data.Dificuldade,
       Enunciado: data.Enunciado,
       VideoResolucaoUrl: data.VideoResolucaoUrl,
@@ -322,12 +349,15 @@ export default class QuestaoBancoService {
     return this.#questaoDAO.existeParaSubMateria(subMateriaGlobalGUID);
   };
 
-  /** Alimenta os selects de matéria/submatéria da tela de prática do aluno com "quantas
-   * questões Validadas existem" — contagem por matéria é a soma das submatérias dela. */
-  contarQuestoesValidadas = async (): Promise<ContagemQuestoesDTO> => {
+  /** Alimenta os cards de matéria/submatéria da tela de prática do aluno com "quantas questões
+   * Validadas existem" — contagem por matéria é a soma das submatérias dela. Aceita os mesmos
+   * filtros multi-seleção de vestibular/ano/dificuldade (spec 07/10: recalcula ao vivo). */
+  contarQuestoesValidadas = async (
+    filtros: Pick<QuestaoBancoFiltros, "VestibularGUIDs" | "Anos" | "Dificuldades"> = {}
+  ): Promise<ContagemQuestoesDTO> => {
     console.log("🟣 QuestaoBancoService.contarQuestoesValidadas()");
 
-    const porSubMateria = await this.#questaoDAO.contarValidadasPorSubMateria();
+    const porSubMateria = await this.#questaoDAO.contarValidadasPorSubMateria(filtros);
 
     const porMateriaMapa = new Map<string, number>();
     for (const linha of porSubMateria) {
@@ -338,6 +368,11 @@ export default class QuestaoBancoService {
       PorMateria: Array.from(porMateriaMapa.entries()).map(([MateriaGlobalGUID, Quantidade]) => ({ MateriaGlobalGUID, Quantidade })),
       PorSubMateria: porSubMateria.map(({ SubMateriaGlobalGUID, Quantidade }) => ({ SubMateriaGlobalGUID, Quantidade })),
     };
+  };
+
+  listarAnosDisponiveis = async (): Promise<number[]> => {
+    console.log("🟣 QuestaoBancoService.listarAnosDisponiveis()");
+    return this.#questaoDAO.listarAnosDisponiveis();
   };
 
   listarVestibulares = async (): Promise<Vestibular[]> => {
@@ -369,6 +404,7 @@ export default class QuestaoBancoService {
       MateriaGlobalGUID: questao.MateriaGlobalGUID,
       SubMateriaGlobalGUID: questao.SubMateriaGlobalGUID,
       VestibularGUID: questao.VestibularGUID,
+      Ano: questao.Ano,
       Dificuldade: questao.Dificuldade,
       Status: questao.Status,
       Enunciado: questao.Enunciado,

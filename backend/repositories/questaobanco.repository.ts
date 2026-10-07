@@ -6,6 +6,7 @@ interface QuestaoBancoRow {
   MateriaGlobalGUID: string;
   SubMateriaGlobalGUID: string;
   VestibularGUID: string;
+  Ano: number | null;
   Dificuldade: QuestaoBancoDificuldade;
   Status: QuestaoBancoStatus;
   Enunciado: string;
@@ -23,6 +24,11 @@ export interface QuestaoBancoFiltros {
   /** Exclui questões que esse aluno já marcou como Feita (spec: some do pool de
    * randomização da prática) — só usado pela listagem pública, nunca pelas telas de admin. */
   ExcluirFeitasDoUsuarioGUID?: string;
+  /** Multi-seleção (tela de prática redesenhada, spec 07/10) — independentes dos filtros
+   * singulares acima (usados pela tela de admin/validação). */
+  VestibularGUIDs?: string[];
+  Anos?: number[];
+  Dificuldades?: QuestaoBancoDificuldade[];
 }
 
 /** Campos editáveis via tela de validação — todos opcionais (atualiza só o que vier). */
@@ -30,6 +36,7 @@ export interface QuestaoBancoUpdateCampos {
   MateriaGlobalGUID?: string;
   SubMateriaGlobalGUID?: string;
   VestibularGUID?: string;
+  Ano?: number | null;
   Dificuldade?: QuestaoBancoDificuldade;
   Status?: QuestaoBancoStatus;
   Enunciado?: string;
@@ -48,8 +55,8 @@ export class QuestaoBancoDAO {
     console.log("🟢 QuestaoBancoDAO.create()");
 
     const SQL = `
-      INSERT INTO questaobanco (QuestaoBancoGUID, MateriaGlobalGUID, SubMateriaGlobalGUID, VestibularGUID, Dificuldade, Enunciado, VideoResolucaoUrl, CriadoPorGUID)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO questaobanco (QuestaoBancoGUID, MateriaGlobalGUID, SubMateriaGlobalGUID, VestibularGUID, Ano, Dificuldade, Enunciado, VideoResolucaoUrl, CriadoPorGUID)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     // Status não entra no INSERT — a coluna já nasce 'Pendente' via DEFAULT do schema, mesmo
     // valor que `new QuestaoBanco()` usa antes de qualquer set explícito (entity e banco
@@ -60,6 +67,7 @@ export class QuestaoBancoDAO {
       questao.MateriaGlobalGUID,
       questao.SubMateriaGlobalGUID,
       questao.VestibularGUID,
+      questao.Ano,
       questao.Dificuldade,
       questao.Enunciado,
       questao.VideoResolucaoUrl,
@@ -124,6 +132,18 @@ export class QuestaoBancoDAO {
       );
       params.push(filtros.ExcluirFeitasDoUsuarioGUID);
     }
+    if (filtros.VestibularGUIDs && filtros.VestibularGUIDs.length > 0) {
+      conditions.push(`VestibularGUID IN (${filtros.VestibularGUIDs.map(() => "?").join(", ")})`);
+      params.push(...filtros.VestibularGUIDs);
+    }
+    if (filtros.Anos && filtros.Anos.length > 0) {
+      conditions.push(`Ano IN (${filtros.Anos.map(() => "?").join(", ")})`);
+      params.push(...filtros.Anos);
+    }
+    if (filtros.Dificuldades && filtros.Dificuldades.length > 0) {
+      conditions.push(`Dificuldade IN (${filtros.Dificuldades.map(() => "?").join(", ")})`);
+      params.push(...filtros.Dificuldades);
+    }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const SQL = `SELECT * FROM questaobanco ${whereClause} ORDER BY CreatedAt DESC`;
@@ -133,23 +153,57 @@ export class QuestaoBancoDAO {
 
   /** Contagem de Validadas por submatéria (spec: selects de matéria/submatéria mostrarem
    * quanto conteúdo tem disponível) — a contagem por matéria é a soma das submatérias dela,
-   * calculada no service, pra não duplicar a mesma lógica de agregação em 2 queries. */
-  contarValidadasPorSubMateria = async (): Promise<{ MateriaGlobalGUID: string; SubMateriaGlobalGUID: string; Quantidade: number }[]> => {
+   * calculada no service, pra não duplicar a mesma lógica de agregação em 2 queries. Aceita os
+   * mesmos filtros multi-seleção de `findAll` (spec 07/10: contagem recalcula ao vivo conforme
+   * o aluno filtra por vestibular/ano/dificuldade). */
+  contarValidadasPorSubMateria = async (
+    filtros: Pick<QuestaoBancoFiltros, "VestibularGUIDs" | "Anos" | "Dificuldades"> = {}
+  ): Promise<{ MateriaGlobalGUID: string; SubMateriaGlobalGUID: string; Quantidade: number }[]> => {
     console.log("🟢 QuestaoBancoDAO.contarValidadasPorSubMateria()");
+
+    const conditions = ["Status = 'Validado'"];
+    const params: any[] = [];
+
+    if (filtros.VestibularGUIDs && filtros.VestibularGUIDs.length > 0) {
+      conditions.push(`VestibularGUID IN (${filtros.VestibularGUIDs.map(() => "?").join(", ")})`);
+      params.push(...filtros.VestibularGUIDs);
+    }
+    if (filtros.Anos && filtros.Anos.length > 0) {
+      conditions.push(`Ano IN (${filtros.Anos.map(() => "?").join(", ")})`);
+      params.push(...filtros.Anos);
+    }
+    if (filtros.Dificuldades && filtros.Dificuldades.length > 0) {
+      conditions.push(`Dificuldade IN (${filtros.Dificuldades.map(() => "?").join(", ")})`);
+      params.push(...filtros.Dificuldades);
+    }
 
     const SQL = `
       SELECT MateriaGlobalGUID, SubMateriaGlobalGUID, COUNT(*) as Quantidade
       FROM questaobanco
-      WHERE Status = 'Validado'
+      WHERE ${conditions.join(" AND ")}
       GROUP BY MateriaGlobalGUID, SubMateriaGlobalGUID
     `;
     const pool = await this.#database.getPool();
-    const [rows] = await pool.execute(SQL);
+    const [rows] = await pool.execute(SQL, params);
     return (rows as any[]).map((r) => ({
       MateriaGlobalGUID: r.MateriaGlobalGUID,
       SubMateriaGlobalGUID: r.SubMateriaGlobalGUID,
       Quantidade: Number(r.Quantidade),
     }));
+  };
+
+  /** Anos distintos com pelo menos 1 questão Validada — alimenta o modal de filtro de Ano. */
+  listarAnosDisponiveis = async (): Promise<number[]> => {
+    console.log("🟢 QuestaoBancoDAO.listarAnosDisponiveis()");
+
+    const SQL = `
+      SELECT DISTINCT Ano FROM questaobanco
+      WHERE Status = 'Validado' AND Ano IS NOT NULL
+      ORDER BY Ano DESC
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL);
+    return (rows as any[]).map((r) => Number(r.Ano));
   };
 
   /** Só existência (spec: passo "banco de questões" do pipeline só precisa saber se há alguma). */
@@ -178,6 +232,7 @@ export class QuestaoBancoDAO {
       questao.MateriaGlobalGUID = row.MateriaGlobalGUID;
       questao.SubMateriaGlobalGUID = row.SubMateriaGlobalGUID;
       questao.VestibularGUID = row.VestibularGUID;
+      questao.Ano = row.Ano;
       questao.Dificuldade = row.Dificuldade;
       questao.Status = row.Status;
       questao.Enunciado = row.Enunciado;

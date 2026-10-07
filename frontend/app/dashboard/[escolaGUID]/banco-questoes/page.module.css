@@ -3,40 +3,32 @@
   --green-500: #17C077;
   --green-600: #12A063;
   --green-700: #0E7D4E;
-  --gold-500: #FFC02E;
   --danger-500: #E5484D;
   --danger-50: #FCEBEC;
   --ink-900: #0F1D17;
   --slate-600: #46564D;
   --slate-500: #647268;
-  --slate-400: #8A968E;
   --line-200: #E2EAE5;
-  --line-100: #EDF3EF;
-  --surface-50: #F5F9F6;
   --white: #FFFFFF;
 
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
-  --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
 
-  --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-pill: 9999px;
-
   --shadow-sm: 0 2px 6px rgba(15, 29, 23, 0.06);
-  --shadow-md: 0 8px 20px -8px rgba(15, 29, 23, 0.14);
 
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-4) var(--space-8);
 }
 
 .header {
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5, 1.25rem);
 }
 
 .titulo {
@@ -81,7 +73,48 @@
   height: 15px;
 }
 
-.card {
+.erro {
+  width: 100%;
+  margin: 0 0 var(--space-4);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--danger-50);
+  color: var(--danger-500);
+  font-size: 13px;
+}
+
+.vazio {
+  text-align: center;
+  color: var(--slate-500);
+  font-size: 14px;
+  padding: var(--space-6) 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.1rem;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cardErroSolo {
   background: var(--white);
   border: 1px solid var(--line-200);
   border-radius: var(--radius-lg);
@@ -92,62 +125,6 @@
   gap: var(--space-4);
   align-items: center;
   text-align: center;
-}
-
-.campo {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  text-align: left;
-}
-
-.rotulo {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-900);
-}
-
-.checkboxTodas {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 13px;
-  color: var(--slate-600);
-  text-align: left;
-  cursor: pointer;
-}
-
-.select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--line-200);
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  font-family: inherit;
-  color: var(--ink-900);
-  background: var(--white);
-}
-
-.select:disabled {
-  background: var(--surface-50);
-  color: var(--slate-400);
-}
-
-.select:focus {
-  outline: none;
-  border-color: var(--green-500);
-}
-
-.erro {
-  width: 100%;
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--danger-50);
-  color: var(--danger-500);
-  font-size: 13px;
 }
 
 .botaoPrimario {
@@ -163,239 +140,13 @@
   font-weight: 700;
   font-size: 15px;
   font-family: inherit;
+  text-decoration: none;
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
-.botaoPrimario:hover:not(:disabled) {
+.botaoPrimario:hover {
   background: var(--green-600);
-}
-
-.botaoPrimario:disabled {
-  background: var(--slate-400);
-  cursor: not-allowed;
-}
-
-.progresso {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  color: var(--slate-500);
-  font-weight: 600;
-}
-
-.badgeDificuldade {
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--surface-50);
-  color: var(--slate-600);
-  font-size: 12px;
-}
-
-.progressoAcoes {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.botaoMarcar,
-.botaoMarcarAtivo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-}
-
-.botaoMarcar svg {
-  width: 16px;
-  height: 16px;
-  color: var(--slate-400);
-}
-
-.botaoMarcarAtivo svg {
-  width: 16px;
-  height: 16px;
-  color: var(--gold-500);
-  fill: var(--gold-500);
-}
-
-.enunciado {
-  width: 100%;
-  text-align: left;
-}
-
-.enunciadoParagrafo {
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--ink-900);
-  margin: 0 0 var(--space-3);
-}
-
-.enunciadoParagrafo:last-child {
-  margin-bottom: 0;
-}
-
-/* Hoje só marca referência bibliográfica (ex.: "BLUM, C. T. ...") — estilo
-   discreto em vez de negrito de verdade, pra não chamar mais atenção que o
-   próprio enunciado. */
-.enunciadoParagrafo strong {
-  font-weight: 400;
-  font-size: 0.9em;
-  color: var(--slate-500);
-}
-
-/* Fórmula/gráfico recortado (matemática/química/biologia) que o extrator de
-   PDF não reconstrói como texto, embutido via ![alt](url) no meio do
-   Enunciado. Varia de fórmula pequena (ex. 124x82px) a gráfico com várias
-   curvas (ex. 711x240px) — height:auto + width:auto renderiza no tamanho
-   NATURAL (não força pra altura de 1 linha, que esmagava o gráfico a
-   ilegível), só limitando o teto pra nunca virar uma foto de página
-   inteira. */
-.enunciadoImagemInline {
-  display: inline-block;
-  height: auto;
-  width: auto;
-  max-width: 100%;
-  max-height: 10em;
-  vertical-align: middle;
-}
-
-.anexos {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.anexoImagem {
-  width: 100%;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--line-200);
-}
-
-.alternativas {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.alternativa {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--line-200);
-  border-radius: var(--radius-md);
-  background: var(--white);
-  font-family: inherit;
-  font-size: 14px;
-  color: var(--ink-900);
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.alternativa:hover:not(:disabled) {
-  border-color: var(--green-500);
-  background: var(--green-50);
-}
-
-.alternativa:disabled {
-  cursor: default;
-}
-
-.alternativaCorreta {
-  border-color: var(--green-500);
-  background: var(--green-50);
-}
-
-.alternativaErrada {
-  border-color: var(--danger-500);
-  background: var(--danger-50);
-}
-
-.alternativaLetra {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--surface-50);
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.alternativaTexto {
-  flex: 1;
-}
-
-.alternativaImagem {
-  width: 60px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-}
-
-.alternativaIcone {
-  width: 20px;
-  height: 20px;
-  color: var(--green-600);
-  flex-shrink: 0;
-}
-
-.feedback {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  align-items: center;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--line-100);
-}
-
-.feedbackAcerto {
-  margin: 0;
-  color: var(--green-700);
-  font-weight: 700;
-}
-
-.feedbackErro {
-  margin: 0;
-  color: var(--danger-500);
-  font-weight: 700;
-}
-
-.linkResolucao {
-  color: var(--green-700);
-  font-weight: 600;
-  font-size: 14px;
-  text-decoration: underline;
-}
-
-.resumoIcone {
-  width: 48px;
-  height: 48px;
-  color: var(--gold-500);
-}
-
-.resumoTitulo {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--ink-900);
-  margin: 0;
 }
 
 @media (max-width: 560px) {
@@ -405,14 +156,5 @@
 
   .titulo {
     font-size: 20px;
-  }
-
-  .card {
-    padding: var(--space-4);
-  }
-
-  .alternativaImagem {
-    width: 44px;
-    height: 44px;
   }
 }

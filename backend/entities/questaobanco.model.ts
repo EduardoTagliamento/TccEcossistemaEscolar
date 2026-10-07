@@ -10,6 +10,7 @@ export default class QuestaoBanco {
   #MateriaGlobalGUID!: string;
   #SubMateriaGlobalGUID!: string;
   #VestibularGUID!: string;
+  #Ano: number | null = null;
   #Dificuldade!: QuestaoBancoDificuldade;
   #Status: QuestaoBancoStatus = "Pendente";
   #Enunciado!: string;
@@ -63,6 +64,21 @@ export default class QuestaoBanco {
       throw new Error("VestibularGUID deve ser um UUID válido (36 caracteres).");
     }
     this.#VestibularGUID = value.trim();
+  }
+
+  get Ano(): number | null {
+    return this.#Ano;
+  }
+
+  set Ano(value: number | null) {
+    if (value === null || value === undefined) {
+      this.#Ano = null;
+      return;
+    }
+    if (typeof value !== "number" || value < 1900 || value > 2100) {
+      throw new Error("Ano deve ser um número de 4 dígitos plausível.");
+    }
+    this.#Ano = value;
   }
 
   get Dificuldade(): QuestaoBancoDificuldade {
