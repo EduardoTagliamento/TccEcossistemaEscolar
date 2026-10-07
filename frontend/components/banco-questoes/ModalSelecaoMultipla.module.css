@@ -52,6 +52,34 @@
   background: var(--surface-50, #F5F9F6);
 }
 
+.buscaContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 20px 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-200, #E2EAE5);
+  border-radius: 9999px;
+  background: var(--surface-50, #F5F9F6);
+}
+
+.buscaIcone {
+  width: 15px;
+  height: 15px;
+  color: var(--slate-500, #647268);
+  flex-shrink: 0;
+}
+
+.buscaInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--ink-900, #0F1D17);
+  outline: none;
+}
+
 .botaoFechar svg {
   width: 18px;
   height: 18px;

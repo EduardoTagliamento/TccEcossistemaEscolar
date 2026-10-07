@@ -48,7 +48,13 @@ export function useVestibularesAgrupados() {
             )[0][0];
             return { nomeBase: labelMaisFrequente, guids };
           })
-          .sort((a, b) => a.nomeBase.localeCompare(b.nomeBase, 'pt-BR'));
+          // Alfabética, mas ENEM sempre primeiro (é o vestibular mais usado/procurado).
+          .sort((a, b) => {
+            const aEhEnem = a.nomeBase.toLowerCase() === 'enem';
+            const bEhEnem = b.nomeBase.toLowerCase() === 'enem';
+            if (aEhEnem !== bEhEnem) return aEhEnem ? -1 : 1;
+            return a.nomeBase.localeCompare(b.nomeBase, 'pt-BR');
+          });
         setGrupos(gruposOrdenados);
       })
       .catch(() => {
