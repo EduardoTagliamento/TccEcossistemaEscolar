@@ -138,7 +138,7 @@ export default function MateriaBancoQuestoesPage() {
       >
         {carregandoPratica
           ? 'Carregando questões...'
-          : `Praticar com todas as submatérias (${totalMateria} questã${totalMateria === 1 ? 'ão' : 'ões'})`}
+          : `Praticar com todas as submatérias (${totalMateria} ${totalMateria === 1 ? 'questão' : 'questões'})`}
       </button>
 
       {erro && <p className={styles.erro}>{erro}</p>}

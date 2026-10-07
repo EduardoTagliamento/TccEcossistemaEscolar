@@ -41,7 +41,7 @@ export default function CardSelecaoBanco({ href, onClick, disabled, titulo, quan
       </div>
       <div className={styles.rodape}>
         <span className={styles.quantidade}>
-          {quantidade} questã{quantidade === 1 ? 'ão' : 'ões'}
+          {quantidade} {quantidade === 1 ? 'questão' : 'questões'}
         </span>
       </div>
     </>
