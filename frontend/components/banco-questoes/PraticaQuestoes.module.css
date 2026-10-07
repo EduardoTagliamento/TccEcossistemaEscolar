@@ -204,6 +204,14 @@
   background: var(--green-50);
 }
 
+/* Selecionada mas ainda não confirmada (botão "Responder") — neutra de propósito, nunca
+   verde/vermelho antes de confirmar, senão pareceria já ter revelado o gabarito. */
+.alternativaSelecionada {
+  border-color: var(--ink-900);
+  border-width: 2px;
+  background: var(--surface-50);
+}
+
 .alternativaErrada {
   border-color: var(--danger-500);
   background: var(--danger-50);

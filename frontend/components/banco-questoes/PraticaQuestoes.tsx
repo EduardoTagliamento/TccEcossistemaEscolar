@@ -74,11 +74,17 @@ export default function PraticaQuestoes({ questoes, textoBotaoFinal, onTerminar 
     return [...questaoAtual.Alternativas].sort((a, b) => a.AlternativaOrdem - b.AlternativaOrdem);
   }, [questaoAtual]);
 
-  const handleResponder = (alternativaGUID: string) => {
-    if (respondida || !questaoAtual) return;
+  /** Só seleciona — não confirma. Confirmar é uma ação separada (botão "Responder" embaixo),
+   * pra evitar clique acidental decidir a questão sozinho. */
+  const handleSelecionar = (alternativaGUID: string) => {
+    if (respondida) return;
     setAlternativaEscolhida(alternativaGUID);
+  };
+
+  const handleConfirmarResposta = () => {
+    if (respondida || !questaoAtual || !alternativaEscolhida) return;
     setRespondida(true);
-    const alt = alternativasOrdenadas.find((a) => a.AlternativaGUID === alternativaGUID);
+    const alt = alternativasOrdenadas.find((a) => a.AlternativaGUID === alternativaEscolhida);
     const acertou = !!alt?.AlternativaCorreta;
     if (acertou) setAcertos((a) => a + 1);
     QuestaoBancoAPI.registrarResposta(questaoAtual.QuestaoBancoGUID, acertou).catch(() => {
@@ -158,12 +164,13 @@ export default function PraticaQuestoes({ questoes, textoBotaoFinal, onTerminar 
           let classe = styles.alternativa;
           if (respondida && alt.AlternativaCorreta) classe += ` ${styles.alternativaCorreta}`;
           else if (respondida && isEscolhida && !alt.AlternativaCorreta) classe += ` ${styles.alternativaErrada}`;
+          else if (!respondida && isEscolhida) classe += ` ${styles.alternativaSelecionada}`;
 
           return (
             <button
               key={alt.AlternativaGUID}
               className={classe}
-              onClick={() => handleResponder(alt.AlternativaGUID)}
+              onClick={() => handleSelecionar(alt.AlternativaGUID)}
               disabled={respondida}
             >
               <span className={styles.alternativaLetra}>{letra}</span>
@@ -177,6 +184,17 @@ export default function PraticaQuestoes({ questoes, textoBotaoFinal, onTerminar 
           );
         })}
       </div>
+
+      {!respondida && (
+        <button
+          type="button"
+          className={styles.botaoPrimario}
+          onClick={handleConfirmarResposta}
+          disabled={!alternativaEscolhida}
+        >
+          Responder
+        </button>
+      )}
 
       {respondida && (
         <div className={styles.feedback}>
