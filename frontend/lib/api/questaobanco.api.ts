@@ -110,6 +110,7 @@ export async function buscarQuestao(guid: string): Promise<QuestaoBanco> {
 export interface ContagemQuestoes {
   PorMateria: { MateriaGlobalGUID: string; Quantidade: number }[];
   PorSubMateria: { SubMateriaGlobalGUID: string; Quantidade: number }[];
+  PorVestibular: { VestibularGUID: string; Quantidade: number }[];
 }
 
 /** Só conta Status='Validado' — alimenta os cards de matéria/submatéria com "N questões",

@@ -32,6 +32,7 @@ export default function BarraFiltrosBanco() {
   const { grupos: gruposVestibular, carregando: carregandoVestibulares } = useVestibularesAgrupados();
   const [anos, setAnos] = useState<number[]>([]);
   const [carregandoAnos, setCarregandoAnos] = useState(true);
+  const [contagemPorVestibularGUID, setContagemPorVestibularGUID] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     QuestaoBancoAPI.listarAnosDisponiveis()
@@ -42,12 +43,31 @@ export default function BarraFiltrosBanco() {
       .finally(() => setCarregandoAnos(false));
   }, []);
 
+  const anosKey = filtros.anos.join(',');
+  const dificuldadesKey = filtros.dificuldades.join(',');
+
+  useEffect(() => {
+    // Nunca passa vestibulares aqui — a contagem de cada vestibular no modal precisa ignorar o
+    // próprio filtro de vestibular, senão os não selecionados apareceriam com (0).
+    QuestaoBancoAPI.contarQuestoesValidadas({ anos: filtros.anos, dificuldades: filtros.dificuldades })
+      .then((contagem) => {
+        setContagemPorVestibularGUID(new Map(contagem.PorVestibular.map((c) => [c.VestibularGUID, c.Quantidade])));
+      })
+      .catch(() => {
+        // Sem contagem, as opções do filtro de vestibular ficam sem número — não bloqueia a tela.
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anosKey, dificuldadesKey]);
+
   const atualizarUrl = (novosFiltros: typeof filtros) => {
     const query = aplicarFiltrosNaQueryString(new URLSearchParams(searchParams?.toString()), novosFiltros);
     router.push(query ? `${pathname}?${query}` : pathname);
   };
 
-  const opcoesVestibular: OpcaoSelecaoMultipla[] = gruposVestibular.map((g) => ({ valor: g.nomeBase, label: g.nomeBase }));
+  const opcoesVestibular: OpcaoSelecaoMultipla[] = gruposVestibular.map((g) => {
+    const quantidade = g.guids.reduce((soma, guid) => soma + (contagemPorVestibularGUID.get(guid) ?? 0), 0);
+    return { valor: g.nomeBase, label: `${g.nomeBase} (${quantidade})` };
+  });
   const opcoesAno: OpcaoSelecaoMultipla[] = anos.map((a) => ({ valor: String(a), label: String(a) }));
 
   return (

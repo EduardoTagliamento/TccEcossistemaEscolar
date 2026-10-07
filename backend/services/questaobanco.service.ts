@@ -38,6 +38,7 @@ export interface QuestaoBancoDTO {
 export interface ContagemQuestoesDTO {
   PorMateria: { MateriaGlobalGUID: string; Quantidade: number }[];
   PorSubMateria: { SubMateriaGlobalGUID: string; Quantidade: number }[];
+  PorVestibular: { VestibularGUID: string; Quantidade: number }[];
 }
 
 export interface QuestaoBancoCreateDTO {
@@ -358,6 +359,12 @@ export default class QuestaoBancoService {
     console.log("🟣 QuestaoBancoService.contarQuestoesValidadas()");
 
     const porSubMateria = await this.#questaoDAO.contarValidadasPorSubMateria(filtros);
+    // Nunca aplica o filtro de Vestibular aqui — senão os vestibulares NÃO selecionados
+    // apareceriam zerados no próprio modal que serve pra escolhê-los.
+    const porVestibular = await this.#questaoDAO.contarValidadasPorVestibular({
+      Anos: filtros.Anos,
+      Dificuldades: filtros.Dificuldades,
+    });
 
     const porMateriaMapa = new Map<string, number>();
     for (const linha of porSubMateria) {
@@ -367,6 +374,7 @@ export default class QuestaoBancoService {
     return {
       PorMateria: Array.from(porMateriaMapa.entries()).map(([MateriaGlobalGUID, Quantidade]) => ({ MateriaGlobalGUID, Quantidade })),
       PorSubMateria: porSubMateria.map(({ SubMateriaGlobalGUID, Quantidade }) => ({ SubMateriaGlobalGUID, Quantidade })),
+      PorVestibular: porVestibular,
     };
   };
 

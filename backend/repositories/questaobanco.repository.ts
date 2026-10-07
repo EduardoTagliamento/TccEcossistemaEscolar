@@ -192,6 +192,38 @@ export class QuestaoBancoDAO {
     }));
   };
 
+  /** Contagem de Validadas por Vestibular (spec: modal de filtro de Vestibular mostrar "ENEM
+   * (450)") — nunca aplica o próprio filtro de Vestibular (senão vestibulares não selecionados
+   * zerariam), só Anos/Dificuldades. Agrupamento por nome-base (ex.: somar todos os anos do
+   * ENEM) é feito no frontend, que já tem essa lógica (`useVestibularesAgrupados`). */
+  contarValidadasPorVestibular = async (
+    filtros: Pick<QuestaoBancoFiltros, "Anos" | "Dificuldades"> = {}
+  ): Promise<{ VestibularGUID: string; Quantidade: number }[]> => {
+    console.log("🟢 QuestaoBancoDAO.contarValidadasPorVestibular()");
+
+    const conditions = ["Status = 'Validado'"];
+    const params: any[] = [];
+
+    if (filtros.Anos && filtros.Anos.length > 0) {
+      conditions.push(`Ano IN (${filtros.Anos.map(() => "?").join(", ")})`);
+      params.push(...filtros.Anos);
+    }
+    if (filtros.Dificuldades && filtros.Dificuldades.length > 0) {
+      conditions.push(`Dificuldade IN (${filtros.Dificuldades.map(() => "?").join(", ")})`);
+      params.push(...filtros.Dificuldades);
+    }
+
+    const SQL = `
+      SELECT VestibularGUID, COUNT(*) as Quantidade
+      FROM questaobanco
+      WHERE ${conditions.join(" AND ")}
+      GROUP BY VestibularGUID
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL, params);
+    return (rows as any[]).map((r) => ({ VestibularGUID: r.VestibularGUID, Quantidade: Number(r.Quantidade) }));
+  };
+
   /** Anos distintos com pelo menos 1 questão Validada — alimenta o modal de filtro de Ano. */
   listarAnosDisponiveis = async (): Promise<number[]> => {
     console.log("🟢 QuestaoBancoDAO.listarAnosDisponiveis()");
