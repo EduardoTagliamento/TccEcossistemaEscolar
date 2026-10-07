@@ -10,6 +10,7 @@ import { embaralhar } from '@/lib/embaralhar';
 import * as MateriaGlobalAPI from '@/lib/api/materiaglobal.api';
 import * as QuestaoBancoAPI from '@/lib/api/questaobanco.api';
 import { filtrosDeSearchParams } from '@/lib/bancoQuestoesFiltros';
+import { useVestibularesAgrupados } from '@/lib/useVestibularesAgrupados';
 import BarraFiltrosBanco from '@/components/banco-questoes/BarraFiltrosBanco';
 import CardSelecaoBanco from '@/components/banco-questoes/CardSelecaoBanco';
 import PraticaQuestoes from '@/components/banco-questoes/PraticaQuestoes';
@@ -29,6 +30,7 @@ export default function MateriaBancoQuestoesPage() {
   const searchParams = useSearchParams();
   const filtros = filtrosDeSearchParams(searchParams);
   const paletaEscola = useCoresEscola();
+  const { grupos: gruposVestibular, expandirNomesBaseParaGUIDs } = useVestibularesAgrupados();
 
   const [materia, setMateria] = useState<MateriaGlobalAPI.MateriaGlobal | null>(null);
   const [submaterias, setSubmaterias] = useState<MateriaGlobalAPI.SubMateriaGlobal[]>([]);
@@ -50,20 +52,20 @@ export default function MateriaBancoQuestoesPage() {
       .finally(() => setCarregando(false));
   }, [materiaGUID]);
 
-  const vestibularesKey = filtros.vestibularGUIDs.join(',');
+  const vestibularesKey = filtros.vestibulares.join(',');
   const anosKey = filtros.anos.join(',');
   const dificuldadesKey = filtros.dificuldades.join(',');
 
   useEffect(() => {
     QuestaoBancoAPI.contarQuestoesValidadas({
-      vestibularGUIDs: filtros.vestibularGUIDs,
+      vestibularGUIDs: expandirNomesBaseParaGUIDs(filtros.vestibulares),
       anos: filtros.anos,
       dificuldades: filtros.dificuldades,
     })
       .then(setContagem)
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vestibularesKey, anosKey, dificuldadesKey]);
+  }, [vestibularesKey, anosKey, dificuldadesKey, gruposVestibular.length]);
 
   const contagemPorSubMateria = useMemo(() => {
     const mapa = new Map<string, number>();
@@ -88,7 +90,7 @@ export default function MateriaBancoQuestoesPage() {
       const resultado = await QuestaoBancoAPI.listarQuestoes({
         MateriaGlobalGUID: submateriaGUID ? undefined : materiaGUID,
         SubMateriaGlobalGUID: submateriaGUID,
-        vestibularGUIDs: filtros.vestibularGUIDs,
+        vestibularGUIDs: expandirNomesBaseParaGUIDs(filtros.vestibulares),
         anos: filtros.anos,
         dificuldades: filtros.dificuldades,
       });

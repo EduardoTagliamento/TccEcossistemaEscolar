@@ -9,6 +9,7 @@ import { useCoresEscola } from '@/lib/theme/useCoresEscola';
 import * as MateriaGlobalAPI from '@/lib/api/materiaglobal.api';
 import * as QuestaoBancoAPI from '@/lib/api/questaobanco.api';
 import { filtrosDeSearchParams } from '@/lib/bancoQuestoesFiltros';
+import { useVestibularesAgrupados } from '@/lib/useVestibularesAgrupados';
 import BarraFiltrosBanco from '@/components/banco-questoes/BarraFiltrosBanco';
 import CardSelecaoBanco from '@/components/banco-questoes/CardSelecaoBanco';
 import PraticaQuestoes from '@/components/banco-questoes/PraticaQuestoes';
@@ -32,6 +33,7 @@ export default function BancoQuestoesPage() {
   const questaoGUIDParaRefazer = searchParams?.get('questaoGUID') || '';
   const filtros = filtrosDeSearchParams(searchParams);
   const paletaEscola = useCoresEscola();
+  const { grupos: gruposVestibular, expandirNomesBaseParaGUIDs } = useVestibularesAgrupados();
 
   const [materias, setMaterias] = useState<MateriaGlobalAPI.MateriaGlobal[]>([]);
   const [carregandoMaterias, setCarregandoMaterias] = useState(true);
@@ -63,14 +65,14 @@ export default function BancoQuestoesPage() {
       .finally(() => setCarregandoMaterias(false));
   }, [questaoGUIDParaRefazer]);
 
-  const vestibularesKey = filtros.vestibularGUIDs.join(',');
+  const vestibularesKey = filtros.vestibulares.join(',');
   const anosKey = filtros.anos.join(',');
   const dificuldadesKey = filtros.dificuldades.join(',');
 
   useEffect(() => {
     if (questaoGUIDParaRefazer) return;
     QuestaoBancoAPI.contarQuestoesValidadas({
-      vestibularGUIDs: filtros.vestibularGUIDs,
+      vestibularGUIDs: expandirNomesBaseParaGUIDs(filtros.vestibulares),
       anos: filtros.anos,
       dificuldades: filtros.dificuldades,
     })
@@ -79,7 +81,7 @@ export default function BancoQuestoesPage() {
         // Sem contagem, os cards somem todos (fallback seguro — nunca mostra card com número errado).
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questaoGUIDParaRefazer, vestibularesKey, anosKey, dificuldadesKey]);
+  }, [questaoGUIDParaRefazer, vestibularesKey, anosKey, dificuldadesKey, gruposVestibular.length]);
 
   const contagemPorMateria = useMemo(() => {
     const mapa = new Map<string, number>();

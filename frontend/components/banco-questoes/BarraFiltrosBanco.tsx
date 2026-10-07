@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Icon } from '@/components/Icon';
 import * as QuestaoBancoAPI from '@/lib/api/questaobanco.api';
 import { filtrosDeSearchParams, aplicarFiltrosNaQueryString, DIFICULDADE_LABEL } from '@/lib/bancoQuestoesFiltros';
+import { useVestibularesAgrupados } from '@/lib/useVestibularesAgrupados';
 import ModalSelecaoMultipla, { OpcaoSelecaoMultipla } from './ModalSelecaoMultipla';
 import styles from './BarraFiltrosBanco.module.css';
 
@@ -28,21 +29,17 @@ export default function BarraFiltrosBanco() {
   const filtros = filtrosDeSearchParams(searchParams);
 
   const [modalAberto, setModalAberto] = useState<ModalAberto>(null);
-  const [vestibulares, setVestibulares] = useState<QuestaoBancoAPI.Vestibular[]>([]);
+  const { grupos: gruposVestibular, carregando: carregandoVestibulares } = useVestibularesAgrupados();
   const [anos, setAnos] = useState<number[]>([]);
-  const [carregandoOpcoes, setCarregandoOpcoes] = useState(false);
+  const [carregandoAnos, setCarregandoAnos] = useState(true);
 
   useEffect(() => {
-    setCarregandoOpcoes(true);
-    Promise.all([QuestaoBancoAPI.listarVestibulares(), QuestaoBancoAPI.listarAnosDisponiveis()])
-      .then(([v, a]) => {
-        setVestibulares(v);
-        setAnos(a);
-      })
+    QuestaoBancoAPI.listarAnosDisponiveis()
+      .then(setAnos)
       .catch(() => {
-        // Sem opções, os botões de filtro ficam vazios mas não bloqueiam a tela.
+        // Sem opções, o filtro de ano fica vazio mas não bloqueia a tela.
       })
-      .finally(() => setCarregandoOpcoes(false));
+      .finally(() => setCarregandoAnos(false));
   }, []);
 
   const atualizarUrl = (novosFiltros: typeof filtros) => {
@@ -50,7 +47,7 @@ export default function BarraFiltrosBanco() {
     router.push(query ? `${pathname}?${query}` : pathname);
   };
 
-  const opcoesVestibular: OpcaoSelecaoMultipla[] = vestibulares.map((v) => ({ valor: v.VestibularGUID, label: v.Nome }));
+  const opcoesVestibular: OpcaoSelecaoMultipla[] = gruposVestibular.map((g) => ({ valor: g.nomeBase, label: g.nomeBase }));
   const opcoesAno: OpcaoSelecaoMultipla[] = anos.map((a) => ({ valor: String(a), label: String(a) }));
 
   return (
@@ -58,11 +55,11 @@ export default function BarraFiltrosBanco() {
       <div className={styles.barra}>
         <button
           type="button"
-          className={filtros.vestibularGUIDs.length > 0 ? styles.botaoFiltroAtivo : styles.botaoFiltro}
+          className={filtros.vestibulares.length > 0 ? styles.botaoFiltroAtivo : styles.botaoFiltro}
           onClick={() => setModalAberto('vestibular')}
         >
           Vestibular
-          {filtros.vestibularGUIDs.length > 0 && <span className={styles.badge}>{filtros.vestibularGUIDs.length}</span>}
+          {filtros.vestibulares.length > 0 && <span className={styles.badge}>{filtros.vestibulares.length}</span>}
           <Icon name="chevron-down" />
         </button>
 
@@ -91,10 +88,10 @@ export default function BarraFiltrosBanco() {
         aberto={modalAberto === 'vestibular'}
         titulo="Filtrar por vestibular"
         opcoes={opcoesVestibular}
-        selecionados={filtros.vestibularGUIDs}
-        carregando={carregandoOpcoes}
+        selecionados={filtros.vestibulares}
+        carregando={carregandoVestibulares}
         onFechar={() => setModalAberto(null)}
-        onAplicar={(selecionados) => atualizarUrl({ ...filtros, vestibularGUIDs: selecionados })}
+        onAplicar={(selecionados) => atualizarUrl({ ...filtros, vestibulares: selecionados })}
       />
 
       <ModalSelecaoMultipla
@@ -102,7 +99,7 @@ export default function BarraFiltrosBanco() {
         titulo="Filtrar por ano"
         opcoes={opcoesAno}
         selecionados={filtros.anos.map(String)}
-        carregando={carregandoOpcoes}
+        carregando={carregandoAnos}
         onFechar={() => setModalAberto(null)}
         onAplicar={(selecionados) => atualizarUrl({ ...filtros, anos: selecionados.map(Number) })}
       />
