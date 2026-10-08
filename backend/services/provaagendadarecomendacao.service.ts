@@ -218,6 +218,27 @@ export default class ProvaAgendadaRecomendacaoService {
     }
   };
 
+  /**
+   * Retry de resumo faltando (falha parcial — ver `provaagendadarecomendacaoretry.scheduler.ts`):
+   * resumo pode falhar (cota/timeout do Gemini, ambos os tiers) sem deixar nenhum erro
+   * registrado, já que StatusGeracao continua 'Concluida' se vídeo/página de livro deram certo.
+   * Reprocessa a prova INTEIRA via `gerarRecomendacao` de novo (mais simples que isolar só o
+   * resumo, e o custo extra de regerar vídeo/página de livro que já estavam ok é baixo).
+   */
+  reprocessarResumosFaltando = async (limite: number): Promise<{ tentadas: number }> => {
+    console.log("🟣 ProvaAgendadaRecomendacaoService.reprocessarResumosFaltando()");
+
+    const MAX_TENTATIVAS = 5;
+    const guids = await this.#recomendacaoDAO.buscarComResumoFaltando(limite, MAX_TENTATIVAS);
+
+    for (const provaAgendadaGUID of guids) {
+      await this.#recomendacaoDAO.incrementarTentativasResumo(provaAgendadaGUID);
+      await this.gerarRecomendacao(provaAgendadaGUID);
+    }
+
+    return { tentadas: guids.length };
+  };
+
   #gravarFalhaTotal = async (provaAgendadaGUID: string, error: unknown): Promise<void> => {
     const recomendacao = new ProvaAgendadaRecomendacao();
     recomendacao.ProvaAgendadaRecomendacaoGUID = gerarGUID();

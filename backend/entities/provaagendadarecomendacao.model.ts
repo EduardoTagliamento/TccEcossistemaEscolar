@@ -34,6 +34,11 @@ export default class ProvaAgendadaRecomendacao {
   #ProvaAgendadaGUID!: string;
   #VideosJson: RecomendacaoVideo[] | null = null;
   #ResumoTexto: string | null = null;
+  /** Quantas vezes o scheduler de retry (`provaagendadarecomendacaoretry.scheduler.ts`) já
+   * tentou reprocessar um resumo faltante pra essa prova — nunca tocado pelo fluxo normal de
+   * geração (criação/edição de prova), só pelo retry em si. Teto evita reprocessar pra sempre
+   * um caso que nunca vai dar certo (ex.: prova sem nenhuma fonte de texto real). */
+  #TentativasResumo: number = 0;
   #FontesUsadas: RecomendacaoFonte[] | null = null;
   #ModeloUsado: string | null = null;
   #StatusGeracao: ProvaAgendadaRecomendacaoStatus = "Pendente";
@@ -83,6 +88,14 @@ export default class ProvaAgendadaRecomendacao {
 
   set ResumoTexto(value: string | null) {
     this.#ResumoTexto = value && value.trim() ? value : null;
+  }
+
+  get TentativasResumo(): number {
+    return this.#TentativasResumo;
+  }
+
+  set TentativasResumo(value: number) {
+    this.#TentativasResumo = Number.isFinite(value) && value >= 0 ? value : 0;
   }
 
   get FontesUsadas(): RecomendacaoFonte[] | null {

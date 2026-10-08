@@ -59,6 +59,7 @@ import { AuditoriaScheduler } from "./services/auditoria.scheduler";
 import { TarefaAcademicaNotaScheduler } from "./services/tarefaacademicanota.scheduler";
 import { WhatsappFilaScheduler } from "./services/whatsapp-fila.scheduler";
 import { ResumoProvaGrupoScheduler } from "./services/resumoprovagrupo.scheduler";
+import { ProvaAgendadaRecomendacaoRetryScheduler } from "./services/provaagendadarecomendacaoretry.scheduler";
 import { pool } from "./database/mysql";
 
 // Captura no logger estruturado o que antes derrubava o processo com um
@@ -99,6 +100,7 @@ export default class Server {
   #tarefaAcademicaNotaScheduler: TarefaAcademicaNotaScheduler;
   #whatsappFilaScheduler: WhatsappFilaScheduler;
   #resumoProvaGrupoScheduler: ResumoProvaGrupoScheduler;
+  #recomendacaoRetryScheduler: ProvaAgendadaRecomendacaoRetryScheduler;
   #nextHandler: ((req: Request, res: Response) => Promise<void>) | null;
   #isFrontendUnified: boolean;
 
@@ -120,6 +122,7 @@ export default class Server {
     this.#tarefaAcademicaNotaScheduler = new TarefaAcademicaNotaScheduler();
     this.#whatsappFilaScheduler = new WhatsappFilaScheduler();
     this.#resumoProvaGrupoScheduler = new ResumoProvaGrupoScheduler();
+    this.#recomendacaoRetryScheduler = new ProvaAgendadaRecomendacaoRetryScheduler();
     this.#nextHandler = null;
     this.#isFrontendUnified = false;
   }
@@ -768,6 +771,9 @@ export default class Server {
       this.#resumoProvaGrupoScheduler.start();
       console.log(`✅ Resumo de IA pré-prova iniciado: ${this.#resumoProvaGrupoScheduler.getActiveTasksCount()} tarefa(s) ativa(s)`);
 
+      this.#recomendacaoRetryScheduler.start();
+      console.log(`✅ Retry de resumo de IA faltando iniciado`);
+
       // Configurar graceful shutdown para parar agendamentos
       this.setupGracefulShutdown();
 
@@ -795,6 +801,7 @@ export default class Server {
         this.#tarefaAcademicaNotaScheduler.stop();
         this.#whatsappFilaScheduler.stop();
         this.#resumoProvaGrupoScheduler.stop();
+        this.#recomendacaoRetryScheduler.stop();
 
         // Fechar conexões com banco
         console.log("   🔹 Fechando conexões com banco...");

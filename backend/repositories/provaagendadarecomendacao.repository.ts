@@ -12,6 +12,7 @@ interface ProvaAgendadaRecomendacaoRow extends RowDataPacket {
   ProvaAgendadaGUID: string;
   VideosJson: RecomendacaoVideo[] | string | null;
   ResumoTexto: string | null;
+  TentativasResumo: number;
   FontesUsadas: RecomendacaoFonte[] | string | null;
   ModeloUsado: string | null;
   StatusGeracao: ProvaAgendadaRecomendacaoStatus;
@@ -85,6 +86,7 @@ export class ProvaAgendadaRecomendacaoDAO {
     recomendacao.ProvaAgendadaGUID = row.ProvaAgendadaGUID;
     recomendacao.VideosJson = this.parseJsonColuna<RecomendacaoVideo[]>(row.VideosJson);
     recomendacao.ResumoTexto = row.ResumoTexto;
+    recomendacao.TentativasResumo = row.TentativasResumo;
     recomendacao.FontesUsadas = this.parseJsonColuna<RecomendacaoFonte[]>(row.FontesUsadas);
     recomendacao.ModeloUsado = row.ModeloUsado;
     recomendacao.StatusGeracao = row.StatusGeracao;
@@ -103,6 +105,41 @@ export class ProvaAgendadaRecomendacaoDAO {
     recomendacao.UpdatedAt = row.UpdatedAt ? new Date(row.UpdatedAt) : null;
     return recomendacao;
   }
+
+  /** Provas com resumo faltando (falha parcial — StatusGeracao pode estar 'Concluida' mesmo
+   * assim, se vídeo/página de livro deram certo) que ainda vão acontecer (sem sentido reprocessar
+   * pra uma prova que já passou) e não excederam o teto de tentativas — alimenta o scheduler de
+   * retry. `limite`/`maxTentativas` são sempre valor interno do código, nunca input de usuário —
+   * interpolados como inteiro literal (prepared statement com LIMIT bindado quebra no mysql2,
+   * mesmo padrão de WhatsappFilaReenvioDAO.buscarPendentes). */
+  buscarComResumoFaltando = async (limite: number, maxTentativas: number): Promise<string[]> => {
+    console.log("🟢 ProvaAgendadaRecomendacaoDAO.buscarComResumoFaltando()");
+
+    const limiteSeguro = Number.isInteger(limite) && limite > 0 ? limite : 5;
+    const maxTentativasSeguro = Number.isInteger(maxTentativas) && maxTentativas > 0 ? maxTentativas : 5;
+
+    const SQL = `
+      SELECT rec.ProvaAgendadaGUID
+      FROM provaagendadarecomendacao rec
+      INNER JOIN provaagendada pa ON pa.ProvaAgendadaGUID = rec.ProvaAgendadaGUID
+      WHERE rec.ResumoTexto IS NULL
+        AND rec.TentativasResumo < ${maxTentativasSeguro}
+        AND pa.ProvaData >= NOW()
+      ORDER BY rec.GeradoEm ASC
+      LIMIT ${limiteSeguro}
+    `;
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute<RowDataPacket[]>(SQL);
+    return rows.map((r) => r.ProvaAgendadaGUID as string);
+  };
+
+  incrementarTentativasResumo = async (provaAgendadaGUID: string): Promise<void> => {
+    console.log("🟢 ProvaAgendadaRecomendacaoDAO.incrementarTentativasResumo()");
+
+    const SQL = `UPDATE provaagendadarecomendacao SET TentativasResumo = TentativasResumo + 1 WHERE ProvaAgendadaGUID = ?`;
+    const pool = await this.#database.getPool();
+    await pool.execute(SQL, [provaAgendadaGUID]);
+  };
 
   /** mysql2 já devolve coluna JSON como objeto na maioria dos casos, mas trata string por segurança. */
   private parseJsonColuna<T>(valor: unknown): T | null {
