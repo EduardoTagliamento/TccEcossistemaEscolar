@@ -17,6 +17,27 @@ interface EscolaComFuncoes {
   funcoes: Array<{ FuncaoId: number; Status: 'Ativo' | 'Inativo' | 'Finalizado' }>;
 }
 
+// getDay() do JS é 0=Domingo..6=Sábado — mapeia pro enum DiaSemana usado no backend/grade.
+const DIA_SEMANA_POR_INDICE_JS: DiaSemana[] = [
+  'Domingo',
+  'Segunda',
+  'Terca',
+  'Quarta',
+  'Quinta',
+  'Sexta',
+  'Sabado',
+];
+
+/** Cor estável por matéria (hash simples do GUID) — alterna entre as duas cores "escuras" da
+ * paleta da escola (Primária/Secundária), que são as pensadas pra uso como texto/borda, ao
+ * contrário das variantes "claras" (podem ser branco, péssimo contraste pra isso). Só pra dar
+ * uma variedade visual entre matérias diferentes na mesma grade. */
+function corDaMateria(materiaGUID: string): string {
+  let hash = 0;
+  for (let i = 0; i < materiaGUID.length; i++) hash = (hash * 31 + materiaGUID.charCodeAt(i)) | 0;
+  return Math.abs(hash) % 2 === 0 ? 'var(--color-primary, var(--green-500))' : 'var(--color-tertiary, var(--blue-500))';
+}
+
 export default function CronogramaPage() {
   const params = useParams();
   const router = useRouter();
@@ -132,6 +153,8 @@ export default function CronogramaPage() {
     return aulas.find((a) => a.DiaSemana === dia && a.HoraInicio === horaInicio);
   };
 
+  const diaDeHoje = DIA_SEMANA_POR_INDICE_JS[new Date().getDay()];
+
   const renderTurno = (turno: Turno, titulo: string) => {
     const linhas = linhasPorTurno[turno];
     if (linhas.length === 0 || !config) return null;
@@ -145,7 +168,10 @@ export default function CronogramaPage() {
         >
           <div className={styles.gradeHeaderCanto} />
           {config.DiasSemana.map((dia) => (
-            <div key={dia} className={styles.gradeHeaderDia}>
+            <div
+              key={dia}
+              className={`${styles.gradeHeaderDia} ${dia === diaDeHoje ? styles.gradeHeaderDiaHoje : ''}`}
+            >
               {DIA_SEMANA_LABEL[dia].replace('-feira', '')}
             </div>
           ))}
@@ -157,18 +183,30 @@ export default function CronogramaPage() {
               </div>
               {config.DiasSemana.map((dia) => {
                 const disponivel = diaTemSlot(dia, turno, slot);
+                const colunaHoje = dia === diaDeHoje;
                 if (!disponivel) {
                   return (
-                    <div key={`${dia}-${slot.HoraInicio}`} className={`${styles.celula} ${styles.celulaIndisponivel}`} />
+                    <div
+                      key={`${dia}-${slot.HoraInicio}`}
+                      className={`${styles.celula} ${styles.celulaIndisponivel}`}
+                    />
                   );
                 }
 
                 const aula = aulaNoSlot(dia, slot.HoraInicio);
 
                 return (
-                  <div key={`${dia}-${slot.HoraInicio}`} className={`${styles.celula} ${!aula ? styles.celulaVazia : ''}`}>
+                  <div
+                    key={`${dia}-${slot.HoraInicio}`}
+                    className={`${styles.celula} ${!aula ? styles.celulaVazia : ''} ${colunaHoje ? styles.celulaHoje : ''}`}
+                  >
                     {aula && (
-                      <button type="button" className={styles.chip} onClick={() => handleClicarAula(aula)}>
+                      <button
+                        type="button"
+                        className={styles.chip}
+                        style={{ '--chip-cor': corDaMateria(aula.MateriaGUID) } as React.CSSProperties}
+                        onClick={() => handleClicarAula(aula)}
+                      >
                         <span className={styles.chipMateria}>{aula.MateriaNome}</span>
                         <span className={styles.chipDetalhe}>
                           {modo === 'aluno' ? aula.UsuarioNome : `${aula.TurmaSerie} ${aula.TurmaNome}`}

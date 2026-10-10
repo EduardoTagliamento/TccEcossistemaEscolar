@@ -103,6 +103,10 @@
   margin: 0 0 0.25rem;
 }
 
+.titulo :global(svg) {
+  color: var(--color-primary, var(--green-500));
+}
+
 .subtitulo {
   font-size: 0.95rem;
   color: var(--slate-500);
@@ -125,8 +129,8 @@
 }
 
 .botaoAlternar:hover {
-  border-color: var(--green-500);
-  color: var(--green-700);
+  border-color: var(--color-primary, var(--green-500));
+  color: var(--color-primary, var(--green-700));
 }
 
 .aviso {
@@ -154,13 +158,19 @@
   user-select: none;
 }
 
+.toggleItem input {
+  accent-color: var(--color-primary, var(--green-500));
+}
+
 .turnoSecao {
   background: var(--white);
   border: 1px solid var(--line-200);
+  border-top: 3px solid var(--color-primary, var(--green-500));
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   overflow-x: auto;
+  box-shadow: 0 1px 3px rgba(15, 29, 23, 0.04);
 }
 
 .turnoTitulo {
@@ -193,6 +203,12 @@
   font-weight: 600;
   font-size: 0.85rem;
   color: var(--slate-600);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.gradeHeaderDiaHoje {
+  background: var(--color-primary, var(--green-500));
+  color: var(--white);
 }
 
 .gradeHorario {
@@ -221,16 +237,23 @@
   background: var(--white);
 }
 
+.celulaHoje.celulaVazia {
+  background: color-mix(in oklch, var(--color-primary, var(--green-500)) 5%, var(--white));
+}
+
 .celulaIndisponivel {
   background: repeating-linear-gradient(45deg, var(--surface-muted), var(--surface-muted) 6px, var(--surface-50) 6px, var(--surface-50) 12px);
 }
 
 .chip {
+  --chip-cor: var(--color-primary, var(--green-500));
+
   flex: 1;
-  background: var(--blue-100);
-  border: 1px solid var(--blue-500);
+  background: color-mix(in oklch, var(--chip-cor) 14%, var(--white));
+  border: 1px solid var(--chip-cor);
+  border-left: 3px solid var(--chip-cor);
   border-radius: var(--radius-sm);
-  padding: 4px 6px;
+  padding: 4px 7px;
   font: inherit;
   font-size: 0.72rem;
   display: flex;
@@ -239,17 +262,18 @@
   gap: 2px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
 .chip:hover {
-  background: var(--blue-50);
-  border-color: var(--blue-700);
+  background: color-mix(in oklch, var(--chip-cor) 22%, var(--white));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(15, 29, 23, 0.1);
 }
 
 .chipMateria {
-  font-weight: 600;
-  color: var(--blue-700);
+  font-weight: 700;
+  color: var(--chip-cor);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
