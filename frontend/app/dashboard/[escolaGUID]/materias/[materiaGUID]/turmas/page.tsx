@@ -132,9 +132,14 @@ export default function TurmasDaMateriaPage() {
     }
   };
 
-  const turmasFiltradas = turmas.filter(
-    (t) => t.TurmaNome.toLowerCase().includes(filtro.toLowerCase()) || t.TurmaSerie.toLowerCase().includes(filtro.toLowerCase())
-  );
+  const turmasFiltradas = turmas
+    .filter(
+      (t) => t.TurmaNome.toLowerCase().includes(filtro.toLowerCase()) || t.TurmaSerie.toLowerCase().includes(filtro.toLowerCase())
+    )
+    .sort((a, b) =>
+      a.TurmaSerie.localeCompare(b.TurmaSerie, 'pt-BR', { numeric: true }) ||
+      a.TurmaNome.localeCompare(b.TurmaNome, 'pt-BR', { numeric: true })
+    );
 
   if (carregando) {
     return (
