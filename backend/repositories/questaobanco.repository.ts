@@ -29,6 +29,9 @@ export interface QuestaoBancoFiltros {
   VestibularGUIDs?: string[];
   Anos?: number[];
   Dificuldades?: QuestaoBancoDificuldade[];
+  /** Busca várias questões específicas por GUID de uma vez (ex.: montar um simulado a partir de
+   * uma lista já escolhida) — evita N chamadas a `findById`. */
+  QuestaoBancoGUIDs?: string[];
 }
 
 /** Campos editáveis via tela de validação — todos opcionais (atualiza só o que vier). */
@@ -143,6 +146,10 @@ export class QuestaoBancoDAO {
     if (filtros.Dificuldades && filtros.Dificuldades.length > 0) {
       conditions.push(`Dificuldade IN (${filtros.Dificuldades.map(() => "?").join(", ")})`);
       params.push(...filtros.Dificuldades);
+    }
+    if (filtros.QuestaoBancoGUIDs && filtros.QuestaoBancoGUIDs.length > 0) {
+      conditions.push(`QuestaoBancoGUID IN (${filtros.QuestaoBancoGUIDs.map(() => "?").join(", ")})`);
+      params.push(...filtros.QuestaoBancoGUIDs);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";

@@ -191,6 +191,35 @@ export class QuestaoBancoController {
     }
   };
 
+  // POST /api/questaobanco/simulado/pdf — spec SPEC_SIMULADOS_BANCO_QUESTOES.md item 4.1.
+  // Body: { QuestaoBancoGUIDs: string[] } na ordem desejada no PDF. Sempre inclui gabarito.
+  pdfSimulado = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 QuestaoBancoController.pdfSimulado()");
+    try {
+      const guids: string[] = Array.isArray(req.body?.QuestaoBancoGUIDs) ? req.body.QuestaoBancoGUIDs : [];
+      if (guids.length === 0 || guids.length > 50) {
+        throw new ErrorResponse(400, "Lista de questões inválida", {
+          message: "Informe entre 1 e 50 questões.",
+        });
+      }
+
+      const questoesEncontradas = await this.#service.buscarVariasValidadas(guids);
+      // Preserva a ordem pedida (buscarVariasValidadas não garante ordem — ver comentário lá).
+      const porGUID = new Map(questoesEncontradas.map((q) => [q.QuestaoBancoGUID, q]));
+      const questoesOrdenadas = guids.map((g) => porGUID.get(g)!);
+
+      const { gerarPdfSimulado } = await import("../utils/gerarPdfSimulado.util");
+      const doc = gerarPdfSimulado(questoesOrdenadas);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="simulado.pdf"`);
+      doc.pipe(res);
+      doc.end();
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // GET /api/questaobanco/contagem?VestibularGUIDs=&Anos=&Dificuldades= — livre pro aluno (cards
   // de matéria/submatéria da tela de prática). Só conta Validada, nunca Pendente. Filtros são CSV,
   // mesma convenção de `index`.

@@ -144,6 +144,15 @@ export default function CronogramaPage() {
     };
   }, [slotsPorDia]);
 
+  // Diferente de linhasPorTurno (slots que a ESCOLA configurou, pra montar a
+  // grade), isso aqui é "esse usuário tem alguma aula própria nesse turno" —
+  // decide se mostra o toggle/seção de Tarde pra um professor que só leciona
+  // de manhã, por exemplo, em vez de mostrar uma seção de Tarde vazia.
+  const turnoTemAulaPropria = (turno: Turno): boolean => {
+    const horariosDoTurno = new Set(linhasPorTurno[turno].map((s) => s.HoraInicio));
+    return aulas.some((a) => horariosDoTurno.has(a.HoraInicio));
+  };
+
   const diaTemSlot = (dia: DiaSemana, turno: Turno, slot: SlotAula): boolean => {
     const doDia = slotsPorDia.find((d) => d.DiaSemana === dia);
     return !!doDia?.[turno].some((s) => s.HoraInicio === slot.HoraInicio && s.HoraFim === slot.HoraFim);
@@ -254,21 +263,21 @@ export default function CronogramaPage() {
         <p className={styles.aviso}>Esta escola ainda não tem um horário letivo configurado.</p>
       )}
 
-      {config?.Configurada && linhasPorTurno.Manha.length === 0 && linhasPorTurno.Tarde.length === 0 && (
+      {config?.Configurada && !turnoTemAulaPropria('Manha') && !turnoTemAulaPropria('Tarde') && (
         <p className={styles.aviso}>Nenhuma turma sua tem cronograma montado ainda.</p>
       )}
 
       {config?.Configurada && (
         <>
-          {(linhasPorTurno.Manha.length > 0 || linhasPorTurno.Tarde.length > 0) && (
+          {(turnoTemAulaPropria('Manha') || turnoTemAulaPropria('Tarde')) && (
             <div className={styles.toggleTurnos}>
-              {linhasPorTurno.Manha.length > 0 && (
+              {turnoTemAulaPropria('Manha') && (
                 <label className={styles.toggleItem}>
                   <input type="checkbox" checked={mostrarManha} onChange={(e) => setMostrarManha(e.target.checked)} />
                   Mostrar manhã
                 </label>
               )}
-              {linhasPorTurno.Tarde.length > 0 && (
+              {turnoTemAulaPropria('Tarde') && (
                 <label className={styles.toggleItem}>
                   <input type="checkbox" checked={mostrarTarde} onChange={(e) => setMostrarTarde(e.target.checked)} />
                   Mostrar tarde
@@ -277,8 +286,8 @@ export default function CronogramaPage() {
             </div>
           )}
 
-          {mostrarManha && renderTurno('Manha', 'Manhã')}
-          {mostrarTarde && renderTurno('Tarde', 'Tarde')}
+          {mostrarManha && turnoTemAulaPropria('Manha') && renderTurno('Manha', 'Manhã')}
+          {mostrarTarde && turnoTemAulaPropria('Tarde') && renderTurno('Tarde', 'Tarde')}
         </>
       )}
     </div>

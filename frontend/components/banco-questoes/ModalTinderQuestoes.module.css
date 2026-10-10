@@ -1,0 +1,168 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 18, 14, 0.55);
+}
+
+.modal {
+  --green-500: #17C077;
+  --green-50: #E7F9F0;
+  --danger-500: #E5484D;
+  --danger-50: #FCEBEC;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --line-200: #E2EAE5;
+  --surface-50: #F5F9F6;
+  --white: #FFFFFF;
+
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--white);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.titulo {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.progresso {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-primary, var(--green-500));
+  white-space: nowrap;
+}
+
+.cartao {
+  border: 1px solid var(--line-200);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--surface-50);
+}
+
+.cartaoDificuldade {
+  align-self: flex-start;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--green-50);
+  color: var(--color-primary, var(--green-500));
+}
+
+.cartaoEnunciado {
+  color: var(--ink-900);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.enunciadoParagrafo {
+  margin: 0 0 0.5rem;
+}
+
+.enunciadoImagem {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.cartaoAlternativas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cartaoAlternativa {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--slate-600);
+}
+
+.cartaoAlternativaLetra {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.acoes {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.botaoRejeitar,
+.botaoAceitar {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  border: none;
+  cursor: pointer;
+}
+
+.botaoRejeitar {
+  background: var(--danger-50);
+  color: var(--danger-500);
+}
+
+.botaoAceitar {
+  background: var(--color-primary, var(--green-500));
+  color: #fff;
+}
+
+.esgotado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+  padding: 1rem 0;
+  color: var(--slate-500);
+}
+
+.botaoPrimario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--color-primary, var(--green-500));
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}

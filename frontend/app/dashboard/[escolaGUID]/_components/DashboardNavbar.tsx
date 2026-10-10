@@ -593,7 +593,7 @@ export default function DashboardNavbar() {
     ...(isAluno
       ? [{ key: 'tarefas', href: `/dashboard/${escolaGUID}/tarefas`, label: 'Minhas Tarefas', icon: 'book-open' as IconName }]
       : []),
-    ...(isAluno
+    ...(isProfessor || isAluno
       ? [{ key: 'banco-questoes', href: `/dashboard/${escolaGUID}/banco-questoes`, label: 'Banco de Questões', icon: 'award' as IconName }]
       : []),
     ...(isRepresentante

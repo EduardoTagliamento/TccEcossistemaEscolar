@@ -20,6 +20,11 @@ import { TarefaAcademicaQuestaoDAO } from "../backend/repositories/tarefaacademi
 import { TarefaAcademicaAlternativaDAO } from "../backend/repositories/tarefaacademica-alternativa.repository";
 import { TarefaAcademicaRespostaDAO } from "../backend/repositories/tarefaacademica-resposta.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
+import SimuladoTarefaService from "../backend/services/simuladotarefa.service";
+import QuestaoBancoService from "../backend/services/questaobanco.service";
+import { QuestaoBancoDAO } from "../backend/repositories/questaobanco.repository";
+import { QuestaoBancoAlternativaDAO } from "../backend/repositories/questaobancoalternativa.repository";
+import { VestibularDAO } from "../backend/repositories/vestibular.repository";
 
 export default class TarefaAcademicaRoteador {
   #router: Router;
@@ -43,6 +48,10 @@ export default class TarefaAcademicaRoteador {
       this.#middleware.validateBatchCreateBody,
       this.#controle.storeBatch
     );
+
+    // POST /api/tarefa/simulado-de-banco — SPEC_SIMULADOS_BANCO_QUESTOES.md item 4.2. Literal,
+    // antes de "/" por convenção (mesma razão de "/batch" acima, ainda que não colida de fato).
+    this.#router.post("/simulado-de-banco", AuthMiddleware.authenticate, this.#controle.storeSimulado);
 
     // POST /api/tarefa - Criar tarefa
     this.#router.post(
@@ -321,7 +330,23 @@ const tarefaService = new TarefaAcademicaService(
   usuarioDAO
 );
 const relacaoAnexosService = new RelacaoAnexosService(relacaoAnexosDAO, anexoDAO, tarefaDAO, eventoDAO, pendenciaDAO, escolaxUsuarioxFuncaoDAO);
-const tarefaControle = new TarefaAcademicaControl(tarefaService, relacaoAnexosService);
+
+// Simulado a partir do Banco de Questões (SPEC_SIMULADOS_BANCO_QUESTOES.md) — reaproveita os DAOs
+// já instanciados acima (matriculaDAO, alocacaoDAO, anexoDAO, relacaoAnexosDAO, usuarioDAO).
+const questaoBancoDAO = new QuestaoBancoDAO(db);
+const questaoBancoAlternativaDAO = new QuestaoBancoAlternativaDAO(db);
+const vestibularDAO = new VestibularDAO(db);
+const questaoBancoService = new QuestaoBancoService(
+  questaoBancoDAO,
+  questaoBancoAlternativaDAO,
+  vestibularDAO,
+  usuarioDAO,
+  relacaoAnexosDAO,
+  anexoDAO
+);
+const simuladoTarefaService = new SimuladoTarefaService(tarefaService, questaoBancoService, alocacaoDAO, matriculaDAO);
+
+const tarefaControle = new TarefaAcademicaControl(tarefaService, relacaoAnexosService, simuladoTarefaService);
 const tarefaMiddleware = new TarefaAcademicaMiddleware();
 
 const tarefaRoteador = new TarefaAcademicaRoteador(tarefaMiddleware, tarefaControle);

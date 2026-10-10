@@ -39,6 +39,11 @@ export default class QuestaoBancoRoteador {
     // Fila de validação: só admin de plataforma (vê Status=Pendente, não exposto na rota pública)
     this.#router.get("/pendentes", plataformaAdminGuard, this.#controller.indexPendentes);
 
+    // Simulado (SPEC_SIMULADOS_BANCO_QUESTOES.md) — qualquer usuário autenticado, mesma regra de
+    // leitura do resto do banco de questões. Literal, antes de "/:guid" por segurança/clareza,
+    // embora "/simulado/pdf" não bata com o padrão "/:guid/progresso" de qualquer forma.
+    this.#router.post("/simulado/pdf", this.#controller.pdfSimulado);
+
     // Busca individual (ex.: "refazer essa questão" a partir do histórico) — DEPOIS dos literais
     // acima (/contagem, /progresso, /vestibular, /pendentes), senão eles cairiam aqui como :guid.
     this.#router.get("/:guid", this.#controller.show);

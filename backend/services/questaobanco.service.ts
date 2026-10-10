@@ -326,6 +326,33 @@ export default class QuestaoBancoService {
     return this.buscarQuestaoCompleta(guid);
   };
 
+  /** Busca várias questões por GUID, validando que TODAS existem e estão `Validado` — usado
+   * pelos fluxos de simulado (PDF e atribuição de tarefa), que recebem uma lista de GUIDs do
+   * cliente e não podem confiar nela às cegas (ex.: alguém mandar o GUID de uma questão ainda
+   * `Pendente`, que não devia estar visível fora da fila de validação). Não preserva a ordem de
+   * `guids` — quem chamar reordena pelo índice original se precisar. */
+  buscarVariasValidadas = async (guids: string[]): Promise<QuestaoBancoDTO[]> => {
+    console.log("🟣 QuestaoBancoService.buscarVariasValidadas()");
+
+    if (guids.length === 0) {
+      throw new ErrorResponse(400, "Nenhuma questão informada");
+    }
+
+    const unicos = Array.from(new Set(guids));
+    const questoes = await this.listarQuestoes({ QuestaoBancoGUIDs: unicos, Status: "Validado" });
+
+    if (questoes.length !== unicos.length) {
+      const encontrados = new Set(questoes.map((q) => q.QuestaoBancoGUID));
+      const faltando = unicos.filter((g) => !encontrados.has(g));
+      throw new ErrorResponse(400, "Questão inválida", {
+        message: "Uma ou mais questões não existem ou não estão validadas.",
+        QuestaoBancoGUIDs: faltando,
+      });
+    }
+
+    return questoes;
+  };
+
   private buscarQuestaoCompleta = async (guid: string): Promise<QuestaoBancoDTO> => {
     const questao = await this.#questaoDAO.findById(guid);
     if (!questao) {

@@ -10,6 +10,7 @@ import TarefaAcademicaService, {
 import { TarefaAcademicaFilters } from "../repositories/tarefaacademica.repository";
 import ErrorResponse from "../utils/ErrorResponse";
 import RelacaoAnexosService from "../services/relacaoanexos.service";
+import SimuladoTarefaService from "../services/simuladotarefa.service";
 import { parseDataBrasil } from "../utils/timezone.util";
 
 /**
@@ -29,12 +30,54 @@ import { parseDataBrasil } from "../utils/timezone.util";
 export default class TarefaAcademicaControl {
   #tarefaService: TarefaAcademicaService;
   #relacaoAnexosService?: RelacaoAnexosService;
+  #simuladoTarefaService?: SimuladoTarefaService;
 
-  constructor(tarefaServiceDependency: TarefaAcademicaService, relacaoAnexosService?: RelacaoAnexosService) {
+  constructor(
+    tarefaServiceDependency: TarefaAcademicaService,
+    relacaoAnexosService?: RelacaoAnexosService,
+    simuladoTarefaService?: SimuladoTarefaService
+  ) {
     console.log("⬆️  TarefaAcademicaControl.constructor()");
     this.#tarefaService = tarefaServiceDependency;
     this.#relacaoAnexosService = relacaoAnexosService;
+    this.#simuladoTarefaService = simuladoTarefaService;
   }
+
+  /**
+   * POST /api/tarefa/simulado-de-banco — SPEC_SIMULADOS_BANCO_QUESTOES.md item 4.2.
+   * Body: { matXprofXturxescGUID, QuestaoBancoGUIDs[], TarefaTitulo, TarefaPrazoData }
+   * Cria uma tarefa tipo 'lista' pra turma toda, copiando as questões escolhidas do Banco de
+   * Questões (não é referência — edição/remoção futura da questão original não afeta a prova
+   * já atribuída).
+   */
+  storeSimulado = async (request: Request, response: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 TarefaAcademicaControl.storeSimulado()");
+    try {
+      if (!this.#simuladoTarefaService) {
+        throw new ErrorResponse(500, "Serviço indisponível");
+      }
+      const usuarioGUID = request.user?.UsuarioGUID;
+      if (!usuarioGUID) {
+        throw new ErrorResponse(401, "Usuário não autenticado");
+      }
+
+      const { matXprofXturxescGUID, QuestaoBancoGUIDs, TarefaTitulo, TarefaPrazoData } = request.body;
+
+      const tarefa = await this.#simuladoTarefaService.criarSimuladoComoTarefa(
+        {
+          matXprofXturxescGUID,
+          QuestaoBancoGUIDs,
+          TarefaTitulo,
+          TarefaPrazoData: parseDataBrasil(TarefaPrazoData),
+        },
+        usuarioGUID
+      );
+
+      response.status(201).json({ success: true, message: "Simulado criado e atribuído à turma", data: { tarefa } });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   /**
    * POST /api/tarefa

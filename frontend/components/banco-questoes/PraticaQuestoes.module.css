@@ -291,6 +291,59 @@
   margin: 0;
 }
 
+.barraResultado {
+  width: 100%;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--line-100);
+  overflow: hidden;
+}
+
+.barraResultadoPreenchimento {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary, var(--green-500));
+  transition: width 0.4s ease;
+}
+
+.barraResultadoPorcentagem {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary, var(--green-700));
+  margin-top: -0.5rem;
+}
+
+.detalhamentoSubMateria {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3);
+  background: var(--surface-50);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+
+.detalhamentoLinha {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 13px;
+}
+
+.detalhamentoNome {
+  color: var(--slate-600);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detalhamentoValor {
+  color: var(--slate-500);
+  flex-shrink: 0;
+}
+
 @media (max-width: 560px) {
   .card {
     padding: var(--space-4);

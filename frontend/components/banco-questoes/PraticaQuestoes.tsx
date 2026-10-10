@@ -1,47 +1,13 @@
 'use client';
 
-import { ReactNode, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '@/components/Icon';
 import * as QuestaoBancoAPI from '@/lib/api/questaobanco.api';
+import { renderEnunciado as renderEnunciadoBase } from '@/lib/banco-questoes/renderEnunciado';
 import styles from './PraticaQuestoes.module.css';
 
-const TOKEN_REGEX = /\*\*(.+?)\*\*|!\[([^\]]*)\]\(([^)]+)\)/g;
-
-/** `**texto**` -> negrito; `![alt](url)` -> imagem inline (fórmula recortada
- * que o extrator de PDF não reconstrói como texto). Tamanho controlado via
- * CSS (.enunciadoImagemInline), não por hint na URL/alt — genérico pra
- * qualquer imagem. */
-function renderInlineTokens(texto: string, keyPrefix: string): ReactNode[] {
-  const partes: ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let idx = 0;
-  while ((match = TOKEN_REGEX.exec(texto)) !== null) {
-    if (match.index > lastIndex) partes.push(texto.slice(lastIndex, match.index));
-    if (match[1] !== undefined) {
-      partes.push(<strong key={`${keyPrefix}-${idx++}`}>{match[1]}</strong>);
-    } else {
-      partes.push(
-        // eslint-disable-next-line @next/next/no-img-element
-        <img key={`${keyPrefix}-${idx++}`} src={match[3]} alt={match[2]} className={styles.enunciadoImagemInline} />
-      );
-    }
-    lastIndex = TOKEN_REGEX.lastIndex;
-  }
-  if (lastIndex < texto.length) partes.push(texto.slice(lastIndex));
-  return partes;
-}
-
-/**
- * Parser mínimo pro Enunciado: `\n\n` separa parágrafos, `**texto**` vira
- * negrito, `![alt](url)` vira imagem inline.
- */
 function renderEnunciado(texto: string) {
-  return texto.split(/\n\n+/).map((paragrafo, i) => (
-    <p key={i} className={styles.enunciadoParagrafo}>
-      {renderInlineTokens(paragrafo, `p${i}`)}
-    </p>
-  ));
+  return renderEnunciadoBase(texto, styles.enunciadoParagrafo, styles.enunciadoImagemInline);
 }
 
 interface PraticaQuestoesProps {
@@ -49,6 +15,11 @@ interface PraticaQuestoesProps {
   /** Texto do botão final na tela de resumo (ex.: "Voltar pro histórico", "Escolher outra submatéria"). */
   textoBotaoFinal: string;
   onTerminar: () => void;
+  /** SubMateriaGlobalGUID -> nome, só pra rotular o detalhamento por submatéria no resumo
+   * (pedido do simulado, que cruza várias submatérias — ex. "Eletrostática: 4/5"). A prática
+   * normal (matéria/submatéria única) não precisa passar isso: o detalhamento só aparece quando
+   * `questoes` tem mais de uma submatéria distinta. */
+  nomesSubMateria?: Record<string, string>;
 }
 
 /**
@@ -59,13 +30,14 @@ interface PraticaQuestoesProps {
  * histórico (1 questão só, direto na home). Sem isso duplicaria ~200 linhas
  * de JSX entre as duas páginas.
  */
-export default function PraticaQuestoes({ questoes, textoBotaoFinal, onTerminar }: PraticaQuestoesProps) {
+export default function PraticaQuestoes({ questoes, textoBotaoFinal, onTerminar, nomesSubMateria }: PraticaQuestoesProps) {
   const [etapa, setEtapa] = useState<'praticando' | 'resumo'>('praticando');
   const [indice, setIndice] = useState(0);
   const [alternativaEscolhida, setAlternativaEscolhida] = useState<string | null>(null);
   const [respondida, setRespondida] = useState(false);
   const [acertos, setAcertos] = useState(0);
   const [marcadaAtual, setMarcadaAtual] = useState(false);
+  const [respostasPorQuestao, setRespostasPorQuestao] = useState<Record<string, boolean>>({});
 
   const questaoAtual = questoes[indice] || null;
 
@@ -87,6 +59,7 @@ export default function PraticaQuestoes({ questoes, textoBotaoFinal, onTerminar 
     const alt = alternativasOrdenadas.find((a) => a.AlternativaGUID === alternativaEscolhida);
     const acertou = !!alt?.AlternativaCorreta;
     if (acertou) setAcertos((a) => a + 1);
+    setRespostasPorQuestao((prev) => ({ ...prev, [questaoAtual.QuestaoBancoGUID]: acertou }));
     QuestaoBancoAPI.registrarResposta(questaoAtual.QuestaoBancoGUID, acertou).catch(() => {
       // Não bloqueia a prática por falha de tracking — só não entra no histórico/exclusão do pool.
     });
@@ -113,6 +86,23 @@ export default function PraticaQuestoes({ questoes, textoBotaoFinal, onTerminar 
   };
 
   if (etapa === 'resumo') {
+    const porcentagem = questoes.length > 0 ? Math.round((acertos / questoes.length) * 100) : 0;
+
+    const submateriasDistintas = Array.from(new Set(questoes.map((q) => q.SubMateriaGlobalGUID)));
+    const mostrarDetalhamento = submateriasDistintas.length > 1;
+    const detalhamento = mostrarDetalhamento
+      ? submateriasDistintas.map((subMateriaGUID) => {
+          const questoesDaSubMateria = questoes.filter((q) => q.SubMateriaGlobalGUID === subMateriaGUID);
+          const acertosDaSubMateria = questoesDaSubMateria.filter((q) => respostasPorQuestao[q.QuestaoBancoGUID]).length;
+          return {
+            subMateriaGUID,
+            nome: nomesSubMateria?.[subMateriaGUID] || 'Submatéria',
+            acertos: acertosDaSubMateria,
+            total: questoesDaSubMateria.length,
+          };
+        })
+      : [];
+
     return (
       <div className={styles.card}>
         <Icon name="award" className={styles.resumoIcone} />
@@ -120,6 +110,23 @@ export default function PraticaQuestoes({ questoes, textoBotaoFinal, onTerminar 
         <p className={styles.subtitulo}>
           {acertos === questoes.length ? 'Mandou muito bem, gabaritou!' : 'Continue praticando pra melhorar ainda mais.'}
         </p>
+
+        <div className={styles.barraResultado}>
+          <div className={styles.barraResultadoPreenchimento} style={{ width: `${porcentagem}%` }} />
+        </div>
+        <span className={styles.barraResultadoPorcentagem}>{porcentagem}% de acerto</span>
+
+        {mostrarDetalhamento && (
+          <div className={styles.detalhamentoSubMateria}>
+            {detalhamento.map((item) => (
+              <div key={item.subMateriaGUID} className={styles.detalhamentoLinha}>
+                <span className={styles.detalhamentoNome}>{item.nome}</span>
+                <span className={styles.detalhamentoValor}>{item.acertos}/{item.total}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <button className={styles.botaoPrimario} onClick={onTerminar}>
           {textoBotaoFinal}
         </button>

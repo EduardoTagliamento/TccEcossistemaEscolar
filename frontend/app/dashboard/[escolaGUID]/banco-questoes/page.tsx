@@ -136,10 +136,16 @@ export default function BancoQuestoesPage() {
           Banco de Questões
         </h1>
         <p className={styles.subtitulo}>Escolha uma matéria pra praticar com questões de vestibular.</p>
-        <Link href={`/dashboard/${escolaGUID}/banco-questoes/historico`} className={styles.linkHistorico}>
-          <Icon name="clock" className={styles.linkHistoricoIcone} />
-          Ver questões feitas e marcadas
-        </Link>
+        <div className={styles.headerLinks}>
+          <Link href={`/dashboard/${escolaGUID}/banco-questoes/historico`} className={styles.linkHistorico}>
+            <Icon name="clock" className={styles.linkHistoricoIcone} />
+            Ver questões feitas e marcadas
+          </Link>
+          <Link href={`/dashboard/${escolaGUID}/banco-questoes/simulado`} className={styles.linkHistorico}>
+            <Icon name="zap" className={styles.linkHistoricoIcone} />
+            Criar simulado
+          </Link>
+        </div>
       </header>
 
       <BarraFiltrosBanco />
