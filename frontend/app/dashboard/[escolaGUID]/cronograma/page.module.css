@@ -1,0 +1,196 @@
+.container {
+  /* Tokens do Bauá Design System escopados localmente, mesmo padrão de
+     frontend/app/dashboard/[escolaGUID]/materias/page.module.css. */
+  --green-500: #17C077;
+  --ink-900: #0F1D17;
+  --slate-600: #46564D;
+  --slate-500: #647268;
+  --line-200: #E2EAE5;
+  --white: #FFFFFF;
+
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: var(--font-body), 'Figtree', system-ui, -apple-system, sans-serif;
+  color: var(--slate-600);
+}
+
+:global(html[data-theme="dark"]) .container {
+  --green-500: #22D488;
+  --ink-900: #F3F7F4;
+  --slate-600: #C7D2CB;
+  --slate-500: #93A398;
+  --line-200: #2A3A31;
+  --white: #16211C;
+}
+
+:global(html[data-daltonico="true"]) .container {
+  --green-500: #2F6FED;
+}
+
+:global(html[data-theme="dark"][data-daltonico="true"]) .container {
+  --green-500: #5B8CFF;
+}
+
+:global(html[data-alto-contraste="true"]) .container {
+  --slate-600: #1A2620;
+  --slate-500: #2B3B33;
+  --line-200: #8A968E;
+}
+
+:global(html[data-theme="dark"][data-alto-contraste="true"]) .container {
+  --slate-600: #FFFFFF;
+  --slate-500: #E7ECE9;
+  --line-200: #7C8B82;
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 4rem 0;
+  color: var(--slate-500);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.titulo {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--ink-900);
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin: 0;
+}
+
+.tituloIcone {
+  display: inline-flex;
+  color: var(--green-500);
+}
+
+.subtitulo {
+  margin: 0.25rem 0 0;
+  color: var(--slate-500);
+  font-size: 0.9375rem;
+}
+
+.acoes {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.botaoIcone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line-200);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--slate-600);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.botaoIcone:hover {
+  background: var(--line-200);
+  border-color: var(--green-500);
+}
+
+.mensagemVazia {
+  color: var(--slate-500);
+  font-size: 0.9375rem;
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.listaDias {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.grupoDia {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.labelDia {
+  font-family: var(--font-display), 'Poppins', sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  margin: 0;
+}
+
+.listaAulas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cardAula {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.875rem 1.125rem;
+  border: 1px solid var(--line-200);
+  border-radius: 12px;
+  background: var(--white);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.cardAula:hover {
+  border-color: var(--green-500);
+  transform: translateY(-1px);
+}
+
+.cardAulaHorario {
+  flex-shrink: 0;
+  min-width: 100px;
+  font-weight: 700;
+  color: var(--green-500);
+  font-size: 0.875rem;
+}
+
+.cardAulaInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.cardAulaMateria {
+  font-weight: 700;
+  color: var(--ink-900);
+  font-size: 0.9375rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardAulaDetalhe {
+  font-size: 0.8125rem;
+  color: var(--slate-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

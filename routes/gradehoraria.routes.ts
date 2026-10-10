@@ -10,6 +10,7 @@ import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { EscolaConfiguracaoDAO } from "../backend/repositories/escolaconfiguracao.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 /**
@@ -28,6 +29,7 @@ export const gradeHorariaRouterFactory = () => {
   const usuarioDAO = new UsuarioDAO(database);
   const escolaConfiguracaoDAO = new EscolaConfiguracaoDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
+  const matriculaDAO = new MatriculaDAO(database);
 
   const horarioTurmaService = new HorarioTurmaService(
     horarioTurmaDAO,
@@ -36,7 +38,8 @@ export const gradeHorariaRouterFactory = () => {
     materiaDAO,
     usuarioDAO,
     escolaConfiguracaoDAO,
-    escolaxUsuarioxFuncaoDAO
+    escolaxUsuarioxFuncaoDAO,
+    matriculaDAO
   );
   const gradeHorariaController = new GradeHorariaController(horarioTurmaService);
 

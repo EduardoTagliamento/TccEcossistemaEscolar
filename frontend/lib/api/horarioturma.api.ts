@@ -62,6 +62,23 @@ export interface AlocarSlotDTO {
   HoraFim: string;
 }
 
+/** Uma aula no cronograma pessoal (professor ou aluno) — cruza várias turmas, por isso carrega
+ * a identificação da turma junto (diferente de `HorarioTurma`, que já está no contexto de uma
+ * turma só). */
+export interface HorarioPessoal {
+  HorarioTurmaGUID: string;
+  TurmaGUID: string;
+  TurmaSerie: string;
+  TurmaNome: string;
+  MateriaGUID: string;
+  MateriaNome: string;
+  UsuarioGUID: string;
+  UsuarioNome: string;
+  DiaSemana: DiaSemana;
+  HoraInicio: string;
+  HoraFim: string;
+}
+
 class ApiError extends Error {
   details?: Record<string, unknown>;
   constructor(message: string, details?: Record<string, unknown>) {
@@ -81,6 +98,34 @@ export async function obterCronograma(turmaGUID: string): Promise<CronogramaTurm
 
   if (!response.ok) {
     throw new ApiError(result.message || 'Erro ao obter cronograma da turma', result.details);
+  }
+
+  return result.data.cronograma;
+}
+
+export async function obterCronogramaDoProfessor(escolaGUID: string): Promise<HorarioPessoal[]> {
+  const response = await fetch(`${API_URL}/turma/professor/cronograma?EscolaGUID=${escolaGUID}`, {
+    headers: getHeaders(),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(result.message || 'Erro ao obter cronograma do professor', result.details);
+  }
+
+  return result.data.cronograma;
+}
+
+export async function obterCronogramaDoAluno(escolaGUID: string): Promise<HorarioPessoal[]> {
+  const response = await fetch(`${API_URL}/turma/aluno/cronograma?EscolaGUID=${escolaGUID}`, {
+    headers: getHeaders(),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(result.message || 'Erro ao obter cronograma do aluno', result.details);
   }
 
   return result.data.cronograma;

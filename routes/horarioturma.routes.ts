@@ -10,6 +10,7 @@ import { MateriaDAO } from "../backend/repositories/materia.repository";
 import { UsuarioDAO } from "../backend/repositories/usuario.repository";
 import { EscolaConfiguracaoDAO } from "../backend/repositories/escolaconfiguracao.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../backend/repositories/escolaxusuarioxfuncao.repository";
+import { MatriculaDAO } from "../backend/repositories/matricula.repository";
 import { AuthMiddleware } from "../backend/middlewares/auth.middleware";
 
 /**
@@ -32,6 +33,15 @@ export default class HorarioTurmaRoteador {
     console.log("⬆️  HorarioTurmaRoteador.createRoutes()");
 
     this.#router.use(AuthMiddleware.authenticate);
+
+    // GET /api/turma/professor/cronograma?EscolaGUID=X — precisa vir ANTES de
+    // "/:turmaGUID/cronograma" (abaixo), senão "professor" seria capturado
+    // como turmaGUID pela rota genérica (mesmo problema já visto com as rotas
+    // de banco de questões: específicas sempre antes das paramétricas).
+    this.#router.get("/professor/cronograma", this.#horarioTurmaController.cronogramaDoProfessor);
+
+    // GET /api/turma/aluno/cronograma?EscolaGUID=X
+    this.#router.get("/aluno/cronograma", this.#horarioTurmaController.cronogramaDoAluno);
 
     // GET /api/turma/:turmaGUID/cronograma
     this.#router.get(
@@ -69,6 +79,7 @@ export const horarioTurmaRouterFactory = () => {
   const usuarioDAO = new UsuarioDAO(database);
   const escolaConfiguracaoDAO = new EscolaConfiguracaoDAO(database);
   const escolaxUsuarioxFuncaoDAO = new EscolaxUsuarioxFuncaoDAO(database);
+  const matriculaDAO = new MatriculaDAO(database);
 
   const horarioTurmaService = new HorarioTurmaService(
     horarioTurmaDAO,
@@ -77,7 +88,8 @@ export const horarioTurmaRouterFactory = () => {
     materiaDAO,
     usuarioDAO,
     escolaConfiguracaoDAO,
-    escolaxUsuarioxFuncaoDAO
+    escolaxUsuarioxFuncaoDAO,
+    matriculaDAO
   );
   const horarioTurmaController = new HorarioTurmaController(horarioTurmaService);
   const roteador = new HorarioTurmaRoteador(horarioTurmaController);

@@ -658,7 +658,8 @@ export function getRepresentanteLancamentoService(): RepresentanteLancamentoServ
       new MateriaDAO(database),
       usuarioDAO,
       escolaConfiguracaoDAO,
-      new EscolaxUsuarioxFuncaoDAO(database)
+      new EscolaxUsuarioxFuncaoDAO(database),
+      new MatriculaDAO(database)
     );
     instanciaSingleton = new RepresentanteLancamentoService(
       new RepresentanteLancamentoPropagacaoDAO(database),

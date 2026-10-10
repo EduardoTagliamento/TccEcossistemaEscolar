@@ -584,6 +584,9 @@ export default function DashboardNavbar() {
     ...(isProfessor || isAluno
       ? [{ key: 'materias', href: `/dashboard/${escolaGUID}/materias`, label: 'Matérias', icon: 'book-open' as IconName }]
       : []),
+    ...(isProfessor || isAluno
+      ? [{ key: 'cronograma', href: `/dashboard/${escolaGUID}/cronograma`, label: 'Cronograma', icon: 'clock' as IconName }]
+      : []),
     ...(isProfessor
       ? [{ key: 'cadastro', href: `/dashboard/${escolaGUID}/cadastro`, label: 'Cadastro', icon: 'edit' as IconName }]
       : []),

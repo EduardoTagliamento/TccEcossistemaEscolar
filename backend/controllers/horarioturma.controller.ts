@@ -9,6 +9,64 @@ export class HorarioTurmaController {
     this.#horarioTurmaService = horarioTurmaService;
   }
 
+  // GET /api/turma/professor/cronograma?EscolaGUID=X
+  cronogramaDoProfessor = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 HorarioTurmaController.cronogramaDoProfessor()");
+
+    try {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      const escolaGUID = req.query.EscolaGUID as string;
+
+      if (!usuarioGUID) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+      if (!escolaGUID) {
+        res.status(400).json({ success: false, message: "EscolaGUID é obrigatório", data: null });
+        return;
+      }
+
+      const cronograma = await this.#horarioTurmaService.obterCronogramaDoProfessor(usuarioGUID, escolaGUID);
+
+      res.json({
+        success: true,
+        message: "Cronograma do professor obtido com sucesso",
+        data: { cronograma },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // GET /api/turma/aluno/cronograma?EscolaGUID=X
+  cronogramaDoAluno = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("🔵 HorarioTurmaController.cronogramaDoAluno()");
+
+    try {
+      const usuarioGUID = req.user?.UsuarioGUID;
+      const escolaGUID = req.query.EscolaGUID as string;
+
+      if (!usuarioGUID) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado", data: null });
+        return;
+      }
+      if (!escolaGUID) {
+        res.status(400).json({ success: false, message: "EscolaGUID é obrigatório", data: null });
+        return;
+      }
+
+      const cronograma = await this.#horarioTurmaService.obterCronogramaDoAluno(usuarioGUID, escolaGUID);
+
+      res.json({
+        success: true,
+        message: "Cronograma do aluno obtido com sucesso",
+        data: { cronograma },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // GET /api/turma/:turmaGUID/cronograma
   show = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     console.log("🔵 HorarioTurmaController.show()");

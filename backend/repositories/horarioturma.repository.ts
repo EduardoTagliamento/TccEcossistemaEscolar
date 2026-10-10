@@ -16,6 +16,8 @@ interface HorarioTurmaRow {
 export interface HorarioTurmaDetalhado {
   HorarioTurmaGUID: string;
   TurmaGUID: string;
+  TurmaSerie: string;
+  TurmaNome: string;
   MatProfTurGUID: string;
   MateriaGUID: string;
   MateriaNome: string;
@@ -87,19 +89,73 @@ export class HorarioTurmaDAO {
 
     const SQL = `
       SELECT
-        h.HorarioTurmaGUID, h.TurmaGUID, h.MatProfTurGUID, h.DiaSemana, h.HoraInicio, h.HoraFim,
+        h.HorarioTurmaGUID, h.TurmaGUID, t.TurmaSerie, t.TurmaNome, h.MatProfTurGUID, h.DiaSemana, h.HoraInicio, h.HoraFim,
         m.MateriaGUID, mat.MateriaNome,
         m.UsuarioGUID, u.UsuarioNome
       FROM horarioturma h
       JOIN materiaxprofessorxturma m ON m.MatProfTurGUID = h.MatProfTurGUID
       JOIN materia mat ON mat.MateriaGUID = m.MateriaGUID
       JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
+      JOIN turma t ON t.TurmaGUID = h.TurmaGUID
       WHERE h.TurmaGUID = ?
       ORDER BY FIELD(h.DiaSemana, 'Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'), h.HoraInicio
     `;
 
     const pool = await this.#database.getPool();
     const [rows] = await pool.execute(SQL, [turmaGUID]);
+
+    return rows as HorarioTurmaDetalhado[];
+  };
+
+  /** Cronograma do professor em TODAS as turmas onde leciona (alocação ativa), nesta escola —
+   * alimenta a tela "Cronograma" do professor (spec 10/10). */
+  findDetalhadoByProfessor = async (usuarioGUID: string, escolaGUID: string): Promise<HorarioTurmaDetalhado[]> => {
+    console.log("🟢 HorarioTurmaDAO.findDetalhadoByProfessor()");
+
+    const SQL = `
+      SELECT
+        h.HorarioTurmaGUID, h.TurmaGUID, t.TurmaSerie, t.TurmaNome, h.MatProfTurGUID, h.DiaSemana, h.HoraInicio, h.HoraFim,
+        m.MateriaGUID, mat.MateriaNome,
+        m.UsuarioGUID, u.UsuarioNome
+      FROM horarioturma h
+      JOIN materiaxprofessorxturma m ON m.MatProfTurGUID = h.MatProfTurGUID
+      JOIN materia mat ON mat.MateriaGUID = m.MateriaGUID
+      JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
+      JOIN turma t ON t.TurmaGUID = h.TurmaGUID
+      WHERE m.UsuarioGUID = ? AND m.AlocacaoStatus = 'Ativa' AND t.EscolaGUID = ?
+      ORDER BY FIELD(h.DiaSemana, 'Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'), h.HoraInicio
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL, [usuarioGUID, escolaGUID]);
+
+    return rows as HorarioTurmaDetalhado[];
+  };
+
+  /** Cronograma do aluno (cronograma das turmas em que está matriculado-ativo nesta escola) —
+   * alimenta a tela "Cronograma" do aluno (spec 10/10). Pode ser mais de uma turma (ex.: grupo
+   * eletivo tem horário próprio e entraria aqui também no futuro — hoje só turma). */
+  findDetalhadoByTurmas = async (turmaGUIDs: string[]): Promise<HorarioTurmaDetalhado[]> => {
+    console.log("🟢 HorarioTurmaDAO.findDetalhadoByTurmas()");
+
+    if (turmaGUIDs.length === 0) return [];
+
+    const SQL = `
+      SELECT
+        h.HorarioTurmaGUID, h.TurmaGUID, t.TurmaSerie, t.TurmaNome, h.MatProfTurGUID, h.DiaSemana, h.HoraInicio, h.HoraFim,
+        m.MateriaGUID, mat.MateriaNome,
+        m.UsuarioGUID, u.UsuarioNome
+      FROM horarioturma h
+      JOIN materiaxprofessorxturma m ON m.MatProfTurGUID = h.MatProfTurGUID
+      JOIN materia mat ON mat.MateriaGUID = m.MateriaGUID
+      JOIN usuario u ON u.UsuarioGUID = m.UsuarioGUID
+      JOIN turma t ON t.TurmaGUID = h.TurmaGUID
+      WHERE h.TurmaGUID IN (${turmaGUIDs.map(() => "?").join(", ")})
+      ORDER BY FIELD(h.DiaSemana, 'Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo'), h.HoraInicio
+    `;
+
+    const pool = await this.#database.getPool();
+    const [rows] = await pool.execute(SQL, turmaGUIDs);
 
     return rows as HorarioTurmaDetalhado[];
   };

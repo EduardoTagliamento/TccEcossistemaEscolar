@@ -8,6 +8,7 @@ import { MateriaDAO } from "../repositories/materia.repository";
 import { UsuarioDAO } from "../repositories/usuario.repository";
 import { EscolaConfiguracaoDAO } from "../repositories/escolaconfiguracao.repository";
 import { EscolaxUsuarioxFuncaoDAO } from "../repositories/escolaxusuarioxfuncao.repository";
+import { MatriculaDAO } from "../repositories/matricula.repository";
 import { DiaSemana, calcularDataAulaNaSemana, horaParaMinutos } from "../utils/gradeHoraria.util";
 import { getAuditoriaService } from "./auditoria.service";
 
@@ -15,6 +16,23 @@ export interface HorarioTurmaDTO {
   HorarioTurmaGUID: string;
   TurmaGUID: string;
   MatProfTurGUID: string;
+  MateriaGUID: string;
+  MateriaNome: string;
+  UsuarioGUID: string;
+  UsuarioNome: string;
+  DiaSemana: DiaSemana;
+  HoraInicio: string;
+  HoraFim: string;
+}
+
+/** Linha de cronograma pro aluno/professor (spec 10/10) — inclui a turma (o cronograma de
+ * `obterCronograma`/`HorarioTurmaDTO` já sabe a turma de fora, pelo parâmetro; aqui não, porque
+ * cruza várias turmas numa lista só). */
+export interface HorarioPessoalDTO {
+  HorarioTurmaGUID: string;
+  TurmaGUID: string;
+  TurmaSerie: string;
+  TurmaNome: string;
   MateriaGUID: string;
   MateriaNome: string;
   UsuarioGUID: string;
@@ -81,6 +99,7 @@ export default class HorarioTurmaService {
   #usuarioDAO: UsuarioDAO;
   #escolaConfiguracaoDAO: EscolaConfiguracaoDAO;
   #escolaxusuarioxfuncaoDAO: EscolaxUsuarioxFuncaoDAO;
+  #matriculaDAO: MatriculaDAO;
 
   constructor(
     horarioTurmaDAO: HorarioTurmaDAO,
@@ -89,7 +108,8 @@ export default class HorarioTurmaService {
     materiaDAO: MateriaDAO,
     usuarioDAO: UsuarioDAO,
     escolaConfiguracaoDAO: EscolaConfiguracaoDAO,
-    escolaxusuarioxfuncaoDAO: EscolaxUsuarioxFuncaoDAO
+    escolaxusuarioxfuncaoDAO: EscolaxUsuarioxFuncaoDAO,
+    matriculaDAO: MatriculaDAO
   ) {
     console.log("⬆️  HorarioTurmaService.constructor()");
     this.#horarioTurmaDAO = horarioTurmaDAO;
@@ -97,6 +117,7 @@ export default class HorarioTurmaService {
     this.#matProfTurDAO = matProfTurDAO;
     this.#materiaDAO = materiaDAO;
     this.#usuarioDAO = usuarioDAO;
+    this.#matriculaDAO = matriculaDAO;
     this.#escolaConfiguracaoDAO = escolaConfiguracaoDAO;
     this.#escolaxusuarioxfuncaoDAO = escolaxusuarioxfuncaoDAO;
   }
@@ -151,6 +172,53 @@ export default class HorarioTurmaService {
     }
 
     return { TurmaGUID: turmaGUID, Slots: slots, Banco: banco };
+  };
+
+  /** Cronograma do professor: todas as aulas que ele leciona, em todas as turmas, nesta escola. */
+  obterCronogramaDoProfessor = async (usuarioGUID: string, escolaGUID: string): Promise<HorarioPessoalDTO[]> => {
+    console.log("🟣 HorarioTurmaService.obterCronogramaDoProfessor()");
+
+    const slots = await this.#horarioTurmaDAO.findDetalhadoByProfessor(usuarioGUID, escolaGUID);
+    return slots.map((s) => ({
+      HorarioTurmaGUID: s.HorarioTurmaGUID,
+      TurmaGUID: s.TurmaGUID,
+      TurmaSerie: s.TurmaSerie,
+      TurmaNome: s.TurmaNome,
+      MateriaGUID: s.MateriaGUID,
+      MateriaNome: s.MateriaNome,
+      UsuarioGUID: s.UsuarioGUID,
+      UsuarioNome: s.UsuarioNome,
+      DiaSemana: s.DiaSemana,
+      HoraInicio: s.HoraInicio,
+      HoraFim: s.HoraFim,
+    }));
+  };
+
+  /** Cronograma do aluno: todas as aulas da(s) turma(s) em que está matriculado-ativo nesta escola. */
+  obterCronogramaDoAluno = async (usuarioGUID: string, escolaGUID: string): Promise<HorarioPessoalDTO[]> => {
+    console.log("🟣 HorarioTurmaService.obterCronogramaDoAluno()");
+
+    const matriculas = await this.#matriculaDAO.findAll({
+      UsuarioGUID: usuarioGUID,
+      EscolaGUID: escolaGUID,
+      MatriculaStatus: "Ativa",
+    });
+    const turmaGUIDs = matriculas.map((m) => m.TurmaGUID).filter((guid): guid is string => !!guid);
+
+    const slots = await this.#horarioTurmaDAO.findDetalhadoByTurmas(turmaGUIDs);
+    return slots.map((s) => ({
+      HorarioTurmaGUID: s.HorarioTurmaGUID,
+      TurmaGUID: s.TurmaGUID,
+      TurmaSerie: s.TurmaSerie,
+      TurmaNome: s.TurmaNome,
+      MateriaGUID: s.MateriaGUID,
+      MateriaNome: s.MateriaNome,
+      UsuarioGUID: s.UsuarioGUID,
+      UsuarioNome: s.UsuarioNome,
+      DiaSemana: s.DiaSemana,
+      HoraInicio: s.HoraInicio,
+      HoraFim: s.HoraFim,
+    }));
   };
 
   /**
