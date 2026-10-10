@@ -31,6 +31,22 @@ import TurmaGrupoWhatsappService from "./turmagrupowhatsapp.service";
 const ESCOLA_GUID_UNIVAP = "b67a6634-9afd-4fb3-8227-d2569a3db98c";
 const NOME_ESCOLA_UNIVAP = "Colégios UNIVAP - Centro";
 
+/**
+ * Censura sobrenomes pra exibição numa lista pública (sem login) — mantém o primeiro nome
+ * inteiro pra pessoa se achar, só o resto vira inicial+asteriscos. "João Pedro Botejo Batista"
+ * -> "João P**** B****** B******". PRECISA ficar no backend (não só no frontend): a rota
+ * `GET /pessoas` é pública de propósito (ver comentário da classe), então quem chamar a API
+ * direto (sem passar pela tela) teria visto o nome completo sem censura nenhuma se isso fosse
+ * só uma máscara visual do React.
+ */
+function censurarNome(nomeCompleto: string): string {
+  const palavras = nomeCompleto.trim().split(/\s+/);
+  if (palavras.length <= 1) return nomeCompleto;
+  const [primeira, ...resto] = palavras;
+  const restoCensurado = resto.map((palavra) => palavra.charAt(0) + "*".repeat(Math.max(palavra.length - 1, 1)));
+  return [primeira, ...restoCensurado].join(" ");
+}
+
 export interface TurmaFeiraDTO {
   TurmaGUID: string;
   TurmaSerie: string;
@@ -120,7 +136,7 @@ export default class FeiraUnivapService {
       if (!usuario) continue;
       pessoas.push({
         UsuarioGUID: usuario.UsuarioGUID,
-        UsuarioNome: usuario.UsuarioNome,
+        UsuarioNome: censurarNome(usuario.UsuarioNome),
         jaAtivada: !!(usuario.UsuarioTelefone || usuario.UsuarioEmail),
       });
     }

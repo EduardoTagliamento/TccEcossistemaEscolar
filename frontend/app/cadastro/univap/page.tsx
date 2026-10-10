@@ -15,20 +15,6 @@ const ANOS = [
   { valor: '3', label: '3º ano' },
 ];
 
-/**
- * Lista pública (sem login) — mostra o primeiro nome inteiro pra pessoa se
- * achar, mas censura os sobrenomes (só a inicial) pra não expor o nome
- * completo dos colegas pra qualquer visitante que abrir essa tela.
- * "João Pedro Botejo Batista" -> "João P**** B****** B******"
- */
-function censurarNome(nomeCompleto: string): string {
-  const palavras = nomeCompleto.trim().split(/\s+/);
-  if (palavras.length <= 1) return nomeCompleto;
-  const [primeiro, ...resto] = palavras;
-  const restoCensurado = resto.map((palavra) => palavra.charAt(0) + '*'.repeat(Math.max(palavra.length - 1, 1)));
-  return [primeiro, ...restoCensurado].join(' ');
-}
-
 export default function CadastroUnivapPage() {
   const [ano, setAno] = useState('');
   const [turmas, setTurmas] = useState<FeiraUnivapAPI.TurmaFeira[]>([]);
@@ -186,7 +172,7 @@ export default function CadastroUnivapPage() {
               <option value="">{carregandoPessoas ? 'Carregando...' : 'Selecione seu nome'}</option>
               {pessoas.map((p) => (
                 <option key={p.UsuarioGUID} value={p.UsuarioGUID} disabled={p.jaAtivada}>
-                  {censurarNome(p.UsuarioNome)} {p.jaAtivada ? '(já ativado)' : ''}
+                  {p.UsuarioNome} {p.jaAtivada ? '(já ativado)' : ''}
                 </option>
               ))}
             </select>
