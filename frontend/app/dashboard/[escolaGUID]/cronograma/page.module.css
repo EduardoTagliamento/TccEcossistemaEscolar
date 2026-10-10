@@ -184,6 +184,8 @@
   display: grid;
   border-top: 1px solid var(--line-200);
   border-left: 1px solid var(--line-200);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   min-width: 600px;
 }
 
