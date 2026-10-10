@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Icon } from '@/components/Icon';
 import Loader from '@/components/Loader';
 import * as HorarioTurmaAPI from '@/lib/api/horarioturma.api';
-import { DIAS_SEMANA, DIA_SEMANA_LABEL } from '@/lib/api/escolaconfiguracao.api';
+import * as EscolaConfiguracaoAPI from '@/lib/api/escolaconfiguracao.api';
+import { DiaSemana, DIA_SEMANA_LABEL, SlotAula, SlotsPorDia } from '@/lib/api/escolaconfiguracao.api';
 import styles from './page.module.css';
+
+type Turno = 'Manha' | 'Tarde';
 
 interface EscolaComFuncoes {
   escola: { EscolaGUID: string };
@@ -25,6 +28,10 @@ export default function CronogramaPage() {
   const [ehAluno, setEhAluno] = useState(false);
   const [modo, setModo] = useState<'aluno' | 'professor'>('aluno');
   const [aulas, setAulas] = useState<HorarioTurmaAPI.HorarioPessoal[]>([]);
+  const [config, setConfig] = useState<EscolaConfiguracaoAPI.EscolaConfiguracao | null>(null);
+  const [slotsPorDia, setSlotsPorDia] = useState<SlotsPorDia[]>([]);
+  const [mostrarManha, setMostrarManha] = useState(true);
+  const [mostrarTarde, setMostrarTarde] = useState(true);
 
   useEffect(() => {
     if (escolaGUID && usuario) {
@@ -37,11 +44,21 @@ export default function CronogramaPage() {
     if (!usuario) return;
     try {
       setCarregando(true);
-      const response = await fetch(`/api/usuario/${usuario.UsuarioGUID}/escolas`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      const escolas: EscolaComFuncoes[] = data?.data?.escolas || [];
+
+      const [escolasResp, configResp] = await Promise.all([
+        fetch(`/api/usuario/${usuario.UsuarioGUID}/escolas`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then((r) => r.json()),
+        EscolaConfiguracaoAPI.obterConfiguracao(escolaGUID),
+      ]);
+
+      setConfig(configResp);
+      if (configResp.Configurada) {
+        const slotsResp = await EscolaConfiguracaoAPI.obterSlots(escolaGUID);
+        setSlotsPorDia(slotsResp);
+      }
+
+      const escolas: EscolaComFuncoes[] = escolasResp?.data?.escolas || [];
       const escolaSelecionada = escolas.find((item) => item.escola.EscolaGUID === escolaGUID);
       const funcoesAtivas = (escolaSelecionada?.funcoes || [])
         .filter((funcao) => funcao.Status === 'Ativo')
@@ -87,20 +104,92 @@ export default function CronogramaPage() {
     router.push(`/dashboard/${escolaGUID}/materias/${aula.MateriaGUID}/turmas/${aula.TurmaGUID}`);
   };
 
-  const aulasPorDia = DIAS_SEMANA.map((dia) => ({
-    dia,
-    aulas: aulas
-      .filter((a) => a.DiaSemana === dia)
-      .sort((a, b) => a.HoraInicio.localeCompare(b.HoraInicio)),
-  })).filter((grupo) => grupo.aulas.length > 0);
+  // Mesma lógica de frontend/app/dashboard/[escolaGUID]/gestao-dados/turmas/[turmaGUID]/cronograma —
+  // une os slots de todos os dias num conjunto único de linhas (horários), por turno.
+  const linhasPorTurno = useMemo(() => {
+    const construir = (turno: Turno): SlotAula[] => {
+      const mapa = new Map<string, SlotAula>();
+      slotsPorDia.forEach((dia) => {
+        dia[turno].forEach((slot) => {
+          mapa.set(`${slot.HoraInicio}-${slot.HoraFim}`, slot);
+        });
+      });
+      return Array.from(mapa.values()).sort((a, b) => a.HoraInicio.localeCompare(b.HoraInicio));
+    };
+
+    return {
+      Manha: construir('Manha'),
+      Tarde: construir('Tarde'),
+    };
+  }, [slotsPorDia]);
+
+  const diaTemSlot = (dia: DiaSemana, turno: Turno, slot: SlotAula): boolean => {
+    const doDia = slotsPorDia.find((d) => d.DiaSemana === dia);
+    return !!doDia?.[turno].some((s) => s.HoraInicio === slot.HoraInicio && s.HoraFim === slot.HoraFim);
+  };
+
+  const aulaNoSlot = (dia: DiaSemana, horaInicio: string): HorarioTurmaAPI.HorarioPessoal | undefined => {
+    return aulas.find((a) => a.DiaSemana === dia && a.HoraInicio === horaInicio);
+  };
+
+  const renderTurno = (turno: Turno, titulo: string) => {
+    const linhas = linhasPorTurno[turno];
+    if (linhas.length === 0 || !config) return null;
+
+    return (
+      <div className={styles.turnoSecao}>
+        <h2 className={styles.turnoTitulo}>{titulo}</h2>
+        <div
+          className={styles.grade}
+          style={{ gridTemplateColumns: `110px repeat(${config.DiasSemana.length}, 1fr)` }}
+        >
+          <div className={styles.gradeHeaderCanto} />
+          {config.DiasSemana.map((dia) => (
+            <div key={dia} className={styles.gradeHeaderDia}>
+              {DIA_SEMANA_LABEL[dia].replace('-feira', '')}
+            </div>
+          ))}
+
+          {linhas.map((slot) => (
+            <Fragment key={slot.HoraInicio}>
+              <div className={styles.gradeHorario}>
+                {slot.HoraInicio}–{slot.HoraFim}
+              </div>
+              {config.DiasSemana.map((dia) => {
+                const disponivel = diaTemSlot(dia, turno, slot);
+                if (!disponivel) {
+                  return (
+                    <div key={`${dia}-${slot.HoraInicio}`} className={`${styles.celula} ${styles.celulaIndisponivel}`} />
+                  );
+                }
+
+                const aula = aulaNoSlot(dia, slot.HoraInicio);
+
+                return (
+                  <div key={`${dia}-${slot.HoraInicio}`} className={`${styles.celula} ${!aula ? styles.celulaVazia : ''}`}>
+                    {aula && (
+                      <button type="button" className={styles.chip} onClick={() => handleClicarAula(aula)}>
+                        <span className={styles.chipMateria}>{aula.MateriaNome}</span>
+                        <span className={styles.chipDetalhe}>
+                          {modo === 'aluno' ? aula.UsuarioNome : `${aula.TurmaSerie} ${aula.TurmaNome}`}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </Fragment>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   if (carregando) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loadingContainer}>
-          <Loader />
-          <p>Carregando cronograma...</p>
-        </div>
+      <div className={styles.loadingContainer}>
+        <Loader />
+        <p>Carregando cronograma...</p>
       </div>
     );
   }
@@ -110,62 +199,49 @@ export default function CronogramaPage() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.titulo}>
-            <span className={styles.tituloIcone}><Icon name="clock" size={20} /></span> Cronograma
+            <Icon name="clock" size={22} /> Cronograma
           </h1>
           <p className={styles.subtitulo}>
             {modo === 'aluno' ? 'Suas aulas da semana' : 'As aulas que você leciona na semana'}
           </p>
         </div>
         {ehAluno && ehProfessor && (
-          <div className={styles.acoes}>
-            <button
-              className={styles.botaoIcone}
-              onClick={() => void alternarModo()}
-              title={modo === 'aluno' ? 'Ver como professor' : 'Ver como aluno'}
-            >
-              <Icon name="repeat" size={18} />
-            </button>
-          </div>
+          <button type="button" className={styles.botaoAlternar} onClick={() => void alternarModo()}>
+            <Icon name="repeat" size={16} /> {modo === 'aluno' ? 'Ver como professor' : 'Ver como aluno'}
+          </button>
         )}
       </div>
 
-      {aulasPorDia.length === 0 && (
-        <p className={styles.mensagemVazia}>
-          {modo === 'aluno'
-            ? 'Sua turma ainda não tem um cronograma montado.'
-            : 'Você ainda não tem aulas no cronograma de nenhuma turma.'}
-        </p>
+      {config && !config.Configurada && (
+        <p className={styles.aviso}>Esta escola ainda não tem um horário letivo configurado.</p>
       )}
 
-      {aulasPorDia.length > 0 && (
-        <div className={styles.listaDias}>
-          {aulasPorDia.map((grupo) => (
-            <section key={grupo.dia} className={styles.grupoDia}>
-              <h2 className={styles.labelDia}>{DIA_SEMANA_LABEL[grupo.dia]}</h2>
-              <div className={styles.listaAulas}>
-                {grupo.aulas.map((aula) => (
-                  <button
-                    key={aula.HorarioTurmaGUID}
-                    type="button"
-                    className={styles.cardAula}
-                    onClick={() => handleClicarAula(aula)}
-                  >
-                    <span className={styles.cardAulaHorario}>
-                      {aula.HoraInicio} - {aula.HoraFim}
-                    </span>
-                    <span className={styles.cardAulaInfo}>
-                      <span className={styles.cardAulaMateria}>{aula.MateriaNome}</span>
-                      <span className={styles.cardAulaDetalhe}>
-                        {modo === 'aluno' ? aula.UsuarioNome : `${aula.TurmaSerie} ${aula.TurmaNome}`}
-                      </span>
-                    </span>
-                    <Icon name="chevron-right" size={18} />
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+      {config?.Configurada && linhasPorTurno.Manha.length === 0 && linhasPorTurno.Tarde.length === 0 && (
+        <p className={styles.aviso}>Nenhuma turma sua tem cronograma montado ainda.</p>
+      )}
+
+      {config?.Configurada && (
+        <>
+          {(linhasPorTurno.Manha.length > 0 || linhasPorTurno.Tarde.length > 0) && (
+            <div className={styles.toggleTurnos}>
+              {linhasPorTurno.Manha.length > 0 && (
+                <label className={styles.toggleItem}>
+                  <input type="checkbox" checked={mostrarManha} onChange={(e) => setMostrarManha(e.target.checked)} />
+                  Mostrar manhã
+                </label>
+              )}
+              {linhasPorTurno.Tarde.length > 0 && (
+                <label className={styles.toggleItem}>
+                  <input type="checkbox" checked={mostrarTarde} onChange={(e) => setMostrarTarde(e.target.checked)} />
+                  Mostrar tarde
+                </label>
+              )}
+            </div>
+          )}
+
+          {mostrarManha && renderTurno('Manha', 'Manhã')}
+          {mostrarTarde && renderTurno('Tarde', 'Tarde')}
+        </>
       )}
     </div>
   );
