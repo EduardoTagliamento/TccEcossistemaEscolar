@@ -786,8 +786,10 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: top;
+  /* `cover` cortava boa parte das prints mais largas (ex.: telas de login, até
+     2.2:1) dentro da caixa fixa 4:3 — `contain` mostra a print inteira, com
+     tarja da cor de fundo do device nas laterais/topo quando precisar. */
+  object-fit: contain;
   display: block;
   opacity: 0;
   transition: opacity 0.6s ease;
@@ -831,18 +833,73 @@
   cursor: zoom-out;
 }
 
+.lightboxImagemWrapper {
+  width: min(1100px, 92vw);
+  height: 75vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  border-radius: 10px;
+}
+
 .lightboxImagem {
-  max-width: min(1100px, 92vw);
-  max-height: 75vh;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   border-radius: 10px;
   box-shadow: var(--shadow-lg);
   cursor: grab;
-  touch-action: pan-y;
   user-select: none;
+  flex-shrink: 0;
+  transition: width 0.15s ease, height 0.15s ease;
 }
 
 .lightboxImagem:active {
   cursor: grabbing;
+}
+
+.lightboxZoomControles {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.lightboxZoomBotao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.lightboxZoomBotao:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.lightboxZoomBotao:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.lightboxZoomNivel {
+  min-width: 40px;
+  text-align: center;
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 .lightboxLegenda {

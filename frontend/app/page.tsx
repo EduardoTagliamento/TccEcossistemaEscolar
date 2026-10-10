@@ -23,7 +23,9 @@ type IconName =
   | 'edit'
   | 'shield'
   | 'menu'
-  | 'x';
+  | 'x'
+  | 'plus'
+  | 'minus';
 
 // Glifos Feather-style extraídos literalmente de components/core/Icon.jsx
 // (Bauá Design System) — mesmo conjunto de ícones usado em "Landing Page.dc.html".
@@ -147,6 +149,19 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
         <svg {...common} aria-hidden="true">
           <line x1="18" y1="6" x2="6" y2="18" />
           <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      );
+    case 'plus':
+      return (
+        <svg {...common} aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+      );
+    case 'minus':
+      return (
+        <svg {...common} aria-hidden="true">
+          <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       );
     default:
@@ -274,10 +289,6 @@ const DIFERENCIAIS = [
     problema: 'Sistema genérico que não parece com a sua escola.',
     solucao: 'Personalize cores e logotipo: cada escola tem a própria identidade visual dentro da plataforma.',
   },
-  {
-    problema: 'Contrato caro só pra testar se a ferramenta funciona pra você.',
-    solucao: 'Comece gratuitamente e conheça a plataforma no seu ritmo, sem compromisso.',
-  },
 ];
 
 // Prints reais do sistema, em rotação ao lado dos diferenciais — capturas de
@@ -359,10 +370,6 @@ const FAQ_ITENS = [
       'Sim, o módulo de Gestão de Dados permite importar alunos, professores e turmas em massa a partir de planilhas Excel, sem precisar recadastrar tudo manualmente.',
   },
   {
-    pergunta: 'O Bauá é gratuito?',
-    resposta: 'Sim, você pode criar sua conta e configurar sua escola gratuitamente.',
-  },
-  {
     pergunta: 'O Bauá funciona para escolas técnicas?',
     resposta:
       'Sim, o sistema já contempla cursos técnicos, com cadastro específico para turmas e disciplinas desse tipo de formação.',
@@ -375,10 +382,21 @@ export default function HomePage() {
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
   const [printAtivo, setPrintAtivo] = useState(0);
   const [lightboxAberto, setLightboxAberto] = useState(false);
+  const [zoomNivel, setZoomNivel] = useState(1);
   const arrastoInicioX = useRef<number | null>(null);
 
-  const printAnterior = () => setPrintAtivo((i) => (i - 1 + PRINTS_SISTEMA.length) % PRINTS_SISTEMA.length);
-  const proximoPrint = () => setPrintAtivo((i) => (i + 1) % PRINTS_SISTEMA.length);
+  const ZOOM_MIN = 1;
+  const ZOOM_MAX = 3;
+  const ZOOM_PASSO = 0.5;
+
+  const printAnterior = () => {
+    setZoomNivel(1);
+    setPrintAtivo((i) => (i - 1 + PRINTS_SISTEMA.length) % PRINTS_SISTEMA.length);
+  };
+  const proximoPrint = () => {
+    setZoomNivel(1);
+    setPrintAtivo((i) => (i + 1) % PRINTS_SISTEMA.length);
+  };
 
   const handleArrastoInicio = (x: number) => {
     arrastoInicioX.current = x;
@@ -388,9 +406,19 @@ export default function HomePage() {
     if (arrastoInicioX.current === null) return;
     const delta = x - arrastoInicioX.current;
     arrastoInicioX.current = null;
+    if (zoomNivel > 1) return; // com zoom, o arrasto é pra navegar dentro da imagem, não trocar de print
     const LIMIAR = 50; // px mínimos pra contar como swipe, não só um clique tremido
     if (delta > LIMIAR) printAnterior();
     else if (delta < -LIMIAR) proximoPrint();
+  };
+
+  const aumentarZoom = () => setZoomNivel((z) => Math.min(ZOOM_MAX, z + ZOOM_PASSO));
+  const diminuirZoom = () => setZoomNivel((z) => Math.max(ZOOM_MIN, z - ZOOM_PASSO));
+
+  const handleRodaZoom = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (e.deltaY < 0) aumentarZoom();
+    else diminuirZoom();
   };
 
   useEffect(() => {
@@ -408,6 +436,12 @@ export default function HomePage() {
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
+  }, [lightboxAberto]);
+
+  // Reseta o zoom sempre que a lightbox fecha (ESC, clique fora, botão de fechar) — senão
+  // reabriria já ampliada na próxima vez.
+  useEffect(() => {
+    if (!lightboxAberto) setZoomNivel(1);
   }, [lightboxAberto]);
 
   useEffect(() => {
@@ -718,6 +752,28 @@ export default function HomePage() {
                   <Icon name="x" size={22} />
                 </button>
 
+                <div className={styles.lightboxZoomControles} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className={styles.lightboxZoomBotao}
+                    onClick={diminuirZoom}
+                    disabled={zoomNivel <= ZOOM_MIN}
+                    aria-label="Diminuir zoom"
+                  >
+                    <Icon name="minus" size={18} />
+                  </button>
+                  <span className={styles.lightboxZoomNivel}>{Math.round(zoomNivel * 100)}%</span>
+                  <button
+                    type="button"
+                    className={styles.lightboxZoomBotao}
+                    onClick={aumentarZoom}
+                    disabled={zoomNivel >= ZOOM_MAX}
+                    aria-label="Aumentar zoom"
+                  >
+                    <Icon name="plus" size={18} />
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   className={`${styles.lightboxSeta} ${styles.lightboxSetaEsquerda}`}
@@ -730,17 +786,30 @@ export default function HomePage() {
                   <Icon name="arrow-right" size={22} />
                 </button>
 
-                <img
-                  src={PRINTS_SISTEMA[printAtivo].imagemUrl}
-                  alt={PRINTS_SISTEMA[printAtivo].legenda}
-                  className={styles.lightboxImagem}
+                <div
+                  className={styles.lightboxImagemWrapper}
                   onClick={(e) => e.stopPropagation()}
-                  draggable={false}
-                  onMouseDown={(e) => handleArrastoInicio(e.clientX)}
-                  onMouseUp={(e) => handleArrastoFim(e.clientX)}
-                  onTouchStart={(e) => handleArrastoInicio(e.touches[0].clientX)}
-                  onTouchEnd={(e) => handleArrastoFim(e.changedTouches[0].clientX)}
-                />
+                  onWheel={handleRodaZoom}
+                >
+                  <img
+                    src={PRINTS_SISTEMA[printAtivo].imagemUrl}
+                    alt={PRINTS_SISTEMA[printAtivo].legenda}
+                    className={styles.lightboxImagem}
+                    style={{
+                      width: `${zoomNivel * 100}%`,
+                      height: `${zoomNivel * 100}%`,
+                      // pan-y preserva o gesto de arrastar pra trocar de print; uma vez
+                      // ampliada, libera arrasto livre pra conseguir navegar pela imagem toda.
+                      touchAction: zoomNivel > 1 ? 'auto' : 'pan-y',
+                    }}
+                    draggable={false}
+                    onDoubleClick={() => setZoomNivel((z) => (z > 1 ? 1 : 2))}
+                    onMouseDown={(e) => handleArrastoInicio(e.clientX)}
+                    onMouseUp={(e) => handleArrastoFim(e.clientX)}
+                    onTouchStart={(e) => handleArrastoInicio(e.touches[0].clientX)}
+                    onTouchEnd={(e) => handleArrastoFim(e.changedTouches[0].clientX)}
+                  />
+                </div>
 
                 <button
                   type="button"
@@ -813,7 +882,7 @@ export default function HomePage() {
             <h2 className={styles.ctaTitle}>Pronto para transformar a educação?</h2>
             <p className={styles.ctaText}>Junte-se ao Bauá e faça parte da revolução educacional.</p>
             <Link href="/cadastro/escolha" className={styles.ctaButton}>
-              Comece Gratuitamente
+              Assinar
               <Icon name="arrow-right" size={20} />
             </Link>
           </div>
